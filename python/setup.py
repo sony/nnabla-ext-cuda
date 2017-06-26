@@ -39,7 +39,7 @@ setup_requires = [
 ]
 
 install_requires = [
-    'nnabla>=0.9.1rc3',
+    'nnabla>=0.9.1',
 ]
 
 LibInfo = namedtuple('LibInfo', ['file_name', 'path', 'name'])
@@ -174,7 +174,7 @@ def get_setup_config(root_dir):
     pkg_info = dict(
         name="nnabla_ext-cuda",
         description='A CUDA and cuDNN extension of NNabla',
-        version='0.9.1rc3',
+        version='0.9.1',
         author_email='nnabla@googlegroups.com',
         url="https://github.com/sony/nnabla",
         license='Apache Licence 2.0',
