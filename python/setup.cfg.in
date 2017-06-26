@@ -1,0 +1,12 @@
+[build_ext]
+compiler=${NBLA_PYTHON_BUILD_EXT_COMPILER}
+
+[cmake]
+cpu_target_name=nnabla
+cpu_target_file_name=libnnabla.so
+cpu_target_file=${NBLA_CPU_LIBRARY_FILE}
+
+cuda_target_name=${NBLA_CUDA_LIBRARY_NAME}
+cuda_target_file_name=$<TARGET_FILE_NAME:${NBLA_CUDA_LIBRARY_NAME}>
+cuda_target_file=$<TARGET_FILE:${NBLA_CUDA_LIBRARY_NAME}>
+cudnn_version=${NBLA_CUDNN_VERSION}

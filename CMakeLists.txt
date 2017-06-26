@@ -1,0 +1,236 @@
+cmake_minimum_required (VERSION 3.1)
+
+# NNabla project
+project (nbla C CXX)
+
+###############################################################################
+# Settings
+###############################################################################
+if (NOT PYTHON_COMMAND)
+  set(PYTHON_COMMAND "python")
+endif()
+
+###############################################################################
+# Preprocessing
+###############################################################################
+execute_process(
+  COMMAND ${PYTHON_COMMAND}
+          ${PROJECT_SOURCE_DIR}/build-tools/cmake/get_nnabla_dir.py
+          OUTPUT_VARIABLE NBLA_DIR_RAW)
+string(STRIP ${NBLA_DIR_RAW} NBLA_DIR)
+
+execute_process(
+  COMMAND ${PYTHON_COMMAND}
+          ${PROJECT_SOURCE_DIR}/build-tools/cmake/get_nnabla_cpu_lib.py
+          OUTPUT_VARIABLE NBLA_CPU_LIBRARY_FILE_RAW)
+string(STRIP ${NBLA_CPU_LIBRARY_FILE_RAW} NBLA_CPU_LIBRARY_FILE)
+
+# Download third_party libraries
+if(NOT IS_DIRECTORY ${CMAKE_SOURCE_DIR}/third_party/googletest-release-1.7.0)
+  message("Downloading googletest")
+  file(DOWNLOAD
+    https://github.com/google/googletest/archive/release-1.7.0.zip
+    ${CMAKE_SOURCE_DIR}/third_party/googletest-release-1.7.0.zip)
+  execute_process(
+    COMMAND ${CMAKE_COMMAND} -E
+    chdir ${CMAKE_SOURCE_DIR}/third_party
+    ${CMAKE_COMMAND} -E tar xf googletest-release-1.7.0.zip)
+endif()
+
+if(NOT IS_DIRECTORY ${CMAKE_SOURCE_DIR}/third_party/eigen-eigen-de14376a69f8)
+  message("Downloading eigen")
+  file(DOWNLOAD
+    https://bitbucket.org/eigen/eigen/get/de14376a69f8.zip
+    ${CMAKE_SOURCE_DIR}/third_party/eigen-eigen-de14376a69f8.zip)
+  execute_process(
+    COMMAND ${CMAKE_COMMAND} -E
+    chdir ${CMAKE_SOURCE_DIR}/third_party
+    ${CMAKE_COMMAND} -E tar xf eigen-eigen-de14376a69f8.zip)
+endif()
+
+execute_process(
+  COMMAND ${PYTHON_COMMAND}
+          ${NBLA_DIR}/build-tools/cmake/get_setup_build_dir.py
+          OUTPUT_VARIABLE NBLA_SETUP_LIB_DIR_RAW)
+string(STRIP ${NBLA_SETUP_LIB_DIR_RAW} NBLA_SETUP_LIB_DIR)
+
+###############################################################################
+# Code generator
+###############################################################################
+if (MSVC)
+  set(ENV{PYTHONPATH} ${NBLA_DIR}\\build-tools\\code_generator;$ENV{PYTHONPATH})
+else()
+  set(ENV{PYTHONPATH} ${NBLA_DIR}/build-tools/code_generator:$ENV{PYTHONPATH})
+endif()
+
+execute_process(
+  COMMAND ${PYTHON_COMMAND}
+          ${CMAKE_CURRENT_SOURCE_DIR}/build-tools/code_generator/generate.py
+          OUTPUT_VARIABLE TEST)
+###############################################################################
+
+if (NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING
+    "Build type release is default on single-configuration build system like GnuMake."
+    FORCE)
+endif()
+
+###############################################################################
+# General settings
+###############################################################################
+# Using cmake scripts and modules
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/build-tools/cmake/Modules)
+include(${NBLA_DIR}/build-tools/cmake/Utils.cmake)
+
+# Flags
+if(MSVC)
+  # Force to always compile with W4
+  if(CMAKE_CXX_FLAGS MATCHES "/W[0-4]")
+    string(REGEX REPLACE "/W[0-4]" "/W0" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+  else()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W0")
+  endif()
+endif()
+
+if(UNIX OR APPLE)
+  find_program(CCACHE_FOUND ccache)
+  if(CCACHE_FOUND)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
+  endif(CCACHE_FOUND)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Wall")
+endif()
+nbla_warnings_disable(CMAKE_CXX_FLAGS -Wno-sign-compare -Wno-uninitialized /wd4099)
+
+# Setting output directory naively
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+if (WIN32)
+  set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+  set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+else()
+  set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+  set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+endif()
+
+###############################################################################
+# C++ core
+###############################################################################
+# includes
+list(APPEND NBLA_INCLUDE_DIRS
+  ${PROJECT_SOURCE_DIR}/include
+  ${NBLA_DIR}/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/eigen-eigen-de14376a69f8)
+include_directories(${NBLA_INCLUDE_DIRS};${PROJECT_BINARY_DIR})
+
+###############################################################################
+# C++ CUDA core
+###############################################################################
+add_definitions(-DWITH_CUDA)
+add_definitions(-DWITH_CUDNN)
+add_subdirectory(src/nbla/cuda)
+
+###############################################################################
+# C++ Testing
+###############################################################################
+if(BUILD_TEST)
+  if (WIN32)
+    set(BUILD_SHARED_LIBS ON CACHE BOOL
+      "Force to build gtest with dll on Windows.")
+  endif()
+  add_subdirectory(third_party/googletest-release-1.7.0)
+  enable_testing()
+  include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
+  include_directories(${NBLA_CUDA_INCLUDE_DIRS})
+
+  file(GLOB NBLA_TEST_SOURCES src/nbla/cuda/test/test_*.cpp)
+  add_executable(clibtest ${NBLA_TEST_SOURCES})
+  add_dependencies(clibtest ${NBLA_LIBRARY_NAME} ${NBLA_CUDA_LIBRARY_NAME})
+  target_link_libraries(clibtest gtest gtest_main)
+  target_link_libraries(clibtest nnabla)
+
+  add_dependencies(clibtest ${NBLA_CUDA_LIBRARY_NAME})
+  target_link_libraries(clibtest ${NBLA_CUDA_LIBRARY_NAME})
+  target_link_libraries(clibtest ${NBLA_CUDA_LINKER_LIBS})
+
+  set_property(TARGET clibtest PROPERTY CXX_STANDARD 11)
+  nbla_exclude_from_all(clibtest)  # Exclude target from all or default build
+  add_test(NAME clibtest COMMAND clibtest)
+endif()
+
+###############################################################################
+# Python API
+###############################################################################
+set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES "build")
+# http://stackoverflow.com/questions/13298504/using-cmake-with-setup-py
+
+file(GLOB_RECURSE NBLA_PYTHON_DEPS
+  ${CMAKE_CURRENT_SOURCE_DIR}/python/src/*.py
+  ${CMAKE_CURRENT_SOURCE_DIR}/python/src/*.pyx
+  ${CMAKE_CURRENT_SOURCE_DIR}/python/src/*.pxd)
+
+file(GLOB_RECURSE NBLA_PYTHON_BUILD_OUTPUT_CYTHON
+  ${CMAKE_CURRENT_SOURCE_DIR}/python/src/*.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/python/src/*.h)
+
+set(NBLA_PYTHON_SETUP ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py)
+set(NBLA_PYTHON_OUTPUT ${CMAKE_BINARY_DIR}/build)
+set(NBLA_PYTHON_OUTPUT_BUILD ${NBLA_PYTHON_OUTPUT}/.timestamp.build)
+set(NBLA_PYTHON_OUTPUT_BDIST ${NBLA_PYTHON_OUTPUT}/.timestamp.bdist)
+
+# Generate setup.cfg
+if (NOT (DEFINED NBLA_PYTHON_BUILD_EXT_COMPILER))
+  if (WIN32)
+    set(NBLA_PYTHON_BUILD_EXT_COMPILER msvc)
+  elseif(UNIX OR APPLE)
+    set(NBLA_PYTHON_BUILD_EXT_COMPILER unix)
+  else ()
+    message(FATAL_ERROR
+      "Python build_ext compiler inference is only supported on Win, Unix or Apple.")
+  endif()
+  message("Python build_ext compiler is infered as '${NBLA_PYTHON_BUILD_EXT_COMPILER}'.")
+  message("You can specify a compiler manually setting a variable"
+    " NBLA_PYTHON_BUILD_EXT_COMPILER. You can see a list of supported"
+    " compiler by `python setup.py build_ext --help-compiler`.")
+endif()
+set(NBLA_PYTHON_BUILD_DIR ${CMAKE_BINARY_DIR})
+
+# Two-step configure_file generation with generate-time property (target_file_name).
+# http://cmake.3232098.n2.nabble.com/cmp0026-file-GENERATE-and-configure-file-td7590275.html
+# Since multiple-configuration build system like Visual Studio requires
+# file(GENERATE ...) for each build config, we generate setup.cfg files for each
+# build type with suffix `-<config>`. You can switch the build type by replacing
+# the setup.cfg file by setup.cfg-<config>. The default setup.cfg is for Release build.
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/python/setup.cfg.in
+  ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.cfg.in.configured)
+
+file(GENERATE OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.cfg-$<CONFIG>
+  INPUT ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.cfg.in.configured)
+
+file(GENERATE OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.cfg
+  INPUT ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.cfg.in.configured
+  CONDITION $<CONFIG:Release>)
+
+set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES
+  ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.cfg
+  ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.cfg-$<CONFIG>)
+
+# Build
+add_custom_command(OUTPUT ${NBLA_PYTHON_OUTPUT_BUILD}
+  COMMAND ${CMAKE_COMMAND} -E remove -f ${NBLA_PYTHON_OUTPUT_CYTHON}
+  COMMAND ${PYTHON_COMMAND} ${NBLA_PYTHON_SETUP} build
+  COMMAND ${CMAKE_COMMAND} -E touch ${NBLA_PYTHON_OUTPUT_BUILD}
+  DEPENDS ${NBLA_PYTHON_DEPS} ${NBLA_LIBRARY_NAME} ${NBLA_CUDA_LIBRARY_NAME}
+  ${NBLA_PYTHON_SETUP})
+
+add_custom_target(python ALL DEPENDS ${NBLA_PYTHON_OUTPUT_BUILD})
+add_dependencies(python ${NBLA_CUDA_LIBRARY_NAME})
+
+# Bdist
+add_custom_command(OUTPUT ${NBLA_PYTHON_OUTPUT_BDIST}
+  COMMAND ${PYTHON_COMMAND} ${NBLA_PYTHON_SETUP} bdist_wheel
+  COMMAND ${CMAKE_COMMAND} -E touch ${NBLA_PYTHON_OUTPUT_BDIST}
+  DEPENDS ${NBLA_PYTHON_DEPS} ${NBLA_PYTHON_OUTPUT_BUILD})
+add_custom_target(python-bdist ALL
+  DEPENDS ${NBLA_PYTHON_OUTPUT_BDIST} ${NBLA_PYTHON_OUTPUT_BUILD})
+add_dependencies(python-bdist python)
+
