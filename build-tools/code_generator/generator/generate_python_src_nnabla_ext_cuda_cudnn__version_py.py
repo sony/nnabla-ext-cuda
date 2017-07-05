@@ -12,33 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import nnabla
-
-from init import (
-    clear_memory_cache,
-    array_classes,
-    device_synchronize,
-    get_device_count)
-
-from _version import (
-    __version__,
-    __author__,
-    __email__
-)
-
-from nnabla.variable import Context
+import os
+from utils.common import get_version
 
 
-def context(device_id=0, **kw):
-    """CUDA context."""
-    return Context('cpu|cuda', array_classes()[0], device_id=str(device_id), compute_backend='default')
-
-
-def synchronize(device_id=0, **kw):
-    """Call ``cudaDeviceSynchronize`` in runtime API`.
-
-    Args:
-        device_id (int): Device ID.
-
-    """
-    return device_synchronize(device_id)
+def generate(info, template):
+    version, short_version = get_version(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+    return template.format(version="u'"+version+"'", short_version="u'"+short_version+"'")

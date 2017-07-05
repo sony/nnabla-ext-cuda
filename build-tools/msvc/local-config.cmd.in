@@ -1,4 +1,8 @@
 rem Set proxy.
+
+set http_proxy=http://proxy.kanto.sony.co.jp:10080
+set https_proxy=http://proxy.kanto.sony.co.jp:10080
+
 rem Remove cygwin from PATH entries.
 
 set PATH=%PATH:c:\cygwin64\bin;=%
