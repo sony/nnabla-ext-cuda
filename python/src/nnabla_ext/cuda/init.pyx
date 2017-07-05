@@ -51,7 +51,7 @@ _original_array_classes = cuda_array_classes()
 
 def prefer_cached_array(prefer):
     a = cuda_array_classes()
-    a = sorted(enumerate(a), key=lambda x: (prefer ^ ('Cached' in x[1]), x[0]))
+    a = sorted(enumerate(a), key=lambda x: (prefer != ('Cached' in x[1]), x[0]))
     _cuda_set_array_classes(map(lambda x: x[1], a))
 
 

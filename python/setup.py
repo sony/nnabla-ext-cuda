@@ -12,19 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-'''
-Python API setup script.
+from __future__ import print_function
 
-This hasn't been designed well yet. Polishing it is future developement.
-The current improvement plan is as following:
-
-* Cythonize before publishing. Users do not use Cython, instead just use
-generated C++ files to build extensions.
-
-* Remove hard-coded relative paths for library link. Maybe the solution will be
-  install NNabla C++ library in order to put them into folders path of which
-  are set.
-'''
 from setuptools import setup
 from distutils.extension import Extension
 from os.path import dirname, realpath, join, isfile, splitext
@@ -50,7 +39,7 @@ ExtConfig = namedtuple('ExtConfig',
 
 
 def get_libinfo():
-    from ConfigParser import ConfigParser
+    from six.moves.configparser import ConfigParser
 
     # Parse setup.cfg
     path_cfg = join(dirname(__file__), "setup.cfg")
@@ -169,17 +158,12 @@ def get_setup_config(root_dir):
     package_data.update(cudnn_ext.package_data)
     ext_modules += cudnn_ext.ext_modules
 
-    exec(open(os.path.join(root_dir, 'src', 'nnabla_ext', 'cuda', '_version.py')).read())
-
-    # Embed signatures in Cython function and classes
-    for e in ext_modules:
-        e.cython_directives = {"embedsignature": True}
     pkg_info = dict(
         name="nnabla_ext-cuda",
         description='A CUDA and cuDNN extension of NNabla',
         version=__version__,
         author_email=__email__,
-        url="https://github.com/sony/nnabla",
+        url="https://github.com/sony/nnabla-ext-cuda",
         license='Apache Licence 2.0',
         classifiers=[
                 'Development Status :: 4 - Beta',
@@ -190,11 +174,12 @@ def get_setup_config(root_dir):
                 'Topic :: Scientific/Engineering :: Artificial Intelligence',
                 'License :: OSI Approved :: Apache Software License',
                 'Programming Language :: Python :: 2.7',
+                'Programming Language :: Python :: 3.5',
                 'Operating System :: Microsoft :: Windows',
                 'Operating System :: POSIX :: Linux',
             ],
         keywords="deep learning artificial intelligence machine learning neural network cuda",
-        python_requires='>=2.7, <3')
+        python_requires='>=2.7, >=3.3')
     return pkg_info, ExtConfig(package_dir, packages, package_data, ext_modules, {})
 
 
