@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import pytest
 import numpy as np
 import nnabla as nn
@@ -24,7 +26,7 @@ def test_cuda_large_blocks(m):
     CUDA_THREAD_PER_BLOCK = 512
     CUDA_MAX_BLOCKS = 65536
     size = CUDA_MAX_BLOCKS * CUDA_THREAD_PER_BLOCK * m + 3
-    print "Variable size:", size
+    print("Variable size:", size)
     x = np.zeros((size,), np.float32)
     v = nn.Variable(x.shape)
     v.d = x

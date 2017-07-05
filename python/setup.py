@@ -49,7 +49,7 @@ ExtConfig = namedtuple('ExtConfig',
 
 
 def get_libinfo():
-    from ConfigParser import ConfigParser
+    from six.moves.configparser import ConfigParser
 
     # Parse setup.cfg
     path_cfg = join(dirname(__file__), "setup.cfg")
@@ -170,7 +170,10 @@ def get_setup_config(root_dir):
 
     # Embed signatures in Cython function and classes
     for e in ext_modules:
-        e.cython_directives = {"embedsignature": True}
+        e.cython_directives = {
+            "embedsignature": True,
+            'c_string_type': 'str',
+            'c_string_encoding': 'ascii'}
     pkg_info = dict(
         name="nnabla_ext-cuda",
         description='A CUDA and cuDNN extension of NNabla',
@@ -187,11 +190,12 @@ def get_setup_config(root_dir):
                 'Topic :: Scientific/Engineering :: Artificial Intelligence',
                 'License :: OSI Approved :: Apache Software License',
                 'Programming Language :: Python :: 2.7',
+                'Programming Language :: Python :: 3.5',
                 'Operating System :: Microsoft :: Windows',
                 'Operating System :: POSIX :: Linux',
             ],
         keywords="deep learning artificial intelligence machine learning neural network cuda",
-        python_requires='>=2.7, <3')
+        python_requires='>=2.7, >=3.3')
     return pkg_info, ExtConfig(package_dir, packages, package_data, ext_modules, {})
 
 
