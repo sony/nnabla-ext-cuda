@@ -4,17 +4,19 @@
 *.pyc
 
 /python/setup.cfg
+/python/setup.cfg-Debug
+/python/setup.cfg-MinSizeRel
+/python/setup.cfg-RelWithDebInfo
 /python/setup.cfg-Release
 /python/setup.cfg.in.configured
+/python/src/nnabla_ext/cuda/_version.py
+/python/src/nnabla_ext/cuda/cudnn/_version.py
 /python/src/nnabla_ext/cuda/cudnn/init.cpp
 /python/src/nnabla_ext/cuda/init.cpp
 /python/src/nnabla_ext/cuda/libnnabla_cuda.so
+/python/src/nnabla_ext/cuda/nnabla_cuda.dll
+/python/src/nnabla_ext/cuda/nnabla_cuda.lib
 /src/nbla/cuda/cudnn/init.cpp
 /src/nbla/cuda/init.cpp
-/third_party/*/
 /third_party/*.zip
-python/src/nnabla_ext/cuda/nnabla_cuda.dll
-python/setup.cfg-RelWithDebInfo
-python/setup.cfg-MinSizeRel
-python/setup.cfg-Debug
-python/src/nnabla_ext/cuda/nnabla_cuda.lib
+/third_party/*/
