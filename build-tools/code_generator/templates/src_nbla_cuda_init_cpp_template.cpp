@@ -42,8 +42,8 @@
 #include <nbla/cuda/solver/nesterov.hpp>
 #include <nbla/cuda/solver/rmsprop.hpp>
 #include <nbla/cuda/solver/sgd.hpp>
+{include_communicator}
 #include <nbla/garbage_collector.hpp>
-
 
 namespace nbla {{
 
@@ -105,6 +105,9 @@ void init_cuda() {{
     float);
   typedef SgdCuda<float> SgdCudaf;
   NBLA_REGISTER_SOLVER_IMPL(Sgd, SgdCudaf, 1, "cuda", "default", float);
+
+  // Communicator registration
+{register_communicators}
 
   // Register finalize function to ensure freeing all CUDA memory before unloading CUDA driver.
   auto finalize = []()->void {{

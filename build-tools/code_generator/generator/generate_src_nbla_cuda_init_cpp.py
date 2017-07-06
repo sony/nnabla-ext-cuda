@@ -13,8 +13,30 @@
 # limitations under the License.
 
 from generator_common.init_cpp_common import generate_init_cpp
-
+import os
 
 def generate(info, template):
-    includes, registers = generate_init_cpp(info, backend='cuda', rank=1)
-    return template.format(include_functions='\n'.join(['#include <nbla/cuda/function/{}>'.format(i) for i in includes]), register_functions='\n'.join(registers))
+    includes, registers = generate_init_cpp(
+        info, backend='cuda', rank=1)
+
+    #TODO: Delete after dynamic loading support for cudnn and nccl libs.
+    # Check if Distributed Training is on or not
+    if os.environ.get("NCCL_HOME") is not None:
+        include_communicator = \
+                "#include <nbla/cuda/communicator/data_parallel_communicator.hpp>"
+        register_communicators = '  typedef DataParallelCommunicatorNccl<float> DataParallelCommunicatorNcclf;' \
+        '\n  NBLA_REGISTER_COMMUNICATOR_IMPL(DataParallelCommunicator, DataParallelCommunicatorNcclf, 1, "cuda", "default");'
+
+    else:
+        include_communicator = ""
+        register_communicators = ""
+
+    return template.format(
+        include_functions=
+        '\n'.join(['#include <nbla/cuda/function/{}>'.format(i) \
+                   for i in includes]), 
+        register_functions='\n'.join(registers), 
+        include_communicator=include_communicator,
+        register_communicators=register_communicators
+    )
+

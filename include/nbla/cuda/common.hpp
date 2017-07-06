@@ -146,6 +146,14 @@ inline int cuda_get_blocks_by_size(int size) {
     NBLA_CUDA_KERNEL_CHECK();                                                  \
   }
 
+/** Launch simple kernel */
+#define NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel, stream, size, ...)                      \
+  {                                                                                       \
+    (kernel)<<<cuda_get_blocks_by_size(size), NBLA_CUDA_NUM_THREADS, 0, (stream)>>>(      \
+        (size), __VA_ARGS__);                                                             \
+    NBLA_CUDA_KERNEL_CHECK();                                                             \
+  }
+
 /** Cuda grid-strided loop */
 #define NBLA_CUDA_KERNEL_LOOP(idx, num)                                        \
   for (int idx = blockIdx.x * blockDim.x + threadIdx.x; idx < (num);           \
