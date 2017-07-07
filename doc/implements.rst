@@ -14,7 +14,7 @@ Function Implements
      - x
    * - Deconvolution
      - x
-     - 
+     - x
    * - AveragePooling
      - 
      - x
