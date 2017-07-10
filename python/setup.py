@@ -190,12 +190,11 @@ def get_setup_config(root_dir):
                 'Topic :: Scientific/Engineering :: Artificial Intelligence',
                 'License :: OSI Approved :: Apache Software License',
                 'Programming Language :: Python :: 2.7',
-                'Programming Language :: Python :: 3.5',
                 'Operating System :: Microsoft :: Windows',
                 'Operating System :: POSIX :: Linux',
             ],
         keywords="deep learning artificial intelligence machine learning neural network cuda",
-        python_requires='>=2.7, >=3.3')
+        python_requires='>=2.7')
     return pkg_info, ExtConfig(package_dir, packages, package_data, ext_modules, {})
 
 

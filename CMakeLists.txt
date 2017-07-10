@@ -7,7 +7,7 @@ project (nbla C CXX)
 # Settings
 ###############################################################################
 if (NOT PYTHON_COMMAND)
-  set(PYTHON_COMMAND "python")
+  set(PYTHON_COMMAND "python${PYTHON_VERSION}")
 endif()
 
 ###############################################################################
