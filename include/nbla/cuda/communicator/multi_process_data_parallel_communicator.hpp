@@ -14,8 +14,8 @@
 
 /** Communicator interface class
  */
-#ifndef __NBLA_NCCL_MULTIPROCESSDATAPARALLELCOMMUNICATOR_HPP__
-#define __NBLA_NCCL_MULTIPROCESSDATAPARALLELCOMMUNICATOR_HPP__
+#ifndef __NBLA_NCCL_MULTIPROCESS_DATAPARALLELCOMMUNICATOR_HPP__
+#define __NBLA_NCCL_MULTIPROCESS_DATAPARALLELCOMMUNICATOR_HPP__
 #include <nbla/array.hpp>
 #include <nbla/context.hpp>
 #include <nbla/variable.hpp>
