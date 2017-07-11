@@ -73,6 +73,7 @@ file(GLOB CU_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} */*.cu cudnn/*/*.cu)
 # Distributed Training
 if(NOT DEFINED ENV{NCCL_HOME})
 	list(REMOVE_ITEM CU_SOURCES communicator/data_parallel_communicator.cu)
+	list(REMOVE_ITEM CU_SOURCES communicator/multi_process_data_parallel_communicator.cu)
 endif()
 
 cuda_compile(CU_OBJECTS

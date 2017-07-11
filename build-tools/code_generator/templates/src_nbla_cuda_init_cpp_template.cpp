@@ -42,7 +42,7 @@
 #include <nbla/cuda/solver/nesterov.hpp>
 #include <nbla/cuda/solver/rmsprop.hpp>
 #include <nbla/cuda/solver/sgd.hpp>
-{include_communicator}
+{include_communicators}
 #include <nbla/garbage_collector.hpp>
 
 namespace nbla {{

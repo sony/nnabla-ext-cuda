@@ -22,10 +22,14 @@ def generate(info, template):
     #TODO: Delete after dynamic loading support for cudnn and nccl libs.
     # Check if Distributed Training is on or not
     if os.environ.get("NCCL_HOME") is not None:
-        include_communicator = \
-                "#include <nbla/cuda/communicator/data_parallel_communicator.hpp>"
+        include_communicators = \
+                "#include <nbla/cuda/communicator/data_parallel_communicator.hpp>"\
+                "\n#include <nbla/cuda/communicator/multi_process_data_parallel_communicator.hpp>"
         register_communicators = '  typedef DataParallelCommunicatorNccl<float> DataParallelCommunicatorNcclf;' \
-        '\n  NBLA_REGISTER_COMMUNICATOR_IMPL(DataParallelCommunicator, DataParallelCommunicatorNcclf, 1, "cuda", "default");'
+        '\n  NBLA_REGISTER_COMMUNICATOR_IMPL(DataParallelCommunicator, DataParallelCommunicatorNcclf, 1, "cuda", "default");' \
+        '\n  typedef MultiProcessDataParallelCommunicatorNccl<float> MultiProcessDataParallelCommunicatorNcclf;'\
+        '\n  NBLA_REGISTER_COMMUNICATOR_IMPL(MultiProcessDataParallelCommunicator, MultiProcessDataParallelCommunicatorNcclf, 1, "cuda", "default");'
+        
 
     else:
         include_communicator = ""
@@ -36,7 +40,7 @@ def generate(info, template):
         '\n'.join(['#include <nbla/cuda/function/{}>'.format(i) \
                    for i in includes]), 
         register_functions='\n'.join(registers), 
-        include_communicator=include_communicator,
+        include_communicators=include_communicators,
         register_communicators=register_communicators
     )
 
