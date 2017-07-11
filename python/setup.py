@@ -25,13 +25,16 @@ generated C++ files to build extensions.
   install NNabla C++ library in order to put them into folders path of which
   are set.
 '''
+
+from __future__ import print_function
+
 from setuptools import setup
 from distutils.extension import Extension
 from os.path import dirname, realpath, join, isfile, splitext
 import shutil
+import sys
 from collections import namedtuple
 import copy
-import sys
 
 setup_requires = [
     'numpy>=1.12.0',
@@ -189,25 +192,32 @@ def get_setup_config(root_dir):
                 'Topic :: Scientific/Engineering',
                 'Topic :: Scientific/Engineering :: Artificial Intelligence',
                 'License :: OSI Approved :: Apache Software License',
-                'Programming Language :: Python :: 2.7',
+                'Programming Language :: Python :: {}.{}'.format(sys.version_info.major, sys.version_info.minor),
                 'Operating System :: Microsoft :: Windows',
                 'Operating System :: POSIX :: Linux',
             ],
         keywords="deep learning artificial intelligence machine learning neural network cuda",
-        python_requires='>=2.7')
+        python_requires='>={}.{}'.format(sys.version_info.major, sys.version_info.minor))
     return pkg_info, ExtConfig(package_dir, packages, package_data, ext_modules, {})
 
 
 if __name__ == '__main__':
-    from Cython.Distutils import build_ext
+    from Cython.Build import cythonize
 
     root_dir = realpath(dirname(__file__))
     pkg_info, cfg = get_setup_config(root_dir)
+
+    # Cythonize
+    ext_modules = cythonize(cfg.ext_modules, compiler_directives={
+                            "embedsignature": True,
+                            "c_string_type": 'str',
+                            "c_string_encoding": "ascii"})
+
+    # Setup
     setup(
-        cmdclass={"build_ext": build_ext},
         setup_requires=setup_requires,
         install_requires=install_requires,
-        ext_modules=cfg.ext_modules,
+        ext_modules=ext_modules,
         package_dir=cfg.package_dir,
         packages=cfg.packages,
         package_data=cfg.package_data,
