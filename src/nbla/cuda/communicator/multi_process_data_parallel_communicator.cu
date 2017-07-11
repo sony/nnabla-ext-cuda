@@ -19,6 +19,8 @@
 #include <memory>
 #include <cstdlib>
 
+#include "mpi.h"
+
 namespace nbla {
 
 using std::make_shared;
@@ -39,12 +41,8 @@ MultiProcessDataParallelCommunicatorNccl<T>::MultiProcessDataParallelCommunicato
 template<typename T>
 MultiProcessDataParallelCommunicatorNccl<T>::~MultiProcessDataParallelCommunicatorNccl() {
   if (this->initialized_) {
-    for (int i = 0; i < device_ids_.size(); ++i) {
-      ncclCommDestroy(comm_ptr_[i]);
-      cudaStreamDestroy(stream_ptr_[i]);
-    }
-    free(comm_ptr_);
-    free(stream_ptr_);
+    ncclCommDestroy(comm_);
+    cudaStreamDestroy(stream_);
   }
 }
 
@@ -52,26 +50,33 @@ template<typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::init() {
   Communicator::init();
   try {
-    // Set gpu information
-    for (auto ctx: this->contexts_) {
-      this->device_ids_.push_back(std::stoi(ctx.device_id));
+
+    // MPI init
+    MPI_Comm_size(MPI_COMM_WORLD, &size_);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank_);
+    device_id_ = rank_;  //TODO address non-ordered devices
+
+    // We have to set our device before NCCL init
+    cudaSetDevice(device_id_);
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    // Exchange comIds among processes
+    ncclGetUniqueId(&comm_id_);
+    MPI_Bcast(&comm_id_, NCCL_UNIQUE_ID_BYTES, MPI_CHAR, 0, MPI_COMM_WORLD);
+
+    // Nccl Init
+    ncclResult_t ret = ncclCommInitRank(&comm_, size_, comm_id_, rank_);
+    if (ret != ncclSuccess) {
+      NBLA_ERROR(error_code::target_specific, "ncclCommInitRank failed.");
     }
-    this->n_devices_ = this->device_ids_.size();
 
-    // Initialize stream and communicator
-    stream_ptr_ = (cudaStream_t*)malloc(sizeof(cudaStream_t) * this->n_devices_);
-    comm_ptr_ = (ncclComm_t*)malloc(sizeof(ncclComm_t) * this->n_devices_);
-    ncclCommInitAll(comm_ptr_, this->n_devices_, this->device_ids_.data());
+    // Create stream
+    cudaStreamCreateWithFlags(&stream_, cudaStreamNonBlocking);
 
-    for (int i = 0; i < n_devices_; ++i) {
-      cudaSetDevice(device_ids_[i]);
-      cudaStreamCreate(stream_ptr_ + i);
-    }
-
+    this->initialized_ = true;
   } catch (...) {
-    this->initialized_ = false;
+    NBLA_ERROR(error_code::unclassified, "Communicator init failed.");
   }
-  this->initialized_ = true;
 }
 
 template<typename T>
@@ -113,40 +118,36 @@ void MultiProcessDataParallelCommunicatorNccl<T>::ireduce(bool division) {
 template<typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::iallreduce(bool division) {
   // Sync all devices
-  wait_by_devices_synchronization();
+  wait_by_device_synchronization();
 
   // Once sync to prevent the hang where the memcpy occurs during the allreduce.
   this->sync_all_params();
 
   // Inpalce allreduce
-  for (int i = 0; i < device_ids_.size(); ++i) {  // device-loop
-    Context ctx = this->contexts_[i];
-    auto device_id = device_ids_[i];
-    cudaSetDevice(device_id);
+  //TODO: have to override add_context_and_parameters or check context is one
+  Context ctx = this->contexts_[0];
 
-    auto func_named_param = this->device_func_named_param_[i];
-    auto comm = comm_ptr_[i];
-    auto stream = stream_ptr_[i];
-    auto size = func_named_param.size();
+  auto func_named_param = this->device_func_named_param_[0];
+  auto size = func_named_param.size();
 
-    for (auto elm : func_named_param) {          // function-loop
-      VariablePtr vp = elm.second;
-      auto n_param = vp->size();
+  for (auto elm : func_named_param) {  // function-loop
+    VariablePtr vp = elm.second;
+    auto n_param = vp->size();
 
-      const T *dw0 = vp->get_grad_pointer<T>(ctx);
-      T *dw1 = vp->cast_grad_and_get_pointer<T>(ctx);
-      ncclResult_t res = ncclAllReduce(
-          dw0, dw1,
-          n_param, ncclFloat, ncclSum, //TODO: address ncclFloat
-          comm,
-          stream);
-    }
+    const T *dw0 = vp->get_grad_pointer<T>(ctx);
+    T *dw1 = vp->cast_grad_and_get_pointer<T>(ctx);
+    ncclResult_t res = ncclAllReduce(
+        dw0, dw1,
+        n_param, ncclFloat, ncclSum, //TODO: address ncclFloat
+        comm_,
+        stream_);
   }
+
   // Divide using the same streams
   divide_by_num_divices(division);
 
   // Sync streams
-  wait_by_streams_synchronization();
+  wait_by_stream_synchronization();
 }
 
 template<typename T>
@@ -234,60 +235,46 @@ vector<string> MultiProcessDataParallelCommunicatorNccl<T>::allowed_array_classe
 }
 
 template<typename T>
-void MultiProcessDataParallelCommunicatorNccl<T>::wait_by_devices_synchronization() {
-  for (int i = 0; i < device_ids_.size(); ++i) {
-    cudaSetDevice(device_ids_[i]);
-    cudaDeviceSynchronize();
-  }
+void MultiProcessDataParallelCommunicatorNccl<T>::wait_by_device_synchronization() {
+  cudaDeviceSynchronize();
 }
 
 template<typename T>
-void MultiProcessDataParallelCommunicatorNccl<T>::wait_by_streams_synchronization() {
-  for (int i = 0; i < device_ids_.size(); ++i) {
-    cudaSetDevice(device_ids_[i]);
-    cudaStreamSynchronize(stream_ptr_[i]);
-  }
+void MultiProcessDataParallelCommunicatorNccl<T>::wait_by_stream_synchronization() {
+  cudaStreamSynchronize(stream_);
 }
 
 template<typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::divide_by_num_divices(bool division) {
   if (division) {
-    for (int i = 0; i < device_ids_.size(); ++i) {
-      auto device_id = device_ids_[i];
-      cudaSetDevice(device_id);
-
-      Context ctx = this->contexts_[i];
-      auto func_named_param = this->device_func_named_param_[i];
-      auto stream = stream_ptr_[i];
-      for (auto elm : func_named_param) {
-        VariablePtr vp = elm.second;
-        T *dw = vp->cast_grad_and_get_pointer<T>(ctx);
-        auto n_param = vp->size();
-        NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(
-            kernel_divide_inplace, stream, n_param, n_devices_, dw);
-      }
+    //TODO: have to override add_context_and_parameters or check context is one
+    Context ctx = this->contexts_[0];
+    auto func_named_param = this->device_func_named_param_[0];
+    for (auto elm : func_named_param) {
+      VariablePtr vp = elm.second;
+      T *dw = vp->cast_grad_and_get_pointer<T>(ctx);
+      auto n_param = vp->size();
+      NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(
+          kernel_divide_inplace, stream_, n_param, size_, dw);
     }
   }
 }
 
 template<typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::sync_all_params() {
- for (int i = 0; i < device_ids_.size(); ++i) {  // device-loop
-    Context ctx = this->contexts_[i];
-    auto device_id = device_ids_[i];
+  //TODO: have to override add_context_and_parameters or check context is one
+  Context ctx = this->contexts_[0];
+  auto func_named_param = this->device_func_named_param_[0];
+  auto size = func_named_param.size();
 
-    auto func_named_param = this->device_func_named_param_[i];
-    auto size = func_named_param.size();
+  for (auto elm : func_named_param) {          // function-loop
+    VariablePtr vp = elm.second;
 
-    for (auto elm : func_named_param) {          // function-loop
-      VariablePtr vp = elm.second;
+    // If the arrays are different, output the warning.
+    this->check_array_class(ctx, vp);
 
-      // If the arrays are different, output the warning.
-      this->check_array_class(ctx, vp);
-
-      // Sync
-      vp->get_grad_pointer<T>(ctx);
-    }
+    // Sync
+    vp->get_grad_pointer<T>(ctx);
   }
 }
 

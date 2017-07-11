@@ -48,14 +48,16 @@ template<typename T>
 class NBLA_API MultiProcessDataParallelCommunicatorNccl : public MultiProcessDataParallelCommunicator<T> {
 
 protected:
-  int n_devices_;
-  vector<int> device_ids_;
+  int rank_;
+  int size_;
+  int device_id_;
+  ncclUniqueId comm_id_;
 
   // MPI-like MultiProcessDataParallelCommunicators initialized in init method
-  ncclComm_t *comm_ptr_;
+  ncclComm_t comm_;
 
   // Device streams initialized in init method
-  cudaStream_t *stream_ptr_;
+  cudaStream_t stream_;
 
 
 public:
@@ -118,8 +120,8 @@ public:
   vector<string> allowed_array_classes();
 
 protected:
-  void wait_by_devices_synchronization();
-  void wait_by_streams_synchronization();
+  void wait_by_device_synchronization();
+  void wait_by_stream_synchronization();
   void divide_by_num_divices(bool division);
 
   DISABLE_COPY_AND_ASSIGN(MultiProcessDataParallelCommunicatorNccl);
