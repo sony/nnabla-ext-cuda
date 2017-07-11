@@ -13,6 +13,11 @@ endif()
 find_program(PYTHON_COMMAND ${PYTHON_COMMAND_NAME})
 
 ###############################################################################
+# Third party libraries
+###############################################################################
+add_subdirectory(third_party)
+
+###############################################################################
 # Preprocessing
 ###############################################################################
 execute_process(
@@ -26,29 +31,6 @@ execute_process(
           ${PROJECT_SOURCE_DIR}/build-tools/cmake/get_nnabla_cpu_lib.py
           OUTPUT_VARIABLE NBLA_CPU_LIBRARY_FILE_RAW)
 string(STRIP ${NBLA_CPU_LIBRARY_FILE_RAW} NBLA_CPU_LIBRARY_FILE)
-
-# Download third_party libraries
-if(NOT IS_DIRECTORY ${CMAKE_SOURCE_DIR}/third_party/googletest-release-1.7.0)
-  message("Downloading googletest")
-  file(DOWNLOAD
-    https://github.com/google/googletest/archive/release-1.7.0.zip
-    ${CMAKE_SOURCE_DIR}/third_party/googletest-release-1.7.0.zip)
-  execute_process(
-    COMMAND ${CMAKE_COMMAND} -E
-    chdir ${CMAKE_SOURCE_DIR}/third_party
-    ${CMAKE_COMMAND} -E tar xf googletest-release-1.7.0.zip)
-endif()
-
-if(NOT IS_DIRECTORY ${CMAKE_SOURCE_DIR}/third_party/eigen-eigen-de14376a69f8)
-  message("Downloading eigen")
-  file(DOWNLOAD
-    https://bitbucket.org/eigen/eigen/get/de14376a69f8.zip
-    ${CMAKE_SOURCE_DIR}/third_party/eigen-eigen-de14376a69f8.zip)
-  execute_process(
-    COMMAND ${CMAKE_COMMAND} -E
-    chdir ${CMAKE_SOURCE_DIR}/third_party
-    ${CMAKE_COMMAND} -E tar xf eigen-eigen-de14376a69f8.zip)
-endif()
 
 execute_process(
   COMMAND ${PYTHON_COMMAND}
@@ -139,7 +121,6 @@ if(BUILD_TEST)
     set(BUILD_SHARED_LIBS ON CACHE BOOL
       "Force to build gtest with dll on Windows.")
   endif()
-  add_subdirectory(third_party/googletest-release-1.7.0)
   enable_testing()
   include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
   include_directories(${NBLA_CUDA_INCLUDE_DIRS})

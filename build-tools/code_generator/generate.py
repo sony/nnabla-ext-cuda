@@ -14,9 +14,7 @@
 
 import io
 import os
-import sys
 
-from generator_common.init_cpp_common import generate_init_cpp
 from utils.load_function_rst import Functions
 from load_implements_rst import Implements
 from utils.common import check_update
@@ -29,8 +27,10 @@ info = functions.info
 info['Implements'] = Implements().info
 
 generation_list = {
-    'cuda': ['src/nbla/cuda/init.cpp'],
-    'cudnn': ['src/nbla/cuda/cudnn/init.cpp']
+    'cuda': ['src/nbla/cuda/init.cpp',
+             'python/src/nnabla_ext/cuda/_version.py'],
+    'cudnn': ['src/nbla/cuda/cudnn/init.cpp',
+              'python/src/nnabla_ext/cuda/cudnn/_version.py']
 }
 
 function_generation_list = {
