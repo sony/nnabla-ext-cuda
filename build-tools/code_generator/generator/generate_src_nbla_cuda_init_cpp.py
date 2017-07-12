@@ -32,7 +32,7 @@ def generate(info, template):
         
 
     else:
-        include_communicator = ""
+        include_communicators = ""
         register_communicators = ""
 
     return template.format(
