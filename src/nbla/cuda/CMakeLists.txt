@@ -15,13 +15,14 @@ list(APPEND NBLA_CUDA_LINKER_LIBS
   )
   
 # Distributed Training  
-if(DEFINED ENV{NCCL_HOME})
+if(DEFINED ENV{NCCL_HOME} AND DEFINED ENV{MPI_HOME})
 	list(APPEND NBLA_CUDA_INCLUDE_DIRS 
 		$ENV{NCCL_HOME}/build/include
 		$ENV{MPI_HOME}/include)
 	list(APPEND NBLA_CUDA_LINKER_LIBS
 		$ENV{NCCL_HOME}/build/lib/libnccl.so
-		$ENV{MPI_HOME}/lib/libmpi.so)
+		$ENV{MPI_HOME}/lib/libmpi.so
+		)
 endif()
 
 ####################################################################################################

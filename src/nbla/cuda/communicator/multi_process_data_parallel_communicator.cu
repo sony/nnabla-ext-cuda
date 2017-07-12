@@ -34,9 +34,10 @@ __global__ void kernel_divide_inplace(const int size, const int n_devices,
   }
 }
 
-
 template<typename T>
-MultiProcessDataParallelCommunicatorNccl<T>::MultiProcessDataParallelCommunicatorNccl(const Context &ctx) : MultiProcessDataParallelCommunicator<T>(ctx) {}
+MultiProcessDataParallelCommunicatorNccl<T>::MultiProcessDataParallelCommunicatorNccl(const Context &ctx) : MultiProcessDataParallelCommunicator<T>(ctx) {
+  mpi_initialized_ = false;
+}
 
 template<typename T>
 MultiProcessDataParallelCommunicatorNccl<T>::~MultiProcessDataParallelCommunicatorNccl() {
@@ -47,25 +48,38 @@ MultiProcessDataParallelCommunicatorNccl<T>::~MultiProcessDataParallelCommunicat
 }
 
 template<typename T>
+bool MultiProcessDataParallelCommunicatorNccl<T>::mpi_initialized_;
+
+template<typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::init() {
   Communicator::init();
   try {
-
     // MPI init
-    MPI_Comm_size(MPI_COMM_WORLD, &size_);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank_);
-    device_id_ = rank_;  //TODO address non-ordered devices
+    if(!mpi_initialized_) {
+      int argc = 0;
+      char **argv = NULL;
+      int requiredThreadLevelSupport = MPI_THREAD_SERIALIZED;
+      int provided;
+      MPI_Init_thread(&argc, &argv, requiredThreadLevelSupport, &provided);
+      if (provided != requiredThreadLevelSupport)
+          NBLA_ERROR(error_code::target_specific, "MPI_Init_thread failed.");
+      mpi_initialized_ = true;
+    }
+    // Set size and rank
+    MPI_Comm_size(MPI_COMM_WORLD, &this->size_);
+    MPI_Comm_rank(MPI_COMM_WORLD, &this->rank_);
+    device_id_ = this->rank_;  //TODO address non-ordered devices
 
     // We have to set our device before NCCL init
     cudaSetDevice(device_id_);
     MPI_Barrier(MPI_COMM_WORLD);
 
-    // Exchange comIds among processes
+    // Exchange comm_id_ among processes
     ncclGetUniqueId(&comm_id_);
     MPI_Bcast(&comm_id_, NCCL_UNIQUE_ID_BYTES, MPI_CHAR, 0, MPI_COMM_WORLD);
 
     // Nccl Init
-    ncclResult_t ret = ncclCommInitRank(&comm_, size_, comm_id_, rank_);
+    ncclResult_t ret = ncclCommInitRank(&comm_, this->size_, comm_id_, this->rank_);
     if (ret != ncclSuccess) {
       NBLA_ERROR(error_code::target_specific, "ncclCommInitRank failed.");
     }
@@ -255,7 +269,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::divide_by_num_divices(bool div
       T *dw = vp->cast_grad_and_get_pointer<T>(ctx);
       auto n_param = vp->size();
       NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(
-          kernel_divide_inplace, stream_, n_param, size_, dw);
+          kernel_divide_inplace, stream_, n_param, this->size_, dw);
     }
   }
 }

@@ -48,9 +48,10 @@ template<typename T>
 class NBLA_API MultiProcessDataParallelCommunicatorNccl : public MultiProcessDataParallelCommunicator<T> {
 
 protected:
-  int rank_;
-  int size_;
   int device_id_;
+
+  static bool mpi_initialized_;
+
   ncclUniqueId comm_id_;
 
   // MPI-like MultiProcessDataParallelCommunicators initialized in init method
