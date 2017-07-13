@@ -45,6 +45,9 @@ MultiProcessDataParallelCommunicatorNccl<T>::~MultiProcessDataParallelCommunicat
     ncclCommDestroy(comm_);
     cudaStreamDestroy(stream_);
   }
+  if (mpi_initialized_) {
+    MPI_Finalize();
+  }
 }
 
 template<typename T>
@@ -66,9 +69,11 @@ void MultiProcessDataParallelCommunicatorNccl<T>::init() {
       mpi_initialized_ = true;
     }
     // Set size and rank
-    MPI_Comm_size(MPI_COMM_WORLD, &this->size_);
-    MPI_Comm_rank(MPI_COMM_WORLD, &this->rank_);
-    device_id_ = this->rank_;  //TODO address non-ordered devices
+    MPI_Comm mpi_comm;
+    MPI_Comm_dup(MPI_COMM_WORLD, &mpi_comm);
+    MPI_Comm_size(mpi_comm, &this->size_);
+    MPI_Comm_rank(mpi_comm, &this->rank_);
+    device_id_ = this->rank_;
 
     // We have to set our device before NCCL init
     cudaSetDevice(device_id_);
@@ -77,6 +82,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::init() {
     // Exchange comm_id_ among processes
     ncclGetUniqueId(&comm_id_);
     MPI_Bcast(&comm_id_, NCCL_UNIQUE_ID_BYTES, MPI_CHAR, 0, MPI_COMM_WORLD);
+    MPI_Comm_free(&mpi_comm);
 
     // Nccl Init
     ncclResult_t ret = ncclCommInitRank(&comm_, this->size_, comm_id_, this->rank_);
@@ -138,7 +144,6 @@ void MultiProcessDataParallelCommunicatorNccl<T>::iallreduce(bool division) {
   this->sync_all_params();
 
   // Inpalce allreduce
-  //TODO: have to override add_context_and_parameters or check context is one
   Context ctx = this->contexts_[0];
 
   auto func_named_param = this->device_func_named_param_[0];
@@ -261,7 +266,6 @@ void MultiProcessDataParallelCommunicatorNccl<T>::wait_by_stream_synchronization
 template<typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::divide_by_num_divices(bool division) {
   if (division) {
-    //TODO: have to override add_context_and_parameters or check context is one
     Context ctx = this->contexts_[0];
     auto func_named_param = this->device_func_named_param_[0];
     for (auto elm : func_named_param) {
@@ -276,7 +280,6 @@ void MultiProcessDataParallelCommunicatorNccl<T>::divide_by_num_divices(bool div
 
 template<typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::sync_all_params() {
-  //TODO: have to override add_context_and_parameters or check context is one
   Context ctx = this->contexts_[0];
   auto func_named_param = this->device_func_named_param_[0];
   auto size = func_named_param.size();
