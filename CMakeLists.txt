@@ -6,9 +6,16 @@ project (nbla C CXX)
 ###############################################################################
 # Settings
 ###############################################################################
-if (NOT PYTHON_COMMAND)
-  set(PYTHON_COMMAND "python")
+if (NOT PYTHON_COMMAND_NAME)
+  set(PYTHON_COMMAND_NAME "python${PYTHON_VERSION}")
 endif()
+
+find_program(PYTHON_COMMAND ${PYTHON_COMMAND_NAME})
+
+###############################################################################
+# Third party libraries
+###############################################################################
+add_subdirectory(third_party)
 
 ###############################################################################
 # Preprocessing
@@ -24,42 +31,6 @@ execute_process(
           ${PROJECT_SOURCE_DIR}/build-tools/cmake/get_nnabla_cpu_lib.py
           OUTPUT_VARIABLE NBLA_CPU_LIBRARY_FILE_RAW)
 string(STRIP ${NBLA_CPU_LIBRARY_FILE_RAW} NBLA_CPU_LIBRARY_FILE)
-
-# Download third_party libraries
-function(download_and_extract_third_party_library name url)
-  if(NOT IS_DIRECTORY ${CMAKE_SOURCE_DIR}/third_party/${name})
-    message("Downloading ${name}")
-    file(DOWNLOAD
-      ${url}
-      ${CMAKE_SOURCE_DIR}/third_party/${name}.zip
-      SHOW_PROGRESS
-      STATUS status
-      LOG log)
-    list(GET status 0 status_code)
-    list(GET status 1 status_string)
-    if(NOT status_code EQUAL 0)
-      if(UNIX OR APPLE)
-        message("Failed to download ${name}. Try to download with wget.")
-        execute_process(
-          COMMAND wget ${url} -O ${CMAKE_SOURCE_DIR}/third_party/${name}.zip)
-      else()
-        message(FATAL_ERROR "Failed to download ${name}. Please check network connection and proxy settings.
-        status_code: ${status_code}
-        status_string: ${status_string}
-        log: ${log}
-        ")
-        error() # Place Unknown command to stop cmake process here.
-      endif()
-    endif()
-    execute_process(
-      COMMAND ${CMAKE_COMMAND} -E
-      chdir ${CMAKE_SOURCE_DIR}/third_party
-      ${CMAKE_COMMAND} -E tar xf ${name}.zip)
-  endif()
-endfunction()
-
-download_and_extract_third_party_library(googletest-release-1.7.0 https://github.com/google/googletest/archive/release-1.7.0.zip)
-download_and_extract_third_party_library(eigen-eigen-de14376a69f8 https://bitbucket.org/eigen/eigen/get/de14376a69f8.zip)
 
 execute_process(
   COMMAND ${PYTHON_COMMAND}
@@ -150,7 +121,6 @@ if(BUILD_TEST)
     set(BUILD_SHARED_LIBS ON CACHE BOOL
       "Force to build gtest with dll on Windows.")
   endif()
-  add_subdirectory(third_party/googletest-release-1.7.0)
   enable_testing()
   include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
   include_directories(${NBLA_CUDA_INCLUDE_DIRS})
