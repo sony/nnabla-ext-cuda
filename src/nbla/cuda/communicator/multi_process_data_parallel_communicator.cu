@@ -68,7 +68,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::init() {
           NBLA_ERROR(error_code::target_specific, "MPI_Init_thread failed.");
       mpi_initialized_ = true;
     }
-    // Set size and rank
+    // Create comm, set size, and rank
     MPI_Comm mpi_comm;
     MPI_Comm_dup(MPI_COMM_WORLD, &mpi_comm);
     MPI_Comm_size(mpi_comm, &this->size_);
