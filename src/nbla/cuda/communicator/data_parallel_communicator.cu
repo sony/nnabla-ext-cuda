@@ -82,36 +82,6 @@ void DataParallelCommunicatorNccl<T>::reduce(bool division) {
 
 template<typename T>
 void DataParallelCommunicatorNccl<T>::allreduce(bool division) {
-  NBLA_ERROR(error_code::not_implemented,
-      "CUDA GPU allreduce is not implemented.")
-}
-
-template<typename T>
-void DataParallelCommunicatorNccl<T>::reducescatter(bool division) {
-  NBLA_ERROR(error_code::not_implemented,
-      "CUDA GPU reducescatter is not implemented.")
-}
-
-template<typename T>
-void DataParallelCommunicatorNccl<T>::bcast() {
-  NBLA_ERROR(error_code::not_implemented,
-      "CUDA GPU bcast is not implemented.")
-}
-
-template<typename T>
-void DataParallelCommunicatorNccl<T>::allgather() {
-  NBLA_ERROR(error_code::not_implemented,
-      "CUDA GPU allgather is not implemented.")
-}
-
-template<typename T>
-void DataParallelCommunicatorNccl<T>::ireduce(bool division) {
-  NBLA_ERROR(error_code::not_implemented,
-      "CUDA GPU ireduce is not implemented.")
-}
-
-template<typename T>
-void DataParallelCommunicatorNccl<T>::iallreduce(bool division) {
   // Sync all devices
   wait_by_devices_synchronization();
 
@@ -150,81 +120,51 @@ void DataParallelCommunicatorNccl<T>::iallreduce(bool division) {
 }
 
 template<typename T>
-void DataParallelCommunicatorNccl<T>::ireducescatter(bool division) {
+void DataParallelCommunicatorNccl<T>::reducescatter(bool division) {
   NBLA_ERROR(error_code::not_implemented,
-      "CUDA GPU ireducescatter is not implemented.")
+      "CUDA GPU reducescatter is not implemented.")
 }
 
 template<typename T>
-void DataParallelCommunicatorNccl<T>::ibcast() {
+void DataParallelCommunicatorNccl<T>::bcast() {
   NBLA_ERROR(error_code::not_implemented,
-      "CUDA GPU ibcast is not implemented.")
+      "CUDA GPU bcast is not implemented.")
 }
 
 template<typename T>
-void DataParallelCommunicatorNccl<T>::iallgather() {
+void DataParallelCommunicatorNccl<T>::allgather() {
   NBLA_ERROR(error_code::not_implemented,
-      "CUDA GPU iallgather is not implemented.")
+      "CUDA GPU allgather is not implemented.")
 }
 
 template<typename T>
 void DataParallelCommunicatorNccl<T>::reduce_async(bool division) {
   NBLA_ERROR(error_code::not_implemented,
-      "CPU reduce_async is not implemented.")
+      "CUDA GPU reduce_async is not implemented.")
 }
 
 template<typename T>
 void DataParallelCommunicatorNccl<T>::allreduce_async(bool division) {
   NBLA_ERROR(error_code::not_implemented,
-      "CPU allreduce_async is not implemented.")
+      "CUDA GPU allreduce_async is not implemented.")
 }
 
 template<typename T>
 void DataParallelCommunicatorNccl<T>::reducescatter_async(bool division) {
   NBLA_ERROR(error_code::not_implemented,
-      "CPU reducescatter_async is not implemented.")
+      "CUDA GPU reducescatter_async is not implemented.")
 }
 
 template<typename T>
 void DataParallelCommunicatorNccl<T>::bcast_async() {
   NBLA_ERROR(error_code::not_implemented,
-      "CPU bcast_async is not implemented.")
+      "CUDA GPU bcast_async is not implemented.")
 }
 
 template<typename T>
 void DataParallelCommunicatorNccl<T>::allgather_async() {
   NBLA_ERROR(error_code::not_implemented,
-      "CPU allgather_async is not implemented.")
-}
-
-template<typename T>
-void DataParallelCommunicatorNccl<T>::ireduce_async(bool division) {
-  NBLA_ERROR(error_code::not_implemented,
-      "CPU ireduce_async is not implemented.")
-}
-
-template<typename T>
-void DataParallelCommunicatorNccl<T>::iallreduce_async(bool division) {
-  NBLA_ERROR(error_code::not_implemented,
-      "CPU iallreduce_async is not implemented.")
-}
-
-template<typename T>
-void DataParallelCommunicatorNccl<T>::ireducescatter_async(bool division) {
-  NBLA_ERROR(error_code::not_implemented,
-      "CPU ireducescatter_async is not implemented.")
-}
-
-template<typename T>
-void DataParallelCommunicatorNccl<T>::ibcast_async() {
-  NBLA_ERROR(error_code::not_implemented,
-      "CPU ibcast_async is not implemented.")
-}
-
-template<typename T>
-void DataParallelCommunicatorNccl<T>::iallgather_async() {
-  NBLA_ERROR(error_code::not_implemented,
-      "CPU iallgather_async is not implemented.")
+      "CUDA GPU allgather_async is not implemented.")
 }
 
 template<typename T>
