@@ -27,6 +27,10 @@ ENV PATH=/opt/rh/git19/root/usr/bin:/opt/rh/python27/root/usr/bin:/opt/rh/devtoo
 ENV LD_LIBRARY_PATH=/opt/rh/gti19/root/usr/lib64:/opt/rh/python27/root/usr/lib64:/opt/rh/devtoolset-4/root/usr/lib64:/opt/rh/devtoolset-4/root/usr/lib:$LD_LIBRARY_PATH 
 ENV PKG_CONFIG_PATH=/opt/rh/git19/root/usr/lib64/pkgconfig:/opt/rh/python27/root/usr/lib64/pkgconfig:${PKG_CONFIG_PATH}
 
+RUN yum install -y epel-release
+RUN yum install -y hdf5-static
+RUN yum install -y zlib-static
+
 RUN pip install -U pip wheel
 ADD python/requirements.txt /tmp/deps/
 RUN pip install -U -r /tmp/deps/requirements.txt
@@ -40,10 +44,12 @@ RUN curl -L https://github.com/google/protobuf/archive/v3.1.0.tar.gz -o /tmp/pro
     && tar xvf protobuf-v3.1.0.tar.gz \
     && cd protobuf-3.1.0 \
     && ./autogen.sh \
-    && ./configure \
+    && ./configure --disable-shared\
     && make \
     && make install \
-    && ldconfig
+    && ldconfig \
+    && chmod -R a+r /usr/local \
+    && find /usr/local -type d |xargs chmod a+x
 
 # Install cmake>=3.1
 RUN mkdir -p /tmp/deps \
