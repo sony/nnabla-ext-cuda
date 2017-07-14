@@ -20,11 +20,6 @@ add_subdirectory(third_party)
 ###############################################################################
 # Third party libraries
 ###############################################################################
-add_subdirectory(third_party)
-
-###############################################################################
-# Preprocessing
-###############################################################################
 execute_process(
   COMMAND ${PYTHON_COMMAND}
           ${PROJECT_SOURCE_DIR}/build-tools/cmake/get_nnabla_dir.py

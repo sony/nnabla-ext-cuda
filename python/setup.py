@@ -32,7 +32,6 @@ from setuptools import setup
 from distutils.extension import Extension
 from os.path import dirname, realpath, join, isfile, splitext
 import shutil
-import os
 import sys
 from collections import namedtuple
 import copy
@@ -43,7 +42,7 @@ setup_requires = [
 ]
 
 install_requires = [
-    'nnabla>=0.9.0',
+    'nnabla>=0.9.1',
 ]
 
 LibInfo = namedtuple('LibInfo', ['file_name', 'path', 'name'])
@@ -172,8 +171,6 @@ def get_setup_config(root_dir):
     package_data.update(cudnn_ext.package_data)
     ext_modules += cudnn_ext.ext_modules
 
-    exec(open(os.path.join(root_dir, 'src', 'nnabla_ext', 'cuda', '_version.py')).read())
-
     # Embed signatures in Cython function and classes
     for e in ext_modules:
         e.cython_directives = {
@@ -183,8 +180,8 @@ def get_setup_config(root_dir):
     pkg_info = dict(
         name="nnabla_ext-cuda",
         description='A CUDA and cuDNN extension of NNabla',
-        version=__version__,
-        author_email=__email__,
+        version='0.9.1',
+        author_email='nnabla@googlegroups.com',
         url="https://github.com/sony/nnabla",
         license='Apache Licence 2.0',
         classifiers=[
