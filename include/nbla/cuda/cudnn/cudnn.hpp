@@ -145,6 +145,7 @@ struct NBLA_CUDA_API CudnnConv2dResource {
   cudnnTensorDescriptor_t x_desc;         ///< Input desc.
   cudnnTensorDescriptor_t y_desc;         ///< Output desc.
   cudnnTensorDescriptor_t b_desc;         ///< Bias desc.
+  cudnnTensorDescriptor_t b_desc_deconv;  ///< Bias desc for deconvolution.
   cudnnFilterDescriptor_t w_desc;         ///< Wegiht desc.
   cudnnConvolutionDescriptor_t conv_desc; ///< Conv desc.
   cudnnConvolutionFwdAlgo_t fwd_algo;     ///< Best forward algorithm found.

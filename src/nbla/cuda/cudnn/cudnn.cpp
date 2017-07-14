@@ -54,6 +54,7 @@ CudnnConv2dResource::CudnnConv2dResource(const CudnnConv2dDesc &desc) {
   NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&x_desc));
   NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&y_desc));
   NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&b_desc));
+  NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&b_desc_deconv));
   NBLA_CUDNN_CHECK(cudnnCreateFilterDescriptor(&w_desc));
   NBLA_CUDNN_CHECK(cudnnCreateConvolutionDescriptor(&conv_desc));
   // Set input desc
@@ -87,6 +88,10 @@ CudnnConv2dResource::CudnnConv2dResource(const CudnnConv2dDesc &desc) {
   // Set bias desc
   NBLA_CUDNN_CHECK(cudnnSetTensor4dDescriptor(
       b_desc, CUDNN_TENSOR_NCHW, desc.dtype, 1, desc.o / desc.group, 1, 1));
+  // Set bias desc for deconvolution
+  NBLA_CUDNN_CHECK(cudnnSetTensor4dDescriptor(b_desc_deconv, CUDNN_TENSOR_NCHW,
+                                              desc.dtype, 1,
+                                              desc.c / desc.group, 1, 1));
 #if CUDNN_VERSION >= 6000
   // Set Conv desc
   // TODO: Support data type config ang dilated convolution.
@@ -107,6 +112,7 @@ CudnnConv2dResource::~CudnnConv2dResource() {
   NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(x_desc));
   NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(y_desc));
   NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(b_desc));
+  NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(b_desc_deconv));
   NBLA_CUDNN_CHECK(cudnnDestroyFilterDescriptor(w_desc));
   NBLA_CUDNN_CHECK(cudnnDestroyConvolutionDescriptor(conv_desc));
 }
