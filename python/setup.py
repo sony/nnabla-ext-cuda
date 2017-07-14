@@ -30,11 +30,29 @@ from __future__ import print_function
 
 from setuptools import setup
 from distutils.extension import Extension
+import os
 from os.path import dirname, realpath, join, isfile, splitext
 import shutil
 import sys
 from collections import namedtuple
 import copy
+
+root_dir = realpath(dirname(__file__))
+a = dict()
+
+__version__ = None
+__short_version__ = None
+__email__ = None
+exec(open(os.path.join(root_dir, 'src', 'nnabla_ext', 'cuda', '_version.py')).read(), globals(), a)
+if '__version__' in a:
+        __version__ = a['__version__']
+if '__short_version__' in a:
+        __short_version__ = a['__short_version__']
+if '__email__' in a:
+    __email__ = a['__email__']
+assert(__version__ is not None)
+assert(__short_version__ is not None)
+assert(__email__ is not None)
 
 setup_requires = [
     'numpy>=1.12.0',
@@ -42,7 +60,7 @@ setup_requires = [
 ]
 
 install_requires = [
-    'nnabla>=0.9.1',
+    'nnabla>={}'.format(__short_version__),
 ]
 
 LibInfo = namedtuple('LibInfo', ['file_name', 'path', 'name'])
@@ -180,8 +198,8 @@ def get_setup_config(root_dir):
     pkg_info = dict(
         name="nnabla_ext-cuda",
         description='A CUDA and cuDNN extension of NNabla',
-        version='0.9.1',
-        author_email='nnabla@googlegroups.com',
+        version=__version__,
+        author_email=__email__,
         url="https://github.com/sony/nnabla",
         license='Apache Licence 2.0',
         classifiers=[
@@ -204,7 +222,6 @@ def get_setup_config(root_dir):
 if __name__ == '__main__':
     from Cython.Build import cythonize
 
-    root_dir = realpath(dirname(__file__))
     pkg_info, cfg = get_setup_config(root_dir)
 
     # Cythonize
