@@ -28,9 +28,10 @@ generated C++ files to build extensions.
 from setuptools import setup
 from distutils.extension import Extension
 from os.path import dirname, realpath, join, isfile, splitext
-import shutil
 from collections import namedtuple
 import copy
+import os
+import shutil
 import sys
 
 setup_requires = [
@@ -168,14 +169,16 @@ def get_setup_config(root_dir):
     package_data.update(cudnn_ext.package_data)
     ext_modules += cudnn_ext.ext_modules
 
+    exec(open(os.path.join(root_dir, 'src', 'nnabla_ext', 'cuda', '_version.py')).read())
+
     # Embed signatures in Cython function and classes
     for e in ext_modules:
         e.cython_directives = {"embedsignature": True}
     pkg_info = dict(
         name="nnabla_ext-cuda",
         description='A CUDA and cuDNN extension of NNabla',
-        version='0.9.1',
-        author_email='nnabla@googlegroups.com',
+        version=__version__,
+        author_email=__email__,
         url="https://github.com/sony/nnabla",
         license='Apache Licence 2.0',
         classifiers=[
