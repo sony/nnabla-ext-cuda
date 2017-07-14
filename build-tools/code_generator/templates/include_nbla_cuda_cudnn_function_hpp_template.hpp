@@ -12,14 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// -*- coding:utf-8 -*-
 /*
- * Copyright (C) 2016 Sony Corporation
- * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Sony Corporation;
- * the contents of this file is not to be disclosed to third parties, copied
- * or duplicated in any form, in whole or in part, without the prior written
- * permission of Sony Corporation.
- *
  * *WARNING*
  * THIS FILE IS AUTO-GENERATED DUMMY CODE BY CODE GENERATOR.
  * PLEASE IMPLEMENT REAL CODE AND DELETE THIS MESSAGE SOON.
@@ -56,7 +49,7 @@ public:
   }}
   virtual string name() {{ return "{func_name}CudaCudnn"; }}
   virtual vector<string> allowed_array_classes() {{
-    return vector<string>{{"CudaArray"}};
+    return SingletonManager::get<Cuda>()->array_classes();
   }}
 
 protected:
@@ -68,7 +61,8 @@ protected:
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,
-                             const vector<bool> &propagate_down);
+                             const vector<bool> &propagate_down,
+			     const vector<bool> &accum);
 }};
 }}
 #endif

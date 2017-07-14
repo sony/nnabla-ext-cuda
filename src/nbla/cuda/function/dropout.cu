@@ -53,17 +53,7 @@ void DropoutCuda<T>::forward_impl(const Variables &inputs,
   T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
   Variable &mask = this->mask_;
   T *m = mask.cast_data_and_get_pointer<T>(this->ctx_);
-  // if seed is not set, use global curand generator.
-  if (this->seed_ == -1) {
-    NBLA_CURAND_CHECK(
-        curandGenerateUniform(SingletonManager::get<Cuda>()->curand_generator(),
-                              m, inputs[0]->size()));
-  }
-  // if seed is set, use local curand generator.
-  else {
-    NBLA_CURAND_CHECK(
-        curandGenerateUniform(curand_generator_, m, inputs[0]->size()));
-  }
+  curand_generate_rand<T>(curand_generator_, 0.0f, 1.0f, m, inputs[0]->size());
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_dropout_forward, inputs[0]->size(),
                                  this->scale_, this->p_, x, y, m);
 }

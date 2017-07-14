@@ -237,6 +237,15 @@ Function Implements
    * - Dropout
      - x
      - 
+   * - Rand
+     - x
+     - 
+   * - Randint
+     - x
+     - 
+   * - Randn
+     - x
+     - 
    * - Identity
      - x
      - 
