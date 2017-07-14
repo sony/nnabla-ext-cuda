@@ -58,7 +58,10 @@ for implements, filelist in generation_list.items():
 for category, functions in info['Functions'].items():
     for function, function_info in functions.items():
         function_name = info['Names'][function]
-        for implement in info['Implements'][function]:
+        imp_list = []
+        if function in info['Implements']:
+            imp_list = info['Implements'][function]
+        for implement in imp_list:
             for fn in function_generation_list[implement]:
                 filename = '{}/{}'.format(base, fn.format(function_name))
                 modulename = fn.replace(
