@@ -70,7 +70,7 @@ void synchronizer_cuda_array_cpu_array(Array *src, Array *dst) {
   if (src->dtype() != dst->dtype()) {
     // if dtype mismatces, transfer gpu-cpu first, then convert dtype.
     Context ctx = dst->context();
-    unique_ptr<Array> tmp(new CpuArray(src->size(), src->dtype(), ctx));
+    unique_ptr<Array> tmp(new CpuCachedArray(src->size(), src->dtype(), ctx));
     synchronizer_cuda_array_cpu_array(src, tmp.get());
     dst->copy_from(tmp.get());
     return;
@@ -85,11 +85,11 @@ void synchronizer_cuda_array_cpu_array(Array *src, Array *dst) {
 /////////////////////////////////////
 void synchronizer_cpu_array_cuda_array(Array *src, Array *dst) {
   if (src->dtype() != dst->dtype()) {
-    // If dtype mismatches, convert dtype in cpu first, then transfer cpu-gpu.
-    Context ctx = src->context();
-    unique_ptr<Array> tmp(new CpuArray(src->size(), dst->dtype(), ctx));
-    tmp->copy_from(src);
-    synchronizer_cpu_array_cuda_array(tmp.get(), dst);
+    // If dtype mismatches, transfer cpu-gpu first, then convert dtype in gpu.
+    Context ctx = dst->context();
+    unique_ptr<Array> tmp(new CudaCachedArray(src->size(), src->dtype(), ctx));
+    synchronizer_cpu_array_cuda_array(src, tmp.get());
+    dst->copy_from(tmp.get());
     return;
   }
   size_t size = src->size() * sizeof_dtype(dst->dtype());
