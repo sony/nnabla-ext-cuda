@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import os
 import glob
 import nnabla
 
 fn = os.path.join(nnabla.__path__[0], 'libnnabla.so')
 if os.path.exists(fn):
-    print fn
+    print(fn)
 else:
     fn = os.path.join(nnabla.__path__[0], 'nnabla.lib')
     if os.path.exists(fn):
-        print fn
+        print(fn)
