@@ -30,11 +30,12 @@ a = dict()
 __version__ = None
 __short_version__ = None
 __email__ = None
-exec(open(os.path.join(root_dir, 'src', 'nnabla_ext', 'cuda', '_version.py')).read(), globals(), a)
+exec(open(os.path.join(root_dir, 'src', 'nnabla_ext',
+                       'cuda', '_version.py')).read(), globals(), a)
 if '__version__' in a:
-        __version__ = a['__version__']
+    __version__ = a['__version__']
 if '__short_version__' in a:
-        __short_version__ = a['__short_version__']
+    __short_version__ = a['__short_version__']
 if '__email__' in a:
     __email__ = a['__email__']
 assert(__version__ is not None)
@@ -191,10 +192,11 @@ def get_setup_config(root_dir):
                 'Topic :: Scientific/Engineering',
                 'Topic :: Scientific/Engineering :: Artificial Intelligence',
                 'License :: OSI Approved :: Apache Software License',
-                'Programming Language :: Python :: {}.{}'.format(sys.version_info.major, sys.version_info.minor),
+                'Programming Language :: Python :: {}.{}'.format(
+                    sys.version_info.major, sys.version_info.minor),
                 'Operating System :: Microsoft :: Windows',
                 'Operating System :: POSIX :: Linux',
-            ],
+        ],
         keywords="deep learning artificial intelligence machine learning neural network cuda",
         python_requires='>={}.{}'.format(sys.version_info.major, sys.version_info.minor))
     return pkg_info, ExtConfig(package_dir, packages, package_data, ext_modules, {})
