@@ -1,0 +1,58 @@
+FROM nvidia/cuda:8.0-cudnn6-devel-centos7
+
+RUN yum install -y epel-release
+RUN yum install -y centos-release-scl 
+
+RUN yum install -y \
+    ccache \
+    clang \
+    cmake \
+    curl \
+    gcc-c++ \
+    git \
+    hdf5-static \
+    libtool \
+    make \
+    python-devel \
+    python-pip \
+    python-setuptools \
+    unzip \
+    wget \
+    zip \
+    zlib-static
+
+RUN yum install -y rh-python35
+ENV PATH=$PATH:/opt/rh/rh-python35/root/usr/bin
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/rh/rh-python35/root/usr/lib64
+ENV PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/opt/rh/rh-python35/root/usr/lib64/pkgconfig
+
+RUN pip3 install -U pip
+RUN pip3 install -U wheel
+ADD python/requirements.txt /tmp/deps/
+RUN pip3 install -U -r /tmp/deps/requirements.txt
+
+# Optioinal
+RUN pip3 install -U ipython
+
+# Install cmake>=3.1
+RUN mkdir -p /tmp/deps \
+    && cd /tmp/deps \
+    && curl -L https://cmake.org/files/v3.1/cmake-3.1.3.tar.gz -o cmake-3.1.3.tar.gz \
+    && tar xf cmake-3.1.3.tar.gz \
+    && cd cmake-3.1.3 \
+    && mkdir build && cd build && cmake .. && make && make install \
+    && cd / && rm -rf /tmp/deps
+
+# Protoc. This should not be dependency.
+RUN curl -L https://github.com/google/protobuf/archive/v3.1.0.tar.gz -o /tmp/protobuf-v3.1.0.tar.gz \
+    && cd /tmp \
+    && yum install -y autoconf automake libtool unzip \
+    && tar xvf protobuf-v3.1.0.tar.gz \
+    && cd protobuf-3.1.0 \
+    && ./autogen.sh \
+    && ./configure --disable-shared\
+    && make \
+    && make install \
+    && ldconfig \
+    && chmod -R a+r /usr/local \
+    && find /usr/local -type d |xargs chmod a+x
