@@ -11,17 +11,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     liblapack-dev \
     libopenblas-dev \
-    libhdf5-dev \
-    liblapack-dev \
-    libopenblas-dev \
-    libtool \
     make \
     python3-dev \
     python3-pip \
     unzip \
     wget \
-    zip \
-    zlib1g-dev
+    zip
 
 RUN pip3 install -U pip
 RUN pip3 install -U wheel
@@ -41,16 +36,9 @@ RUN curl -L https://cmake.org/files/v3.5/cmake-3.5.2.tar.gz -o cmake-3.5.2.tar.g
     cd ../.. && rm -rf cmake-3.5.2
 ENV PATH $CMAKE_PATH/bin:${PATH}
 
+RUN curl -L https://github.com/google/protobuf/releases/download/v3.1.0/protoc-3.1.0-linux-x86_64.zip -o /tmp/protoc-3.1.0-linux-x86_64.zip \
+    && cd /usr/local \
+    && unzip /tmp/protoc-3.1.0-linux-x86_64.zip \
+    && chmod 755 /usr/local/bin/protoc \
+    && rm -f /tmp/protoc-3.1.0-linux-x86_64.zip readme.txt
 
-RUN curl -L https://github.com/google/protobuf/archive/v3.1.0.tar.gz -o /tmp/protobuf-v3.1.0.tar.gz \
-    && cd /tmp \
-    && apt-get install -y autoconf automake \
-    && tar xvf protobuf-v3.1.0.tar.gz \
-    && cd protobuf-3.1.0 \
-    && ./autogen.sh \
-    && ./configure --disable-shared\
-    && make \
-    && make install \
-    && ldconfig \
-    && chmod -R a+r /usr/local \
-    && find /usr/local -type d |xargs chmod a+x

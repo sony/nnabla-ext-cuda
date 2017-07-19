@@ -22,7 +22,7 @@ from .init import (
     device_synchronize,
     get_device_count)
 
-from _version import (
+from ._version import (
     __version__,
     __author__,
     __email__

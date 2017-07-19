@@ -18,7 +18,7 @@ find_program(PYTHON_COMMAND ${PYTHON_COMMAND_NAME})
 add_subdirectory(third_party)
 
 ###############################################################################
-# Third party libraries
+# Preprocessing
 ###############################################################################
 execute_process(
   COMMAND ${PYTHON_COMMAND}

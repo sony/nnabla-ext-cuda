@@ -18,7 +18,7 @@ import nnabla
 from . import init
 
 from nnabla.variable import Context
-from _version import (
+from ._version import (
     __version__,
     __author__,
     __email__

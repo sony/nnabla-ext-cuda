@@ -17,11 +17,16 @@
 namespace nbla {
 
 int cuda_set_device(int device) {
-  int current_device;
-  NBLA_CUDA_CHECK(cudaGetDevice(&current_device));
+  int current_device = cuda_get_device();
   if (current_device != device) {
     NBLA_CUDA_CHECK(cudaSetDevice(device));
   }
+  return current_device;
+}
+
+int cuda_get_device() {
+  int current_device;
+  NBLA_CUDA_CHECK(cudaGetDevice(&current_device));
   return current_device;
 }
 }

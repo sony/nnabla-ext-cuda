@@ -12,30 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-'''
-Python API setup script.
-
-This hasn't been designed well yet. Polishing it is future developement.
-The current improvement plan is as following:
-
-* Cythonize before publishing. Users do not use Cython, instead just use
-generated C++ files to build extensions.
-
-* Remove hard-coded relative paths for library link. Maybe the solution will be
-  install NNabla C++ library in order to put them into folders path of which
-  are set.
-'''
-
 from __future__ import print_function
 
 from setuptools import setup
 from distutils.extension import Extension
 import os
 from os.path import dirname, realpath, join, isfile, splitext
-import shutil
-import sys
 from collections import namedtuple
 import copy
+import os
+import shutil
+import sys
 
 root_dir = realpath(dirname(__file__))
 a = dict()
@@ -43,11 +30,12 @@ a = dict()
 __version__ = None
 __short_version__ = None
 __email__ = None
-exec(open(os.path.join(root_dir, 'src', 'nnabla_ext', 'cuda', '_version.py')).read(), globals(), a)
+exec(open(os.path.join(root_dir, 'src', 'nnabla_ext',
+                       'cuda', '_version.py')).read(), globals(), a)
 if '__version__' in a:
-        __version__ = a['__version__']
+    __version__ = a['__version__']
 if '__short_version__' in a:
-        __short_version__ = a['__short_version__']
+    __short_version__ = a['__short_version__']
 if '__email__' in a:
     __email__ = a['__email__']
 assert(__version__ is not None)
@@ -189,18 +177,12 @@ def get_setup_config(root_dir):
     package_data.update(cudnn_ext.package_data)
     ext_modules += cudnn_ext.ext_modules
 
-    # Embed signatures in Cython function and classes
-    for e in ext_modules:
-        e.cython_directives = {
-            "embedsignature": True,
-            'c_string_type': 'str',
-            'c_string_encoding': 'ascii'}
     pkg_info = dict(
         name="nnabla_ext-cuda",
         description='A CUDA and cuDNN extension of NNabla',
         version=__version__,
         author_email=__email__,
-        url="https://github.com/sony/nnabla",
+        url="https://github.com/sony/nnabla-ext-cuda",
         license='Apache Licence 2.0',
         classifiers=[
                 'Development Status :: 4 - Beta',
@@ -210,10 +192,11 @@ def get_setup_config(root_dir):
                 'Topic :: Scientific/Engineering',
                 'Topic :: Scientific/Engineering :: Artificial Intelligence',
                 'License :: OSI Approved :: Apache Software License',
-                'Programming Language :: Python :: {}.{}'.format(sys.version_info.major, sys.version_info.minor),
+                'Programming Language :: Python :: {}.{}'.format(
+                    sys.version_info.major, sys.version_info.minor),
                 'Operating System :: Microsoft :: Windows',
                 'Operating System :: POSIX :: Linux',
-            ],
+        ],
         keywords="deep learning artificial intelligence machine learning neural network cuda",
         python_requires='>={}.{}'.format(sys.version_info.major, sys.version_info.minor))
     return pkg_info, ExtConfig(package_dir, packages, package_data, ext_modules, {})
