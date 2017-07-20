@@ -77,11 +77,11 @@ void MultiProcessDataParallelCommunicatorNccl<T>::init() {
 
     // We have to set our device before NCCL init
     cudaSetDevice(device_id_);
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(mpi_comm);
 
     // Exchange comm_id_ among processes
     ncclGetUniqueId(&comm_id_);
-    MPI_Bcast(&comm_id_, NCCL_UNIQUE_ID_BYTES, MPI_CHAR, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&comm_id_, NCCL_UNIQUE_ID_BYTES, MPI_CHAR, 0, mpi_comm);
     MPI_Comm_free(&mpi_comm);
 
     // Nccl Init
