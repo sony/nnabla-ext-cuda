@@ -12,34 +12,43 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-'''
-Python API setup script.
+from __future__ import print_function
 
-This hasn't been designed well yet. Polishing it is future developement.
-The current improvement plan is as following:
-
-* Cythonize before publishing. Users do not use Cython, instead just use
-generated C++ files to build extensions.
-
-* Remove hard-coded relative paths for library link. Maybe the solution will be
-  install NNabla C++ library in order to put them into folders path of which
-  are set.
-'''
 from setuptools import setup
 from distutils.extension import Extension
+import os
 from os.path import dirname, realpath, join, isfile, splitext
-import shutil
 from collections import namedtuple
 import copy
+import os
+import shutil
 import sys
 
+root_dir = realpath(dirname(__file__))
+a = dict()
+
+__version__ = None
+__short_version__ = None
+__email__ = None
+exec(open(os.path.join(root_dir, 'src', 'nnabla_ext',
+                       'cuda', '_version.py')).read(), globals(), a)
+if '__version__' in a:
+    __version__ = a['__version__']
+if '__short_version__' in a:
+    __short_version__ = a['__short_version__']
+if '__email__' in a:
+    __email__ = a['__email__']
+assert(__version__ is not None)
+assert(__short_version__ is not None)
+assert(__email__ is not None)
+
 setup_requires = [
-    'numpy>=1.12.0',
-    'Cython>=0.24',  # Requires python-dev.
+    'numpy>=1.10',
+    'Cython>=0.24,<0.26',  # Requires python-dev.
 ]
 
 install_requires = [
-    'nnabla>=0.9.1',
+    'nnabla>={}'.format(__short_version__),
 ]
 
 LibInfo = namedtuple('LibInfo', ['file_name', 'path', 'name'])
@@ -49,7 +58,7 @@ ExtConfig = namedtuple('ExtConfig',
 
 
 def get_libinfo():
-    from ConfigParser import ConfigParser
+    from six.moves.configparser import ConfigParser
 
     # Parse setup.cfg
     path_cfg = join(dirname(__file__), "setup.cfg")
@@ -168,15 +177,12 @@ def get_setup_config(root_dir):
     package_data.update(cudnn_ext.package_data)
     ext_modules += cudnn_ext.ext_modules
 
-    # Embed signatures in Cython function and classes
-    for e in ext_modules:
-        e.cython_directives = {"embedsignature": True}
     pkg_info = dict(
         name="nnabla_ext-cuda",
         description='A CUDA and cuDNN extension of NNabla',
-        version='0.9.1',
-        author_email='nnabla@googlegroups.com',
-        url="https://github.com/sony/nnabla",
+        version=__version__,
+        author_email=__email__,
+        url="https://github.com/sony/nnabla-ext-cuda",
         license='Apache Licence 2.0',
         classifiers=[
                 'Development Status :: 4 - Beta',
@@ -186,25 +192,39 @@ def get_setup_config(root_dir):
                 'Topic :: Scientific/Engineering',
                 'Topic :: Scientific/Engineering :: Artificial Intelligence',
                 'License :: OSI Approved :: Apache Software License',
+                'Programming Language :: C++',
+                'Programming Language :: Python :: 2',
                 'Programming Language :: Python :: 2.7',
+                'Programming Language :: Python :: 3',
+                'Programming Language :: Python :: 3.4',
+                'Programming Language :: Python :: 3.5',
+                'Programming Language :: Python :: 3.6',
+                'Programming Language :: Python :: Implementation :: CPython',
                 'Operating System :: Microsoft :: Windows',
                 'Operating System :: POSIX :: Linux',
-            ],
+        ],
         keywords="deep learning artificial intelligence machine learning neural network cuda",
-        python_requires='>=2.7, <3')
+        python_requires='>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*',
+    )
     return pkg_info, ExtConfig(package_dir, packages, package_data, ext_modules, {})
 
 
 if __name__ == '__main__':
-    from Cython.Distutils import build_ext
+    from Cython.Build import cythonize
 
-    root_dir = realpath(dirname(__file__))
     pkg_info, cfg = get_setup_config(root_dir)
+
+    # Cythonize
+    ext_modules = cythonize(cfg.ext_modules, compiler_directives={
+                            "embedsignature": True,
+                            "c_string_type": 'str',
+                            "c_string_encoding": "ascii"})
+
+    # Setup
     setup(
-        cmdclass={"build_ext": build_ext},
         setup_requires=setup_requires,
         install_requires=install_requires,
-        ext_modules=cfg.ext_modules,
+        ext_modules=ext_modules,
         package_dir=cfg.package_dir,
         packages=cfg.packages,
         package_data=cfg.package_data,

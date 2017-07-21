@@ -12,46 +12,44 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/** Dropout
+/** Randn
  */
-#ifndef __NBLA_CUDA_FUNCTION_DROPOUT_HPP__
-#define __NBLA_CUDA_FUNCTION_DROPOUT_HPP__
+#ifndef __NBLA_CUDA_FUNCTION_RANDN_HPP__
+#define __NBLA_CUDA_FUNCTION_RANDN_HPP__
 
+#include <nbla/cuda/common.hpp>
 #include <nbla/cuda/cuda.hpp>
 #include <nbla/cuda/utils/random.hpp>
-#include <nbla/function/dropout.hpp>
+#include <nbla/function/randn.hpp>
 
 namespace nbla {
+/** @copydoc Randn
+*/
 
-template <typename T> class DropoutCuda : public Dropout<T> {
+template <typename T> class RandnCuda : public Randn<T> {
 public:
-  explicit DropoutCuda(const Context &ctx, double p, int seed = -1)
-      : Dropout<T>(ctx, T(p), seed) {
-    cuda_set_device(std::stoi(ctx.device_id));
-    NBLA_CHECK(this->p_ > 0., error_code::value,
-               "p must be between 0.0 and 1.0");
-    NBLA_CHECK(this->p_ < 1., error_code::value,
-               "p must be between 0.0 and 1.0");
-    this->scale_ = 1. / (1. - this->p_);
-    // if seed is set, create local curand generator.
+  explicit RandnCuda(const Context &ctx, float mu, float sigma,
+                     const vector<int> &shape, int seed)
+      : Randn<T>(ctx, mu, sigma, shape, seed),
+        device_(std::stoi(ctx.device_id)) {
     if (this->seed_ != -1) {
-      // CURAND_RNG_PSEUDO_DEFAULT is CURAND_RNG_PSEUDO_XORWOW.
       curand_generator_ = curand_create_generator(this->seed_);
     } else {
       curand_generator_ = SingletonManager::get<Cuda>()->curand_generator();
     }
   }
-  virtual ~DropoutCuda() {
+  virtual ~RandnCuda() {
     if (this->seed_ != -1) {
       curand_destroy_generator(curand_generator_);
     }
   }
-  virtual string name() { return "DropoutCuda"; }
+  virtual string name() { return "RandnCuda"; }
   virtual vector<string> allowed_array_classes() {
     return SingletonManager::get<Cuda>()->array_classes();
   }
 
 protected:
+  int device_;
   curandGenerator_t curand_generator_;
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
@@ -60,4 +58,5 @@ protected:
                              const vector<bool> &accum);
 };
 }
+
 #endif

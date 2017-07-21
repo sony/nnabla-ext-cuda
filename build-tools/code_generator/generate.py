@@ -1,11 +1,11 @@
 # Copyright (c) 2017 Sony Corporation. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,9 +14,7 @@
 
 import io
 import os
-import sys
 
-from generator_common.init_cpp_common import generate_init_cpp
 from utils.load_function_rst import Functions
 from load_implements_rst import Implements
 from utils.common import check_update
@@ -29,8 +27,10 @@ info = functions.info
 info['Implements'] = Implements().info
 
 generation_list = {
-    'cuda': ['src/nbla/cuda/init.cpp'],
-    'cudnn': ['src/nbla/cuda/cudnn/init.cpp']
+    'cuda': ['src/nbla/cuda/init.cpp',
+             'python/src/nnabla_ext/cuda/_version.py'],
+    'cudnn': ['src/nbla/cuda/cudnn/init.cpp',
+              'python/src/nnabla_ext/cuda/cudnn/_version.py']
 }
 
 function_generation_list = {
@@ -58,7 +58,10 @@ for implements, filelist in generation_list.items():
 for category, functions in info['Functions'].items():
     for function, function_info in functions.items():
         function_name = info['Names'][function]
-        for implement in info['Implements'][function]:
+        imp_list = []
+        if function in info['Implements']:
+            imp_list = info['Implements'][function]
+        for implement in imp_list:
             for fn in function_generation_list[implement]:
                 filename = '{}/{}'.format(base, fn.format(function_name))
                 modulename = fn.replace(
