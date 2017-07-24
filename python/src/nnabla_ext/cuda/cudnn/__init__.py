@@ -12,10 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import absolute_import
+
 import nnabla
-import init
+from . import init
 
 from nnabla.variable import Context
+from ._version import (
+    __version__,
+    __author__,
+    __email__
+)
 
 
 def context(device_id=0, *kw):

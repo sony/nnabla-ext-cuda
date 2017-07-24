@@ -12,23 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import pytest
-import numpy as np
-import nnabla as nn
-import nnabla.functions as F
+import os
+from utils.common import get_version
 
 
-@pytest.mark.skipif("not hasattr(nn.extensions, 'cuda')")
-@pytest.mark.parametrize("m", [1, 2, 3])
-def test_cuda_large_blocks(m):
-    CUDA_THREAD_PER_BLOCK = 512
-    CUDA_MAX_BLOCKS = 65536
-    size = CUDA_MAX_BLOCKS * CUDA_THREAD_PER_BLOCK * m + 3
-    print("Variable size:", size)
-    x = np.zeros((size,), np.float32)
-    v = nn.Variable(x.shape)
-    v.d = x
-    ctx = nn.Context(backend='cuda')
-    y = F.relu(v)
+def generate(info, template):
+    version, short_version = get_version(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+    return template.format(version="u'"+version+"'", short_version="u'"+short_version+"'")

@@ -23,6 +23,7 @@
 
 #include <nbla/array.hpp>
 #include <nbla/common.hpp>
+#include <nbla/cuda/array/cuda_array.hpp>
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/function/deconvolution.hpp>
 #include <nbla/cuda/math.hpp>
@@ -47,8 +48,9 @@ void DeconvolutionCuda<T>::forward_impl(const Variables &inputs,
   cuda_set_device(std::stoi(this->ctx_.device_id));
   const T *y = inputs[0]->get_data_pointer<T>(this->ctx_);
   const T *w = inputs[1]->get_data_pointer<T>(this->ctx_);
-  Variable *vcol = &this->col_;
-  T *col = vcol->cast_data_and_get_pointer<T>(this->ctx_);
+  CudaCachedArray col_array(this->row_col_ * this->col_col_ * this->group_,
+                            get_dtype<T>(), this->ctx_);
+  T *col = col_array.pointer<T>();
   outputs[0]->data()->zero();
   T *x = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
   const T *b;
@@ -111,10 +113,13 @@ void DeconvolutionCuda<T>::backward_impl(const Variables &inputs,
   const T *y;
   const T *w;
   T *dy, *dw, *db, *col;
+  shared_ptr<CudaCachedArray> col_array;
 
   if (propagate_down[0] || propagate_down[1]) {
-    Variable *vcol = &this->col_;
-    col = vcol->cast_data_and_get_pointer<T>(this->ctx_);
+    col_array = make_shared<CudaCachedArray>(this->row_col_ * this->col_col_ *
+                                                 this->group_,
+                                             get_dtype<T>(), this->ctx_);
+    col = col_array->pointer<T>();
   }
   if (propagate_down[0]) {
     w = inputs[1]->get_data_pointer<T>(this->ctx_);

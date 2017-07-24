@@ -14,7 +14,7 @@ Function Implements
      - x
    * - Deconvolution
      - x
-     - 
+     - x
    * - AveragePooling
      - 
      - x
@@ -235,6 +235,15 @@ Function Implements
      - x
      - x
    * - Dropout
+     - x
+     - 
+   * - Rand
+     - x
+     - 
+   * - Randint
+     - x
+     - 
+   * - Randn
      - x
      - 
    * - Identity

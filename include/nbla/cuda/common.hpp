@@ -171,5 +171,9 @@ inline int cuda_get_blocks_by_size(int size) {
 @return index of device before change
 */
 int cuda_set_device(int device);
+/** Get current CUDA device.
+@return index of device
+*/
+int cuda_get_device();
 }
 #endif

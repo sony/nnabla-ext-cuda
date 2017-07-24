@@ -13,44 +13,59 @@
 // limitations under the License.
 
 #include <nbla/cuda/cuda.hpp>
+#include <nbla/cuda/utils/random.hpp>
 #include <nbla/singleton_manager-internal.hpp>
 
 namespace nbla {
 
-Cuda::Cuda() {
-  // CURAND_RNG_PSEUDO_DEFAULT is CURAND_RNG_PSEUDO_XORWOW.
-  NBLA_CURAND_CHECK(
-      curandCreateGenerator(&curand_generator_, CURAND_RNG_PSEUDO_DEFAULT));
-}
+Cuda::Cuda() {}
 
 Cuda::~Cuda() {
   for (auto handle : this->cublas_handles_) {
     NBLA_CUBLAS_CHECK(cublasDestroy(handle.second));
   }
-  NBLA_CURAND_CHECK(curandDestroyGenerator(curand_generator_));
+  for (auto gen : this->curand_generators_) {
+    curand_destroy_generator(gen.second);
+  }
 }
 
 cublasHandle_t Cuda::cublas_handle(int device) {
   if (device < 0) {
-    NBLA_CUDA_CHECK(cudaGetDevice(&device));
+    device = cuda_get_device();
   }
-  if (this->cublas_handles_.count(device) == 0) {
+  std::lock_guard<decltype(mtx_cublas_)> lock(mtx_cublas_);
+  auto it = this->cublas_handles_.find(device);
+  // Create a new one
+  if (it == this->cublas_handles_.end()) {
     cublasHandle_t handle;
     NBLA_CUBLAS_CHECK(cublasCreate(&handle));
-    this->cublas_handles_[device] = handle;
+    this->cublas_handles_.insert({device, handle});
+    return handle;
   }
-  return this->cublas_handles_[device];
+  return it->second;
 }
 
-curandGenerator_t Cuda::curand_generator() { return this->curand_generator_; }
+curandGenerator_t Cuda::curand_generator() {
+  // Get current device
+  int device = cuda_get_device();
+  std::lock_guard<decltype(mtx_curand_)> lock(mtx_curand_);
+  // Find device rng
+  auto it = this->curand_generators_.find(device);
+  // Create a new one
+  if (it == this->curand_generators_.end()) {
+    curandGenerator_t gen = curand_create_generator();
+    this->curand_generators_.insert({device, gen});
+    return gen;
+  }
+  return it->second;
+}
 
-template <> void Cuda::curand_set_seed<float>(float seed) {
-  NBLA_CURAND_CHECK(
-      curandSetPseudoRandomGeneratorSeed(curand_generator_, seed));
+void Cuda::curand_set_seed(int seed) {
+  ::nbla::curand_set_seed(curand_generator(), seed);
 }
 
 template <> void Cuda::curand_generate_uniform<float>(float *r, int size) {
-  NBLA_CURAND_CHECK(curandGenerateUniform(curand_generator_, r, size));
+  ::nbla::curand_generate_rand(curand_generator(), float(0), float(1), r, size);
 }
 
 vector<string> Cuda::array_classes() const { return array_classes_; }

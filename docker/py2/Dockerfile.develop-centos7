@@ -3,15 +3,19 @@ FROM nvidia/cuda:8.0-cudnn6-devel-centos7
 RUN yum install -y epel-release
 
 RUN yum install -y \
-    gcc-c++ \
-    make \
     ccache \
+    clang \
     cmake \
     curl \
+    gcc-c++ \
+    git \
+    make \
     python-devel \
     python-pip \
     python-setuptools \
-    clang
+    unzip \
+    wget \
+    zip
 
 # Install cmake>=3.1
 RUN mkdir -p /tmp/deps \
@@ -22,23 +26,7 @@ RUN mkdir -p /tmp/deps \
     && mkdir build && cd build && cmake .. && make && make install \
     && cd / && rm -rf /tmp/deps
 
-# Install clang-format-3.8
-RUN mkdir -p /tmp/deps \
-    && cd /tmp/deps \
-    && curl -L http://releases.llvm.org/3.8.1/llvm-3.8.1.src.tar.xz -o llvm-3.8.1.src.tar.xz \
-    && tar xf llvm-3.8.1.src.tar.xz \
-    && cd /tmp/deps/llvm-3.8.1.src \
-    && mkdir build && cd build && cmake .. && make && make install \
-    && cd / && rm -rf /tmp/deps
-
-RUN mkdir -p /tmp/deps \
-    && cd /tmp/deps \
-    && curl -L http://releases.llvm.org/3.8.1/cfe-3.8.1.src.tar.xz -o cfe-3.8.1.src.tar.xz \
-    && tar xf cfe-3.8.1.src.tar.xz \
-    && cd /tmp/deps/cfe-3.8.1.src \
-    && mkdir build && cd build && cmake .. && make && make install \
-    && cd / && rm -rf /tmp/deps
-
+RUN pip install -U pip
 ADD python/requirements.txt /tmp/deps/
 RUN pip install -U -r /tmp/deps/requirements.txt
 
