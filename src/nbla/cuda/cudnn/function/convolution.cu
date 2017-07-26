@@ -83,7 +83,9 @@ void ConvolutionCudaCudnn<T>::setup_impl_2d(const Variables &inputs,
                        this->pad_[1],
                        this->stride_[0],
                        this->stride_[1],
-                       this->group_};
+                       this->group_,
+                       this->dilation_[0],
+                       this->dilation_[1]};
   auto &rsc = SingletonManager::get<CudnnHandleManager>()->conv2d_resource;
   auto it = rsc.find(desc);
   if (it != rsc.end()) {

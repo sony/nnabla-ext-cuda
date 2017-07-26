@@ -20,15 +20,17 @@
 
 namespace nbla {
 
-static size_t get_conv_outsize(int w, int k, int p, int s) {
-  return (w + 2 * p - k) / s + 1;
+static size_t get_conv_outsize(int w, int k, int p, int s, int d) {
+  const int dk = d * (k - 1) + 1;
+  return (w + 2 * p - dk) / s + 1;
 }
 
 bool CudnnConv2dDesc::operator==(const CudnnConv2dDesc &x) const {
   return device == x.device && dtype == x.dtype && mode == x.mode && n == x.n &&
          c == x.c && h == x.h && w == x.w && o == x.o && kh == x.kh &&
          kw == x.kw && padh == x.padh && padw == x.padw &&
-         strideh == x.strideh && stridew == x.stridew && group == x.group;
+         strideh == x.strideh && stridew == x.stridew && group == x.group &&
+         dilationh == x.dilationh && dilationw == x.dilationw;
 }
 
 std::ostream &operator<<(std::ostream &os, const CudnnConv2dDesc &desc) {
@@ -44,6 +46,9 @@ std::ostream &operator<<(std::ostream &os, const CudnnConv2dDesc &desc) {
   os << "  strideh, stridew = " << desc.strideh << ", " << desc.stridew
      << std::endl;
   os << "  group = " << desc.group << std::endl;
+  ;
+  os << "  dilationh, dilationw = " << desc.dilationh << ", " << desc.dilationw
+     << std::endl;
   return os;
 }
 
@@ -66,8 +71,10 @@ CudnnConv2dResource::CudnnConv2dResource(const CudnnConv2dDesc &desc) {
                                                 desc.c / desc.group, desc.h,
                                                 desc.w, s_n, s_c, s_h, s_w));
   // Set output desc
-  int ho = get_conv_outsize(desc.h, desc.kh, desc.padh, desc.strideh);
-  int wo = get_conv_outsize(desc.w, desc.kw, desc.padw, desc.stridew);
+  int ho = get_conv_outsize(desc.h, desc.kh, desc.padh, desc.strideh,
+                            desc.dilationh);
+  int wo = get_conv_outsize(desc.w, desc.kw, desc.padw, desc.stridew,
+                            desc.dilationw);
   const int so_w = 1;
   const int so_h = wo;
   const int so_c = ho * so_h;
@@ -94,10 +101,11 @@ CudnnConv2dResource::CudnnConv2dResource(const CudnnConv2dDesc &desc) {
                                               desc.c / desc.group, 1, 1));
 #if CUDNN_VERSION >= 6000
   // Set Conv desc
-  // TODO: Support data type config ang dilated convolution.
+  // TODO: Support data type config
   NBLA_CUDNN_CHECK(cudnnSetConvolution2dDescriptor(
-      conv_desc, desc.padh, desc.padw, desc.strideh, desc.stridew, 1, 1,
-      desc.mode, cudnn_data_type<float>::type()));
+      conv_desc, desc.padh, desc.padw, desc.strideh, desc.stridew,
+      desc.dilationh, desc.dilationw, desc.mode,
+      cudnn_data_type<float>::type()));
 #else
   // Set Conv desc
   NBLA_CUDNN_CHECK(cudnnSetConvolution2dDescriptor(
