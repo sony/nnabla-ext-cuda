@@ -14,15 +14,21 @@ list(APPEND NBLA_CUDA_LINKER_LIBS
   ${CUDA_curand_LIBRARY}
   )
   
-# Distributed Training  
-if(DEFINED ENV{NCCL_HOME} AND DEFINED ENV{MPI_HOME})
-	list(APPEND NBLA_CUDA_INCLUDE_DIRS 
-		$ENV{NCCL_HOME}/build/include
-		$ENV{MPI_HOME}/include)
-	list(APPEND NBLA_CUDA_LINKER_LIBS
-		$ENV{NCCL_HOME}/build/lib/libnccl.so
-		$ENV{MPI_HOME}/lib/libmpi.so
-		)
+# Distributed Training
+if(WITH_DIST_TRAIN)
+	add_definitions(-DFEATURE_DIST_TRAIN)
+	
+	if(DEFINED ENV{NCCL_HOME})
+	  find_package(MPI REQUIRED)
+	  list(APPEND NBLA_CUDA_INCLUDE_DIRS 
+	    $ENV{NCCL_HOME}/build/include
+	    ${MPI_INCLUDE_PATH}
+	    )
+	  list(APPEND NBLA_CUDA_LINKER_LIBS
+	    $ENV{NCCL_HOME}/build/lib/libnccl.so 
+	    ${MPI_LIBRARIES}
+	    )
+	endif()
 endif()
 
 ####################################################################################################
@@ -74,7 +80,7 @@ endif()
 file(GLOB CU_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} */*.cu cudnn/*/*.cu)
 
 # Distributed Training
-if(NOT DEFINED ENV{NCCL_HOME})
+if(NOT DEFINED WITH_DIST_TRAIN)
 	list(REMOVE_ITEM CU_SOURCES communicator/data_parallel_communicator.cu)
 	list(REMOVE_ITEM CU_SOURCES communicator/multi_process_data_parallel_communicator.cu)
 endif()

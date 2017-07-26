@@ -40,11 +40,9 @@ template<typename T>
 DataParallelCommunicatorNccl<T>::~DataParallelCommunicatorNccl() {
   if (this->initialized_) {
     for (int i = 0; i < device_ids_.size(); ++i) {
-      ncclCommDestroy(comm_ptr_[i]);
-      cudaStreamDestroy(stream_ptr_[i]);
+      ncclCommDestroy(comms_[i]);
+      NBLA_CUDA_CHECK(cudaStreamDestroy(streams_[i]));
     }
-    free(comm_ptr_);
-    free(stream_ptr_);
   }
 }
 
@@ -59,15 +57,22 @@ void DataParallelCommunicatorNccl<T>::init() {
     this->n_devices_ = this->device_ids_.size();
 
     // Initialize stream and communicator
-    stream_ptr_ = (cudaStream_t*)malloc(sizeof(cudaStream_t) * this->n_devices_);
-    comm_ptr_ = (ncclComm_t*)malloc(sizeof(ncclComm_t) * this->n_devices_);
-    ncclCommInitAll(comm_ptr_, this->n_devices_, this->device_ids_.data());
-
     for (int i = 0; i < n_devices_; ++i) {
-      cudaSetDevice(device_ids_[i]);
-      cudaStreamCreate(stream_ptr_ + i);
-    }
+      cuda_set_device(device_ids_[i]);
+      // Stream
+      cudaStream_t stream;
+      NBLA_CUDA_CHECK(cudaStreamCreate(&stream));
+      streams_.push_back(stream);
 
+      // NCCL Comm
+      ncclComm_t comm;
+      comms_.push_back(comm);
+    }
+    ncclResult_t res = ncclCommInitAll(comms_.data(), this->n_devices_, this->device_ids_.data());
+    if (res != 0) {
+      NBLA_ERROR(error_code::target_specific,
+          "ncclCommInitAll fails with %d");
+    }
   } catch (...) {
     this->initialized_ = false;
   }
@@ -92,11 +97,11 @@ void DataParallelCommunicatorNccl<T>::allreduce(bool division) {
   for (int i = 0; i < device_ids_.size(); ++i) {  // device-loop
     Context ctx = this->contexts_[i];
     auto device_id = device_ids_[i];
-    cudaSetDevice(device_id);
+    cuda_set_device(device_id);
 
     auto func_named_param = this->device_func_named_param_[i];
-    auto comm = comm_ptr_[i];
-    auto stream = stream_ptr_[i];
+    auto comm = comms_[i];
+    auto stream = streams_[i];
     auto size = func_named_param.size();
 
     for (auto elm : func_named_param) {          // function-loop
@@ -110,6 +115,10 @@ void DataParallelCommunicatorNccl<T>::allreduce(bool division) {
           n_param, ncclFloat, ncclSum, //TODO: address ncclFloat
           comm,
           stream);
+      if (res != 0) {
+        NBLA_ERROR(error_code::target_specific,
+            "ncclAllReduce fails with %d.", res);
+      }
     }
   }
   // Divide using the same streams
@@ -176,16 +185,15 @@ vector<string> DataParallelCommunicatorNccl<T>::allowed_array_classes() {
 template<typename T>
 void DataParallelCommunicatorNccl<T>::wait_by_devices_synchronization() {
   for (int i = 0; i < device_ids_.size(); ++i) {
-    cudaSetDevice(device_ids_[i]);
-    cudaDeviceSynchronize();
+    cuda_device_synchronize(device_ids_[i]);
   }
 }
 
 template<typename T>
 void DataParallelCommunicatorNccl<T>::wait_by_streams_synchronization() {
   for (int i = 0; i < device_ids_.size(); ++i) {
-    cudaSetDevice(device_ids_[i]);
-    cudaStreamSynchronize(stream_ptr_[i]);
+    cuda_set_device(device_ids_[i]);
+    NBLA_CUDA_CHECK(cudaStreamSynchronize(streams_[i]));
   }
 }
 
@@ -194,11 +202,11 @@ void DataParallelCommunicatorNccl<T>::divide_by_num_divices(bool division) {
   if (division) {
     for (int i = 0; i < device_ids_.size(); ++i) {
       auto device_id = device_ids_[i];
-      cudaSetDevice(device_id);
+      cuda_set_device(device_id);
 
       Context ctx = this->contexts_[i];
       auto func_named_param = this->device_func_named_param_[i];
-      auto stream = stream_ptr_[i];
+      auto stream = streams_[i];
       for (auto elm : func_named_param) {
         VariablePtr vp = elm.second;
         T *dw = vp->cast_grad_and_get_pointer<T>(ctx);

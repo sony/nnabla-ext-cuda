@@ -43,7 +43,7 @@ template<typename T>
 MultiProcessDataParallelCommunicatorNccl<T>::~MultiProcessDataParallelCommunicatorNccl() {
   if (this->initialized_) {
     ncclCommDestroy(comm_);
-    cudaStreamDestroy(stream_);
+    NBLA_CUDA_CHECK(cudaStreamDestroy(stream_));
   }
   if (mpi_initialized_) {
     MPI_Finalize();
@@ -76,7 +76,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::init() {
     device_id_ = this->rank_;
 
     // We have to set our device before NCCL init
-    cudaSetDevice(device_id_);
+    cuda_set_device(device_id_);
     MPI_Barrier(mpi_comm);
 
     // Exchange comm_id_ among processes
@@ -91,7 +91,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::init() {
     }
 
     // Create stream
-    cudaStreamCreateWithFlags(&stream_, cudaStreamNonBlocking);
+    NBLA_CUDA_CHECK(cudaStreamCreateWithFlags(&stream_, cudaStreamNonBlocking));
 
     this->initialized_ = true;
   } catch (...) {
@@ -130,6 +130,10 @@ void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division) {
         n_param, ncclFloat, ncclSum, //TODO: address ncclFloat
         comm_,
         stream_);
+    if (res != 0) {
+        NBLA_ERROR(error_code::target_specific,
+            "ncclAllReduce fails with %d.", res);
+    }
   }
 
   // Divide using the same streams
@@ -195,12 +199,12 @@ vector<string> MultiProcessDataParallelCommunicatorNccl<T>::allowed_array_classe
 
 template<typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::wait_by_device_synchronization() {
-  cudaDeviceSynchronize();
+  cuda_device_synchronize(device_id_);
 }
 
 template<typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::wait_by_stream_synchronization() {
-  cudaStreamSynchronize(stream_);
+  NBLA_CUDA_CHECK(cudaStreamSynchronize(stream_));
 }
 
 template<typename T>

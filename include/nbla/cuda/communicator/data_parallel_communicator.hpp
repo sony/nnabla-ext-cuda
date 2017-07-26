@@ -52,11 +52,10 @@ protected:
   vector<int> device_ids_;
 
   // MPI-like DataParallelCommunicators initialized in init method
-  ncclComm_t *comm_ptr_;
+  vector<ncclComm_t> comms_ = vector<ncclComm_t>();
 
   // Device streams initialized in init method
-  cudaStream_t *stream_ptr_;
-
+  vector<cudaStream_t> streams_ = vector<cudaStream_t>();
 
 public:
   DataParallelCommunicatorNccl(const Context &ctx);
