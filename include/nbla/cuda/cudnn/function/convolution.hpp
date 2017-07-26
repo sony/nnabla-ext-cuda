@@ -33,6 +33,7 @@ public:
                                 const vector<int> &dilation, int group)
       : Convolution<T>(ctx, base_axis, pad, stride, dilation, group),
         device_(std::stoi(ctx.device_id)) {
+#if CUDNN_VERSION < 6000
     // NOTE: dilation > 1 is not supported by cudnn. (2016.10.19)
     for (int i = 0; i < dilation.size(); ++i) {
       if (dilation[i] > 1) {
@@ -47,6 +48,7 @@ public:
         return;
       }
     }
+#endif
   }
   virtual ~ConvolutionCudaCudnn() {
     if (this->fall_back_func_)

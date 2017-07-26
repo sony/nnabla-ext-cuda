@@ -94,19 +94,21 @@ struct NBLA_CUDA_API CudnnConv2dDesc {
   int device;            ///< Device ID.
   cudnnDataType_t dtype; ///< Data type.
   cudnnConvolutionMode_t
-      mode;    ///< CUDNN_CONVOLUTION or CUDNN_CROSS_CORRELATION;
-  int n;       ///< Batch size.
-  int c;       ///< Channels of input.
-  int h;       ///< Height of input.
-  int w;       ///< Width of input.
-  int o;       ///< Channels of output
-  int kh;      ///< Height of kernel.
-  int kw;      ///< Width of kernel.
-  int padh;    ///< Padding height of input.
-  int padw;    ///< Padding width of input.
-  int strideh; ///< Padding height of input.
-  int stridew; ///< Padding width of input.
-  int group;   ///< Number of groups.
+      mode;      ///< CUDNN_CONVOLUTION or CUDNN_CROSS_CORRELATION;
+  int n;         ///< Batch size.
+  int c;         ///< Channels of input.
+  int h;         ///< Height of input.
+  int w;         ///< Width of input.
+  int o;         ///< Channels of output
+  int kh;        ///< Height of kernel.
+  int kw;        ///< Width of kernel.
+  int padh;      ///< Padding height of input.
+  int padw;      ///< Padding width of input.
+  int strideh;   ///< Padding height of input.
+  int stridew;   ///< Padding width of input.
+  int group;     ///< Number of groups.
+  int dilationh; ///< Dilation height of filter.
+  int dilationw; ///< Dilation width of filter.
 
   /// Operator == compares all elements.
   bool operator==(const CudnnConv2dDesc &right) const;
@@ -131,6 +133,8 @@ struct NBLA_CUDA_API CudnnConv2dDesc {
       hash_combine(h, x.strideh);
       hash_combine(h, x.stridew);
       hash_combine(h, x.group);
+      hash_combine(h, x.dilationw);
+      hash_combine(h, x.dilationh);
       return h;
     }
   };
