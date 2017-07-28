@@ -17,9 +17,9 @@
 #ifndef __NBLA_NCCL_DATAPARALLELCOMMUNICATOR_HPP__
 #define __NBLA_NCCL_DATAPARALLELCOMMUNICATOR_HPP__
 #include <nbla/array.hpp>
+#include <nbla/communicator/data_parallel_communicator.hpp>
 #include <nbla/context.hpp>
 #include <nbla/variable.hpp>
-#include <nbla/communicator/data_parallel_communicator.hpp>
 
 #include <memory>
 #include <string>
@@ -38,14 +38,16 @@ using std::pair;
 /** \addtogroup NNablaCoreGrp */
 /*@{*/
 
-/** Communicator interface which is extended to implement a new Communicator class.
+/** Communicator interface which is extended to implement a new Communicator
+class.
 
 Communicator exchanges gradients parameters or parameters itself.
 
 */
 
-template<typename T>
-class NBLA_API DataParallelCommunicatorNccl : public DataParallelCommunicator<T> {
+template <typename T>
+class NBLA_API DataParallelCommunicatorNccl
+    : public DataParallelCommunicator<T> {
 
 protected:
   int n_devices_;
@@ -66,11 +68,11 @@ public:
   @param cparams pair<Context, vector of pair<name, VariablePtr>
   */
   void add_context_and_parameters(
-      const pair<Context, vector<pair<string, VariablePtr> > > &ctx_params);
+      const pair<Context, vector<pair<string, VariablePtr>>> &ctx_params);
 
   /** Remove previously registered parameters by keys.
    */
-  void remove_context_parameters(const pair<Context, vector<string> > &ctx_keys);
+  void remove_context_parameters(const pair<Context, vector<string>> &ctx_keys);
 
   /** Clear all parameters.
    */
@@ -82,15 +84,15 @@ public:
   */
   virtual void init();
 
-  virtual void reduce(bool division=true);
-  virtual void allreduce(bool division=true);
-  virtual void reducescatter(bool division=true);
+  virtual void reduce(bool division = true);
+  virtual void allreduce(bool division = true);
+  virtual void reducescatter(bool division = true);
   virtual void bcast();
   virtual void allgather();
 
-  virtual void reduce_async(bool division=true);
-  virtual void allreduce_async(bool division=true);
-  virtual void reducescatter_async(bool division=true);
+  virtual void reduce_async(bool division = true);
+  virtual void allreduce_async(bool division = true);
+  virtual void reducescatter_async(bool division = true);
   virtual void bcast_async();
   virtual void allgather_async();
 
@@ -110,8 +112,6 @@ protected:
   void divide_by_num_divices(bool division);
 
   DISABLE_COPY_AND_ASSIGN(DataParallelCommunicatorNccl);
-
 };
-
 }
 #endif

@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <nbla/cuda/communicator/multi_process_data_parallel_communicator.hpp>
 #include <nbla/cuda/common.hpp>
+#include <nbla/cuda/communicator/multi_process_data_parallel_communicator.hpp>
 
 #include <algorithm>
-#include <memory>
 #include <cstdlib>
+#include <memory>
 
 #include "mpi.h"
 
@@ -25,22 +25,22 @@ namespace nbla {
 
 using std::make_shared;
 
-
-template<typename T>
+template <typename T>
 __global__ void kernel_divide_inplace(const int size, const int n_devices,
-    T *dw) {
-  NBLA_CUDA_KERNEL_LOOP(i, size) {
-    dw[i] /= n_devices;
-  }
+                                      T *dw) {
+  NBLA_CUDA_KERNEL_LOOP(i, size) { dw[i] /= n_devices; }
 }
 
-template<typename T>
-MultiProcessDataParallelCommunicatorNccl<T>::MultiProcessDataParallelCommunicatorNccl(const Context &ctx) : MultiProcessDataParallelCommunicator<T>(ctx) {
+template <typename T>
+MultiProcessDataParallelCommunicatorNccl<
+    T>::MultiProcessDataParallelCommunicatorNccl(const Context &ctx)
+    : MultiProcessDataParallelCommunicator<T>(ctx) {
   mpi_initialized_ = false;
 }
 
-template<typename T>
-MultiProcessDataParallelCommunicatorNccl<T>::~MultiProcessDataParallelCommunicatorNccl() {
+template <typename T>
+MultiProcessDataParallelCommunicatorNccl<
+    T>::~MultiProcessDataParallelCommunicatorNccl() {
   if (this->initialized_) {
     ncclCommDestroy(comm_);
     NBLA_CUDA_CHECK(cudaStreamDestroy(stream_));
@@ -50,22 +50,21 @@ MultiProcessDataParallelCommunicatorNccl<T>::~MultiProcessDataParallelCommunicat
   }
 }
 
-template<typename T>
+template <typename T>
 bool MultiProcessDataParallelCommunicatorNccl<T>::mpi_initialized_;
 
-template<typename T>
-void MultiProcessDataParallelCommunicatorNccl<T>::init() {
+template <typename T> void MultiProcessDataParallelCommunicatorNccl<T>::init() {
   Communicator::init();
   try {
     // MPI init
-    if(!mpi_initialized_) {
+    if (!mpi_initialized_) {
       int argc = 0;
       char **argv = NULL;
       int requiredThreadLevelSupport = MPI_THREAD_SERIALIZED;
       int provided;
       MPI_Init_thread(&argc, &argv, requiredThreadLevelSupport, &provided);
       if (provided != requiredThreadLevelSupport)
-          NBLA_ERROR(error_code::target_specific, "MPI_Init_thread failed.");
+        NBLA_ERROR(error_code::target_specific, "MPI_Init_thread failed.");
       mpi_initialized_ = true;
     }
     // Create comm, set size, and rank
@@ -85,7 +84,8 @@ void MultiProcessDataParallelCommunicatorNccl<T>::init() {
     MPI_Comm_free(&mpi_comm);
 
     // Nccl Init
-    ncclResult_t ret = ncclCommInitRank(&comm_, this->size_, comm_id_, this->rank_);
+    ncclResult_t ret =
+        ncclCommInitRank(&comm_, this->size_, comm_id_, this->rank_);
     if (ret != ncclSuccess) {
       NBLA_ERROR(error_code::target_specific, "ncclCommInitRank failed.");
     }
@@ -99,13 +99,13 @@ void MultiProcessDataParallelCommunicatorNccl<T>::init() {
   }
 }
 
-template<typename T>
+template <typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::reduce(bool division) {
   NBLA_ERROR(error_code::not_implemented,
-      "CUDA GPU ireduce is not implemented.")
+             "CUDA GPU ireduce is not implemented.")
 }
 
-template<typename T>
+template <typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division) {
   // Sync all devices
   wait_by_device_synchronization();
@@ -119,20 +119,18 @@ void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division) {
   auto func_named_param = this->device_func_named_param_[0];
   auto size = func_named_param.size();
 
-  for (auto elm : func_named_param) {  // function-loop
+  for (auto elm : func_named_param) { // function-loop
     VariablePtr vp = elm.second;
     auto n_param = vp->size();
 
     const T *dw0 = vp->get_grad_pointer<T>(ctx);
     T *dw1 = vp->cast_grad_and_get_pointer<T>(ctx);
-    ncclResult_t res = ncclAllReduce(
-        dw0, dw1,
-        n_param, ncclFloat, ncclSum, //TODO: address ncclFloat
-        comm_,
-        stream_);
+    ncclResult_t res = ncclAllReduce(dw0, dw1, n_param, ncclFloat,
+                                     ncclSum, // TODO: address ncclFloat
+                                     comm_, stream_);
     if (res != 0) {
-        NBLA_ERROR(error_code::target_specific,
-            "ncclAllReduce fails with %d.", res);
+      NBLA_ERROR(error_code::target_specific, "ncclAllReduce fails with %d.",
+                 res);
     }
   }
 
@@ -143,72 +141,78 @@ void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division) {
   wait_by_stream_synchronization();
 }
 
-template<typename T>
+template <typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::reducescatter(bool division) {
   NBLA_ERROR(error_code::not_implemented,
-      "CUDA GPU reducescatter is not implemented.")
+             "CUDA GPU reducescatter is not implemented.")
 }
 
-template<typename T>
+template <typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::bcast() {
-  NBLA_ERROR(error_code::not_implemented,
-      "CUDA GPU bcast is not implemented.")
+  NBLA_ERROR(error_code::not_implemented, "CUDA GPU bcast is not implemented.")
 }
 
-template<typename T>
+template <typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::allgather() {
   NBLA_ERROR(error_code::not_implemented,
-      "CUDA GPU allgather is not implemented.")
+             "CUDA GPU allgather is not implemented.")
 }
 
-template<typename T>
+template <typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::reduce_async(bool division) {
   NBLA_ERROR(error_code::not_implemented,
-      "CUDA GPU reduce_async is not implemented.")
+             "CUDA GPU reduce_async is not implemented.")
 }
 
-template<typename T>
-void MultiProcessDataParallelCommunicatorNccl<T>::allreduce_async(bool division) {
+template <typename T>
+void MultiProcessDataParallelCommunicatorNccl<T>::allreduce_async(
+    bool division) {
   NBLA_ERROR(error_code::not_implemented,
-      "CUDA GPU allreduce_async is not implemented.")
+             "CUDA GPU allreduce_async is not implemented.")
 }
 
-template<typename T>
-void MultiProcessDataParallelCommunicatorNccl<T>::reducescatter_async(bool division) {
+template <typename T>
+void MultiProcessDataParallelCommunicatorNccl<T>::reducescatter_async(
+    bool division) {
   NBLA_ERROR(error_code::not_implemented,
-      "CUDA GPU reducescatter_async is not implemented.")
+             "CUDA GPU reducescatter_async is not implemented.")
 }
 
-template<typename T>
+template <typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::bcast_async() {
   NBLA_ERROR(error_code::not_implemented,
-      "CUDA GPU bcast_async is not implemented.")
+             "CUDA GPU bcast_async is not implemented.")
 }
 
-template<typename T>
+template <typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::allgather_async() {
   NBLA_ERROR(error_code::not_implemented,
-      "CUDA GPU allgather_async is not implemented.")
+             "CUDA GPU allgather_async is not implemented.")
 }
 
-template<typename T>
-vector<string> MultiProcessDataParallelCommunicatorNccl<T>::allowed_array_classes() {
+template <typename T>
+vector<string>
+MultiProcessDataParallelCommunicatorNccl<T>::allowed_array_classes() {
   NBLA_ERROR(error_code::not_implemented,
-      "Derived class of MultiProcessDataParallelCommunicatorNccl must implement allowed_array_classes().")
+             "Derived class of MultiProcessDataParallelCommunicatorNccl must "
+             "implement allowed_array_classes().")
 }
 
-template<typename T>
-void MultiProcessDataParallelCommunicatorNccl<T>::wait_by_device_synchronization() {
+template <typename T>
+void MultiProcessDataParallelCommunicatorNccl<
+    T>::wait_by_device_synchronization() {
   cuda_device_synchronize(device_id_);
 }
 
-template<typename T>
-void MultiProcessDataParallelCommunicatorNccl<T>::wait_by_stream_synchronization() {
+template <typename T>
+void MultiProcessDataParallelCommunicatorNccl<
+    T>::wait_by_stream_synchronization() {
   NBLA_CUDA_CHECK(cudaStreamSynchronize(stream_));
 }
 
-template<typename T>
-void MultiProcessDataParallelCommunicatorNccl<T>::divide_by_num_divices(bool division) {
+template <typename T>
+void MultiProcessDataParallelCommunicatorNccl<T>::divide_by_num_divices(
+    bool division) {
   if (division) {
     Context ctx = this->contexts_[0];
     auto func_named_param = this->device_func_named_param_[0];
@@ -216,19 +220,19 @@ void MultiProcessDataParallelCommunicatorNccl<T>::divide_by_num_divices(bool div
       VariablePtr vp = elm.second;
       T *dw = vp->cast_grad_and_get_pointer<T>(ctx);
       auto n_param = vp->size();
-      NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(
-          kernel_divide_inplace, stream_, n_param, this->size_, dw);
+      NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace, stream_, n_param,
+                                        this->size_, dw);
     }
   }
 }
 
-template<typename T>
+template <typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::sync_all_params() {
   Context ctx = this->contexts_[0];
   auto func_named_param = this->device_func_named_param_[0];
   auto size = func_named_param.size();
 
-  for (auto elm : func_named_param) {          // function-loop
+  for (auto elm : func_named_param) { // function-loop
     VariablePtr vp = elm.second;
 
     // If the arrays are different, output the warning.
