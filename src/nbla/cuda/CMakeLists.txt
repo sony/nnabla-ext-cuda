@@ -15,7 +15,8 @@ list(APPEND NBLA_CUDA_LINKER_LIBS
   )
   
 # Distributed Training
-if(WITH_DIST_TRAIN)
+option(WITH_NCCL "Use nccl for distributed training" OFF)
+if(WITH_NCCL)
 	add_definitions(-DFEATURE_DIST_TRAIN)
 	
 	if(DEFINED ENV{NCCL_HOME})
@@ -80,7 +81,7 @@ endif()
 file(GLOB CU_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} */*.cu cudnn/*/*.cu)
 
 # Distributed Training
-if(NOT DEFINED WITH_DIST_TRAIN)
+if(NOT WITH_NCCL)
 	list(REMOVE_ITEM CU_SOURCES communicator/data_parallel_communicator.cu)
 	list(REMOVE_ITEM CU_SOURCES communicator/multi_process_data_parallel_communicator.cu)
 endif()
