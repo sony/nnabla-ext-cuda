@@ -13,8 +13,16 @@
 # limitations under the License.
 
 from generator_common.init_cpp_common import generate_init_cpp
-
+import os
 
 def generate(info, template):
-    includes, registers = generate_init_cpp(info, backend='cuda', rank=1)
-    return template.format(include_functions='\n'.join(['#include <nbla/cuda/function/{}>'.format(i) for i in includes]), register_functions='\n'.join(registers))
+    includes, registers = generate_init_cpp(
+        info, backend='cuda', rank=1)
+
+    return template.format(
+        include_functions=
+        '\n'.join(['#include <nbla/cuda/function/{}>'.format(i) \
+                   for i in includes]), 
+        register_functions='\n'.join(registers), 
+    )
+

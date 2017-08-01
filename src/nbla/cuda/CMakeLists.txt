@@ -11,7 +11,26 @@ set(NBLA_CUDA_INCLUDE_DIRS ${CUDA_INCLUDE_DIRS})
 set(NBLA_CUDA_LINKER_LIBS ${CUDA_CUDART_LIBRARY})
 list(APPEND NBLA_CUDA_LINKER_LIBS
   ${CUDA_CUBLAS_LIBRARIES}
-  ${CUDA_curand_LIBRARY})
+  ${CUDA_curand_LIBRARY}
+  )
+  
+# Distributed Training
+option(WITH_NCCL "Use nccl for distributed training" OFF)
+if(WITH_NCCL)
+	add_definitions(-DFEATURE_DIST_TRAIN)
+	
+	if(DEFINED ENV{NCCL_HOME})
+	  find_package(MPI REQUIRED)
+	  list(APPEND NBLA_CUDA_INCLUDE_DIRS 
+	    $ENV{NCCL_HOME}/build/include
+	    ${MPI_INCLUDE_PATH}
+	    )
+	  list(APPEND NBLA_CUDA_LINKER_LIBS
+	    $ENV{NCCL_HOME}/build/lib/libnccl.so 
+	    ${MPI_LIBRARIES}
+	    )
+	endif()
+endif()
 
 ####################################################################################################
 # cuDNN
@@ -56,9 +75,16 @@ if(MSVC)
   set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};-Xcompiler /W0")
 else()
   set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};-std=c++11")
+  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS}; --default-stream per-thread")
 endif()
 
 file(GLOB CU_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} */*.cu cudnn/*/*.cu)
+
+# Distributed Training
+if(NOT WITH_NCCL)
+	list(REMOVE_ITEM CU_SOURCES communicator/data_parallel_communicator.cu)
+	list(REMOVE_ITEM CU_SOURCES communicator/multi_process_data_parallel_communicator.cu)
+endif()
 
 cuda_compile(CU_OBJECTS
   ${CU_SOURCES}
