@@ -42,8 +42,13 @@
 #include <nbla/cuda/solver/nesterov.hpp>
 #include <nbla/cuda/solver/rmsprop.hpp>
 #include <nbla/cuda/solver/sgd.hpp>
-#include <nbla/garbage_collector.hpp>
 
+#ifdef FEATURE_DIST_TRAIN
+  #include <nbla/cuda/communicator/data_parallel_communicator.hpp>
+  #include <nbla/cuda/communicator/multi_process_data_parallel_communicator.hpp>
+#endif
+
+#include <nbla/garbage_collector.hpp>
 
 namespace nbla {{
 
@@ -105,6 +110,14 @@ void init_cuda() {{
     float);
   typedef SgdCuda<float> SgdCudaf;
   NBLA_REGISTER_SOLVER_IMPL(Sgd, SgdCudaf, 1, "cuda", "default", float);
+
+  // Communicator registration
+#ifdef FEATURE_DIST_TRAIN
+  typedef DataParallelCommunicatorNccl<float> DataParallelCommunicatorNcclf;
+  NBLA_REGISTER_COMMUNICATOR_IMPL(DataParallelCommunicator, DataParallelCommunicatorNcclf, 1, "cuda", "default");
+  typedef MultiProcessDataParallelCommunicatorNccl<float> MultiProcessDataParallelCommunicatorNcclf;
+  NBLA_REGISTER_COMMUNICATOR_IMPL(MultiProcessDataParallelCommunicator, MultiProcessDataParallelCommunicatorNcclf, 1, "cuda", "default");
+#endif
 
   // Register finalize function to ensure freeing all CUDA memory before unloading CUDA driver.
   auto finalize = []()->void {{
