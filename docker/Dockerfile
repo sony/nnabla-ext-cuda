@@ -1,7 +1,7 @@
 FROM nvidia/cuda:8.0-cudnn6-runtime-ubuntu16.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python-pip python-setuptools python-wheel gcc python-dev \
+    python3-pip python3-setuptools python3-wheel \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install nnabla-ext-cuda
+RUN pip3 install nnabla-ext-cuda
