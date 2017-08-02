@@ -28,17 +28,7 @@ ENV LD_LIBRARY_PATH=/opt/rh/gti19/root/usr/lib64:/opt/rh/python27/root/usr/lib64
 ENV PKG_CONFIG_PATH=/opt/rh/git19/root/usr/lib64/pkgconfig:/opt/rh/python27/root/usr/lib64/pkgconfig:${PKG_CONFIG_PATH}
 
 RUN yum install -y wget curl zip unzip
-
-RUN curl -L https://github.com/google/protobuf/archive/v3.1.0.tar.gz -o /tmp/protobuf-v3.1.0.tar.gz \
-    && cd /tmp \
-    && yum install -y autoconf automake libtool unzip \
-    && tar xvf protobuf-v3.1.0.tar.gz \
-    && cd protobuf-3.1.0 \
-    && ./autogen.sh \
-    && ./configure \
-    && make \
-    && make install \
-    && ldconfig
+RUN yum install -y zlib-static
 
 RUN mkdir -p /tmp/deps \
     && yum install -y cmake \
@@ -52,6 +42,76 @@ RUN mkdir -p /tmp/deps \
     && make \
     && make install \
     && cd / \
+    && rm -rf /tmp/*
+
+RUN curl -L https://github.com/google/protobuf/archive/v3.1.0.tar.gz -o /tmp/protobuf-v3.1.0.tar.gz \
+    && cd /tmp \
+    && tar xvf protobuf-v3.1.0.tar.gz \
+    && cd protobuf-3.1.0 \
+    && mkdir build \
+    && cd build \
+    && cmake \
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+        -Dprotobuf_BUILD_TESTS=OFF \
+        -DBUILD_SHARED_LIBS=OFF \
+        ../cmake \
+    && make \
+    && make install \
+    && cd / \
+    && rm -rf /tmp/*
+
+RUN cd /tmp \
+    && curl -L https://www.hdfgroup.org/package/bzip2/?wpdmdl=4300 -o hdf5-1.10.1.tar.bz2 \
+    && tar xfa hdf5-1.10.1.tar.bz2 \
+    && cd hdf5-* \
+    && mkdir build \
+    && cd build \
+    && cmake \
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+        -DCMAKE_INSTALL_PREFIX=/usr/local \
+        -DBUILD_SHARED_LIBS=OFF \
+        -DBUILD_TESTING=OFF \
+        -DHDF5_BUILD_TOOLS=OFF \
+        -DHDF5_BUILD_CPP_LIB=OFF \
+        .. \
+    && make \
+    && make install \
+    && cd / \
+    && rm -rf /tmp/*
+
+RUN cd /tmp \
+    && curl -L https://www.libarchive.org/downloads/libarchive-3.3.2.tar.gz -o libarchive-3.3.2.tar.gz \
+    && tar xfa libarchive-3.3.2.tar.gz \
+    && mkdir libarchive-build \
+    && cd libarchive-build \
+    && cmake \
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+        -DENABLE_NETTLE=FALSE \
+        -DENABLE_OPENSSL=FALSE \
+        -DENABLE_LZO=FALSE \
+        -DENABLE_LZMA=FALSE \
+        -DENABLE_BZip2=FALSE \
+        -DENABLE_LIBXML2=FALSE \
+        -DENABLE_EXPAT=FALSE \
+        -DENABLE_PCREPOSIX=FALSE \
+        -DENABLE_LibGCC=FALSE \
+        -DENABLE_CNG=FALSE \
+        -DENABLE_TAR=FALSE \
+        -DENABLE_TAR_SHARED=FALSE \
+        -DENABLE_CPIO=FALSE \
+        -DENABLE_CPIO_SHARED=FALSE \
+        -DENABLE_CAT=FALSE \
+        -DENABLE_CAT_SHARED=FALSE \
+        -DENABLE_XATTR=FALSE \
+        -DENABLE_ACL=FALSE \
+        -DENABLE_ICONV=FALSE \
+        -DENABLE_TEST=FALSE \
+        ../libarchive-3.3.2 \
+    && make \
+    && make install \
+    && rm -f /usr/local/lib/libarchive*.so \
+    && cd / \
+    && rm -rf /tmp/*
 
 RUN cd /tmp \
     && wget http://nixos.org/releases/patchelf/patchelf-0.9/patchelf-0.9.tar.bz2 \
