@@ -126,4 +126,17 @@ RUN wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh \
      && bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/miniconda3 \
      && rm -rf Miniconda3-latest-Linux-x86_64.sh
 ENV PATH /opt/miniconda3/bin:$PATH
+
+ADD python/requirements.txt /tmp/deps/
+RUN set -xe ; for PY in 2.7 3.4 3.5 3.6 \
+    ; do echo Setup Python $PY \
+    ; conda create -y -n py$PY python=$PY \
+    ; source activate py$PY \
+    ; conda install -y virtualenv \
+    ; (pip install -U -r /tmp/deps/requirements.txt || true)\
+    ; pip install -U "Cython<0.25" \
+    ; pip install -U "numpy<1.11" \
+    ; source deactivate \
+    ; done
+
 RUN chmod -R ugo+w /opt/miniconda3
