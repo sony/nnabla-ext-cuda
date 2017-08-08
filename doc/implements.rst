@@ -176,6 +176,9 @@ Function Implements
      - 
    * - HuberLoss
      - x
+     -
+   * - EpsilonInsensitiveLoss
+     - x
      - 
    * - SigmoidCrossEntropy
      - x
