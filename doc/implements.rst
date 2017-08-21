@@ -185,6 +185,9 @@ Function Implements
      - 
    * - SquaredError
      - x
+     -
+   * - AbsoluteError
+     - x
      - 
    * - KLMultinomial
      - 
