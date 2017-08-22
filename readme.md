@@ -1,7 +1,7 @@
-# A CUDA Extension of NNabla
+# A CUDA Extension of Neural Network Libraries
 
 This repository provides an official CUDA/cuDNN-accelerated extension of the
-[NNabla](https://github.com/sony/nnabla/) deep learning framework.
+[Neural Network Libraries](https://github.com/sony/nnabla/) deep learning framework.
 
 In order to use it, the default context needs to be changed from `'cpu'` to
 `'cuda.cudnn'`:
