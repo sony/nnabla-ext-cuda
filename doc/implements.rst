@@ -227,7 +227,7 @@ Function Implements
      - 
    * - Reshape
      - 
-     - 
+     -
    * - Slice
      - x
      - 
@@ -240,6 +240,8 @@ Function Implements
    * - MatrixDiag
      - x
      -
+   * - MatrixDiagPart
+     - x
      - 
    * - BatchNormalization
      - x
