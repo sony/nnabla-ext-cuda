@@ -236,6 +236,10 @@ Function Implements
      - 
    * - Broadcast
      - x
+     -
+   * - MatrixDiag
+     - x
+     -
      - 
    * - BatchNormalization
      - x
