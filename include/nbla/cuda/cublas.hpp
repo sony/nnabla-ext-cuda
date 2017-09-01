@@ -14,6 +14,9 @@
 
 #ifndef __NBLA_CUBLAS_HPP__
 #define __NBLA_CUBLAS_HPP__
+
+#include <cublas_v2.h>
+
 namespace nbla {
 
 template <typename T>
@@ -37,5 +40,13 @@ void cublas_gemm_batched(cublasHandle_t handle, cublasOperation_t op_x,
                          const T *alpha, const T **x, int lda, const T **y,
                          int ldb, const T *beta, T **z, int ldc,
                          int batchCount);
+
+template <typename T>
+void cublas_gemm_strided_batched(cublasHandle_t handle, cublasOperation_t op_x,
+                                 cublasOperation_t op_y, int m, int n, int k,
+                                 const T *alpha, const T *x, int lda,
+                                 int stride_a, const T *y, int ldb,
+                                 int stride_b, const T *beta, T *z, int ldc,
+                                 int stride_c, int batchCount);
 }
 #endif
