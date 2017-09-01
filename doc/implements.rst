@@ -227,7 +227,7 @@ Function Implements
      - 
    * - Reshape
      - 
-     - 
+     -
    * - Slice
      - x
      - 
@@ -235,6 +235,12 @@ Function Implements
      - x
      - 
    * - Broadcast
+     - x
+     -
+   * - MatrixDiag
+     - x
+     -
+   * - MatrixDiagPart
      - x
      - 
    * - BatchNormalization
