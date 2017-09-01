@@ -21,6 +21,61 @@
 
 namespace nbla {
 
+/*
+  NOTE: As a computational backend, cublas<t>gemmBatched is used if cublas<8,
+  otherwise cublas<t>gemmStrdiedBatched
+*/
+
+// ----------------------------------------------------------------------
+// With cublas<t>gemmStridedBatched
+// ----------------------------------------------------------------------
+#if CUDA_VERSION >= 8000
+template <typename T>
+void BatchMatmulCuda<T>::forward_impl(const Variables &inputs,
+                                      const Variables &outputs) {
+  cuda_set_device(this->device_);
+  const T *a = inputs[0]->get_data_pointer<T>(this->ctx_);
+  const T *b = inputs[1]->get_data_pointer<T>(this->ctx_);
+  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
+  cuda_gemm_strided_batched<T>(this->device_, y, true, a, this->col_a_,
+                               this->row_a_, !this->transpose_a_, b,
+                               this->col_b_, this->row_b_, !this->transpose_b_,
+                               (T)1, (T)0, this->samples_);
+}
+
+template <typename T>
+void BatchMatmulCuda<T>::backward_impl(const Variables &inputs,
+                                       const Variables &outputs,
+                                       const vector<bool> &propagate_down,
+                                       const vector<bool> &accum) {
+  if (!(propagate_down[0] || propagate_down[1])) {
+    return;
+  }
+  const T *dy = outputs[0]->get_grad_pointer<T>(this->ctx_);
+  if (propagate_down[0]) {
+    const T *b = inputs[1]->get_data_pointer<T>(this->ctx_);
+    T *da = inputs[0]->cast_grad_and_get_pointer<T>(this->ctx_);
+    const T beta = accum[0] ? 1 : 0;
+    cuda_gemm_strided_batched<T>(this->device_, da, !this->transpose_a_, dy,
+                                 this->col_y_, this->row_y_, true, b,
+                                 this->col_b_, this->row_b_, this->transpose_b_,
+                                 (T)1, beta, this->samples_);
+  }
+  if (propagate_down[1]) {
+    const T *a = inputs[0]->get_data_pointer<T>(this->ctx_);
+    T *db = inputs[1]->cast_grad_and_get_pointer<T>(this->ctx_);
+    const T beta = accum[1] ? 1 : 0;
+    cuda_gemm_strided_batched<T>(this->device_, db, !this->transpose_b_, a,
+                                 this->col_a_, this->row_a_, this->transpose_a_,
+                                 dy, this->col_y_, this->row_y_, true, (T)1,
+                                 beta, this->samples_);
+  }
+}
+
+// ----------------------------------------------------------------------
+// With cublas<t>gemmBatched
+// ----------------------------------------------------------------------
+#else // of `#if CUDA_VERSION >= 8000
 // Sets head pointers of matrices in mini-batch.
 template <typename T>
 __global__ void kernel_set_batch_pointers(int size, int stride, T **ptr,
@@ -90,6 +145,7 @@ void BatchMatmulCuda<T>::backward_impl(const Variables &inputs,
                          this->row_y_, true, (T)1, beta, this->samples_);
   }
 }
+#endif // of `#if CUDA_VERSION >= 8000
 
 // template instantiation
 template class BatchMatmulCuda<float>;
