@@ -6,8 +6,22 @@ project (nbla C CXX)
 ###############################################################################
 option(BUILD_CPP_LIB "Build C++ Library" ON)
 option(BUILD_CPP_TEST "Build testing" OFF)
-
 option(BUILD_PYTHON_PACKAGE "Build python package" ON)
+
+if(NOT IS_DIRECTORY ${NNABLA_DIR})
+  message(FATAL_ERROR "Invalid NNABLA_DIR :[${NNABLA_DIR}]")
+endif()
+if(NOT IS_ABSOLUTE ${NNABLA_DIR})
+  get_filename_component(NNABLA_DIR ${CMAKE_CURRENT_BINARY_DIR}/${NNABLA_DIR} ABSOLUTE)
+endif()
+
+if(NOT EXISTS ${CPPLIB_LIBRARY})
+  message(FATAL_ERROR "Invalid CPPLIB_LIBRARY :[${CPPLIB_LIBRARY}]")
+endif()
+if(NOT IS_ABSOLUTE ${CPPLIB_LIBRARY})
+  get_filename_component(CPPLIB_LIBRARY ${CMAKE_CURRENT_BINARY_DIR}/${CPPLIB_LIBRARY} ABSOLUTE)
+endif()
+
 
 ###############################################################################
 # Settings
@@ -19,40 +33,19 @@ endif()
 find_program(PYTHON_COMMAND ${PYTHON_COMMAND_NAME})
 
 ###############################################################################
-# Preprocessing
-###############################################################################
-execute_process(
-  COMMAND ${PYTHON_COMMAND}
-          ${PROJECT_SOURCE_DIR}/build-tools/cmake/get_nnabla_dir.py
-          OUTPUT_VARIABLE NBLA_DIR_RAW)
-string(STRIP ${NBLA_DIR_RAW} NBLA_DIR)
-
-execute_process(
-  COMMAND ${PYTHON_COMMAND}
-          ${PROJECT_SOURCE_DIR}/build-tools/cmake/get_nnabla_cpu_lib.py
-          OUTPUT_VARIABLE NBLA_CPU_LIBRARY_FILE_RAW)
-string(STRIP ${NBLA_CPU_LIBRARY_FILE_RAW} NBLA_CPU_LIBRARY_FILE)
-
-execute_process(
-  COMMAND ${PYTHON_COMMAND}
-          ${NBLA_DIR}/build-tools/cmake/get_setup_build_dir.py
-          OUTPUT_VARIABLE NBLA_SETUP_LIB_DIR_RAW)
-string(STRIP ${NBLA_SETUP_LIB_DIR_RAW} NBLA_SETUP_LIB_DIR)
-  
-###############################################################################
 # General settings
 ###############################################################################
 # Using cmake scripts and modules
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/build-tools/cmake/Modules)
-include(${NBLA_DIR}/build-tools/cmake/Utils.cmake)
+include(${NNABLA_DIR}/build-tools/cmake/Utils.cmake)
 
 ###############################################################################
 # Code generator
 ###############################################################################
 if (MSVC)
-  set(ENV{PYTHONPATH} ${NBLA_DIR}\\build-tools\\code_generator;$ENV{PYTHONPATH})
+  set(ENV{PYTHONPATH} ${NNABLA_DIR}\\build-tools\\code_generator;$ENV{PYTHONPATH})
 else()
-  set(ENV{PYTHONPATH} ${NBLA_DIR}/build-tools/code_generator:$ENV{PYTHONPATH})
+  set(ENV{PYTHONPATH} ${NNABLA_DIR}/build-tools/code_generator:$ENV{PYTHONPATH})
 endif()
 
 execute_process(
@@ -108,7 +101,7 @@ if(BUILD_CPP_LIB)
   # includes
   list(APPEND NBLA_INCLUDE_DIRS
     ${PROJECT_SOURCE_DIR}/include
-    ${NBLA_DIR}/include
+    ${NNABLA_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/eigen-eigen-de14376a69f8)
   include_directories(${NBLA_INCLUDE_DIRS};${PROJECT_BINARY_DIR})
   
@@ -171,7 +164,7 @@ if(BUILD_CPP_LIB)
   # file(GENERATE ...) for each build config, we generate setup.cfg files for each
   # build type with suffix `-<config>`. You can switch the build type by replacing
   # the setup.cfg file by setup.cfg-<config>. The default setup.cfg is for Release build.
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/python/setup.cfg.in
+  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/python/setup.cfg.build-together.in
     ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.cfg.in.configured)
   
   file(GENERATE OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.cfg-$<CONFIG>
@@ -191,6 +184,31 @@ endif() # BUILD_CPP_LIB
 # Python API
 ###############################################################################
 if(BUILD_PYTHON_PACKAGE)
+
+  if(NOT BUILD_CPP_LIB)
+    if(NOT IS_DIRECTORY ${CPPLIB_BUILD_DIR})
+      message(FATAL_ERROR "Invalid CPPLIB_BUILD_DIR :[${CPPLIB_BUILD_DIR}]")
+    endif()
+    if(NOT EXISTS ${CPPLIB_LIBRARY})
+      message(FATAL_ERROR "Invalid CPPLIB_LIBRARY :[${CPPLIB_LIBRARY}]")
+    endif()
+    if(NOT EXISTS ${CPPLIB_CUDA_LIBRARY})
+      message(FATAL_ERROR "Invalid CPPLIB_LIBRARY :[${CPPLIB_CUDA_LIBRARY}]")
+    endif()
+    
+    set(CPPLIB_LIBRARY_NAME "nnabla")
+    set(CPPLIB_TARGET_FILE ${CPPLIB_LIBRARY})
+    get_filename_component(CPPLIB_TARGET_FILE_NAME ${CPPLIB_TARGET_FILE} NAME)
+
+    set(CPPLIB_CUDA_LIBRARY_NAME "nnabla_cuda")
+    set(CPPLIB_CUDA_TARGET_FILE ${CPPLIB_CUDA_LIBRARY})
+    get_filename_component(CPPLIB_CUDA_TARGET_FILE_NAME ${CPPLIB_CUDA_TARGET_FILE} NAME)
+    
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/python/setup.cfg.build-wheel.in
+      ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.cfg)
+  endif()
+
+
   set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES "build")
   # http://stackoverflow.com/questions/13298504/using-cmake-with-setup-py
   
@@ -212,7 +230,7 @@ if(BUILD_PYTHON_PACKAGE)
     add_custom_command(OUTPUT ${NBLA_PYTHON_OUTPUT_WHEEL}
       COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_BINARY_DIR}/dist/*.whl
       COMMAND ${PYTHON_COMMAND} ${NBLA_PYTHON_SETUP} -q bdist_wheel
-      COMMAND ${NBLA_DIR}/build-tools/auditwheel-nnabla ${CMAKE_BINARY_DIR}/dist/*-linux_*.whl
+      COMMAND ${NNABLA_DIR}/build-tools/auditwheel-nnabla ${CMAKE_BINARY_DIR}/dist/*-linux_*.whl
       COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_BINARY_DIR}/dist/*-linux*.whl
       COMMAND ${CMAKE_COMMAND} -E touch ${NBLA_PYTHON_OUTPUT_WHEEL}
       DEPENDS ${NBLA_PYTHON_DEPS} ${NBLA_PYTHON_OUTPUT_BUILD})
@@ -222,7 +240,14 @@ if(BUILD_PYTHON_PACKAGE)
       COMMAND ${CMAKE_COMMAND} -E touch ${NBLA_PYTHON_OUTPUT_WHEEL}
       DEPENDS ${NBLA_PYTHON_DEPS} ${NBLA_PYTHON_OUTPUT_BUILD})
   endif()
-  add_custom_target(wheel
-    DEPENDS ${NBLA_PYTHON_OUTPUT_WHEEL} ${NBLA_PYTHON_OUTPUT_BUILD})
+
+  if(BUILD_CPP_LIB)
+    add_custom_target(wheel ALL DEPENDS
+      ${NBLA_PYTHON_OUTPUT_WHEEL} ${NBLA_PYTHON_OUTPUT_BUILD})
+    add_dependencies(wheel ${NBLA_CUDA_LIBRARY_NAME})
+  else()
+    add_custom_target(wheel DEPENDS
+      ${NBLA_PYTHON_OUTPUT_WHEEL} ${NBLA_PYTHON_OUTPUT_BUILD})
+  endif()
 
 endif() # BUILD_PYTHON_PACKAGE
