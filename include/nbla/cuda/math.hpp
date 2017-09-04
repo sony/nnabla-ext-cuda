@@ -14,7 +14,10 @@
 
 #ifndef __NBLA_CUDA_MATH_HPP__
 #define __NBLA_CUDA_MATH_HPP__
+
+#include <nbla/common.hpp>
 #include <nbla/cuda/cublas.hpp>
+#include <nbla/cuda/cuda.hpp>
 
 namespace nbla {
 
@@ -64,5 +67,58 @@ void cuda_dot(int device, T *z, const T *x, int n, const T *y, int incx = 1,
   cublasHandle_t handle = SingletonManager::get<Cuda>()->cublas_handle(device);
   cublas_dot<T>(handle, n, x, incx, y, incy, z);
 }
+
+/**
+*/
+template <typename T>
+void cuda_gemm_batched(int device, T **z, bool transpose_z, const T **x,
+                       int row_x, int col_x, bool transpose_x, const T **y,
+                       int row_y, int col_y, bool transpose_y, T alpha, T beta,
+                       int batch_count) {
+  if (transpose_z) {
+    cuda_gemm_batched<T>(device, z, false, y, row_y, col_y, !transpose_y, x,
+                         row_x, col_x, !transpose_x, alpha, beta, batch_count);
+    return;
+  }
+  cublasHandle_t handle = SingletonManager::get<Cuda>()->cublas_handle(device);
+  cublasOperation_t op_x = transpose_x ? CUBLAS_OP_T : CUBLAS_OP_N;
+  cublasOperation_t op_y = transpose_y ? CUBLAS_OP_T : CUBLAS_OP_N;
+  int m = transpose_x ? col_x : row_x;
+  int n = transpose_y ? row_y : col_y;
+  int k = transpose_x ? row_x : col_x;
+  int l = transpose_y ? col_y : row_y;
+  NBLA_CHECK(l == k, error_code::unclassified, "");
+  cublas_gemm_batched<T>(handle, op_x, op_y, m, n, k, &alpha, x, row_x, y,
+                         row_y, &beta, z, m, batch_count);
+}
+
+#if CUDA_VERSION >= 8000
+/**
+*/
+template <typename T>
+void cuda_gemm_strided_batched(int device, T *z, bool transpose_z, const T *x,
+                               int row_x, int col_x, bool transpose_x,
+                               const T *y, int row_y, int col_y,
+                               bool transpose_y, T alpha, T beta,
+                               int batch_count) {
+  if (transpose_z) {
+    cuda_gemm_strided_batched<T>(device, z, false, y, row_y, col_y,
+                                 !transpose_y, x, row_x, col_x, !transpose_x,
+                                 alpha, beta, batch_count);
+    return;
+  }
+  cublasHandle_t handle = SingletonManager::get<Cuda>()->cublas_handle(device);
+  cublasOperation_t op_x = transpose_x ? CUBLAS_OP_T : CUBLAS_OP_N;
+  cublasOperation_t op_y = transpose_y ? CUBLAS_OP_T : CUBLAS_OP_N;
+  int m = transpose_x ? col_x : row_x;
+  int n = transpose_y ? row_y : col_y;
+  int k = transpose_x ? row_x : col_x;
+  int l = transpose_y ? col_y : row_y;
+  NBLA_CHECK(l == k, error_code::unclassified, "");
+  cublas_gemm_strided_batched<T>(handle, op_x, op_y, m, n, k, &alpha, x, row_x,
+                                 row_x * col_x, y, row_y, row_y * col_y, &beta,
+                                 z, m, m * n, batch_count);
+}
+#endif
 }
 #endif

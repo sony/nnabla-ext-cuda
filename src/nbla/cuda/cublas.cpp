@@ -68,4 +68,48 @@ void cublas_dot<double>(cublasHandle_t handle, int n, const double *x, int incx,
                         const double *y, int incy, double *out) {
   NBLA_CUBLAS_CHECK(cublasDdot(handle, n, x, incx, y, incy, out));
 }
+
+template <>
+void cublas_gemm_batched<float>(cublasHandle_t handle, cublasOperation_t op_x,
+                                cublasOperation_t op_y, int m, int n, int k,
+                                const float *alpha, const float **x, int lda,
+                                const float **y, int ldb, const float *beta,
+                                float **z, int ldc, int batch_count) {
+  NBLA_CUBLAS_CHECK(cublasSgemmBatched(handle, op_x, op_y, m, n, k, alpha, x,
+                                       lda, y, ldb, beta, z, ldc, batch_count));
+}
+
+template <>
+void cublas_gemm_batched<double>(cublasHandle_t handle, cublasOperation_t op_x,
+                                 cublasOperation_t op_y, int m, int n, int k,
+                                 const double *alpha, const double **x, int lda,
+                                 const double **y, int ldb, const double *beta,
+                                 double **z, int ldc, int batch_count) {
+  NBLA_CUBLAS_CHECK(cublasDgemmBatched(handle, op_x, op_y, m, n, k, alpha, x,
+                                       lda, y, ldb, beta, z, ldc, batch_count));
+}
+
+#if CUDA_VERSION >= 8000
+template <>
+void cublas_gemm_strided_batched<float>(
+    cublasHandle_t handle, cublasOperation_t op_x, cublasOperation_t op_y,
+    int m, int n, int k, const float *alpha, const float *x, int lda,
+    int stride_a, const float *y, int ldb, int stride_b, const float *beta,
+    float *z, int ldc, int stride_c, int batch_count) {
+  NBLA_CUBLAS_CHECK(cublasSgemmStridedBatched(
+      handle, op_x, op_y, m, n, k, alpha, x, lda, stride_a, y, ldb, stride_b,
+      beta, z, ldc, stride_c, batch_count));
+}
+
+template <>
+void cublas_gemm_strided_batched<double>(
+    cublasHandle_t handle, cublasOperation_t op_x, cublasOperation_t op_y,
+    int m, int n, int k, const double *alpha, const double *x, int lda,
+    int stride_a, const double *y, int ldb, int stride_b, const double *beta,
+    double *z, int ldc, int stride_c, int batch_count) {
+  NBLA_CUBLAS_CHECK(cublasDgemmStridedBatched(
+      handle, op_x, op_y, m, n, k, alpha, x, lda, stride_a, y, ldb, stride_b,
+      beta, z, ldc, stride_c, batch_count));
+}
+#endif
 }

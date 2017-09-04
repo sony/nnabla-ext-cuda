@@ -261,6 +261,9 @@ Function Implements
    * - Identity
      - x
      - 
+   * - BatchMatmul
+     - x
+     - 
    * - Embed
      - x
      - 
