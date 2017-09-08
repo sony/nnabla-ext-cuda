@@ -164,7 +164,7 @@ if(BUILD_CPP_LIB)
   # file(GENERATE ...) for each build config, we generate setup.cfg files for each
   # build type with suffix `-<config>`. You can switch the build type by replacing
   # the setup.cfg file by setup.cfg-<config>. The default setup.cfg is for Release build.
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/python/setup.cfg.build-together.in
+  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/python/setup.cfg.in
     ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.cfg.in.configured)
   
   file(GENERATE OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.cfg-$<CONFIG>
