@@ -4,7 +4,24 @@ cmake_minimum_required (VERSION 3.1)
 project (nbla C CXX)
 
 ###############################################################################
-option(BUILD_PYTHON_API "Build python API" ON)
+option(BUILD_CPP_LIB "Build C++ Library" ON)
+option(BUILD_CPP_TEST "Build testing" OFF)
+option(BUILD_PYTHON_PACKAGE "Build python package" ON)
+
+if(NOT IS_DIRECTORY ${NNABLA_DIR})
+  message(FATAL_ERROR "Invalid NNABLA_DIR :[${NNABLA_DIR}]")
+endif()
+if(NOT IS_ABSOLUTE ${NNABLA_DIR})
+  get_filename_component(NNABLA_DIR ${CMAKE_CURRENT_BINARY_DIR}/${NNABLA_DIR} ABSOLUTE)
+endif()
+
+if(NOT EXISTS ${CPPLIB_LIBRARY})
+  message(FATAL_ERROR "Invalid CPPLIB_LIBRARY :[${CPPLIB_LIBRARY}]")
+endif()
+if(NOT IS_ABSOLUTE ${CPPLIB_LIBRARY})
+  get_filename_component(CPPLIB_LIBRARY ${CMAKE_CURRENT_BINARY_DIR}/${CPPLIB_LIBRARY} ABSOLUTE)
+endif()
+
 
 ###############################################################################
 # Settings
@@ -16,155 +33,115 @@ endif()
 find_program(PYTHON_COMMAND ${PYTHON_COMMAND_NAME})
 
 ###############################################################################
-# Third party libraries
+# General settings
 ###############################################################################
-add_subdirectory(third_party)
-
-###############################################################################
-# Preprocessing
-###############################################################################
-execute_process(
-  COMMAND ${PYTHON_COMMAND}
-          ${PROJECT_SOURCE_DIR}/build-tools/cmake/get_nnabla_dir.py
-          OUTPUT_VARIABLE NBLA_DIR_RAW)
-string(STRIP ${NBLA_DIR_RAW} NBLA_DIR)
-
-execute_process(
-  COMMAND ${PYTHON_COMMAND}
-          ${PROJECT_SOURCE_DIR}/build-tools/cmake/get_nnabla_cpu_lib.py
-          OUTPUT_VARIABLE NBLA_CPU_LIBRARY_FILE_RAW)
-string(STRIP ${NBLA_CPU_LIBRARY_FILE_RAW} NBLA_CPU_LIBRARY_FILE)
-
-execute_process(
-  COMMAND ${PYTHON_COMMAND}
-          ${NBLA_DIR}/build-tools/cmake/get_setup_build_dir.py
-          OUTPUT_VARIABLE NBLA_SETUP_LIB_DIR_RAW)
-string(STRIP ${NBLA_SETUP_LIB_DIR_RAW} NBLA_SETUP_LIB_DIR)
+# Using cmake scripts and modules
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/build-tools/cmake/Modules)
+include(${NNABLA_DIR}/build-tools/cmake/Utils.cmake)
 
 ###############################################################################
 # Code generator
 ###############################################################################
 if (MSVC)
-  set(ENV{PYTHONPATH} ${NBLA_DIR}\\build-tools\\code_generator;$ENV{PYTHONPATH})
+  set(ENV{PYTHONPATH} ${NNABLA_DIR}\\build-tools\\code_generator;$ENV{PYTHONPATH})
 else()
-  set(ENV{PYTHONPATH} ${NBLA_DIR}/build-tools/code_generator:$ENV{PYTHONPATH})
+  set(ENV{PYTHONPATH} ${NNABLA_DIR}/build-tools/code_generator:$ENV{PYTHONPATH})
 endif()
 
 execute_process(
   COMMAND ${PYTHON_COMMAND}
           ${CMAKE_CURRENT_SOURCE_DIR}/build-tools/code_generator/generate.py
           OUTPUT_VARIABLE TEST)
-###############################################################################
 
-if (NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "Release" CACHE STRING
-    "Build type release is default on single-configuration build system like GnuMake."
-    FORCE)
-endif()
-
-###############################################################################
-# General settings
-###############################################################################
-# Using cmake scripts and modules
-list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/build-tools/cmake/Modules)
-include(${NBLA_DIR}/build-tools/cmake/Utils.cmake)
-
-# Flags
-if(MSVC)
-  # Force to always compile with W4
-  if(CMAKE_CXX_FLAGS MATCHES "/W[0-4]")
-    string(REGEX REPLACE "/W[0-4]" "/W0" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-  else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W0")
+if(BUILD_CPP_LIB)
+  ###############################################################################
+  # Third party libraries
+  ###############################################################################
+  add_subdirectory(third_party)
+  
+  if (NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING
+      "Build type release is default on single-configuration build system like GnuMake."
+      FORCE)
   endif()
-endif()
-
-if(UNIX OR APPLE)
-  find_program(CCACHE_FOUND ccache)
-  if(CCACHE_FOUND)
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
-  endif(CCACHE_FOUND)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Wall")
-endif()
-nbla_warnings_disable(CMAKE_CXX_FLAGS -Wno-sign-compare -Wno-uninitialized /wd4099)
-
-# Setting output directory naively
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-if (WIN32)
-  set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-  set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-else()
-  set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-  set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-endif()
-
-###############################################################################
-# C++ core
-###############################################################################
-# includes
-list(APPEND NBLA_INCLUDE_DIRS
-  ${PROJECT_SOURCE_DIR}/include
-  ${NBLA_DIR}/include
-  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/eigen-eigen-de14376a69f8)
-include_directories(${NBLA_INCLUDE_DIRS};${PROJECT_BINARY_DIR})
-
-###############################################################################
-# C++ CUDA core
-###############################################################################
-add_definitions(-DWITH_CUDA)
-add_definitions(-DWITH_CUDNN)
-add_subdirectory(src/nbla/cuda)
-
-###############################################################################
-# C++ Testing
-###############################################################################
-if(BUILD_TEST)
+  
+  # Flags
+  if(MSVC)
+    # Force to always compile with W4
+    if(CMAKE_CXX_FLAGS MATCHES "/W[0-4]")
+      string(REGEX REPLACE "/W[0-4]" "/W0" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    else()
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W0")
+    endif()
+  endif()
+  
+  if(UNIX OR APPLE)
+    find_program(CCACHE_FOUND ccache)
+    if(CCACHE_FOUND)
+      set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+      set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
+    endif(CCACHE_FOUND)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Wall")
+  endif()
+  nbla_warnings_disable(CMAKE_CXX_FLAGS -Wno-sign-compare -Wno-uninitialized /wd4099)
+  
+  # Setting output directory naively
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
   if (WIN32)
-    set(BUILD_SHARED_LIBS ON CACHE BOOL
-      "Force to build gtest with dll on Windows.")
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+  else()
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
   endif()
-  enable_testing()
-  include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
-  include_directories(${NBLA_CUDA_INCLUDE_DIRS})
-
-  file(GLOB NBLA_TEST_SOURCES src/nbla/cuda/test/test_*.cpp)
-  add_executable(clibtest ${NBLA_TEST_SOURCES})
-  add_dependencies(clibtest ${NBLA_LIBRARY_NAME} ${NBLA_CUDA_LIBRARY_NAME})
-  target_link_libraries(clibtest gtest gtest_main)
-  target_link_libraries(clibtest nnabla)
-
-  add_dependencies(clibtest ${NBLA_CUDA_LIBRARY_NAME})
-  target_link_libraries(clibtest ${NBLA_CUDA_LIBRARY_NAME})
-  target_link_libraries(clibtest ${NBLA_CUDA_LINKER_LIBS})
-
-  set_property(TARGET clibtest PROPERTY CXX_STANDARD 11)
-  nbla_exclude_from_all(clibtest)  # Exclude target from all or default build
-  add_test(NAME clibtest COMMAND clibtest)
-endif()
-
-###############################################################################
-# Python API
-###############################################################################
-if(BUILD_PYTHON_API)
-  set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES "build")
-  # http://stackoverflow.com/questions/13298504/using-cmake-with-setup-py
   
-  file(GLOB_RECURSE NBLA_PYTHON_DEPS
-    ${CMAKE_CURRENT_SOURCE_DIR}/python/src/*.py
-    ${CMAKE_CURRENT_SOURCE_DIR}/python/src/*.pyx
-    ${CMAKE_CURRENT_SOURCE_DIR}/python/src/*.pxd)
+  ###############################################################################
+  # C++ core
+  ###############################################################################
+  # includes
+  list(APPEND NBLA_INCLUDE_DIRS
+    ${PROJECT_SOURCE_DIR}/include
+    ${NNABLA_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/eigen-eigen-de14376a69f8)
+  include_directories(${NBLA_INCLUDE_DIRS};${PROJECT_BINARY_DIR})
   
-  file(GLOB_RECURSE NBLA_PYTHON_BUILD_OUTPUT_CYTHON
-    ${CMAKE_CURRENT_SOURCE_DIR}/python/src/*.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/python/src/*.h)
+  ###############################################################################
+  # C++ CUDA core
+  ###############################################################################
+  add_definitions(-DWITH_CUDA)
+  add_definitions(-DWITH_CUDNN)
+  add_subdirectory(src/nbla/cuda)
+
+  ###############################################################################
+  # C++ Testing
+  ###############################################################################
+  if(BUILD_CPP_TEST)
+    if (WIN32)
+      set(BUILD_SHARED_LIBS ON CACHE BOOL
+        "Force to build gtest with dll on Windows.")
+    endif()
+    enable_testing()
+    include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
+    include_directories(${NBLA_CUDA_INCLUDE_DIRS})
   
-  set(NBLA_PYTHON_SETUP ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py)
-  set(NBLA_PYTHON_OUTPUT ${CMAKE_BINARY_DIR}/build)
-  set(NBLA_PYTHON_OUTPUT_BUILD ${NBLA_PYTHON_OUTPUT}/.timestamp.build)
-  set(NBLA_PYTHON_OUTPUT_BDIST ${NBLA_PYTHON_OUTPUT}/.timestamp.bdist)
+    file(GLOB NBLA_TEST_SOURCES src/nbla/cuda/test/test_*.cpp)
+    add_executable(clibtest ${NBLA_TEST_SOURCES})
+    add_dependencies(clibtest ${NBLA_LIBRARY_NAME} ${NBLA_CUDA_LIBRARY_NAME})
+    target_link_libraries(clibtest gtest gtest_main)
+    target_link_libraries(clibtest nnabla)
   
+    add_dependencies(clibtest ${NBLA_CUDA_LIBRARY_NAME})
+    target_link_libraries(clibtest ${NBLA_CUDA_LIBRARY_NAME})
+    target_link_libraries(clibtest ${NBLA_CUDA_LINKER_LIBS})
+  
+    set_property(TARGET clibtest PROPERTY CXX_STANDARD 11)
+    nbla_exclude_from_all(clibtest)  # Exclude target from all or default build
+    add_test(NAME clibtest COMMAND clibtest)
+  endif()
+
+  ###############################################################################
   # Generate setup.cfg
+  ###############################################################################
   if (NOT (DEFINED NBLA_PYTHON_BUILD_EXT_COMPILER))
     if (WIN32)
       set(NBLA_PYTHON_BUILD_EXT_COMPILER msvc)
@@ -180,7 +157,7 @@ if(BUILD_PYTHON_API)
       " compiler by `python setup.py build_ext --help-compiler`.")
   endif()
   set(NBLA_PYTHON_BUILD_DIR ${CMAKE_BINARY_DIR})
-  
+
   # Two-step configure_file generation with generate-time property (target_file_name).
   # http://cmake.3232098.n2.nabble.com/cmp0026-file-GENERATE-and-configure-file-td7590275.html
   # Since multiple-configuration build system like Visual Studio requires
@@ -200,24 +177,77 @@ if(BUILD_PYTHON_API)
   set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.cfg
     ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.cfg-$<CONFIG>)
+
+endif() # BUILD_CPP_LIB
+
+###############################################################################
+# Python API
+###############################################################################
+if(BUILD_PYTHON_PACKAGE)
+
+  if(NOT BUILD_CPP_LIB)
+    if(NOT IS_DIRECTORY ${CPPLIB_BUILD_DIR})
+      message(FATAL_ERROR "Invalid CPPLIB_BUILD_DIR :[${CPPLIB_BUILD_DIR}]")
+    endif()
+    if(NOT EXISTS ${CPPLIB_LIBRARY})
+      message(FATAL_ERROR "Invalid CPPLIB_LIBRARY :[${CPPLIB_LIBRARY}]")
+    endif()
+    if(NOT EXISTS ${CPPLIB_CUDA_LIBRARY})
+      message(FATAL_ERROR "Invalid CPPLIB_LIBRARY :[${CPPLIB_CUDA_LIBRARY}]")
+    endif()
+    
+    set(CPPLIB_LIBRARY_NAME "nnabla")
+    set(CPPLIB_TARGET_FILE ${CPPLIB_LIBRARY})
+    get_filename_component(CPPLIB_TARGET_FILE_NAME ${CPPLIB_TARGET_FILE} NAME)
+
+    set(CPPLIB_CUDA_LIBRARY_NAME "nnabla_cuda")
+    set(CPPLIB_CUDA_TARGET_FILE ${CPPLIB_CUDA_LIBRARY})
+    get_filename_component(CPPLIB_CUDA_TARGET_FILE_NAME ${CPPLIB_CUDA_TARGET_FILE} NAME)
+    
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/python/setup.cfg.build-wheel.in
+      ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.cfg)
+  endif()
+
+
+  set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES "build")
+  # http://stackoverflow.com/questions/13298504/using-cmake-with-setup-py
   
-  # Build
-  add_custom_command(OUTPUT ${NBLA_PYTHON_OUTPUT_BUILD}
-    COMMAND ${CMAKE_COMMAND} -E remove -f ${NBLA_PYTHON_OUTPUT_CYTHON}
-    COMMAND ${PYTHON_COMMAND} ${NBLA_PYTHON_SETUP} build
-    COMMAND ${CMAKE_COMMAND} -E touch ${NBLA_PYTHON_OUTPUT_BUILD}
-    DEPENDS ${NBLA_PYTHON_DEPS} ${NBLA_LIBRARY_NAME} ${NBLA_CUDA_LIBRARY_NAME}
-    ${NBLA_PYTHON_SETUP})
+  file(GLOB_RECURSE NBLA_PYTHON_DEPS
+    ${CMAKE_CURRENT_SOURCE_DIR}/python/src/*.py
+    ${CMAKE_CURRENT_SOURCE_DIR}/python/src/*.pyx
+    ${CMAKE_CURRENT_SOURCE_DIR}/python/src/*.pxd)
   
-  add_custom_target(python ALL DEPENDS ${NBLA_PYTHON_OUTPUT_BUILD})
-  add_dependencies(python ${NBLA_CUDA_LIBRARY_NAME})
+  file(GLOB_RECURSE NBLA_PYTHON_BUILD_OUTPUT_CYTHON
+    ${CMAKE_CURRENT_SOURCE_DIR}/python/src/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/python/src/*.h)
   
-  # Bdist
-  add_custom_command(OUTPUT ${NBLA_PYTHON_OUTPUT_BDIST}
-    COMMAND ${PYTHON_COMMAND} ${NBLA_PYTHON_SETUP} bdist_wheel
-    COMMAND ${CMAKE_COMMAND} -E touch ${NBLA_PYTHON_OUTPUT_BDIST}
-    DEPENDS ${NBLA_PYTHON_DEPS} ${NBLA_PYTHON_OUTPUT_BUILD})
-  add_custom_target(python-bdist ALL
-    DEPENDS ${NBLA_PYTHON_OUTPUT_BDIST} ${NBLA_PYTHON_OUTPUT_BUILD})
-  add_dependencies(python-bdist python)
-endif()
+  set(NBLA_PYTHON_SETUP ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py)
+  set(NBLA_PYTHON_OUTPUT ${CMAKE_BINARY_DIR}/build)
+  set(NBLA_PYTHON_OUTPUT_WHEEL ${NBLA_PYTHON_OUTPUT}/.timestamp.wheel)
+  
+  # Wheel
+  if(UNIX)
+    add_custom_command(OUTPUT ${NBLA_PYTHON_OUTPUT_WHEEL}
+      COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_BINARY_DIR}/dist/*.whl
+      COMMAND ${PYTHON_COMMAND} ${NBLA_PYTHON_SETUP} -q bdist_wheel
+      COMMAND ${NNABLA_DIR}/build-tools/auditwheel-nnabla ${CMAKE_BINARY_DIR}/dist/*-linux_*.whl
+      COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_BINARY_DIR}/dist/*-linux*.whl
+      COMMAND ${CMAKE_COMMAND} -E touch ${NBLA_PYTHON_OUTPUT_WHEEL}
+      DEPENDS ${NBLA_PYTHON_DEPS} ${NBLA_PYTHON_OUTPUT_BUILD})
+  else()
+    add_custom_command(OUTPUT ${NBLA_PYTHON_OUTPUT_WHEEL}
+      COMMAND ${PYTHON_COMMAND} ${NBLA_PYTHON_SETUP} -q bdist_wheel
+      COMMAND ${CMAKE_COMMAND} -E touch ${NBLA_PYTHON_OUTPUT_WHEEL}
+      DEPENDS ${NBLA_PYTHON_DEPS} ${NBLA_PYTHON_OUTPUT_BUILD})
+  endif()
+
+  if(BUILD_CPP_LIB)
+    add_custom_target(wheel ALL DEPENDS
+      ${NBLA_PYTHON_OUTPUT_WHEEL} ${NBLA_PYTHON_OUTPUT_BUILD})
+    add_dependencies(wheel ${NBLA_CUDA_LIBRARY_NAME})
+  else()
+    add_custom_target(wheel DEPENDS
+      ${NBLA_PYTHON_OUTPUT_WHEEL} ${NBLA_PYTHON_OUTPUT_BUILD})
+  endif()
+
+endif() # BUILD_PYTHON_PACKAGE

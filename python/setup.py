@@ -69,11 +69,10 @@ def get_libinfo():
     cfgp.read(path_cfg)
 
     # Read cpu lib info
-    cpu_lib = LibInfo(cfgp.get("cmake", "cpu_target_file_name"),
+    cpu_lib = LibInfo(None,
                       cfgp.get("cmake", "cpu_target_file"),
                       cfgp.get("cmake", "cpu_target_name"))
     print("CPU Library name:", cpu_lib.name)
-    print("CPU Library file name:", cpu_lib.file_name)
     print("CPU Library file:", cpu_lib.path)
 
     # Read cuda lib info
