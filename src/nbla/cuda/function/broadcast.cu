@@ -18,6 +18,8 @@
 #include <nbla/function/sum.hpp>
 #include <nbla/function/transpose.hpp>
 
+#include <numeric>
+
 namespace nbla {
 
 // ----------------------------------------------------------------------------
@@ -31,9 +33,15 @@ void BroadcastCuda<T>::setup_impl(const Variables &inputs,
   int ndim = outputs[0]->ndim();
   auto inshape = inputs[0]->shape();
   vector<int> broadcast_dims;
-  for (int d = 0; d < ndim; ++d) {
-    if (this->shape_[d] != inshape[d])
-      broadcast_dims.push_back(d);
+  if (inputs[0]->ndim() == 0) {
+    // If input is a scalar.
+    broadcast_dims.resize(this->shape_.size());
+    std::iota(broadcast_dims.begin(), broadcast_dims.end(), 0);
+  } else {
+    for (int d = 0; d < ndim; ++d) {
+      if (this->shape_[d] != inshape[d])
+        broadcast_dims.push_back(d);
+    }
   }
   if (broadcast_dims.size() == 0)
     return;
