@@ -42,6 +42,9 @@ Function Implements
    * - ReLU
      - x
      - x
+   * - LeakyReLU
+     - x
+     - 
    * - Sigmoid
      - x
      - x
