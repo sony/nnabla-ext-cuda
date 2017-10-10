@@ -128,14 +128,17 @@ RUN wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh \
 ENV PATH /opt/miniconda3/bin:$PATH
 
 ADD python/requirements.txt /tmp/deps/
-RUN set -xe ; for PY in 2.7 3.4 3.5 3.6 \
-    ; do echo Setup Python $PY \
+RUN set -xe ; for PYV in 2.7.14 3.4.5 3.5.3 3.6.2 \
+    ; do PY=${PYV%.*} \
+    ; echo Setup Python $PY \
     ; conda create -y -n py$PY python=$PY \
     ; source activate py$PY \
     ; conda install -y virtualenv \
     ; echo Try to install setuptools few times to avoid conda problem. \
     ; (pip install -U setuptools || pip install -U setuptools || pip install -U setuptools || true) \
     ; pip install -U -r /tmp/deps/requirements.txt \
+    ; pip install -U "pytest-pep8" \
+    ; pip install -U "pytest-cov" \
     ; pip install -U "Cython<0.25" \
     ; pip install -U "numpy<1.11" \
     ; source deactivate \
