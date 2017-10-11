@@ -42,8 +42,10 @@ template <typename T>
 MultiProcessDataParallelCommunicatorNccl<
     T>::~MultiProcessDataParallelCommunicatorNccl() {
   if (this->initialized_) {
+    for (int i = 0; i < streams_.size(); ++i) {
+      NBLA_CUDA_CHECK(cudaStreamDestroy(streams_[i]));
+    }
     ncclCommDestroy(comm_);
-    NBLA_CUDA_CHECK(cudaStreamDestroy(stream_));
   }
   if (mpi_initialized_) {
     MPI_Finalize();
@@ -90,8 +92,13 @@ template <typename T> void MultiProcessDataParallelCommunicatorNccl<T>::init() {
       NBLA_ERROR(error_code::target_specific, "ncclCommInitRank failed.");
     }
 
-    // Create stream
-    NBLA_CUDA_CHECK(cudaStreamCreateWithFlags(&stream_, cudaStreamNonBlocking));
+    // Create streams
+    for (int i = 0; i < streams_.size(); ++i) {
+      // Stream
+      cudaStream_t stream;
+      NBLA_CUDA_CHECK(cudaStreamCreate(&stream));
+      streams_[i] = stream;
+    }
 
     this->initialized_ = true;
   } catch (...) {
@@ -106,39 +113,98 @@ void MultiProcessDataParallelCommunicatorNccl<T>::reduce(bool division) {
 }
 
 template <typename T>
-void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division) {
+void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division, bool inplace) {
   // Sync all devices
   wait_by_device_synchronization();
 
   // Once sync to prevent the hang where the memcpy occurs during the allreduce.
   this->sync_all_params();
 
-  // Inpalce allreduce
-  Context ctx = this->contexts_[0];
+  if (inplace) {  // in-place
+    Context ctx = this->contexts_[0];
 
-  auto func_named_param = this->device_func_named_param_[0];
-  auto size = func_named_param.size();
+    auto func_named_param = this->device_func_named_param_[0];
+    auto size = func_named_param.size();
 
-  for (auto elm : func_named_param) { // function-loop
-    VariablePtr vp = elm.second;
-    auto n_param = vp->size();
+    int k = 0;
+    for (auto elm : func_named_param) { // function-loop
+      VariablePtr vp = elm.second;
+      auto n_param = vp->size();
 
-    const T *dw0 = vp->get_grad_pointer<T>(ctx);
-    T *dw1 = vp->cast_grad_and_get_pointer<T>(ctx);
-    ncclResult_t res = ncclAllReduce(dw0, dw1, n_param, ncclFloat,
-                                     ncclSum, // TODO: address ncclFloat
-                                     comm_, stream_);
-    if (res != 0) {
+      const T *dw0 = vp->get_grad_pointer<T>(ctx);
+      T *dw1 = vp->cast_grad_and_get_pointer<T>(ctx);
+      int stream_id = k % num_streams_;
+      ncclResult_t ret = ncclAllReduce(dw0, dw1, n_param, ncclFloat,
+                                       ncclSum, // TODO: address ncclFloat
+                                       comm_, streams_[stream_id]);
+      if (ret != ncclSuccess) {
+        NBLA_ERROR(error_code::target_specific, "ncclAllReduce fails with %d.",
+            ret);
+      }
+      k++;
+    }
+    // Divide using the same streams
+    divide_by_num_divices(division);
+
+  } else {  // out-of-place. use a large array.
+    Context ctx = this->contexts_[0];
+    shared_ptr<CudaCachedArray> arr_buff =  // TODO: address 16 bits also here?
+          make_shared<CudaCachedArray>(this->total_params_, get_dtype<T>(), ctx);
+				       
+    T *buff = arr_buff->pointer<T>();
+    T *buff_start = buff;
+    auto func_named_param = this->device_func_named_param_[0];
+    Size_t type_size = sizeof(T);
+    int k = 0;
+
+    // 1. copy inside device
+    for (auto elm : func_named_param) {
+      VariablePtr vp = elm.second;
+      const T *dw = vp->get_grad_pointer<T>(ctx);
+      auto n_param = vp->size();
+      int stream_id = k % num_streams_;
+      cudaMemcpyAsync(buff, dw, type_size * n_param, cudaMemcpyDeviceToDevice, streams_[stream_id]);
+      buff += n_param;
+      k++;
+    }
+    wait_by_streams_synchronization();
+
+    // 2. allreduce
+    ncclResult_t ret = ncclAllReduce(buff_start,
+				     buff_start,
+				     this->total_params_,
+				     ncclFloat,  // TODO: address ncclFloat
+				     ncclSum,
+				     comm_, streams_[0]);
+
+    if (ret != ncclSuccess) {
       NBLA_ERROR(error_code::target_specific, "ncclAllReduce fails with %d.",
-                 res);
+          ret);
+    }
+
+    // 3. divide
+    if (division) {
+      NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace,
+            streams_[0], this->total_params_, this->size_, buff_start);
+    }
+    wait_by_streams_synchronization();
+
+    // 4. copy back inside device
+    buff = buff_start;
+    k = 0;
+    for (auto elm : func_named_param) {
+      VariablePtr vp = elm.second;
+      T *dw = vp->cast_grad_and_get_pointer<T>(ctx);
+      auto n_param = vp->size();
+      int stream_id = k % num_streams_;
+      cudaMemcpyAsync(dw, buff, type_size * n_param, cudaMemcpyDeviceToDevice, streams_[stream_id]);
+      buff += n_param;
+      k++;
     }
   }
 
-  // Divide using the same streams
-  divide_by_num_divices(division);
-
   // Sync streams
-  wait_by_stream_synchronization();
+  wait_by_streams_synchronization();
 }
 
 template <typename T>
@@ -166,7 +232,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::reduce_async(bool division) {
 
 template <typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::allreduce_async(
-    bool division) {
+    bool division, bool inplace) {
   NBLA_ERROR(error_code::not_implemented,
              "CUDA GPU allreduce_async is not implemented.")
 }
@@ -206,8 +272,10 @@ void MultiProcessDataParallelCommunicatorNccl<
 
 template <typename T>
 void MultiProcessDataParallelCommunicatorNccl<
-    T>::wait_by_stream_synchronization() {
-  NBLA_CUDA_CHECK(cudaStreamSynchronize(stream_));
+    T>::wait_by_streams_synchronization() {
+  for (int i = 0; i < streams_.size(); ++i) {
+    NBLA_CUDA_CHECK(cudaStreamSynchronize(streams_[i]));
+  }
 }
 
 template <typename T>
@@ -216,12 +284,15 @@ void MultiProcessDataParallelCommunicatorNccl<T>::divide_by_num_divices(
   if (division) {
     Context ctx = this->contexts_[0];
     auto func_named_param = this->device_func_named_param_[0];
+    int k = 0;
     for (auto elm : func_named_param) {
       VariablePtr vp = elm.second;
       T *dw = vp->cast_grad_and_get_pointer<T>(ctx);
       auto n_param = vp->size();
-      NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace, stream_, n_param,
+      int stream_id = k % num_streams_;
+      NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace, streams_[stream_id], n_param,
                                         this->size_, dw);
+      k++;
     }
   }
 }
