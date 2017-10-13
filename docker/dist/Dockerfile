@@ -109,7 +109,6 @@ RUN cd /tmp \
         ../libarchive-3.3.2 \
     && make \
     && make install \
-    && rm -f /usr/local/lib/libarchive*.so \
     && cd / \
     && rm -rf /tmp/*
 
