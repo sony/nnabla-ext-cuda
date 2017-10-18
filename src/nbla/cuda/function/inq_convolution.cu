@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include <nbla/array.hpp>
-#include <nbla/variable.hpp>
 #include <nbla/cuda/function/inq_convolution.hpp>
 #include <nbla/cuda/math.hpp>
+#include <nbla/variable.hpp>
 
 #include <thrust/device_ptr.h>
 #include <thrust/device_vector.h>
