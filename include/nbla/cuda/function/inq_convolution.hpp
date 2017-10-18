@@ -12,36 +12,46 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/** BinaryConnectConvolution
+/** INQConvolution
  */
-#ifndef __NBLA_CUDA_FUNCTION_BINARYCONNECTCONVOLUTION_HPP__
-#define __NBLA_CUDA_FUNCTION_BINARYCONNECTCONVOLUTION_HPP__
+#ifndef __NBLA_CUDA_FUNCTION_INQCONVOLUTION_HPP__
+#define __NBLA_CUDA_FUNCTION_INQCONVOLUTION_HPP__
 
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/cuda.hpp>
-#include <nbla/function/binary_connect_convolution.hpp>
+#include <nbla/cuda/utils/random.hpp>
+#include <nbla/function/inq_convolution.hpp>
 namespace nbla {
-/** @copydoc BinaryConnectConvolution
+/** @copydoc INQConvolution
 */
 
-template <typename T>
-class BinaryConnectConvolutionCuda : public BinaryConnectConvolution<T> {
+template <typename T, typename T1>
+class INQConvolutionCuda : public INQConvolution<T, T1> {
 public:
-  explicit BinaryConnectConvolutionCuda(const Context &ctx, int base_axis,
-                                        const vector<int> &pad,
-                                        const vector<int> &stride,
-                                        const vector<int> &dilation, int group)
-      : BinaryConnectConvolution<T>(ctx, base_axis, pad, stride, dilation,
-                                    group),
+  explicit INQConvolutionCuda(const Context &ctx, int base_axis,
+                              const vector<int> &pad, const vector<int> &stride,
+                              const vector<int> &dilation, int group,
+                              int num_bits, const vector<int> &inq_iterations,
+                              const string &selection_algorithm, int seed)
+      : INQConvolution<T, T1>(ctx, base_axis, pad, stride, dilation, group,
+                              num_bits, inq_iterations, selection_algorithm,
+                              seed),
         device_(std::stoi(ctx.device_id)) {}
-  virtual ~BinaryConnectConvolutionCuda() {}
-  virtual string name() { return "BinaryConnectConvolutionCuda"; }
+  virtual ~INQConvolutionCuda() {
+    if (this->selection_algorithm_ == "random" && this->seed_ != -1) {
+      curand_destroy_generator(curand_generator_);
+    }
+  }
+  virtual string name() { return "INQConvolutionCuda"; }
   virtual vector<string> allowed_array_classes() {
     return SingletonManager::get<Cuda>()->array_classes();
   }
 
 protected:
   int device_;
+  curandGenerator_t curand_generator_;
+  Variable indices_;
+  Variable cumulative_count_;
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,

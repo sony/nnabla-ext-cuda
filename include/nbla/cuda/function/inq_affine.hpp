@@ -12,33 +12,43 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/** Unpooling
+/** INQAffine
  */
-#ifndef __NBLA_CUDA_FUNCTION_UNPOOLING_HPP__
-#define __NBLA_CUDA_FUNCTION_UNPOOLING_HPP__
+#ifndef __NBLA_CUDA_FUNCTION_INQAFFINE_HPP__
+#define __NBLA_CUDA_FUNCTION_INQAFFINE_HPP__
 
+#include <nbla/cuda/common.hpp>
 #include <nbla/cuda/cuda.hpp>
-#include <nbla/function/unpooling.hpp>
+#include <nbla/cuda/utils/random.hpp>
+#include <nbla/function/inq_affine.hpp>
 namespace nbla {
-/** @copydoc Unpooling
+/** @copydoc INQAffine
 */
 
-template <typename T> class UnpoolingCuda : public Unpooling<T> {
-protected:
-  Variable addr_table_;
-  int kernel_size_;
-
+template <typename T, typename T1>
+class INQAffineCuda : public INQAffine<T, T1> {
 public:
-  explicit UnpoolingCuda(const Context &ctx, const vector<int> &kernel)
-      : Unpooling<T>(ctx, kernel), device_(std::stoi(ctx.device_id)) {}
-  virtual ~UnpoolingCuda() {}
-  virtual string name() { return "UnpoolingCuda"; }
+  explicit INQAffineCuda(const Context &ctx, int base_axis, int num_bits,
+                         const vector<int> &inq_iterations,
+                         const string &selection_algorithm, int seed)
+      : INQAffine<T, T1>(ctx, base_axis, num_bits, inq_iterations,
+                         selection_algorithm, seed),
+        device_(std::stoi(ctx.device_id)) {}
+  virtual ~INQAffineCuda() {
+    if (this->selection_algorithm_ == "random" && this->seed_ != -1) {
+      curand_destroy_generator(curand_generator_);
+    }
+  }
+  virtual string name() { return "INQAffineCuda"; }
   virtual vector<string> allowed_array_classes() {
     return SingletonManager::get<Cuda>()->array_classes();
   }
 
 protected:
   int device_;
+  curandGenerator_t curand_generator_;
+  Variable indices_;
+  Variable cumulative_count_;
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,

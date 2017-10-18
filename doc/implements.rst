@@ -291,6 +291,12 @@ Function Implements
    * - BinaryWeightConvolution
      - 
      - 
+   * - INQAffine
+     - x
+     -
+   * - INQConvolution
+     - x
+     -
    * - OneHot
      - 
      - 

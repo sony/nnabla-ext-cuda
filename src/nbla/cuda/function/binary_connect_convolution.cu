@@ -12,10 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// *WARNING*
-// THIS FILE IS AUTO-GENERATED DUMMY CODE BY CODE GENERATOR.
-// PLEASE IMPLEMENT REAL CODE AND DELETE THIS MESSAGE SOON.
-
 #include <nbla/array.hpp>
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/function/binary_connect_convolution.hpp>
