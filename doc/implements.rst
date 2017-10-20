@@ -48,6 +48,9 @@ Function Implements
    * - Sigmoid
      - x
      - x
+   * - Swish
+     - x
+     -
    * - Softmax
      - x
      - x
