@@ -125,7 +125,7 @@ void INQAffineCuda<T, T1>::setup_impl(const Variables &inputs,
   }
 
   // B: Check that chosen algorithm is either "largest_abs" or "random"
-  NBLA_CHECK(this->selection_algorithm_ == "largest_abs" or
+  NBLA_CHECK(this->selection_algorithm_ == "largest_abs" ||
                  this->selection_algorithm_ == "random",
              error_code::value,
              "Provided value for selection algorithm not valid: %s."
