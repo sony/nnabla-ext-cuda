@@ -31,6 +31,9 @@ __global__ void kernel_divide_inplace(const int size, const int n_devices,
   NBLA_CUDA_KERNEL_LOOP(i, size) { dw[i] /= n_devices; }
 }
 
+__global__ void kernel_null() {
+}
+
 template <typename T>
 MultiProcessDataParallelCommunicatorNccl<
     T>::MultiProcessDataParallelCommunicatorNccl(const Context &ctx)
@@ -114,8 +117,11 @@ void MultiProcessDataParallelCommunicatorNccl<T>::reduce(bool division) {
 
 template <typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division, bool inplace) {
-  // Sync all devices
-  wait_by_device_synchronization();
+  //TODO: currently nnabla uses default stream for computation.
+  // The following logic relies on that, so if nnabla uses another stream for computation,
+  // we have to issue null kernel to the default stream at the beginning of this method
+  // and at the end of this method for using the implicit synchronization technique for
+  // main thread not to wait for a result of a kernel call.
 
   // Once sync to prevent the hang where the memcpy occurs during the allreduce.
   this->sync_all_params();
@@ -167,7 +173,6 @@ void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division, bool 
       buff += n_param;
       k++;
     }
-    wait_by_streams_synchronization();
 
     // 2. allreduce
     ncclResult_t ret = ncclAllReduce(buff_start,
@@ -175,7 +180,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division, bool 
 				     this->total_params_,
 				     ncclFloat,  // TODO: address ncclFloat
 				     ncclSum,
-				     comm_, streams_[0]);
+				     comm_, 0); // use default stream
 
     if (ret != ncclSuccess) {
       NBLA_ERROR(error_code::target_specific, "ncclAllReduce fails with %d.",
@@ -184,10 +189,10 @@ void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division, bool 
 
     // 3. divide
     if (division) {
+      // use default stream
       NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace,
-            streams_[0], this->total_params_, this->size_, buff_start);
+            0, this->total_params_, this->size_, buff_start);
     }
-    wait_by_streams_synchronization();
 
     // 4. copy back inside device
     buff = buff_start;
@@ -202,9 +207,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division, bool 
       k++;
     }
   }
-
-  // Sync streams
-  wait_by_streams_synchronization();
+  // no need to call null kernel since nnabla uses default stream currently.
 }
 
 template <typename T>
