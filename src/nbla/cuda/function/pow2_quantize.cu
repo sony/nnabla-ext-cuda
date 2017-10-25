@@ -39,10 +39,10 @@ __global__ void kernel_quantize_forward(const int num, T *y, const T *x,
     x_idx = x[idx];
     sign_x = (x_idx < 0.0);
     x_abs = fabs(x_idx);
-    q = pow(2., round(log2(x_abs)));
+    q = powf(2., round(log2f(x_abs)));
     if (q > p_max) {
       q = p_max;
-    } else if (q < p_min and with_zero) {
+    } else if (q < p_min && with_zero) {
       q = x_abs < pruning_threshold ? 0. : p_min;
     } else if (q < p_min){
       q = p_min;
@@ -96,14 +96,14 @@ __global__ void kernel_quantize_backward(const int num, T *dx, const T *dy, cons
     T q;
     T c;
     T x_abs = fabs(x[idx]);
-    q = pow(2., round(log2(x_abs)));
+    q = powf(2., round(log2f(x_abs)));
     c = 1.;  // normally, assume grad is 1
     if (q > p_max) {
       c = 0.;
     }
 
     // address sign
-    if (not sign) {
+    if (!sign) {
       bool sign_x;
       sign_x = (x[idx] < 0.0);
       c = sign_x ? 0. : c;
