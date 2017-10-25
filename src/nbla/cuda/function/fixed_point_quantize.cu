@@ -60,9 +60,9 @@ void FixedPointQuantizeCuda<T>::forward_impl(const Variables &inputs,
                                  this->max_, this->min_, this->delta_);
 }
 
-
 template <typename T, bool accum = true>
-__global__ void kernel_naive_quantize_backward(const int num, T *dx, const T *dy) {
+__global__ void kernel_naive_quantize_backward(const int num, T *dx,
+                                               const T *dy) {
   NBLA_CUDA_KERNEL_LOOP(idx, num) {
     if (accum) {
       dx[idx] += dy[idx];
@@ -74,15 +74,15 @@ __global__ void kernel_naive_quantize_backward(const int num, T *dx, const T *dy
 
 template <typename T, bool accum = true>
 __global__ void kernel_quantize_backward(const int num, T *dx, const T *dy,
-    const T *x, const T max, const T min) {
+                                         const T *x, const T max, const T min) {
   NBLA_CUDA_KERNEL_LOOP(idx, num) {
     if (x[idx] > max) {
       if (!accum)
         dx[idx] = (T)0.;
-    } else if (x[idx] < min) {  // also consider sign or unsign.
+    } else if (x[idx] < min) { // also consider sign or unsign.
       if (!accum)
         dx[idx] = (T)0.;
-    } else {  // non-clipped region
+    } else { // non-clipped region
       if (accum) {
         dx[idx] += dy[idx];
       } else {
@@ -96,7 +96,7 @@ template <typename T>
 void FixedPointQuantizeCuda<T>::backward_impl(
     const Variables &inputs, const Variables &outputs,
     const vector<bool> &propagate_down, const vector<bool> &accum) {
-  //TODO: consider fine-grained STE
+  // TODO: consider fine-grained STE
   cuda_set_device(std::stoi(this->ctx_.device_id));
 
   if (!propagate_down[0]) {
@@ -117,11 +117,11 @@ void FixedPointQuantizeCuda<T>::backward_impl(
     }
   } else {
     if (accum[0]) {
-      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_naive_quantize_backward<T, true>), size,
-                                     dx, dy);
+      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_naive_quantize_backward<T, true>),
+                                     size, dx, dy);
     } else {
-      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_naive_quantize_backward<T, false>), size,
-                                     dx, dy);
+      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_naive_quantize_backward<T, false>),
+                                     size, dx, dy);
     }
   }
 }

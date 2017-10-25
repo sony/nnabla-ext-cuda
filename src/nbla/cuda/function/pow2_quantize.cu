@@ -27,8 +27,7 @@ namespace nbla {
 template <typename T>
 __global__ void kernel_quantize_forward(const int num, T *y, const T *x,
                                         const bool sign, const bool with_zero,
-                                        const T p_max,
-                                        const T p_min,
+                                        const T p_max, const T p_min,
                                         const T pruning_threshold) {
   T q;
   T x_idx;
@@ -44,7 +43,7 @@ __global__ void kernel_quantize_forward(const int num, T *y, const T *x,
       q = p_max;
     } else if (q < p_min && with_zero) {
       q = x_abs < pruning_threshold ? 0. : p_min;
-    } else if (q < p_min){
+    } else if (q < p_min) {
       q = p_min;
     }
 
@@ -66,20 +65,20 @@ __global__ void kernel_quantize_forward(const int num, T *y, const T *x,
 template <typename T>
 void Pow2QuantizeCuda<T>::forward_impl(const Variables &inputs,
                                        const Variables &outputs) {
-  //TODO: consider arithmetic mean
+  // TODO: consider arithmetic mean
   cuda_set_device(std::stoi(this->ctx_.device_id));
 
   const T *x = inputs[0]->get_data_pointer<T>(this->ctx_);
   T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
   size_t size = inputs[0]->size();
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_quantize_forward, size, y, x,
-                                 this->sign_, this->with_zero_,
-                                 this->p_max_, this->p_min_,
-                                 this->pruning_threshold_);
+                                 this->sign_, this->with_zero_, this->p_max_,
+                                 this->p_min_, this->pruning_threshold_);
 }
 
 template <typename T, bool accum = true>
-__global__ void kernel_naive_quantize_backward(const int num, T *dx, const T *dy) {
+__global__ void kernel_naive_quantize_backward(const int num, T *dx,
+                                               const T *dy) {
   NBLA_CUDA_KERNEL_LOOP(idx, num) {
     if (accum) {
       dx[idx] += dy[idx];
@@ -90,14 +89,16 @@ __global__ void kernel_naive_quantize_backward(const int num, T *dx, const T *dy
 }
 
 template <typename T, bool accum = true>
-__global__ void kernel_quantize_backward(const int num, T *dx, const T *dy, const T *x,
-    const bool sign, const bool with_zero, const T p_max, const T p_min, const T pruning_threshold) {
+__global__ void
+kernel_quantize_backward(const int num, T *dx, const T *dy, const T *x,
+                         const bool sign, const bool with_zero, const T p_max,
+                         const T p_min, const T pruning_threshold) {
   NBLA_CUDA_KERNEL_LOOP(idx, num) {
     T q;
     T c;
     T x_abs = fabs(x[idx]);
     q = powf(2., round(log2f(x_abs)));
-    c = 1.;  // normally, assume grad is 1
+    c = 1.; // normally, assume grad is 1
     if (q > p_max) {
       c = 0.;
     }
@@ -122,7 +123,7 @@ void Pow2QuantizeCuda<T>::backward_impl(const Variables &inputs,
                                         const Variables &outputs,
                                         const vector<bool> &propagate_down,
                                         const vector<bool> &accum) {
-  //TODO: consider fine-grained STE
+  // TODO: consider fine-grained STE
   cuda_set_device(std::stoi(this->ctx_.device_id));
 
   if (!propagate_down[0]) {
@@ -137,20 +138,22 @@ void Pow2QuantizeCuda<T>::backward_impl(const Variables &inputs,
   if (this->ste_fine_grained_) {
     if (accum[0]) {
       NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_quantize_backward<T, true>), size,
-                                     dx, dy, x,
-                                     this->sign_, this->with_zero_, this->p_max_, this->p_min_, this->pruning_threshold_);
+                                     dx, dy, x, this->sign_, this->with_zero_,
+                                     this->p_max_, this->p_min_,
+                                     this->pruning_threshold_);
     } else {
       NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_quantize_backward<T, false>), size,
-                                     dx, dy, x,
-                                     this->sign_, this->with_zero_, this->p_max_, this->p_min_, this->pruning_threshold_);
+                                     dx, dy, x, this->sign_, this->with_zero_,
+                                     this->p_max_, this->p_min_,
+                                     this->pruning_threshold_);
     }
   } else {
     if (accum[0]) {
-      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_naive_quantize_backward<T, true>), size,
-                                     dx, dy);
+      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_naive_quantize_backward<T, true>),
+                                     size, dx, dy);
     } else {
-      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_naive_quantize_backward<T, false>), size,
-                                     dx, dy);
+      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_naive_quantize_backward<T, false>),
+                                     size, dx, dy);
     }
   }
 }

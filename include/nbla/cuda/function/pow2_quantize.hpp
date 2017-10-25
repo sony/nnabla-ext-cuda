@@ -29,8 +29,10 @@ protected:
   int device_;
 
 public:
-  explicit Pow2QuantizeCuda(const Context &ctx, bool sign, bool with_zero, int n, int m, bool ste_fine_grained)
-      : Pow2Quantize<T>(ctx, sign, with_zero, n, m, ste_fine_grained), device_(std::stoi(ctx.device_id)) {}
+  explicit Pow2QuantizeCuda(const Context &ctx, bool sign, bool with_zero,
+                            int n, int m, bool ste_fine_grained)
+      : Pow2Quantize<T>(ctx, sign, with_zero, n, m, ste_fine_grained),
+        device_(std::stoi(ctx.device_id)) {}
   virtual ~Pow2QuantizeCuda() {}
 
   virtual vector<dtypes> in_types() { return vector<dtypes>{get_dtype<T>()}; }
