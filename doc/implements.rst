@@ -297,6 +297,12 @@ Function Implements
    * - INQConvolution
      - x
      -
+   * - FixedPointQuantize
+     - x
+     -
+   * - Pow2Quantize
+     - x
+     -           
    * - OneHot
      - 
      - 
