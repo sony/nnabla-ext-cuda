@@ -84,7 +84,8 @@ void DataParallelCommunicatorNccl<T>::reduce(bool division) {
 template <typename T>
 void DataParallelCommunicatorNccl<T>::allreduce(bool division, bool inplace) {
   if (inplace == false) {
-    NBLA_ERROR(error_code::not_implemented, "CUDA GPU allreduce with out-of-place is not implemented.")
+    NBLA_ERROR(error_code::not_implemented,
+               "CUDA GPU allreduce with out-of-place is not implemented.")
   }
 
   // Sync all devices
@@ -148,7 +149,8 @@ void DataParallelCommunicatorNccl<T>::reduce_async(bool division) {
 }
 
 template <typename T>
-void DataParallelCommunicatorNccl<T>::allreduce_async(bool division, bool inplace) {
+void DataParallelCommunicatorNccl<T>::allreduce_async(bool division,
+                                                      bool inplace) {
   NBLA_ERROR(error_code::not_implemented,
              "CUDA GPU allreduce_async is not implemented.")
 }

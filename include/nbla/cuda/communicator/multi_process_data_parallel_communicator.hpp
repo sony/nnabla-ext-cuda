@@ -17,9 +17,9 @@
 #ifndef __NBLA_NCCL_MULTIPROCESS_DATAPARALLELCOMMUNICATOR_HPP__
 #define __NBLA_NCCL_MULTIPROCESS_DATAPARALLELCOMMUNICATOR_HPP__
 #include <nbla/array.hpp>
-#include <nbla/cuda/array/cuda_array.hpp>
 #include <nbla/communicator/multi_process_data_parallel_communicator.hpp>
 #include <nbla/context.hpp>
+#include <nbla/cuda/array/cuda_array.hpp>
 #include <nbla/variable.hpp>
 
 #include <memory>
@@ -62,10 +62,9 @@ protected:
 
   // Device streams initialized in init method
   cudaStream_t stream_;
-  int num_streams_ = 10;  // TODO: hard-codded.
-	vector<cudaStream_t> streams_ = vector<cudaStream_t>(num_streams_);
-	
-	  
+  int num_streams_ = 10; // TODO: hard-codded.
+  vector<cudaStream_t> streams_ = vector<cudaStream_t>(num_streams_);
+
 public:
   MultiProcessDataParallelCommunicatorNccl(const Context &ctx);
   virtual ~MultiProcessDataParallelCommunicatorNccl();

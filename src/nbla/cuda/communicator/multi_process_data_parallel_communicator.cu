@@ -31,8 +31,7 @@ __global__ void kernel_divide_inplace(const int size, const int n_devices,
   NBLA_CUDA_KERNEL_LOOP(i, size) { dw[i] /= n_devices; }
 }
 
-__global__ void kernel_null() {
-}
+__global__ void kernel_null() {}
 
 template <typename T>
 MultiProcessDataParallelCommunicatorNccl<
@@ -116,17 +115,21 @@ void MultiProcessDataParallelCommunicatorNccl<T>::reduce(bool division) {
 }
 
 template <typename T>
-void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division, bool inplace) {
-  //TODO: currently nnabla uses default stream for computation.
-  // The following logic relies on that, so if nnabla uses another stream for computation,
-  // we have to issue null kernel to the default stream at the beginning of this method
-  // and at the end of this method for using the implicit synchronization technique for
+void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division,
+                                                            bool inplace) {
+  // TODO: currently nnabla uses default stream for computation.
+  // The following logic relies on that, so if nnabla uses another stream for
+  // computation,
+  // we have to issue null kernel to the default stream at the beginning of this
+  // method
+  // and at the end of this method for using the implicit synchronization
+  // technique for
   // main thread not to wait for a result of a kernel call.
 
   // Once sync to prevent the hang where the memcpy occurs during the allreduce.
   this->sync_all_params();
 
-  if (inplace) {  // in-place
+  if (inplace) { // in-place
     Context ctx = this->contexts_[0];
 
     auto func_named_param = this->device_func_named_param_[0];
@@ -145,18 +148,18 @@ void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division, bool 
                                        comm_, streams_[stream_id]);
       if (ret != ncclSuccess) {
         NBLA_ERROR(error_code::target_specific, "ncclAllReduce fails with %d.",
-            ret);
+                   ret);
       }
       k++;
     }
     // Divide using the same streams
     divide_by_num_divices(division);
 
-  } else {  // out-of-place. use a large array.
+  } else { // out-of-place. use a large array.
     Context ctx = this->contexts_[0];
-    shared_ptr<CudaCachedArray> arr_buff =  // TODO: address 16 bits also here?
-          make_shared<CudaCachedArray>(this->total_params_, get_dtype<T>(), ctx);
-				       
+    shared_ptr<CudaCachedArray> arr_buff = // TODO: address 16 bits also here?
+        make_shared<CudaCachedArray>(this->total_params_, get_dtype<T>(), ctx);
+
     T *buff = arr_buff->pointer<T>();
     T *buff_start = buff;
     auto func_named_param = this->device_func_named_param_[0];
@@ -169,29 +172,29 @@ void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division, bool 
       const T *dw = vp->get_grad_pointer<T>(ctx);
       auto n_param = vp->size();
       int stream_id = k % num_streams_;
-      cudaMemcpyAsync(buff, dw, type_size * n_param, cudaMemcpyDeviceToDevice, streams_[stream_id]);
+      cudaMemcpyAsync(buff, dw, type_size * n_param, cudaMemcpyDeviceToDevice,
+                      streams_[stream_id]);
       buff += n_param;
       k++;
     }
 
     // 2. allreduce
-    ncclResult_t ret = ncclAllReduce(buff_start,
-				     buff_start,
-				     this->total_params_,
-				     ncclFloat,  // TODO: address ncclFloat
-				     ncclSum,
-				     comm_, 0); // use default stream
+    ncclResult_t ret =
+        ncclAllReduce(buff_start, buff_start, this->total_params_,
+                      ncclFloat,          // TODO: address ncclFloat
+                      ncclSum, comm_, 0); // use default stream
 
     if (ret != ncclSuccess) {
       NBLA_ERROR(error_code::target_specific, "ncclAllReduce fails with %d.",
-          ret);
+                 ret);
     }
 
     // 3. divide
     if (division) {
       // use default stream
-      NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace,
-            0, this->total_params_, this->size_, buff_start);
+      NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace, 0,
+                                        this->total_params_, this->size_,
+                                        buff_start);
     }
 
     // 4. copy back inside device
@@ -202,7 +205,8 @@ void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division, bool 
       T *dw = vp->cast_grad_and_get_pointer<T>(ctx);
       auto n_param = vp->size();
       int stream_id = k % num_streams_;
-      cudaMemcpyAsync(dw, buff, type_size * n_param, cudaMemcpyDeviceToDevice, streams_[stream_id]);
+      cudaMemcpyAsync(dw, buff, type_size * n_param, cudaMemcpyDeviceToDevice,
+                      streams_[stream_id]);
       buff += n_param;
       k++;
     }
@@ -293,8 +297,8 @@ void MultiProcessDataParallelCommunicatorNccl<T>::divide_by_num_divices(
       T *dw = vp->cast_grad_and_get_pointer<T>(ctx);
       auto n_param = vp->size();
       int stream_id = k % num_streams_;
-      NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace, streams_[stream_id], n_param,
-                                        this->size_, dw);
+      NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(
+          kernel_divide_inplace, streams_[stream_id], n_param, this->size_, dw);
       k++;
     }
   }
