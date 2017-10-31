@@ -113,12 +113,6 @@ void init_cuda() {{
   NBLA_REGISTER_COMMUNICATOR_IMPL(MultiProcessDataParallelCommunicator, MultiProcessDataParallelCommunicatorNcclf, 1, "cuda", "default");
 #endif
 
-  // Register finalize function to ensure freeing all CUDA memory before unloading CUDA driver.
-  auto finalize = []()->void {{
-    SingletonManager::get<GarbageCollector>()->collect();
-    SingletonManager::clear();
-    }};
-  NBLA_CHECK(std::atexit(finalize) == 0, error_code::unclassified, "atexit registration error");
   is_initialized = true;
 }}
 
