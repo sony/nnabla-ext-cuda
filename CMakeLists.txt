@@ -22,6 +22,10 @@ if(NOT IS_ABSOLUTE ${CPPLIB_LIBRARY})
   get_filename_component(CPPLIB_LIBRARY ${CMAKE_CURRENT_BINARY_DIR}/${CPPLIB_LIBRARY} ABSOLUTE)
 endif()
 
+option(NBLA_VERBOSE_MEMORY_USAGE "Enable debug print of memory usage" OFF)
+if(NBLA_VERBOSE_MEMORY_USAGE)
+  add_definitions(-DNBLA_VERBOSE_MEMORY_USAGE)
+endif()
 
 ###############################################################################
 # Settings

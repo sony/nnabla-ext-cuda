@@ -42,6 +42,10 @@ CudaArray::~CudaArray() {
 }
 
 void CudaArray::allocate() {
+#ifdef NBLA_VERBOSE_MEMORY_USAGE
+  printf("CudaArray is created with size of %d\n",
+         (int)(this->size_ * sizeof(this->dtype_)));
+#endif
   int msize = this->size_ * sizeof_dtype(this->dtype_);
   inuse_memory_ = make_shared<CudaMemory>(msize, this->ctx_.device_id);
   inuse_memory_->allocate();

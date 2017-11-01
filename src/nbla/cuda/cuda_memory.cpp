@@ -28,6 +28,10 @@ using std::shared_ptr;
 using std::unique_ptr;
 using std::make_shared;
 
+#ifdef NBLA_VERBOSE_MEMORY_USAGE
+static uint64_t g_cuda_memory_usage = 0;
+#endif
+
 /////////////////////////////
 // CUDA Memory implementation
 /////////////////////////////
@@ -38,6 +42,9 @@ CudaMemory::~CudaMemory() {
     return;
   cuda_set_device(device_num_);
   cudaError_t err = cudaFree(ptr_);
+#ifdef NBLA_VERBOSE_MEMORY_USAGE
+  g_cuda_memory_usage -= size_;
+#endif
   if (err != cudaSuccess) {
     if (err == cudaErrorInvalidDevicePointer) {
       // Workaround for invalid device pointer error by other cause.
@@ -77,6 +84,10 @@ bool CudaMemory::allocate() {
       return false;
     }
   }
+#ifdef NBLA_VERBOSE_MEMORY_USAGE
+  g_cuda_memory_usage += size_;
+  printf("CudaMemory usage: %ld\n", g_cuda_memory_usage);
+#endif
   return true;
 }
 
