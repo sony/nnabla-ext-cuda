@@ -33,6 +33,9 @@ Function Implements
    * - ELU
      - x
      - 
+   * - SELU
+     - x
+     -
    * - CELU
      - x
      - 
