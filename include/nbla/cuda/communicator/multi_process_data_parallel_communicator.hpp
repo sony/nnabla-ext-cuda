@@ -19,6 +19,7 @@
 #include <nbla/array.hpp>
 #include <nbla/communicator/multi_process_data_parallel_communicator.hpp>
 #include <nbla/context.hpp>
+#include <nbla/cuda/array/cuda_array.hpp>
 #include <nbla/variable.hpp>
 
 #include <memory>
@@ -61,6 +62,8 @@ protected:
 
   // Device streams initialized in init method
   cudaStream_t stream_;
+  int num_streams_ = 10; // TODO: hard-codded.
+  vector<cudaStream_t> streams_ = vector<cudaStream_t>(num_streams_);
 
 public:
   MultiProcessDataParallelCommunicatorNccl(const Context &ctx);
@@ -88,13 +91,13 @@ public:
   virtual void init();
 
   virtual void reduce(bool division = true);
-  virtual void allreduce(bool division = true);
+  virtual void allreduce(bool division = true, bool inplace = false);
   virtual void reducescatter(bool division = true);
   virtual void bcast();
   virtual void allgather();
 
   virtual void reduce_async(bool division = true);
-  virtual void allreduce_async(bool division = true);
+  virtual void allreduce_async(bool division = true, bool inplace = false);
   virtual void reducescatter_async(bool division = true);
   virtual void bcast_async();
   virtual void allgather_async();
@@ -111,7 +114,7 @@ public:
 
 protected:
   void wait_by_device_synchronization();
-  void wait_by_stream_synchronization();
+  void wait_by_streams_synchronization();
   void divide_by_num_divices(bool division);
 
   DISABLE_COPY_AND_ASSIGN(MultiProcessDataParallelCommunicatorNccl);

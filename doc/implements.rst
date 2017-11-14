@@ -33,6 +33,9 @@ Function Implements
    * - ELU
      - x
      - 
+   * - SELU
+     - x
+     -
    * - CELU
      - x
      - 
@@ -42,9 +45,15 @@ Function Implements
    * - ReLU
      - x
      - x
+   * - LeakyReLU
+     - x
+     - 
    * - Sigmoid
      - x
      - x
+   * - Swish
+     - x
+     -
    * - Softmax
      - x
      - x
@@ -297,6 +306,12 @@ Function Implements
    * - INQConvolution
      - x
      -
+   * - FixedPointQuantize
+     - x
+     -
+   * - Pow2Quantize
+     - x
+     -           
    * - OneHot
      - 
      - 
