@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <nbla/cuda/array/cuda_array.hpp>
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/communicator/data_parallel_communicator.hpp>
 
@@ -83,18 +84,24 @@ void DataParallelCommunicatorNccl<T>::reduce(bool division) {
 
 template <typename T>
 void DataParallelCommunicatorNccl<T>::allreduce(bool division, bool inplace) {
-  if (inplace == false) {
-    NBLA_ERROR(error_code::not_implemented,
-               "CUDA GPU allreduce with out-of-place is not implemented.")
-  }
+  // TODO: currently nnabla uses default stream for computation.
+  // The following logic relies on that, so if nnabla uses another stream for
+  // computation,
+  // we have to issue null kernel to the default stream at the beginning of this
+  // method
+  // and at the end of this method for using the implicit synchronization
+  // technique for
+  // main thread not to wait for a result of a kernel call.
 
-  // Sync all devices
-  wait_by_devices_synchronization();
+  if (inplace == true) {
+    NBLA_ERROR(error_code::not_implemented,
+               "CUDA GPU allreduce with out-of-place is only implemented.")
+  }
 
   // Once sync to prevent the hang where the memcpy occurs during the allreduce.
   this->sync_all_params();
 
-  // Inpalce allreduce
+  // 1. copy inside device
   for (int i = 0; i < device_ids_.size(); ++i) { // device-loop
     Context ctx = this->contexts_[i];
     auto device_id = device_ids_[i];
@@ -103,28 +110,98 @@ void DataParallelCommunicatorNccl<T>::allreduce(bool division, bool inplace) {
     auto func_named_param = this->device_func_named_param_[i];
     auto comm = comms_[i];
     auto stream = streams_[i];
-    auto size = func_named_param.size();
 
-    for (auto elm : func_named_param) { // function-loop
+    shared_ptr<CudaCachedArray> arr_buff = // TODO: address 16 bits also here?
+        make_shared<CudaCachedArray>(this->total_params_, get_dtype<T>(), ctx);
+
+    T *buff = arr_buff->pointer<T>();
+    Size_t type_size = sizeof(T);
+
+    for (auto elm : func_named_param) {
       VariablePtr vp = elm.second;
+      const T *dw = vp->get_grad_pointer<T>(ctx);
       auto n_param = vp->size();
-
-      const T *dw0 = vp->get_grad_pointer<T>(ctx);
-      T *dw1 = vp->cast_grad_and_get_pointer<T>(ctx);
-      ncclResult_t res = ncclAllReduce(dw0, dw1, n_param, ncclFloat,
-                                       ncclSum, // TODO: address ncclFloat
-                                       comm, stream);
-      if (res != 0) {
-        NBLA_ERROR(error_code::target_specific, "ncclAllReduce fails with %d.",
-                   res);
-      }
+      cudaMemcpyAsync(buff, dw, type_size * n_param, cudaMemcpyDeviceToDevice,
+                      stream);
+      buff += n_param;
     }
   }
-  // Divide using the same streams
-  divide_by_num_divices(division);
 
-  // Sync streams
-  wait_by_streams_synchronization();
+// 2. allreduce
+#ifdef NCCL_MAJOR
+  ncclGroupStart();
+#endif
+  for (int i = 0; i < device_ids_.size(); ++i) { // device-loop
+    Context ctx = this->contexts_[i];
+    auto device_id = device_ids_[i];
+    //    cuda_set_device(device_id);
+
+    auto comm = comms_[i];
+    auto stream = streams_[i];
+
+    shared_ptr<CudaCachedArray> arr_buff = // TODO: address 16 bits also here?
+        make_shared<CudaCachedArray>(this->total_params_, get_dtype<T>(), ctx);
+
+    T *buff = arr_buff->pointer<T>();
+    ncclResult_t ret = ncclAllReduce(buff, buff, this->total_params_,
+                                     ncclFloat, // TODO: address ncclFloat
+                                     ncclSum, comm, 0); // use default stream
+
+    if (ret != ncclSuccess) {
+      NBLA_ERROR(error_code::target_specific, "ncclAllReduce fails with %d.",
+                 ret);
+    }
+  }
+#ifdef NCCL_MAJOR
+  ncclGroupEnd();
+//  wait_by_streams_synchronization();
+#endif
+
+  // 3. divide
+  if (division) {
+    for (int i = 0; i < device_ids_.size(); ++i) { // device-loop
+      Context ctx = this->contexts_[i];
+      auto device_id = device_ids_[i];
+      cuda_set_device(device_id);
+
+      auto comm = comms_[i];
+      auto stream = streams_[i];
+
+      shared_ptr<CudaCachedArray> arr_buff = // TODO: address 16 bits also here?
+          make_shared<CudaCachedArray>(this->total_params_, get_dtype<T>(),
+                                       ctx);
+
+      T *buff = arr_buff->pointer<T>();
+      NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace, stream,
+                                        this->total_params_, n_devices_, buff);
+    }
+  }
+
+  // 4. copy back inside device
+  for (int i = 0; i < device_ids_.size(); ++i) { // device-loop
+    Context ctx = this->contexts_[i];
+    auto device_id = device_ids_[i];
+    cuda_set_device(device_id);
+
+    auto func_named_param = this->device_func_named_param_[i];
+    auto comm = comms_[i];
+    auto stream = streams_[i];
+
+    shared_ptr<CudaCachedArray> arr_buff = // TODO: address 16 bits also here?
+        make_shared<CudaCachedArray>(this->total_params_, get_dtype<T>(), ctx);
+
+    T *buff = arr_buff->pointer<T>();
+    Size_t type_size = sizeof(T);
+
+    for (auto elm : func_named_param) {
+      VariablePtr vp = elm.second;
+      T *dw = vp->cast_grad_and_get_pointer<T>(ctx);
+      auto n_param = vp->size();
+      cudaMemcpyAsync(dw, buff, type_size * n_param, cudaMemcpyDeviceToDevice,
+                      stream);
+      buff += n_param;
+    }
+  }
 }
 
 template <typename T>
