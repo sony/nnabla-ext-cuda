@@ -20,6 +20,8 @@
 #include <memory>
 
 #include "mpi.h"
+#include <stdint.h>
+#include <unistd.h>
 
 namespace nbla {
 
@@ -31,7 +33,28 @@ __global__ void kernel_divide_inplace(const int size, const int n_devices,
   NBLA_CUDA_KERNEL_LOOP(i, size) { dw[i] /= n_devices; }
 }
 
-__global__ void kernel_null() {}
+/*
+ * Referred from
+ * http://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/index.html#onedevprothrd
+ */
+static uint64_t get_host_hash(const char *string) {
+  // Based on DJB2, result = result * 33 + char
+  uint64_t result = 5381;
+  for (int c = 0; string[c] != '\0'; c++) {
+    result = ((result << 5) + result) + string[c];
+  }
+  return result;
+}
+
+static void get_host_name(char *hostname, int maxlen) {
+  gethostname(hostname, maxlen);
+  for (int i = 0; i < maxlen; i++) {
+    if (hostname[i] == '.') {
+      hostname[i] = '\0';
+      return;
+    }
+  }
+}
 
 template <typename T>
 MultiProcessDataParallelCommunicatorNccl<
@@ -67,8 +90,12 @@ template <typename T> void MultiProcessDataParallelCommunicatorNccl<T>::init() {
       int requiredThreadLevelSupport = MPI_THREAD_SERIALIZED;
       int provided;
       MPI_Init_thread(&argc, &argv, requiredThreadLevelSupport, &provided);
-      if (provided != requiredThreadLevelSupport)
-        NBLA_ERROR(error_code::target_specific, "MPI_Init_thread failed.");
+      if (provided != requiredThreadLevelSupport) {
+        NBLA_ERROR(error_code::target_specific,
+                   "MPI_Init_thread failed since provided (%d) is not equal to "
+                   "requiredThreadLevelSupport (%d)",
+                   provided, requiredThreadLevelSupport);
+      }
       mpi_initialized_ = true;
     }
     // Create comm, set size, and rank
@@ -76,18 +103,40 @@ template <typename T> void MultiProcessDataParallelCommunicatorNccl<T>::init() {
     MPI_Comm_dup(MPI_COMM_WORLD, &mpi_comm);
     MPI_Comm_size(mpi_comm, &this->size_);
     MPI_Comm_rank(mpi_comm, &this->rank_);
-    device_id_ = this->rank_;
 
-    // We have to set our device before NCCL init
-    cuda_set_device(device_id_);
+    // Set local rank and device id
+    uint64_t host_hashs[this->size_];
+    char hostname[1024];
+    get_host_name(hostname, 1024);
+    host_hashs[this->rank_] = get_host_hash(hostname);
+
+    MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, host_hashs,
+                  sizeof(uint64_t), MPI_BYTE, mpi_comm);
     MPI_Barrier(mpi_comm);
 
+    int local_rank = 0;
+    for (int i = 0; i < this->size_; ++i) {
+      if (i == this->rank_) {
+        break;
+      }
+      if (host_hashs[i] == host_hashs[this->rank_]) {
+        local_rank++;
+      }
+    }
+    this->device_id_ = local_rank;
+    this->local_rank_ = local_rank;
+
     // Exchange comm_id_ among processes
-    ncclGetUniqueId(&comm_id_);
-    MPI_Bcast(&comm_id_, NCCL_UNIQUE_ID_BYTES, MPI_CHAR, 0, mpi_comm);
+    if (this->rank_ == 0) {
+      ncclGetUniqueId(&this->comm_id_);
+    }
+
+    MPI_Bcast(&comm_id_, sizeof(this->comm_id_), MPI_BYTE, 0, mpi_comm);
+    MPI_Barrier(mpi_comm);
     MPI_Comm_free(&mpi_comm);
 
     // Nccl Init
+    cuda_set_device(device_id_);
     ncclResult_t ret =
         ncclCommInitRank(&comm_, this->size_, comm_id_, this->rank_);
     if (ret != ncclSuccess) {
@@ -96,7 +145,6 @@ template <typename T> void MultiProcessDataParallelCommunicatorNccl<T>::init() {
 
     // Create streams
     for (int i = 0; i < streams_.size(); ++i) {
-      // Stream
       cudaStream_t stream;
       NBLA_CUDA_CHECK(cudaStreamCreate(&stream));
       streams_[i] = stream;
