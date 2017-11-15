@@ -18,18 +18,16 @@ list(APPEND NBLA_CUDA_LINKER_LIBS
 option(WITH_NCCL "Use nccl for distributed training" OFF)
 if(WITH_NCCL)
 	add_definitions(-DFEATURE_DIST_TRAIN)
-	
-	if(DEFINED ENV{NCCL_HOME})
-	  find_package(MPI REQUIRED)
-	  list(APPEND NBLA_CUDA_INCLUDE_DIRS 
-	    $ENV{NCCL_HOME}/build/include
-	    ${MPI_INCLUDE_PATH}
-	    )
-	  list(APPEND NBLA_CUDA_LINKER_LIBS
-	    $ENV{NCCL_HOME}/build/lib/libnccl.so 
-	    ${MPI_LIBRARIES}
-	    )
-	endif()
+	find_package(NCCL REQUIRED)
+	find_package(MPI REQUIRED)
+	list(APPEND NBLA_CUDA_INCLUDE_DIRS 
+		${NCCL_INCLUDE_DIR}
+	  ${MPI_INCLUDE_PATH}
+	  )
+	list(APPEND NBLA_CUDA_LINKER_LIBS
+		${NCCL_LIBRARIES}
+	  ${MPI_LIBRARIES}
+	  )
 endif()
 
 ####################################################################################################
