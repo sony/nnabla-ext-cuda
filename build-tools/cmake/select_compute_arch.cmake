@@ -74,6 +74,12 @@ else()
   list(APPEND CUDA_COMMON_GPU_ARCHITECTURES "5.2+PTX")
 endif ()
 
+if (CUDA_VERSION VERSION_GREATER "8.5")
+  list(APPEND CUDA_KNOWN_GPU_ARCHITECTURES "Volta")
+  list(APPEND CUDA_COMMON_GPU_ARCHITECTURES "7.0" "7.0+PTX")
+else()
+  list(APPEND CUDA_COMMON_GPU_ARCHITECTURES "6.1+PTX")
+endif()
 
 
 ################################################################################################
@@ -180,6 +186,9 @@ function(CUDA_SELECT_NVCC_ARCH_FLAGS out_variable)
       elseif(${arch_name} STREQUAL "Pascal")
         set(arch_bin 6.0 6.1)
         set(arch_ptx 6.1)
+      elseif(${arch_name} STREQUAL "Volta")
+        set(arch_bin 7.0 7.0)
+        set(arch_ptx 7.0)
       else()
         message(SEND_ERROR "Unknown CUDA Architecture Name ${arch_name} in CUDA_SELECT_NVCC_ARCH_FLAGS")
       endif()
