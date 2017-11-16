@@ -121,9 +121,8 @@ void ConvolutionCudaCudnn<T>::forward_impl(const Variables &inputs,
     b = inputs[2]->get_data_pointer<T>(this->ctx_);
   }
 #ifdef NBLA_CUDNN_USE_WORKSPACE
-  shared_ptr<CudaCachedArray> mem_workspace(
-      new CudaCachedArray(rsc2d_->workspace_size(), dtypes::BYTE, this->ctx_));
-  void *workspace = mem_workspace->pointer();
+  void *workspace = SingletonManager::get<Cuda>()->get_workspace(
+      rsc2d_->workspace_size(), this->device_);
 #endif
   for (int g = 0; g < this->group_; ++g) {
 #ifdef NBLA_CUDNN_USE_WORKSPACE
@@ -176,9 +175,8 @@ void ConvolutionCudaCudnn<T>::backward_impl(const Variables &inputs,
   }
   T alpha = 1;
 #ifdef NBLA_CUDNN_USE_WORKSPACE
-  shared_ptr<CudaCachedArray> mem_workspace(
-      new CudaCachedArray(rsc2d_->workspace_size(), dtypes::BYTE, this->ctx_));
-  void *workspace = mem_workspace->pointer();
+  void *workspace = SingletonManager::get<Cuda>()->get_workspace(
+      rsc2d_->workspace_size(), this->device_);
 #endif
   for (int g = 0; g < this->group_; ++g) {
     if (propagate_down[0]) {
