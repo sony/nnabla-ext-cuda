@@ -67,6 +67,21 @@ public:
    */
   MemoryCache<CudaMemory> &memcache();
 
+  /** Get workspace memory.
+
+      @param[in] size_in_bytes Size of CUDA device memory requested.
+      @param[in] device GPU ID.
+
+      @note It internally holds workspace memory with maximum size over
+            sizes previously requested. Every time the requested size exceeds
+            the maximum size, it will reallocate a new memory region, which
+            will cause memory allocation overhead and device synchronization.
+
+      @todo This function is not thread-safe.
+
+   */
+  void *get_workspace(Size_t size_in_bytes, int device);
+
 protected:
   std::mutex mtx_cublas_;
   std::mutex mtx_curand_;
@@ -75,6 +90,7 @@ protected:
   unordered_map<int, curandGenerator_t> curand_generators_;
   vector<string> array_classes_;     ///< Available array classes
   MemoryCache<CudaMemory> memcache_; ///< CUDA memory cache.
+  unordered_map<int, shared_ptr<CudaMemory>> workspace_; ///< Workspace memory.
 
 private:
   friend SingletonManager;
