@@ -345,3 +345,6 @@ Function Implements
    * - ConfusionMatrix
      - 
      - 
+   * - DepthwiseConvolution
+     - x
+     -

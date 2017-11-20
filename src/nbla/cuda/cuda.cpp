@@ -78,5 +78,20 @@ void Cuda::register_array_class(const string &name) {
 
 MemoryCache<CudaMemory> &Cuda::memcache() { return memcache_; }
 
+void *Cuda::get_workspace(Size_t size_in_bytes, int device) {
+  // TODO: Make this function thread-safe with mutex.
+  auto it = workspace_.find(device);
+  if (it == workspace_.end()) {
+    workspace_[device] =
+        make_shared<CudaMemory>(size_in_bytes, std::to_string(device));
+  } else if (it->second->size() < size_in_bytes) {
+    workspace_.erase(it);
+    workspace_[device] =
+        make_shared<CudaMemory>(size_in_bytes, std::to_string(device));
+  }
+  it = workspace_.find(device);
+  return it->second->ptr();
+}
+
 NBLA_INSTANTIATE_SINGLETON(NBLA_CUDA_API, Cuda);
 }
