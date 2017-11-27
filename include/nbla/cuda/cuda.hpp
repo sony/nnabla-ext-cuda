@@ -69,6 +69,8 @@ public:
 
   /** Get workspace memory.
 
+      It returns nullptr if size_in_bytes is 0.
+
       @param[in] size_in_bytes Size of CUDA device memory requested.
       @param[in] device GPU ID.
 
