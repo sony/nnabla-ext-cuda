@@ -92,6 +92,12 @@ public:
 
   virtual void reduce(bool division = false);
   virtual void allreduce(bool division = false, bool inplace = false);
+  virtual void all_reduce(vector<NdArrayPtr> ndarray_list,
+                          bool division = false, bool inplace = false);
+  virtual void all_reduce(NdArrayPtr data, bool division = false,
+                          bool inplace = false);
+  virtual void all_reduce(NdArrayPtr data, cudaStream_t stream,
+                          bool division = false, bool inplace = false);
   virtual void reducescatter(bool division = false);
   virtual void bcast();
   virtual void allgather();
