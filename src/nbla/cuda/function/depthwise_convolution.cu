@@ -365,7 +365,7 @@ void DepthwiseConvolutionCuda<T>::setup_impl(const Variables &inputs,
 
   NBLA_CHECK(inputs[1]->size() <= 65536, error_code::unclassified,
              "GPU implementation limit reached: output-channels x filter-size "
-             "can not be more than 65536.");  // see implementation note
+             "can not be more than 65536."); // see implementation note
 
   if (this->spatial_dims_ == 1) {
     sample_1d_ = make_int2(this->spatial_shape_i_[0], this->channels_i_);
