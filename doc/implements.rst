@@ -348,3 +348,6 @@ Function Implements
    * - DepthwiseConvolution
      - x
      -
+   * - Round
+     - x
+     -
