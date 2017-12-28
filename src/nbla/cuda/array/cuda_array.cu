@@ -30,28 +30,6 @@ template <typename T> void cuda_fill(Array *self, float value) {
   thrust::fill(dev_ptr, dev_ptr + self->size(), (T)value);
 }
 
-void CudaArray::fill(float value) {
-  cuda_set_device(this->device_);
-  switch (this->dtype()) {
-    NBLA_CASE_ARRAY_FILL(cuda_fill, UBYTE, unsigned char);
-    NBLA_CASE_ARRAY_FILL(cuda_fill, BYTE, char);
-    NBLA_CASE_ARRAY_FILL(cuda_fill, USHORT, unsigned short);
-    NBLA_CASE_ARRAY_FILL(cuda_fill, SHORT, short);
-    NBLA_CASE_ARRAY_FILL(cuda_fill, UINT, unsigned int);
-    NBLA_CASE_ARRAY_FILL(cuda_fill, INT, int);
-    NBLA_CASE_ARRAY_FILL(cuda_fill, ULONG, unsigned long);
-    NBLA_CASE_ARRAY_FILL(cuda_fill, LONG, long);
-    // NBLA_CASE_ARRAY_FILL(cuda_fill, ULONGLONG, unsigned long long);
-    // NBLA_CASE_ARRAY_FILL(cuda_fill, LONGLONG, long long);
-    NBLA_CASE_ARRAY_FILL(cuda_fill, FLOAT, float);
-    NBLA_CASE_ARRAY_FILL(cuda_fill, DOUBLE, double);
-  // NBLA_CASE_ARRAY_FILL(cuda_fill, BOOL, bool);
-  // NBLA_CASE_ARRAY_FILL(cuda_fill, LONGDOUBLE, long double);
-  default:
-    NBLA_ERROR(error_code::type, "Unknown dtype.")
-  }
-}
-
 template <typename Ta, typename Tb>
 void cuda_array_copy(const Array *src, Array *dst) {
   int src_device = std::stoi(src->context().device_id);
@@ -86,47 +64,11 @@ void cuda_array_copy(const Array *src, Array *dst) {
                                  dst->size() * sizeof(Tb)));
 }
 
-#define NBLA_CUDA_ARRAY_COPY_FROM(copy_func, type)                             \
-  switch (this->dtype()) {                                                     \
-    NBLA_CASE_ARRAY_COPY_FROM_TO(copy_func, UBYTE, type, unsigned char);       \
-    NBLA_CASE_ARRAY_COPY_FROM_TO(copy_func, BYTE, type, char);                 \
-    NBLA_CASE_ARRAY_COPY_FROM_TO(copy_func, USHORT, type, unsigned short);     \
-    NBLA_CASE_ARRAY_COPY_FROM_TO(copy_func, SHORT, type, short);               \
-    NBLA_CASE_ARRAY_COPY_FROM_TO(copy_func, UINT, type, unsigned int);         \
-    NBLA_CASE_ARRAY_COPY_FROM_TO(copy_func, INT, type, int);                   \
-    NBLA_CASE_ARRAY_COPY_FROM_TO(copy_func, ULONG, type, unsigned long);       \
-    NBLA_CASE_ARRAY_COPY_FROM_TO(copy_func, LONG, type, long);                 \
-    NBLA_CASE_ARRAY_COPY_FROM_TO(copy_func, FLOAT, type, float);               \
-    NBLA_CASE_ARRAY_COPY_FROM_TO(copy_func, DOUBLE, type, double);             \
-  default:                                                                     \
-    NBLA_ERROR(error_code::unclassified, "Unknown dtype.");                    \
-  }
-
-#define NBLA_CASE_CUDA_ARRAY_COPY_FROM(copy_func, type, src_type)              \
-  case dtypes::type:                                                           \
-    NBLA_CUDA_ARRAY_COPY_FROM(copy_func, src_type);                            \
-    break;
-
-#define NBLA_DEFINE_FUNC_CUDA_COPY_FROM(array_class, copy_func)                \
-  void array_class::copy_from(const Array *src_array) {                        \
-    if (src_array->size() != this->size_) {                                    \
-      NBLA_ERROR(error_code::unclassified, "Size mismatch.");                  \
-    }                                                                          \
-    switch (src_array->dtype()) {                                              \
-      NBLA_CASE_CUDA_ARRAY_COPY_FROM(copy_func, UBYTE, unsigned char);         \
-      NBLA_CASE_CUDA_ARRAY_COPY_FROM(copy_func, BYTE, char);                   \
-      NBLA_CASE_CUDA_ARRAY_COPY_FROM(copy_func, USHORT, unsigned short);       \
-      NBLA_CASE_CUDA_ARRAY_COPY_FROM(copy_func, SHORT, short);                 \
-      NBLA_CASE_CUDA_ARRAY_COPY_FROM(copy_func, UINT, unsigned int);           \
-      NBLA_CASE_CUDA_ARRAY_COPY_FROM(copy_func, INT, int);                     \
-      NBLA_CASE_CUDA_ARRAY_COPY_FROM(copy_func, ULONG, unsigned long);         \
-      NBLA_CASE_CUDA_ARRAY_COPY_FROM(copy_func, LONG, long);                   \
-      NBLA_CASE_CUDA_ARRAY_COPY_FROM(copy_func, FLOAT, float);                 \
-      NBLA_CASE_CUDA_ARRAY_COPY_FROM(copy_func, DOUBLE, double);               \
-    default:                                                                   \
-      NBLA_ERROR(error_code::unclassified, "Unknown dtype.");                  \
-    }                                                                          \
-  }
-
-NBLA_DEFINE_FUNC_CUDA_COPY_FROM(CudaArray, cuda_array_copy);
+NBLA_DEFINE_TYPE_DISABLER(cuda);
+NBLA_DISABLE_TYPE(cuda, long long);
+NBLA_DISABLE_TYPE(cuda, unsigned long long);
+NBLA_DISABLE_TYPE(cuda, long double);
+NBLA_DISABLE_TYPE(cuda, bool);
+NBLA_DEFINE_FUNC_COPY_FROM(CudaArray, cuda_array_copy, cuda);
+NBLA_DEFINE_FUNC_FILL(CudaArray, cuda_fill, cuda);
 }
