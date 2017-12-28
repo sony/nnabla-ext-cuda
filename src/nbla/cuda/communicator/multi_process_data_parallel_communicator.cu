@@ -125,6 +125,7 @@ template <typename T> void MultiProcessDataParallelCommunicatorNccl<T>::init() {
     }
     this->device_id_ = local_rank;
     this->local_rank_ = local_rank;
+    this->ctx_.device_id = std::to_string(local_rank);
 
     // Exchange comm_id_ among processes
     if (this->rank_ == 0) {
@@ -135,7 +136,7 @@ template <typename T> void MultiProcessDataParallelCommunicatorNccl<T>::init() {
     MPI_Barrier(mpi_comm);
     MPI_Comm_free(&mpi_comm);
 
-    // Nccl Init
+    // NCCL Init
     cuda_set_device(device_id_);
     ncclResult_t ret =
         ncclCommInitRank(&comm_, this->size_, comm_id_, this->rank_);
@@ -165,6 +166,8 @@ void MultiProcessDataParallelCommunicatorNccl<T>::reduce(bool division) {
 template <typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division,
                                                             bool inplace) {
+  // TODO: Delete this function when appropriate
+
   // TODO: currently nnabla uses default stream for computation.
   // The following logic relies on that, so if nnabla uses another stream for
   // computation,
@@ -174,23 +177,23 @@ void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division,
   // technique for
   // main thread not to wait for a result of a kernel call.
 
+  // TODO: the usage of multi streams is round-robin fashion, it may not be
+  // optimal.
+
   // Once sync to prevent the hang where the memcpy occurs during the allreduce.
   this->sync_all_params();
 
   if (inplace) { // in-place
     Context ctx = this->contexts_[0];
-
     auto func_named_param = this->device_func_named_param_[0];
-    auto size = func_named_param.size();
-
     int k = 0;
     for (auto elm : func_named_param) { // function-loop
       VariablePtr vp = elm.second;
       auto n_param = vp->size();
-
       const T *dw0 = vp->get_grad_pointer<T>(ctx);
       T *dw1 = vp->cast_grad_and_get_pointer<T>(ctx);
       int stream_id = k % num_streams_;
+      // AllReduce
       ncclResult_t ret = ncclAllReduce(dw0, dw1, n_param, ncclFloat,
                                        ncclSum, // TODO: address ncclFloat
                                        comm_, streams_[stream_id]);
@@ -198,16 +201,18 @@ void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division,
         NBLA_ERROR(error_code::target_specific, "ncclAllReduce fails with %d.",
                    ret);
       }
+      // Divide
+      if (division) {
+        NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace,
+                                          streams_[stream_id], n_param,
+                                          this->size_, dw1);
+      }
       k++;
     }
-    // Divide using the same streams
-    divide_by_num_divices(division);
-
   } else { // out-of-place. use a large array.
     Context ctx = this->contexts_[0];
     shared_ptr<CudaCachedArray> arr_buff = // TODO: address 16 bits also here?
         make_shared<CudaCachedArray>(this->total_params_, get_dtype<T>(), ctx);
-
     T *buff = arr_buff->pointer<T>();
     T *buff_start = buff;
     auto func_named_param = this->device_func_named_param_[0];
@@ -226,7 +231,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division,
       k++;
     }
 
-    // 2. allreduce
+    // 2. all reduce
     ncclResult_t ret =
         ncclAllReduce(buff_start, buff_start, this->total_params_,
                       ncclFloat,          // TODO: address ncclFloat
@@ -260,6 +265,101 @@ void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division,
     }
   }
   // no need to call null kernel since nnabla uses default stream currently.
+}
+
+template <typename T>
+void MultiProcessDataParallelCommunicatorNccl<T>::all_reduce(
+    vector<NdArrayPtr> ndarray_list, bool division, bool inplace) {
+  // TODO: currently nnabla uses default stream for computation.
+  // The following logic relies on that, so if nnabla uses another stream for
+  // computation,
+  // we have to issue null kernel to the default stream at the beginning of this
+  // method
+  // and at the end of this method for using the implicit synchronization
+  // technique for
+  // main thread not to wait for a result of a kernel call.
+
+  // TODO: the usage of multi streams is round-robin fashion, it may not be
+  // optimal.
+
+  if (inplace) { // in-place
+    int k = 0;
+    dtypes dtype = get_dtype<T>();
+    for (auto ndarray : ndarray_list) { // ndarray loop
+      int stream_id = k % num_streams_;
+      all_reduce(ndarray, streams_[stream_id], division, inplace);
+      k++;
+    }
+  } else { // out-of-place. use a large array.
+    // preparation
+    Size_t total_params = 0;
+    for (auto ndarray : ndarray_list) {
+      auto n_param = ndarray->size();
+      total_params += n_param;
+    }
+    dtypes dtype = get_dtype<T>();
+    auto large_ndarray = make_shared<NdArray>(Shape_t{total_params});
+    T *buff = large_ndarray->cast(dtype, this->ctx_)->pointer<T>();
+    T *buff_start = buff;
+    Size_t type_size = sizeof(T);
+    int k = 0;
+
+    // 1. copy inside device
+    for (auto ndarray : ndarray_list) {
+      const T *dw = ndarray->cast(dtype, this->ctx_)->const_pointer<T>();
+      auto n_param = ndarray->size();
+      int stream_id = k % num_streams_;
+      cudaMemcpyAsync(buff, dw, type_size * n_param, cudaMemcpyDeviceToDevice,
+                      streams_[stream_id]);
+      buff += n_param;
+      k++;
+    }
+
+    // all reduce
+    all_reduce(large_ndarray, nullptr, division, inplace);
+
+    // copy back inside device
+    buff = buff_start;
+    k = 0;
+    for (auto ndarray : ndarray_list) {
+      T *dw = ndarray->cast(dtype, this->ctx_)->pointer<T>();
+      auto n_param = ndarray->size();
+      int stream_id = k % num_streams_;
+      cudaMemcpyAsync(dw, buff, type_size * n_param, cudaMemcpyDeviceToDevice,
+                      streams_[stream_id]);
+      buff += n_param;
+      k++;
+    }
+  }
+  // no need to call null kernel since nnabla uses default stream currently.
+}
+
+template <typename T>
+void MultiProcessDataParallelCommunicatorNccl<T>::all_reduce(NdArrayPtr ndarray,
+                                                             bool division,
+                                                             bool inplace) {
+  all_reduce(ndarray, nullptr, division, inplace);
+}
+
+template <typename T>
+void MultiProcessDataParallelCommunicatorNccl<T>::all_reduce(
+    NdArrayPtr ndarray, cudaStream_t stream, bool division, bool inplace) {
+  auto n_param = ndarray->size();
+  dtypes dtype = get_dtype<T>();
+  const T *dw0 = ndarray->get(dtype, this->ctx_)->const_pointer<T>();
+  T *dw1 = ndarray->cast(dtype, this->ctx_)->pointer<T>();
+  ncclResult_t ret = ncclAllReduce(dw0, dw1, n_param,
+                                   ncclFloat, // TODO: address ncclFloat
+                                   ncclSum, comm_, stream);
+  if (ret != ncclSuccess) {
+    NBLA_ERROR(error_code::target_specific, "ncclAllReduce fails with %d.",
+               ret);
+  }
+
+  if (division) {
+    NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace, stream, n_param,
+                                      this->size_, dw1);
+  }
 }
 
 template <typename T>
@@ -334,28 +434,9 @@ void MultiProcessDataParallelCommunicatorNccl<
 }
 
 template <typename T>
-void MultiProcessDataParallelCommunicatorNccl<T>::divide_by_num_divices(
-    bool division) {
-  if (division) {
-    Context ctx = this->contexts_[0];
-    auto func_named_param = this->device_func_named_param_[0];
-    int k = 0;
-    for (auto elm : func_named_param) {
-      VariablePtr vp = elm.second;
-      T *dw = vp->cast_grad_and_get_pointer<T>(ctx);
-      auto n_param = vp->size();
-      int stream_id = k % num_streams_;
-      NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(
-          kernel_divide_inplace, streams_[stream_id], n_param, this->size_, dw);
-      k++;
-    }
-  }
-}
-
-template <typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::sync_all_params() {
-  Context ctx = this->contexts_[0];
   auto func_named_param = this->device_func_named_param_[0];
+  Context ctx = this->contexts_[0];
   auto size = func_named_param.size();
 
   for (auto elm : func_named_param) { // function-loop

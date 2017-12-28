@@ -205,6 +205,20 @@ void DataParallelCommunicatorNccl<T>::allreduce(bool division, bool inplace) {
 }
 
 template <typename T>
+void DataParallelCommunicatorNccl<T>::all_reduce(
+    vector<NdArrayPtr> ndarray_list, bool division, bool inplace) {
+  NBLA_ERROR(error_code::not_implemented,
+             "CUDA GPU all_reduce is not implemented.")
+}
+
+template <typename T>
+void DataParallelCommunicatorNccl<T>::all_reduce(NdArrayPtr data, bool division,
+                                                 bool inplace) {
+  NBLA_ERROR(error_code::not_implemented,
+             "CUDA GPU all_reduce is not implemented.")
+}
+
+template <typename T>
 void DataParallelCommunicatorNccl<T>::reducescatter(bool division) {
   NBLA_ERROR(error_code::not_implemented,
              "CUDA GPU reducescatter is not implemented.")
