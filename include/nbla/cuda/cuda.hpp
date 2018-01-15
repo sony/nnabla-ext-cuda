@@ -42,6 +42,9 @@ public:
   /** Get cuBLAS handle of a specified device */
   cublasHandle_t cublas_handle(int device = -1);
 
+  /** Get or create cuda event */
+  std::shared_ptr<cudaEvent_t> cuda_event(unsigned int flags, int device = -1);
+
   /** Get cuRAND global generator **/
   curandGenerator_t curand_generator();
 
@@ -86,9 +89,12 @@ protected:
   std::mutex mtx_cublas_;
   std::mutex mtx_curand_;
   std::mutex mtx_workspace_;
+  std::mutex mtx_event_;
   unordered_map<int, cublasHandle_t>
       cublas_handles_; ///< cuBLAS handles for each device.
   unordered_map<int, curandGenerator_t> curand_generators_;
+  unordered_map<int, unordered_map<unsigned int, vector<cudaEvent_t>>>
+      cuda_unused_events_;
   vector<string> array_classes_;     ///< Available array classes
   MemoryCache<CudaMemory> memcache_; ///< CUDA memory cache.
   unordered_map<int, shared_ptr<CudaMemory>> workspace_; ///< Workspace memory.
