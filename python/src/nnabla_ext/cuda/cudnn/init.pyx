@@ -22,7 +22,7 @@ cdef extern from "nbla/cuda/cudnn/init.hpp" namespace "nbla":
 logger.info('Initializing cuDNN extension...')
 try:
     init_cudnn()
-    add_available_context('cuda', 'cudnn')
-except:
+    add_available_context('cuda.cudnn')
+except Exception as e:
     logger.warning(
-        'Cudnn initialization failed. Please make sure that the Cudnn is correctly installed.')
+        'Cudnn initialization failed. Please make sure that the Cudnn is correctly installed. {}'.format(e))

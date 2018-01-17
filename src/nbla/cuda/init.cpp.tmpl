@@ -1,3 +1,4 @@
+
 // Copyright (c) 2017 Sony Corporation. All Rights Reserved.
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,9 +47,6 @@
 #endif
 
 #include <nbla/garbage_collector.hpp>
-
-// atoi
-#include <cstdlib>
 
 namespace nbla {
 
@@ -146,7 +144,7 @@ void _cuda_set_array_classes(const vector<string> &a) {
 }
 
 void cuda_device_synchronize(const string &device) {
-  cuda_set_device(std::atoi(device.c_str()));
+  cuda_set_device(std::stoi(device));
   NBLA_CUDA_CHECK(cudaDeviceSynchronize());
 }
 

@@ -24,3 +24,4 @@
 /src/nbla/cuda/init.cpp
 /third_party/*.zip
 /third_party/*/
+/build/
