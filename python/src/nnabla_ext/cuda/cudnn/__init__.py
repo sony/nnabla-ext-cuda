@@ -24,19 +24,18 @@ from ._version import (
     __email__
 )
 
+from nnabla_ext.cuda import (
+    clear_memory_cache,
+    array_classes,
+    device_synchronize,
+    get_device_count,
+    get_devices,
+    synchronize,
+)
+
 
 def context(device_id=0, *kw):
     """CUDNN context"""
     from nnabla_ext.cuda import array_classes
-    return Context('cpu|cuda', array_classes()[0], device_id=str(device_id), compute_backend='default|cudnn')
-
-
-def synchronize(device_id=0, **kw):
-    """Call ``cudaDeviceSynchronize`` in runtime API`.
-
-    Args:
-        device_id (int): Device ID.
-
-    """
-    from nnabla_ext.cuda import device_synchronize
-    return device_synchronize(device_id)
+    return Context(['cudnn:float', 'cuda:float', 'cpu:float'],
+                   array_classes()[0], device_id=str(device_id))

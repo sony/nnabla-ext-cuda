@@ -146,7 +146,7 @@ void _cuda_set_array_classes(const vector<string> &a) {
 }
 
 void cuda_device_synchronize(const string &device) {
-  cuda_set_device(std::atoi(device));
+  cuda_set_device(std::atoi(device.c_str()));
   NBLA_CUDA_CHECK(cudaDeviceSynchronize());
 }
 

@@ -64,7 +64,7 @@ void CudaArray::zero() {
 }
 
 Context CudaArray::filter_context(const Context &ctx) {
-  return Context("", "CudaArray", ctx.device_id, "");
+  return Context({}, "CudaArray", ctx.device_id);
 }
 
 /////////////////////////////////////
@@ -126,7 +126,7 @@ void CudaCachedArray::deallocate() {
   }
 }
 Context CudaCachedArray::filter_context(const Context &ctx) {
-  return Context("", "CudaCachedArray", ctx.device_id, "");
+  return Context({}, "CudaCachedArray", ctx.device_id);
 }
 
 } // End of namespace nbla

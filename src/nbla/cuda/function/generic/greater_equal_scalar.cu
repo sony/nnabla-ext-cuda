@@ -20,5 +20,5 @@
 namespace nbla {
 
 NBLA_DEFINE_TRANSFORM_UNARY_CUDA_1_NO_GRAD(GreaterEqualScalar, x >= (T)a0,
-					   double);
+                                           double);
 }

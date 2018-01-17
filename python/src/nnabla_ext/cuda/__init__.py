@@ -20,7 +20,8 @@ from .init import (
     clear_memory_cache,
     array_classes,
     device_synchronize,
-    get_device_count)
+    get_device_count,
+    get_devices)
 
 from ._version import (
     __version__,
@@ -33,14 +34,14 @@ from nnabla.variable import Context
 
 def context(device_id=0, **kw):
     """CUDA context."""
-    return Context('cpu|cuda', array_classes()[0], device_id=str(device_id), compute_backend='default')
+    return Context(['cuda:float', 'cpu:float'], array_classes()[0], device_id=str(device_id))
 
 
 def synchronize(device_id=0, **kw):
     """Call ``cudaDeviceSynchronize`` in runtime API`.
 
     Args:
-        device_id (int): Device ID.
+        device_id (str): Device ID. e.g. "0", "1".
 
     """
     return device_synchronize(device_id)

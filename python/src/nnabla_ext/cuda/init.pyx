@@ -24,14 +24,15 @@ cdef extern from "nbla/cuda/init.hpp" namespace "nbla":
     void clear_cuda_memory_cache() except+
     vector[string] cuda_array_classes() except +
     void _cuda_set_array_classes(const vector[string] & a) except +
-    void cuda_device_synchronize(int device) except +
+    void cuda_device_synchronize(const string & device) except +
     int cuda_get_device_count() except +
+    vector[string] cuda_get_devices() except +
 
 
 logger.info('Initializing CUDA extension...')
 try:
     init_cuda()
-    add_available_context('cuda', 'default')
+    add_available_context('cuda')
 except:
     logger.warning(
         'CUDA initialization failed. Please make sure that the CUDA is correctly installed.')
@@ -80,7 +81,7 @@ cpu_init._add_callback_reset_array_preference(reset_array_preference)
 ###############################################################################
 # Wrappers for CUDA Runtime API.
 ###############################################################################
-def device_synchronize(int device):
+def device_synchronize(str device):
     """Call ``cudaDeviceSynchronize`` in runtime API`.
 
     Args:
@@ -98,4 +99,14 @@ def get_device_count():
 
     """
     return cuda_get_device_count()
+
+
+def get_devices():
+    """Get available devices.
+
+    Returns:
+        list of str: List of available devices.
+
+    """
+    return cuda_get_devices()
 ###############################################################################
