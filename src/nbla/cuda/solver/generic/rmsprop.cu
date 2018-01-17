@@ -15,6 +15,8 @@
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/solver/rmsprop.hpp>
 
+#include "./weight_decay.cuh"
+
 namespace nbla {
 
 template <typename T>
@@ -26,12 +28,6 @@ __global__ void kernel_rmsprop_update(const int num, T *data, const T *grad,
         e_sqr_grad[idx] * decay + grad[idx] * grad[idx] * (1 - decay);
     data[idx] -= lr * grad[idx] / (sqrt(e_sqr_grad[idx]) + eps);
   }
-}
-
-template <typename T>
-__global__ void kernel_weight_decay(const int num, T *grad, const T *data,
-                                    const float decay_rate) {
-  NBLA_CUDA_KERNEL_LOOP(idx, num) { grad[idx] += decay_rate * data[idx]; }
 }
 
 template <typename T>
@@ -47,7 +43,4 @@ void RMSpropCuda<T>::update_impl(const string &key, VariablePtr param) {
 }
 
 NBLA_DEF_WEIGHT_DECAY(RMSpropCuda, weight_decay_cuda);
-
-// Template instantiation
-template class RMSpropCuda<float>;
 }

@@ -55,7 +55,7 @@ def generate():
     function_template_cudnn = join(
         base, 'src/nbla/cuda/cudnn/function/function_types.cu.tmpl')
     solver_template = join(
-        base, 'src/nbla/cuda/solver_types.cu.tmpl')
+        base, 'src/nbla/cuda/solver/solver_types.cu.tmpl')
     init_template = join(
         base, 'src/nbla/cuda/init.cpp.tmpl')
     init_template_cudnn = join(
@@ -68,9 +68,9 @@ def generate():
         function_info, function_types, ext_info={}, template=function_template, output_format='%s.cu')
     utils.generate_function_types(
         function_info, function_types_cudnn, ext_info={}, template=function_template_cudnn, output_format='%s.cu')
-    """
     utils.generate_solver_types(
-        solver_info, solver_types, ext_info=ext_info, template=solver_template)
+        solver_info, solver_types, ext_info={}, template=solver_template, output_format='%s.cu')
+    """
     utils.generate_version(template=join(
         base, 'python/src/nnabla_ext/%s/_version.py.tmpl' % ext_info['ext_name_snake']), rootdir=base)
     func_src_template = join(

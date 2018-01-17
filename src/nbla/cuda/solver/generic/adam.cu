@@ -15,6 +15,8 @@
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/solver/adam.hpp>
 
+#include "./weight_decay.cuh"
+
 namespace nbla {
 
 template <typename T>
@@ -29,12 +31,6 @@ __global__ void kernel_adam_update(const int num, T *theta, T *m, T *v,
     // Update parameters.
     theta[s] = theta[s] - alpha_t * m[s] / (std::sqrt(v[s]) + eps);
   }
-}
-
-template <typename T>
-__global__ void kernel_weight_decay(const int num, T *grad, const T *data,
-                                    const float decay_rate) {
-  NBLA_CUDA_KERNEL_LOOP(idx, num) { grad[idx] += decay_rate * data[idx]; }
 }
 
 template <typename T>
@@ -58,7 +54,4 @@ void AdamCuda<T>::update_impl(const string &key, VariablePtr param) {
                                  this->eps_);
 }
 NBLA_DEF_WEIGHT_DECAY(AdamCuda, weight_decay_cuda);
-
-// Template instantiation
-template class AdamCuda<float>;
 }

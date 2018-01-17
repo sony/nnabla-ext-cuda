@@ -15,6 +15,8 @@
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/solver/nesterov.hpp>
 
+#include "./weight_decay.cuh"
+
 namespace nbla {
 
 template <typename T>
@@ -29,12 +31,6 @@ __global__ void kernel_nesterov_update(const int num, T *data, const T *grad,
 }
 
 template <typename T>
-__global__ void kernel_weight_decay(const int num, T *grad, const T *data,
-                                    const float decay_rate) {
-  NBLA_CUDA_KERNEL_LOOP(idx, num) { grad[idx] += decay_rate * data[idx]; }
-}
-
-template <typename T>
 void NesterovCuda<T>::update_impl(const string &key, VariablePtr param) {
   Size_t size = param->size();
   VariablePtr v_ = this->state_.at(key);
@@ -46,7 +42,4 @@ void NesterovCuda<T>::update_impl(const string &key, VariablePtr param) {
 }
 
 NBLA_DEF_WEIGHT_DECAY(NesterovCuda, weight_decay_cuda);
-
-// Template instantiation
-template class NesterovCuda<float>;
 }

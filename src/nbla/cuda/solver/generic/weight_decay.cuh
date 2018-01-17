@@ -12,16 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef NBLA_CUDA_FUNCTION_GENERIC_WEIGHT_DECAY_CUH
+#define NBLA_CUDA_FUNCTION_GENERIC_WEIGHT_DECAY_CUH
+
 #include <nbla/cuda/common.hpp>
-#include <nbla/cuda/solver/sgd.hpp>
+#include <nbla/variable.hpp>
 
 namespace nbla {
-
-template <typename T>
-__global__ void kernel_update(const int num, T *data, const T *grad,
-                              const float lr) {
-  NBLA_CUDA_KERNEL_LOOP(idx, num) { data[idx] -= lr * grad[idx]; }
-}
 
 template <typename T>
 __global__ void kernel_weight_decay(const int num, T *grad, const T *data,
@@ -30,16 +27,14 @@ __global__ void kernel_weight_decay(const int num, T *grad, const T *data,
 }
 
 template <typename T>
-void SgdCuda<T>::update_impl(const string &key, VariablePtr param) {
-  cuda_set_device(std::stoi(this->ctx_.device_id));
+void weight_decay_cuda(const Context &ctx, const shared_ptr<Variable> param,
+                       float decay_rate) {
+  cuda_set_device(std::stoi(ctx.device_id));
   Size_t size = param->size();
-  const T *grad = param->get_grad_pointer<T>(this->ctx_);
-  T *data = param->cast_data_and_get_pointer<T>(this->ctx_);
-  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_update, size, data, grad, this->lr_);
+  const T *data = param->get_data_pointer<T>(ctx);
+  T *grad = param->cast_grad_and_get_pointer<T>(ctx);
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_weight_decay, size, grad, data,
+                                 decay_rate);
 }
-
-NBLA_DEF_WEIGHT_DECAY(SgdCuda, weight_decay_cuda);
-
-// Template instantiation
-template class SgdCuda<float>;
 }
+#endif
