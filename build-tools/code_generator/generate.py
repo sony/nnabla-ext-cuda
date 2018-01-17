@@ -27,9 +27,9 @@ info = functions.info
 info['Implements'] = Implements().info
 
 generation_list = {
-    'cuda': ['src/nbla/cuda/init.cpp',
+    'cuda': [
              'python/src/nnabla_ext/cuda/_version.py'],
-    'cudnn': ['src/nbla/cuda/cudnn/init.cpp',
+    'cudnn': [
               'python/src/nnabla_ext/cuda/cudnn/_version.py']
 }
 

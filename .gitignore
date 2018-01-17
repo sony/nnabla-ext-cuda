@@ -17,6 +17,8 @@
 /python/src/nnabla_ext/cuda/libnnabla_cuda.so
 /python/src/nnabla_ext/cuda/nnabla_cuda.dll
 /python/src/nnabla_ext/cuda/nnabla_cuda.lib
+/src/nbla/cuda/function/*.cu
+/src/nbla/cuda/cudnn/function/*.cu
 /src/nbla/cuda/cudnn/init.cpp
 /src/nbla/cuda/init.cpp
 /third_party/*.zip

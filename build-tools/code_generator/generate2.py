@@ -51,11 +51,11 @@ def generate():
     solver_types = utils.load_yaml_ordered(open(
         join(here, 'solver_types.yaml'), 'r'))
     function_template = join(
-        base, 'src/nbla/cuda/function_types.cpp.tmpl')
+        base, 'src/nbla/cuda/function/function_types.cu.tmpl')
     function_template_cudnn = join(
-        base, 'src/nbla/cuda/cudnn/function_types.cpp.tmpl')
+        base, 'src/nbla/cuda/cudnn/function/function_types.cu.tmpl')
     solver_template = join(
-        base, 'src/nbla/cuda/solver_types.cpp.tmpl')
+        base, 'src/nbla/cuda/solver_types.cu.tmpl')
     init_template = join(
         base, 'src/nbla/cuda/init.cpp.tmpl')
     init_template_cudnn = join(
@@ -64,9 +64,11 @@ def generate():
                         solver_info, solver_types, ext_info={}, template=init_template)
     utils.generate_init(function_info, function_types_cudnn,
                         solver_info, solver_types, ext_info={}, template=init_template_cudnn)
-    """
     utils.generate_function_types(
-        function_info, function_types, ext_info=ext_info, template=function_template)
+        function_info, function_types, ext_info={}, template=function_template, output_format='%s.cu')
+    utils.generate_function_types(
+        function_info, function_types_cudnn, ext_info={}, template=function_template_cudnn, output_format='%s.cu')
+    """
     utils.generate_solver_types(
         solver_info, solver_types, ext_info=ext_info, template=solver_template)
     utils.generate_version(template=join(
@@ -87,4 +89,3 @@ def generate():
 
 if __name__ == '__main__':
     generate()
-

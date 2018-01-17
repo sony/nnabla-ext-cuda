@@ -6,8 +6,8 @@ DepthwiseConvolution:
   float: [float]
 Deconvolution:
   float: [float]
-MaxPooling:
-  float: [float]
+# MaxPooling:
+#   float: [float]
 # AveragePooling:
 #   float: [float]
 # SumPooling:
@@ -128,8 +128,8 @@ LessScalar:
   float: [float]
 LogicalNot:
   float: [float]
-Constant:
-  float: [float]
+# Constant:
+#   float: [float]
 Abs:
   float: [float]
 Exp:
@@ -206,10 +206,10 @@ BinaryConnectAffine:
   float: [float]
 BinaryConnectConvolution:
   float: [float]
-BinaryWeightAffine:
-  float: [float]
-BinaryWeightConvolution:
-  float: [float]
+# BinaryWeightAffine:
+#   float: [float]
+# BinaryWeightConvolution:
+#   float: [float]
 INQAffine:
   float: [float, int]
 INQConvolution:
