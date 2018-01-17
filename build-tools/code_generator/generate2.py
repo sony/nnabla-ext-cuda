@@ -74,19 +74,32 @@ def generate():
         base, 'python/src/nnabla_ext/cuda/_version.py.tmpl'), rootdir=base)
     utils.generate_version(template=join(
         base, 'python/src/nnabla_ext/cuda/cudnn/_version.py.tmpl'), rootdir=base)
-    """
+
+    # Generate function skeltons
     func_src_template = join(
         base,
-        'src/nbla/%s/function/generic/function_impl.cpp.tmpl' % ext_info['ext_name_snake'])
-    utils.generate_skelton_function_impl(
-        function_info, function_types, ext_info, template=func_src_template)
+        'src/nbla/cuda/function/generic/function_impl.cu.tmpl')
+    func_src_template_cudnn = join(
+        base,
+        'src/nbla/cuda/cudnn/function/generic/function_impl.cu.tmpl')
     func_header_template = join(
         base,
-        'include/nbla/%s/function/function_impl.hpp.tmpl' % ext_info['ext_name_snake'])
+        'include/nbla/cuda/function/function_impl.hpp.tmpl')
+    func_header_template_cudnn = join(
+        base,
+        'include/nbla/cuda/cudnn/function/function_impl.hpp.tmpl')
     utils.generate_skelton_function_impl(
-        function_info, function_types, ext_info,
+        function_info, function_types, ext_info={},
+        template=func_src_template, output_format='%s.cu')
+    utils.generate_skelton_function_impl(
+        function_info, function_types, ext_info={},
         template=func_header_template, output_format='%s.hpp')
-    """
+    utils.generate_skelton_function_impl(
+        function_info, function_types_cudnn, ext_info={},
+        template=func_src_template_cudnn, output_format='%s.cu')
+    utils.generate_skelton_function_impl(
+        function_info, function_types_cudnn, ext_info={},
+        template=func_header_template_cudnn, output_format='%s.hpp')
 
 
 if __name__ == '__main__':

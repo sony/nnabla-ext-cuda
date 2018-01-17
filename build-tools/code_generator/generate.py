@@ -32,8 +32,8 @@ generation_list = {
 }
 
 function_generation_list = {
-    'cuda': ['include/nbla/cuda/function/{}.hpp', 'src/nbla/cuda/function/{}.cu'],
-    'cudnn': ['include/nbla/cuda/cudnn/function/{}.hpp', 'src/nbla/cuda/cudnn/function/{}.cu']
+    'cuda': [],
+    'cudnn': [],
 }
 
 for implements, filelist in generation_list.items():

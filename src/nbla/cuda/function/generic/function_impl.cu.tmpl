@@ -1,0 +1,177 @@
+// Copyright (c) 2017 Sony Corporation. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+
+#include <nbla/array.hpp>
+#include <nbla/cuda/common.hpp>
+#include <nbla/cuda/function/${snake_name}.hpp>
+#include <nbla/variable.hpp>
+
+// TODO: Remove these #includes. Only for debug.
+#include <iostream>
+#include <typeinfo>
+
+<%
+dec_targs = ', '.join(['typename ' + t for t in ttypes])
+targs = ', '.join(ttypes)
+%>
+
+namespace nbla {
+
+template <${dec_targs}>
+void ${name}Cuda<${targs}>::setup_impl(const Variables &inputs,
+                               const Variables &outputs) {
+  /* TODO: Write a setup implementation.
+
+     Usually calling setup_impl of base class does almost setup needs to be
+     done. See the base class implementation in nnabla, and add additional setup
+     code if necessary.
+
+     Note that, although it is called only when a compuation graph is
+     constructed in a static computation graph, in a dynamic computation graph,
+     it's called every time. Keep the setup computation light for the performance
+     (caching heavy computation, device synchronization in GPU etc.)
+  */
+  ${name}<${targs}>::setup_impl(inputs, outputs);
+  cuda_set_device(this->device_);
+  // TODO: Remove debug message
+  std::cout << "${name}Cuda<" << typeid(T).name()
+            << ">::setup_impl called with " << this->ctx_.to_string() << "."
+            << std::endl;
+}
+
+template <${dec_targs}>
+void ${name}Cuda<${targs}>::forward_impl(const Variables &inputs,
+                               const Variables &outputs) {
+  cuda_set_device(this->device_);
+  // TODO: Remove debug message
+  std::cout << "${name}Cuda<" << typeid(T).name()
+            << ">::forward_impl called with " << this->ctx_.to_string() << "."
+            << std::endl;
+
+  /* TODO: remove this help message.
+    The type `Variables` is a typedef of `vector<Variable*>`.
+    The `Variable` class owns storages of data (storage for forward propagation)
+    and grad (for backprop) respectively.
+
+    You can get a raw device pointer of a scalar type of the storage using:
+
+    - `cosnt T* Variable::get_{data|grad}_pointer<T>(ctx)` for read-only access.
+    - `T* Variable::cast_{data|grad}_and_get_pointer<T>(ctx)` for r/w access.
+
+    By this, automatic type conversion would occur if data was held in a
+    different type. Also, if the data lie in a CPU or another GPU device, the
+    data is automatically transferred to the device specified by the context.
+  */
+
+  // Inputs
+% for i, (vin_name, vin) in enumerate(inputs.items()):
+% if vin.get('optional', false):
+  const ${in_types[i]}* ${vin_name}{nullptr};
+  if (inputs.size() > ${i}) {
+    ${vin_name} = inputs[${i}]->get_data_pointer<${in_types[i]}>(this->ctx_);
+  }
+% else:
+  const ${in_types[i]}* ${vin_name} = inputs[${i}]->get_data_pointer<${in_types[i]}>(this->ctx_);
+% endif
+% endfor
+
+  // Outputs
+% for i, (vout_name, vout) in enumerate(outputs.items()):
+% if vout.get('optional', false):
+  ${out_types[i]}* ${vout_name}{nullptr};
+  if (outputs.size() > ${i}) {
+    ${vout_name} = outputs[${i}]->cast_data_and_get_pointer<${out_types[i]}>(this->ctx_);
+  }
+% else:
+  ${out_types[i]}* ${vout_name} = outputs[${i}]->cast_data_and_get_pointer<${out_types[i]}>(this->ctx_);
+% endif
+% endfor
+
+  // TODO: Write implementation
+}
+
+
+template <${dec_targs}>
+void ${name}Cuda<${targs}>::backward_impl(const Variables &inputs,
+                                const Variables &outputs,
+                                const vector<bool> &propagate_down,
+                                const vector<bool> &accum) {
+  // TODO: Remove debug message
+  std::cout << "${name}Cuda<" << typeid(T).name()
+            << ">::backward_impl called with " << this->ctx_.to_string() << "."
+            << std::endl;
+<%
+pp = []
+for i, (vin_name, vin) in enumerate(inputs.items()):
+  if vin.get('optional', False):
+    pp.append('(inputs.size() > {0} && propagate_down[{0}])'.format(i))
+  else:
+    pp.append('propagate_down[{}]'.format(i))
+pp = '!(%s)' % ' || '.join(pp)
+%>
+  /* TODO: remove this help message.
+     The propagate down flags are automatically set by our graph engine, which
+     specifies whether each input variable of them requires gradient
+     computation.
+  */
+  if (${pp}) {
+    return;
+  }
+  cuda_set_device(this->device_);
+
+  /** TODO: remove this help message.
+      The backward error signals are propagated through the graph, and the
+      error from decsendant functions are set in the grad region of the output variables.
+   */
+  // Gradient of outputs
+% for i, (vout_name, vout) in enumerate(outputs.items()):
+% if vout.get('optional', false):
+  const ${out_types[i]}* g_${vout_name}{nullptr};
+  if (outputs.size() > ${i}) {
+    g_${vout_name} = outputs[${i}]->get_grad_pointer<${out_types[i]}>(this->ctx_);
+  }
+% else:
+  const ${out_types[i]}* g_${vout_name} = outputs[${i}]->get_grad_pointer<${out_types[i]}>(this->ctx_);
+% endif
+% endfor
+
+  /* TODO: remove this help message.
+     The backward error signal should be propagated to the grad region of input
+     variables.
+
+     The accum flags are also set by our graph engine, which specifies whether
+     each input variable of them wants the result of the gradient computation
+     by substitution or accumulation.
+  */
+  // Gradient of inputs
+% for i, (vin_name, vin) in enumerate(inputs.items()):
+  ${in_types[i]}* g_${vin_name}{nullptr};
+% endfor
+
+% for i, (vin_name, vin) in enumerate(inputs.items()):
+% if vin.get('optional', false):
+  if (inputs.size() > ${i} && propagate_down[${i}]) {
+    g_${vin_name} = inputs[${i}]->cast_grad_and_get_pointer<${in_types[i]}>(this->ctx_);
+    // TODO: Write gradient computation of ${vin_name}
+  }
+% else:
+  if (propagate_down[${i}]) {
+    g_${vin_name} = inputs[${i}]->cast_grad_and_get_pointer<${in_types[i]}>(this->ctx_);
+    // TODO: Write gradient computation of ${vin_name}
+  }
+% endif
+% endfor
+}
+}

@@ -1,0 +1,83 @@
+// Copyright (c) 2017 Sony Corporation. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+<%
+from utils.type_conv import type_from_proto
+dec_targs = ', '.join(['typename ' + t for t in ttypes])
+targs = ', '.join(ttypes)
+dec_args = ''.join([', %s %s' % (type_from_proto[v['type']]['cpp'], k) for k, v in arguments.items()])
+args = ''.join([', ' + k for k, v in arguments.items()])
+%>
+
+#ifndef NBLA_CUDA_CUDNN_FUNCTION_${snake_name.upper()}_HPP
+#define NBLA_CUDA_CUDNN_FUNCTION_${snake_name.upper()}_HPP
+
+#include <nbla/cuda/cuda.hpp>
+#include <nbla/cuda/cudnn/cudnn.hpp>
+
+// TODO: Choose a parent from CPU or CUDA. Edit the class too.
+#include <nbla/function/${snake_name}.hpp>
+// #include <nbla/cuda/function/${snake_name}.hpp>
+
+namespace nbla {
+
+// TODO: Choose a parent from ${name} or ${name}Cuda.
+// Edit the source file src/nbla/cuda/cudnn/function/generic/${name}.cu too.
+template <${dec_targs}> class ${name}CudaCudnn : public ${name}<${targs}> {
+public:
+  explicit ${name}CudaCudnn(const Context &ctx${dec_args}) : ${name}<${targs}>(ctx${args}), device_(std::stoi(ctx.device_id)) {
+    // Create CUDNN resources in a RAII-way.
+% for iname in inputs.keys():
+    NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&${iname}_desc_));
+% endfor
+% for oname in outputs.keys():
+    NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&${oname}_desc_));
+% endfor
+    // TODO: Create other descriptors.
+  }
+  virtual ~${name}CudaCudnn() {
+    // Destroy CUDNN resources in a RAII-way.
+% for iname in inputs.keys():
+    NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(${iname}_desc_));
+% endfor
+% for oname in outputs.keys():
+    NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(${oname}_desc_));
+% endfor
+    // TODO: Destoy other descriptors
+  }
+  virtual string name() { return "${name}CudaCudnn"; }
+  virtual vector<string> allowed_array_classes() {
+    return SingletonManager::get<Cuda>()->array_classes();
+  }
+
+protected:
+  int device_;
+
+  // Storage descriptors% for iname in inputs.keys();
+% for iname in inputs.keys():
+  cudnnTensorDescriptor_t ${iname}_desc_;
+% endfor
+% for oname in outputs.keys():
+  cudnnTensorDescriptor_t ${oname}_desc_;
+% endfor
+  // TODO: Declare CUDNN algorithm descriptors
+
+  virtual void setup_impl(const Variables &inputs, const Variables &outputs);
+  virtual void forward_impl(const Variables &inputs, const Variables &outputs);
+  virtual void backward_impl(const Variables &inputs, const Variables &outputs,
+                             const vector<bool> &propagate_down,
+                             const vector<bool> &accum);
+};
+}
+#endif
