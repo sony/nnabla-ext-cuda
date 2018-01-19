@@ -48,6 +48,7 @@ setup_requires = [
 ]
 
 install_requires = [
+    'setuptools',
     'nnabla>={}'.format(__short_version__),
 ]
 
