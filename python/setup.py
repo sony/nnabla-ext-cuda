@@ -144,8 +144,8 @@ def cuda_config(root_dir, cuda_lib, ext_opts):
 
 def cudnn_config(root_dir, cuda_lib, cuda_ext_opts):
     src_dir = join(root_dir, 'src')
-    path_cudnn_pkg = join(src_dir, 'nnabla_ext', 'cuda', 'cudnn')
-    cudnn_pkg = 'nnabla_ext.cuda.cudnn'
+    path_cudnn_pkg = join(src_dir, 'nnabla_ext', 'cudnn')
+    cudnn_pkg = 'nnabla_ext.cudnn'
     package_dir = {cudnn_pkg: path_cudnn_pkg}
     packages = [cudnn_pkg]
     ext_modules = [

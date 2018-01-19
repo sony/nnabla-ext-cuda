@@ -73,7 +73,7 @@ def generate():
     utils.generate_version(template=join(
         base, 'python/src/nnabla_ext/cuda/_version.py.tmpl'), rootdir=base)
     utils.generate_version(template=join(
-        base, 'python/src/nnabla_ext/cuda/cudnn/_version.py.tmpl'), rootdir=base)
+        base, 'python/src/nnabla_ext/cudnn/_version.py.tmpl'), rootdir=base)
 
     # Generate function skeltons
     func_src_template = join(

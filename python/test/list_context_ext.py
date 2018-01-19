@@ -36,6 +36,6 @@ def list(func_name):
         import nnabla_ext.cuda
         l.append((nnabla_ext.cuda.context(), func_name + 'Cuda'))
     if func_name in function_types_cudnn and function_types_cudnn[func_name]:
-        import nnabla_ext.cuda.cudnn
-        l.append((nnabla_ext.cuda.cudnn.context(), func_name + 'CudaCudnn'))
+        import nnabla_ext.cudnn
+        l.append((nnabla_ext.cudnn.context(), func_name + 'CudaCudnn'))
     return l

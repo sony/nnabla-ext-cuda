@@ -34,7 +34,7 @@ from nnabla_ext.cuda import (
 )
 
 
-def context(device_id=0, *kw):
+def context(device_id='0', *kw):
     """CUDNN context"""
     from nnabla_ext.cuda import array_classes
     return Context(['cudnn:float', 'cuda:float', 'cpu:float'],
