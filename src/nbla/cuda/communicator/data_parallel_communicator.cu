@@ -85,7 +85,7 @@ void DataParallelCommunicatorNccl<T>::reduce(
 }
 
 template <typename T>
-void DataParallelCommunicatorNccl<T>::reduce(const NdArrayPtr &data, int dst,
+void DataParallelCommunicatorNccl<T>::reduce(NdArrayPtr ndarray, int dst,
                                              bool division, bool inplace,
                                              const string &group) {
   NBLA_ERROR(error_code::not_implemented, "CUDA GPU reduce is not implemented.")
@@ -222,7 +222,7 @@ void DataParallelCommunicatorNccl<T>::all_reduce(
 }
 
 template <typename T>
-void DataParallelCommunicatorNccl<T>::all_reduce(const NdArrayPtr &data,
+void DataParallelCommunicatorNccl<T>::all_reduce(NdArrayPtr ndarray,
                                                  bool division, bool inplace,
                                                  const string &group) {
   NBLA_ERROR(error_code::not_implemented,
@@ -231,7 +231,7 @@ void DataParallelCommunicatorNccl<T>::all_reduce(const NdArrayPtr &data,
 
 template <typename T>
 void DataParallelCommunicatorNccl<T>::reduce_scatter(
-    const vector<NdArrayPtr> &ndarray_list, const NdArrayPtr &ndarray,
+    const vector<NdArrayPtr> &ndarray_list, NdArrayPtr ndarray,
     bool division, const string &group) {
   NBLA_ERROR(error_code::not_implemented,
              "CUDA GPU reduce_scatter is not implemented.")
@@ -245,14 +245,14 @@ void DataParallelCommunicatorNccl<T>::bcast(
 }
 
 template <typename T>
-void DataParallelCommunicatorNccl<T>::bcast(const NdArrayPtr &ndarray, int src,
+void DataParallelCommunicatorNccl<T>::bcast(NdArrayPtr ndarray, int src,
                                             bool inplace, const string &group) {
   NBLA_ERROR(error_code::not_implemented, "CUDA GPU bcast is not implemented.")
 }
 
 template <typename T>
 void DataParallelCommunicatorNccl<T>::all_gather(
-    const NdArrayPtr &ndarray, const vector<NdArrayPtr> &ndarray_list,
+    NdArrayPtr ndarray, const vector<NdArrayPtr> &ndarray_list,
     const string &group) {
   NBLA_ERROR(error_code::not_implemented,
              "CUDA GPU all_gather is not implemented.")

@@ -94,35 +94,35 @@ public:
   copy_inside_device(const vector<NdArrayPtr> &ndarray_list);
   virtual void
   copy_back_inside_device(const vector<NdArrayPtr> &ndarray_list,
-                          const shared_ptr<NdArray> &large_ndarray);
+                          NdArrayPtr large_ndarray);
 
   virtual void reduce(const vector<NdArrayPtr> &ndarray_list, int dst,
                       bool division = false, bool inplace = false,
                       const string &group = "world");
-  virtual void reduce(const NdArrayPtr &data, int dst, bool division = false,
+  virtual void reduce(NdArrayPtr ndarray, int dst, bool division = false,
                       bool inplace = false, const string &group = "world");
-  virtual void reduce(const NdArrayPtr &data, cudaStream_t stream, int dst,
+  virtual void reduce(NdArrayPtr ndarray, cudaStream_t stream, int dst,
                       bool division = false, bool inplace = false,
                       const string &group = "world");
   virtual void allreduce(bool division = false, bool inplace = false);
   virtual void all_reduce(const vector<NdArrayPtr> &ndarray_list,
                           bool division = false, bool inplace = false,
                           const string &group = "world");
-  virtual void all_reduce(const NdArrayPtr &data, bool division = false,
+  virtual void all_reduce(NdArrayPtr ndarray, bool division = false,
                           bool inplace = false, const string &group = "world");
-  virtual void all_reduce(const NdArrayPtr &data, cudaStream_t stream,
+  virtual void all_reduce(NdArrayPtr ndarray, cudaStream_t stream,
                           bool division = false, bool inplace = false,
                           const string &group = "world");
   virtual void reduce_scatter(const vector<NdArrayPtr> &ndarray_list,
-                              const NdArrayPtr &ndarray, bool division = false,
+                              NdArrayPtr ndarray, bool division = false,
                               const string &group = "world");
   virtual void bcast(const vector<NdArrayPtr> &ndarray_list, int src,
                      bool inplace = false, const string &group = "world");
-  virtual void bcast(const NdArrayPtr &ndarray, int src, bool inplace = false,
+  virtual void bcast(NdArrayPtr ndarray, int src, bool inplace = false,
                      const string &group = "world");
-  virtual void bcast(const NdArrayPtr &ndarray, cudaStream_t stream, int src,
+  virtual void bcast(NdArrayPtr ndarray, cudaStream_t stream, int src,
                      bool inplace = false, const string &group = "world");
-  virtual void all_gather(const NdArrayPtr &ndarray,
+  virtual void all_gather(NdArrayPtr ndarray,
                           const vector<NdArrayPtr> &ndarray_list,
                           const string &group = "world");
 
