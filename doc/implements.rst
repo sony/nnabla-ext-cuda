@@ -295,10 +295,10 @@ Function Implements
      - x
      - 
    * - BinaryWeightAffine
-     - 
+     - x
      - 
    * - BinaryWeightConvolution
-     - 
+     - x
      - 
    * - INQAffine
      - x
