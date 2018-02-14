@@ -259,8 +259,7 @@ MultiProcessDataParallelCommunicatorNccl<T>::copy_inside_device(
 
 template <typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::copy_back_inside_device(
-    const vector<NdArrayPtr> &ndarray_list,
-    NdArrayPtr large_ndarray) {
+    const vector<NdArrayPtr> &ndarray_list, NdArrayPtr large_ndarray) {
   dtypes dtype = get_dtype<T>();
   T *buff = large_ndarray->cast(dtype, this->ctx_)->pointer<T>();
   Size_t type_size = sizeof(T);
@@ -314,9 +313,10 @@ void MultiProcessDataParallelCommunicatorNccl<T>::reduce(
 }
 
 template <typename T>
-void MultiProcessDataParallelCommunicatorNccl<T>::reduce(
-    NdArrayPtr ndarray, int dst, bool division, bool inplace,
-    const string &group) {
+void MultiProcessDataParallelCommunicatorNccl<T>::reduce(NdArrayPtr ndarray,
+                                                         int dst, bool division,
+                                                         bool inplace,
+                                                         const string &group) {
   if (!this->find_self(group)) {
     NBLA_ERROR(error_code::value, "self (rank=%d) is not included in %s.",
                this->rank_, group.c_str());
@@ -325,9 +325,11 @@ void MultiProcessDataParallelCommunicatorNccl<T>::reduce(
 }
 
 template <typename T>
-void MultiProcessDataParallelCommunicatorNccl<T>::reduce(
-    NdArrayPtr ndarray, cudaStream_t stream, int dst, bool division,
-    bool inplace, const string &group) {
+void MultiProcessDataParallelCommunicatorNccl<T>::reduce(NdArrayPtr ndarray,
+                                                         cudaStream_t stream,
+                                                         int dst, bool division,
+                                                         bool inplace,
+                                                         const string &group) {
   auto n_param = ndarray->size();
   dtypes dtype = get_dtype<T>();
   const T *dw0 = ndarray->get(dtype, this->ctx_)->const_pointer<T>();
@@ -487,8 +489,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::all_reduce(
 
 template <typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::all_reduce(
-    NdArrayPtr ndarray, bool division, bool inplace,
-    const string &group) {
+    NdArrayPtr ndarray, bool division, bool inplace, const string &group) {
   if (!this->find_self(group)) {
     NBLA_ERROR(error_code::value, "self (rank=%d) is not included in %s.",
                this->rank_, group.c_str());
@@ -520,8 +521,8 @@ void MultiProcessDataParallelCommunicatorNccl<T>::all_reduce(
 
 template <typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::reduce_scatter(
-    const vector<NdArrayPtr> &ndarray_list, NdArrayPtr ndarray,
-    bool division, const string &group) {
+    const vector<NdArrayPtr> &ndarray_list, NdArrayPtr ndarray, bool division,
+    const string &group) {
   if (!this->find_self(group)) {
     NBLA_ERROR(error_code::value, "self (rank=%d) is not included in %s.",
                this->rank_, group.c_str());
@@ -596,8 +597,9 @@ void MultiProcessDataParallelCommunicatorNccl<T>::bcast(
 }
 
 template <typename T>
-void MultiProcessDataParallelCommunicatorNccl<T>::bcast(
-    NdArrayPtr ndarray, int src, bool inplace, const string &group) {
+void MultiProcessDataParallelCommunicatorNccl<T>::bcast(NdArrayPtr ndarray,
+                                                        int src, bool inplace,
+                                                        const string &group) {
   if (!this->find_self(group)) {
     NBLA_ERROR(error_code::value, "self (rank=%d) is not included in %s.",
                this->rank_, group.c_str());
@@ -606,9 +608,10 @@ void MultiProcessDataParallelCommunicatorNccl<T>::bcast(
 }
 
 template <typename T>
-void MultiProcessDataParallelCommunicatorNccl<T>::bcast(
-    NdArrayPtr ndarray, cudaStream_t stream, int src, bool inplace,
-    const string &group) {
+void MultiProcessDataParallelCommunicatorNccl<T>::bcast(NdArrayPtr ndarray,
+                                                        cudaStream_t stream,
+                                                        int src, bool inplace,
+                                                        const string &group) {
   auto n_param = ndarray->size();
   dtypes dtype = get_dtype<T>();
   T *dw0 = ndarray->cast(dtype, this->ctx_)->pointer<T>();
