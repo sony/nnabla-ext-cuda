@@ -55,15 +55,13 @@ protected:
 
   static bool mpi_initialized_;
 
-  ncclUniqueId comm_id_;
-
-  // MPI-like MultiProcessDataParallelCommunicators initialized in init method
-  ncclComm_t comm_;
-
   // Device streams initialized in init method
   cudaStream_t stream_;
   int num_streams_ = 10; // TODO: hard-codded.
   vector<cudaStream_t> streams_ = vector<cudaStream_t>(num_streams_);
+
+  // Groups
+  unordered_map<string, ncclComm_t> comms_;
 
 public:
   MultiProcessDataParallelCommunicatorNccl(const Context &ctx);
@@ -90,17 +88,43 @@ public:
   */
   virtual void init();
 
-  virtual void reduce(bool division = false);
+  virtual string new_group(pair<string, vector<int>> name_ranks_pair);
+
+  virtual shared_ptr<NdArray>
+  copy_inside_device(const vector<NdArrayPtr> &ndarray_list);
+  virtual void
+  copy_back_inside_device(const vector<NdArrayPtr> &ndarray_list,
+                          NdArrayPtr large_ndarray);
+
+  virtual void reduce(const vector<NdArrayPtr> &ndarray_list, int dst,
+                      bool division = false, bool inplace = false,
+                      const string &group = "world");
+  virtual void reduce(NdArrayPtr ndarray, int dst, bool division = false,
+                      bool inplace = false, const string &group = "world");
+  virtual void reduce(NdArrayPtr ndarray, cudaStream_t stream, int dst,
+                      bool division = false, bool inplace = false,
+                      const string &group = "world");
   virtual void allreduce(bool division = false, bool inplace = false);
-  virtual void all_reduce(vector<NdArrayPtr> ndarray_list,
-                          bool division = false, bool inplace = false);
-  virtual void all_reduce(NdArrayPtr data, bool division = false,
-                          bool inplace = false);
-  virtual void all_reduce(NdArrayPtr data, cudaStream_t stream,
-                          bool division = false, bool inplace = false);
-  virtual void reducescatter(bool division = false);
-  virtual void bcast();
-  virtual void allgather();
+  virtual void all_reduce(const vector<NdArrayPtr> &ndarray_list,
+                          bool division = false, bool inplace = false,
+                          const string &group = "world");
+  virtual void all_reduce(NdArrayPtr ndarray, bool division = false,
+                          bool inplace = false, const string &group = "world");
+  virtual void all_reduce(NdArrayPtr ndarray, cudaStream_t stream,
+                          bool division = false, bool inplace = false,
+                          const string &group = "world");
+  virtual void reduce_scatter(const vector<NdArrayPtr> &ndarray_list,
+                              NdArrayPtr ndarray, bool division = false,
+                              const string &group = "world");
+  virtual void bcast(const vector<NdArrayPtr> &ndarray_list, int src,
+                     bool inplace = false, const string &group = "world");
+  virtual void bcast(NdArrayPtr ndarray, int src, bool inplace = false,
+                     const string &group = "world");
+  virtual void bcast(NdArrayPtr ndarray, cudaStream_t stream, int src,
+                     bool inplace = false, const string &group = "world");
+  virtual void all_gather(NdArrayPtr ndarray,
+                          const vector<NdArrayPtr> &ndarray_list,
+                          const string &group = "world");
 
   virtual void reduce_async(bool division = false);
   virtual void allreduce_async(bool division = false, bool inplace = false);
