@@ -231,8 +231,8 @@ void DataParallelCommunicatorNccl<T>::all_reduce(NdArrayPtr ndarray,
 
 template <typename T>
 void DataParallelCommunicatorNccl<T>::reduce_scatter(
-    const vector<NdArrayPtr> &ndarray_list, NdArrayPtr ndarray,
-    bool division, const string &group) {
+    const vector<NdArrayPtr> &ndarray_list, NdArrayPtr ndarray, bool division,
+    const string &group) {
   NBLA_ERROR(error_code::not_implemented,
              "CUDA GPU reduce_scatter is not implemented.")
 }
