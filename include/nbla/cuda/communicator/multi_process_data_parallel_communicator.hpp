@@ -92,9 +92,8 @@ public:
 
   virtual shared_ptr<NdArray>
   copy_inside_device(const vector<NdArrayPtr> &ndarray_list);
-  virtual void
-  copy_back_inside_device(const vector<NdArrayPtr> &ndarray_list,
-                          NdArrayPtr large_ndarray);
+  virtual void copy_back_inside_device(const vector<NdArrayPtr> &ndarray_list,
+                                       NdArrayPtr large_ndarray);
 
   virtual void reduce(const vector<NdArrayPtr> &ndarray_list, int dst,
                       bool division = false, bool inplace = false,
