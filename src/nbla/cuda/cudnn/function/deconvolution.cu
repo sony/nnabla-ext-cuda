@@ -29,16 +29,7 @@ void DeconvolutionCudaCudnn<T>::setup_impl(const Variables &inputs,
   cuda_set_device(std::stoi(this->ctx_.device_id));
   Deconvolution<T>::setup_impl(inputs, outputs);
   cudnn_handle_ = SingletonManager::get<CudnnHandleManager>()->handle(device_);
-  if (this->spatial_dims_ == 2) {
-    setup_impl_2d(inputs, outputs);
-  } else {
-    setup_impl_nd(inputs, outputs);
-  }
-}
 
-template <typename T>
-void DeconvolutionCudaCudnn<T>::setup_impl_2d(const Variables &inputs,
-                                              const Variables &outputs) {
   // Group stride of output
   x_offset_ = this->inner_size_i_ / this->group_;
   // Group stride of input
@@ -50,42 +41,31 @@ void DeconvolutionCudaCudnn<T>::setup_impl_2d(const Variables &inputs,
   }
 
   // Create or query a resource.
-  CudnnConv2dDesc desc{device_,
-                       cudnn_data_type<T>::type(),
-                       CUDNN_CROSS_CORRELATION,
-                       this->outer_size_,
-                       this->channels_i_,
-                       this->spatial_shape_i_[0],
-                       this->spatial_shape_i_[1],
-                       this->channels_o_,
-                       this->kernel_[0],
-                       this->kernel_[1],
-                       this->pad_[0],
-                       this->pad_[1],
-                       this->stride_[0],
-                       this->stride_[1],
-                       this->group_,
-                       this->dilation_[0],
-                       this->dilation_[1]};
-  auto &rsc = SingletonManager::get<CudnnHandleManager>()->conv2d_resource;
+  CudnnConvDesc desc{(int)this->kernel_.size(),
+                     device_,
+                     cudnn_data_type<T>::type(),
+                     CUDNN_CROSS_CORRELATION,
+                     this->outer_size_,
+                     this->channels_i_,
+                     this->channels_o_,
+                     this->group_,
+                     this->spatial_shape_i_,
+                     this->kernel_,
+                     this->pad_,
+                     this->stride_,
+                     this->dilation_};
+  auto &rsc = SingletonManager::get<CudnnHandleManager>()->conv_resource;
   auto it = rsc.find(desc);
   if (it != rsc.end()) {
     // Found a previously created one.
     // std::cout << "Found previously created one: " << desc << std::endl;
-    rsc2d_ = it->second;
+    rsc_ = it->second;
     return;
   }
   // Create a new resource.
   // This will search a best algorithm given config.
-  rsc2d_ = make_shared<CudnnConv2dResource>(desc);
-  rsc.insert({desc, rsc2d_}); // Register the created resource to global.
-}
-
-template <class T>
-void DeconvolutionCudaCudnn<T>::setup_impl_nd(const Variables &inputs,
-                                              const Variables &outputs) {
-  NBLA_ERROR(error_code::not_implemented,
-             "2D deconvolution is only supported so far.");
+  rsc_ = make_shared<CudnnConvResource>(desc);
+  rsc.insert({desc, rsc_}); // Register the created resource to global.
 }
 
 template <class T>
@@ -102,19 +82,18 @@ void DeconvolutionCudaCudnn<T>::forward_impl(const Variables &inputs,
     b = inputs[2]->get_data_pointer<T>(this->ctx_);
   }
   void *workspace = SingletonManager::get<Cuda>()->get_workspace(
-      rsc2d_->workspace_size(), this->device_);
+      rsc_->workspace_size(), this->device_);
   for (int g = 0; g < this->group_; ++g) {
     NBLA_CUDNN_CHECK(cudnnConvolutionBackwardData(
-        cudnn_handle_, &alpha, rsc2d_->w_desc, w + w_offset_ * g,
-        rsc2d_->y_desc, y + y_offset_ * g, rsc2d_->conv_desc,
-        rsc2d_->bwd_data_algo, workspace, rsc2d_->bwd_data_workspace_size,
-        &beta, rsc2d_->x_desc, x + x_offset_ * g));
+        cudnn_handle_, &alpha, rsc_->w_desc, w + w_offset_ * g, rsc_->y_desc,
+        y + y_offset_ * g, rsc_->conv_desc, rsc_->bwd_data_algo, workspace,
+        rsc_->bwd_data_workspace_size, &beta, rsc_->x_desc, x + x_offset_ * g));
     if (inputs.size() == 3) {
       // TODO: Bias addition should be outside of the loop. In that case,
       // b_desc and y_desc must be whole image descriptor.
-      NBLA_CUDNN_CHECK(cudnnAddTensor(
-          cudnn_handle_, &alpha, rsc2d_->b_desc_deconv, b + b_offset_ * g,
-          &alpha, rsc2d_->x_desc, x + x_offset_ * g));
+      NBLA_CUDNN_CHECK(cudnnAddTensor(cudnn_handle_, &alpha,
+                                      rsc_->b_desc_deconv, b + b_offset_ * g,
+                                      &alpha, rsc_->x_desc, x + x_offset_ * g));
     }
   }
 }
@@ -146,29 +125,28 @@ void DeconvolutionCudaCudnn<T>::backward_impl(
   }
   T alpha = 1;
   void *workspace = SingletonManager::get<Cuda>()->get_workspace(
-      rsc2d_->workspace_size(), this->device_);
+      rsc_->workspace_size(), this->device_);
   for (int g = 0; g < this->group_; ++g) {
     if (propagate_down[0]) {
       T beta = accum[0] ? 1 : 0;
       NBLA_CUDNN_CHECK(cudnnConvolutionForward(
-          cudnn_handle_, &alpha, rsc2d_->x_desc, dx + x_offset_ * g,
-          rsc2d_->w_desc, w + w_offset_ * g, rsc2d_->conv_desc,
-          rsc2d_->fwd_algo, workspace, rsc2d_->fwd_workspace_size, &beta,
-          rsc2d_->y_desc, dy + y_offset_ * g));
+          cudnn_handle_, &alpha, rsc_->x_desc, dx + x_offset_ * g, rsc_->w_desc,
+          w + w_offset_ * g, rsc_->conv_desc, rsc_->fwd_algo, workspace,
+          rsc_->fwd_workspace_size, &beta, rsc_->y_desc, dy + y_offset_ * g));
     }
     if (propagate_down[1]) {
       T beta = accum[1] ? 1 : 0;
       NBLA_CUDNN_CHECK(cudnnConvolutionBackwardFilter(
-          cudnn_handle_, &alpha, rsc2d_->x_desc, dx + x_offset_ * g,
-          rsc2d_->y_desc, y + y_offset_ * g, rsc2d_->conv_desc,
-          rsc2d_->bwd_filter_algo, workspace, rsc2d_->bwd_filter_workspace_size,
-          &beta, rsc2d_->w_desc, dw + w_offset_ * g));
+          cudnn_handle_, &alpha, rsc_->x_desc, dx + x_offset_ * g, rsc_->y_desc,
+          y + y_offset_ * g, rsc_->conv_desc, rsc_->bwd_filter_algo, workspace,
+          rsc_->bwd_filter_workspace_size, &beta, rsc_->w_desc,
+          dw + w_offset_ * g));
     }
     if (inputs.size() == 3 && propagate_down[2]) {
       T beta = accum[2] ? 1 : 0;
       NBLA_CUDNN_CHECK(cudnnConvolutionBackwardBias(
-          cudnn_handle_, &alpha, rsc2d_->x_desc, dx + x_offset_ * g, &beta,
-          rsc2d_->b_desc_deconv, db + b_offset_ * g));
+          cudnn_handle_, &alpha, rsc_->x_desc, dx + x_offset_ * g, &beta,
+          rsc_->b_desc_deconv, db + b_offset_ * g));
     }
   }
 }

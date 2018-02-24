@@ -26,34 +26,60 @@ static size_t get_conv_outsize(int w, int k, int p, int s, int d) {
   return (w + 2 * p - dk) / s + 1;
 }
 
-bool CudnnConv2dDesc::operator==(const CudnnConv2dDesc &x) const {
-  return device == x.device && dtype == x.dtype && mode == x.mode && n == x.n &&
-         c == x.c && h == x.h && w == x.w && o == x.o && kh == x.kh &&
-         kw == x.kw && padh == x.padh && padw == x.padw &&
-         strideh == x.strideh && stridew == x.stridew && group == x.group &&
-         dilationh == x.dilationh && dilationw == x.dilationw;
+bool CudnnConvDesc::operator==(const CudnnConvDesc &x) const {
+  if (ndim != x.ndim || device != x.device || dtype != x.dtype ||
+      mode != x.mode || n != x.n || c != x.c || o != x.o || group != x.group)
+    return false;
+  for (int d = 0; d < ndim; d++) {
+    if (sample[d] != x.sample[d] || kernel[d] != x.kernel[d] ||
+        pad[d] != x.pad[d] || stride[d] != x.stride[d] ||
+        dilation[d] != x.dilation[d])
+      return false;
+  }
+  return true;
 }
 
-std::ostream &operator<<(std::ostream &os, const CudnnConv2dDesc &desc) {
-  os << "[CudnnConv2dDesc]" << std::endl;
+std::ostream &operator<<(std::ostream &os, const CudnnConvDesc &desc) {
+  os << "[CudnnConvDesc]" << std::endl;
+  os << "  ndim = " << desc.ndim << std::endl;
   os << "  device = " << desc.device << std::endl;
   os << "  dtype = " << (int)(desc.dtype) << std::endl;
   os << "  mode = " << (int)(desc.mode) << std::endl;
-  os << "  n, c, h, w = " << desc.n << ", " << desc.c << ", " << desc.h << ", "
-     << desc.w << std::endl;
-  os << "  o, c, kh, kw = " << desc.o << ", " << desc.c << ", " << desc.kh
-     << ", " << desc.kw << std::endl;
-  os << "  padh, padw = " << desc.padh << ", " << desc.padw << std::endl;
-  os << "  strideh, stridew = " << desc.strideh << ", " << desc.stridew
+  os << "  n, c, o = " << desc.n << ", " << desc.c << ", " << desc.o
      << std::endl;
   os << "  group = " << desc.group << std::endl;
-  ;
-  os << "  dilationh, dilationw = " << desc.dilationh << ", " << desc.dilationw
-     << std::endl;
+  for (int d = 0; d < desc.ndim; d++) {
+    os << "  d, k, p, s, d = " << desc.sample[d] << " " << desc.kernel[d] << " "
+       << desc.pad[d] << " " << desc.stride[d] << " " << desc.dilation[d]
+       << std::endl;
+  }
   return os;
 }
 
-CudnnConv2dResource::CudnnConv2dResource(const CudnnConv2dDesc &desc) {
+inline vector<int> get_conv_dims(int b, int c, int group,
+                                 const vector<int> &sample) {
+  vector<int> ret(sample.size() + 2);
+  ret[0] = b;
+  ret[1] = c / group;
+  for (int d = 0; d < sample.size(); d++) {
+    ret[d + 2] = sample[d];
+  }
+  return ret;
+}
+
+inline vector<int> get_conv_strides(int c, const vector<int> &sample) {
+  vector<int> ret(sample.size() + 2);
+  int stride = 1;
+  for (int d = sample.size() - 1; d >= 0; d--) {
+    ret[d + 2] = stride;
+    stride *= sample[d];
+  }
+  ret[1] = stride;
+  ret[0] = stride * c;
+  return ret;
+}
+
+CudnnConvResource::CudnnConvResource(const CudnnConvDesc &desc) {
   // std::cout << "Creating resource for: " << desc << std::endl;
   device = desc.device;
   // Allocate memory for descriptors
@@ -64,59 +90,57 @@ CudnnConv2dResource::CudnnConv2dResource(const CudnnConv2dDesc &desc) {
   NBLA_CUDNN_CHECK(cudnnCreateFilterDescriptor(&w_desc));
   NBLA_CUDNN_CHECK(cudnnCreateConvolutionDescriptor(&conv_desc));
   // Set input desc
-  const int s_w = 1;
-  const int s_h = desc.w;
-  const int s_c = desc.h * s_h;
-  const int s_n = desc.c * s_c;
-  NBLA_CUDNN_CHECK(cudnnSetTensor4dDescriptorEx(x_desc, desc.dtype, desc.n,
-                                                desc.c / desc.group, desc.h,
-                                                desc.w, s_n, s_c, s_h, s_w));
+  auto dims = get_conv_dims(desc.n, desc.c, desc.group, desc.sample);
+  auto strides = get_conv_strides(desc.c, desc.sample);
+  NBLA_CUDNN_CHECK(cudnnSetTensorNdDescriptor(x_desc, desc.dtype, dims.size(),
+                                              dims.data(), strides.data()));
+
   // Set output desc
-  int ho = get_conv_outsize(desc.h, desc.kh, desc.padh, desc.strideh,
-                            desc.dilationh);
-  int wo = get_conv_outsize(desc.w, desc.kw, desc.padw, desc.stridew,
-                            desc.dilationw);
-  const int so_w = 1;
-  const int so_h = wo;
-  const int so_c = ho * so_h;
-  const int so_n = so_c * desc.o;
-  NBLA_CUDNN_CHECK(cudnnSetTensor4dDescriptorEx(y_desc, desc.dtype, desc.n,
-                                                desc.o / desc.group, ho, wo,
-                                                so_n, so_c, so_h, so_w));
-// Set kernel desc
-#if CUDNN_VERSION >= 5000
-  NBLA_CUDNN_CHECK(cudnnSetFilter4dDescriptor(
-      w_desc, desc.dtype, CUDNN_TENSOR_NCHW, desc.o / desc.group,
-      desc.c / desc.group, desc.kh, desc.kw));
-#else
-  NBLA_CUDNN_CHECK(cudnnSetFilter4dDescriptor_v4(
-      w_desc, desc.dtype, CUDNN_TENSOR_NCHW, desc.o / desc.group,
-      desc.c / desc.group, desc.kh, desc.kw));
-#endif
+  vector<int> osample(desc.ndim);
+  for (int d = 0; d < desc.ndim; d++) {
+    osample[d] = get_conv_outsize(desc.sample[d], desc.kernel[d], desc.pad[d],
+                                  desc.stride[d], desc.dilation[d]);
+  }
+  auto odims = get_conv_dims(desc.n, desc.o, desc.group, osample);
+  auto ostrides = get_conv_strides(desc.o, osample);
+  NBLA_CUDNN_CHECK(cudnnSetTensorNdDescriptor(y_desc, desc.dtype, odims.size(),
+                                              odims.data(), ostrides.data()));
+
+  // Set kernel desc
+  vector<int> fdims(desc.ndim + 2);
+  fdims[0] = desc.o / desc.group;
+  fdims[1] = desc.c / desc.group;
+  for (int d = 0; d < desc.ndim; d++) {
+    fdims[d + 2] = desc.kernel[d];
+  }
+  NBLA_CUDNN_CHECK(cudnnSetFilterNdDescriptor(
+      w_desc, desc.dtype, CUDNN_TENSOR_NCHW, fdims.size(), fdims.data()));
+
   // Set bias desc
-  NBLA_CUDNN_CHECK(cudnnSetTensor4dDescriptor(
-      b_desc, CUDNN_TENSOR_NCHW, desc.dtype, 1, desc.o / desc.group, 1, 1));
+  vector<int> bdims(desc.ndim + 2, 1);
+  bdims[1] = desc.o / desc.group;
+  vector<int> bstrides(desc.ndim + 2, 1);
+  bstrides[0] = bdims[1];
+  NBLA_CUDNN_CHECK(cudnnSetTensorNdDescriptor(b_desc, desc.dtype, bdims.size(),
+                                              bdims.data(), bstrides.data()));
+
   // Set bias desc for deconvolution
-  NBLA_CUDNN_CHECK(cudnnSetTensor4dDescriptor(b_desc_deconv, CUDNN_TENSOR_NCHW,
-                                              desc.dtype, 1,
-                                              desc.c / desc.group, 1, 1));
-#if CUDNN_VERSION >= 6000
+  bdims[1] = desc.c / desc.group;
+  bstrides[0] = bdims[1];
+  NBLA_CUDNN_CHECK(cudnnSetTensorNdDescriptor(
+      b_desc_deconv, desc.dtype, bdims.size(), bdims.data(), bstrides.data()));
+
   // Set Conv desc
   // TODO: Support data type config
-  NBLA_CUDNN_CHECK(cudnnSetConvolution2dDescriptor(
-      conv_desc, desc.padh, desc.padw, desc.strideh, desc.stridew,
-      desc.dilationh, desc.dilationw, desc.mode,
-      cudnn_data_type<float>::type()));
-#else
-  // Set Conv desc
-  NBLA_CUDNN_CHECK(cudnnSetConvolution2dDescriptor(
-      conv_desc, desc.padh, desc.padw, desc.strideh, desc.stridew, 1, 1,
-      desc.mode));
-#endif
+  NBLA_CUDNN_CHECK(cudnnSetConvolutionNdDescriptor(
+      conv_desc, desc.ndim, desc.pad.data(), desc.stride.data(),
+      desc.dilation.data(), desc.mode, cudnn_data_type<float>::type()));
+
+  // Find best algorithm
   find_best_algorithms();
 }
 
-CudnnConv2dResource::~CudnnConv2dResource() {
+CudnnConvResource::~CudnnConvResource() {
 
   NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(x_desc));
   NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(y_desc));
@@ -126,7 +150,7 @@ CudnnConv2dResource::~CudnnConv2dResource() {
   NBLA_CUDNN_CHECK(cudnnDestroyConvolutionDescriptor(conv_desc));
 }
 
-void CudnnConv2dResource::find_best_algorithms_no_limit() {
+void CudnnConvResource::find_best_algorithms_no_limit() {
 #if CUDNN_VERSION >= 3000
   cudnnHandle_t cudnn_handle =
       SingletonManager::get<CudnnHandleManager>()->handle(device);
@@ -175,7 +199,7 @@ void CudnnConv2dResource::find_best_algorithms_no_limit() {
 #endif
 }
 
-void CudnnConv2dResource::find_best_algorithms_limit(int limit) {
+void CudnnConvResource::find_best_algorithms_limit(int limit) {
   cudnnHandle_t cudnn_handle =
       SingletonManager::get<CudnnHandleManager>()->handle(device);
   // Get forward algorithm
@@ -198,7 +222,7 @@ void CudnnConv2dResource::find_best_algorithms_limit(int limit) {
   bwd_filter_workspace_size = limit;
 }
 
-void CudnnConv2dResource::find_best_algorithms_no_workspace() {
+void CudnnConvResource::find_best_algorithms_no_workspace() {
   cudnnHandle_t cudnn_handle =
       SingletonManager::get<CudnnHandleManager>()->handle(device);
   // Get forward algorithm
@@ -218,7 +242,7 @@ void CudnnConv2dResource::find_best_algorithms_no_workspace() {
   bwd_filter_workspace_size = 0;
 }
 
-void CudnnConv2dResource::find_best_algorithms() {
+void CudnnConvResource::find_best_algorithms() {
   int workspace_limit = SingletonManager::get<CudnnHandleManager>()
                             ->get_workspace_limit_in_bytes();
   if (workspace_limit < 0) {
@@ -230,7 +254,7 @@ void CudnnConv2dResource::find_best_algorithms() {
   }
 }
 
-size_t CudnnConv2dResource::workspace_size() const {
+size_t CudnnConvResource::workspace_size() const {
   return std::max(fwd_workspace_size,
                   std::max(bwd_filter_workspace_size, bwd_data_workspace_size));
 }

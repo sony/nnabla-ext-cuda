@@ -82,64 +82,57 @@ inline string cudnn_status_to_string(cudnnStatus_t status) {
                cudnn_status_to_string(status));                                \
   }
 
-/** cuDNN Convolution 2d Descriptor used as a key to find previously used
+/** cuDNN Convolution Descriptor used as a key to find previously used
  * (cached) config.
 */
-struct NBLA_CUDA_API CudnnConv2dDesc {
+struct NBLA_CUDA_API CudnnConvDesc {
+  int ndim;              ///< Dimension of spatial samples.
   int device;            ///< Device ID.
   cudnnDataType_t dtype; ///< Data type.
   cudnnConvolutionMode_t
-      mode;      ///< CUDNN_CONVOLUTION or CUDNN_CROSS_CORRELATION;
-  int n;         ///< Batch size.
-  int c;         ///< Channels of input.
-  int h;         ///< Height of input.
-  int w;         ///< Width of input.
-  int o;         ///< Channels of output
-  int kh;        ///< Height of kernel.
-  int kw;        ///< Width of kernel.
-  int padh;      ///< Padding height of input.
-  int padw;      ///< Padding width of input.
-  int strideh;   ///< Padding height of input.
-  int stridew;   ///< Padding width of input.
-  int group;     ///< Number of groups.
-  int dilationh; ///< Dilation height of filter.
-  int dilationw; ///< Dilation width of filter.
+      mode;             ///< CUDNN_CONVOLUTION or CUDNN_CROSS_CORRELATION;
+  int n;                ///< Batch size.
+  int c;                ///< Channels of input.
+  int o;                ///< Channels of output.
+  int group;            ///< Number of groups.
+  vector<int> sample;   ///< Sample size of each dimension.
+  vector<int> kernel;   ///< Kernel size of each dimension.
+  vector<int> pad;      ///< Padding size of each dimension.
+  vector<int> stride;   ///< Stride size of each dimension.
+  vector<int> dilation; ///< Dilation size of each dimension.
 
   /// Operator == compares all elements.
-  bool operator==(const CudnnConv2dDesc &right) const;
+  bool operator==(const CudnnConvDesc &right) const;
 
-  /** Custom hash function for CudnnConv2dDesc.
+  /** Custom hash function for CudnnConvDesc.
    */
   class Hash {
   public:
-    std::size_t operator()(const CudnnConv2dDesc &x) const {
+    std::size_t operator()(const CudnnConvDesc &x) const {
       size_t h = hash<int>{}(x.device);
       hash_combine(h, static_cast<int>(x.dtype));
       hash_combine(h, static_cast<int>(x.mode));
       hash_combine(h, x.n);
       hash_combine(h, x.c);
-      hash_combine(h, x.h);
-      hash_combine(h, x.w);
       hash_combine(h, x.o);
-      hash_combine(h, x.kh);
-      hash_combine(h, x.kw);
-      hash_combine(h, x.padh);
-      hash_combine(h, x.padw);
-      hash_combine(h, x.strideh);
-      hash_combine(h, x.stridew);
+      for (int d = 0; d < x.ndim; d++) {
+        hash_combine(h, x.sample[d]);
+        hash_combine(h, x.kernel[d]);
+        hash_combine(h, x.pad[d]);
+        hash_combine(h, x.stride[d]);
+        hash_combine(h, x.dilation[d]);
+      }
       hash_combine(h, x.group);
-      hash_combine(h, x.dilationw);
-      hash_combine(h, x.dilationh);
       return h;
     }
   };
 };
 
-std::ostream &operator<<(std::ostream &os, const CudnnConv2dDesc &desc);
+std::ostream &operator<<(std::ostream &os, const CudnnConvDesc &desc);
 
-/** cuDNN Convolution 2D resource cache.
+/** cuDNN Convolution resource cache.
  */
-struct NBLA_CUDA_API CudnnConv2dResource {
+struct NBLA_CUDA_API CudnnConvResource {
   int device;                             ///< Device ID.
   cudnnTensorDescriptor_t x_desc;         ///< Input desc.
   cudnnTensorDescriptor_t y_desc;         ///< Output desc.
@@ -156,8 +149,8 @@ struct NBLA_CUDA_API CudnnConv2dResource {
   size_t bwd_filter_workspace_size; ///< Backward filter workspace size.
   size_t bwd_data_workspace_size;   ///< Backward data workspace size.
 
-  CudnnConv2dResource(const CudnnConv2dDesc &desc);
-  ~CudnnConv2dResource();
+  CudnnConvResource(const CudnnConvDesc &desc);
+  ~CudnnConvResource();
 
   /** Get maximum workspace size.
    */
@@ -182,11 +175,11 @@ public:
    */
   cudnnHandle_t handle(int device = -1);
 
-  /** Hash map for CudnnConv2dResource.
+  /** Hash map for CudnnConvResource.
    */
-  unordered_map<CudnnConv2dDesc, shared_ptr<CudnnConv2dResource>,
-                typename CudnnConv2dDesc::Hash>
-      conv2d_resource;
+  unordered_map<CudnnConvDesc, shared_ptr<CudnnConvResource>,
+                typename CudnnConvDesc::Hash>
+      conv_resource;
 
   /** Get a workspace limit.
 
