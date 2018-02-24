@@ -3,6 +3,7 @@
 .cache
 *.pyc
 
+/build/
 /python/setup.cfg
 /python/setup.cfg-Debug
 /python/setup.cfg-MinSizeRel
