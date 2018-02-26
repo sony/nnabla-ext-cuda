@@ -120,23 +120,14 @@ void ConvolutionCudaCudnn<T>::forward_impl(const Variables &inputs,
   if (inputs.size() == 3) {
     b = inputs[2]->get_data_pointer<T>(this->ctx_);
   }
-#ifdef NBLA_CUDNN_USE_WORKSPACE
   void *workspace = SingletonManager::get<Cuda>()->get_workspace(
       rsc2d_->workspace_size(), this->device_);
-#endif
   for (int g = 0; g < this->group_; ++g) {
-#ifdef NBLA_CUDNN_USE_WORKSPACE
     NBLA_CUDNN_CHECK(cudnnConvolutionForward(
         cudnn_handle_, &alpha, rsc2d_->x_desc, x + x_offset_ * g,
         rsc2d_->w_desc, w + w_offset_ * g, rsc2d_->conv_desc, rsc2d_->fwd_algo,
         workspace, rsc2d_->fwd_workspace_size, &beta, rsc2d_->y_desc,
         y + y_offset_ * g));
-#else
-    NBLA_CUDNN_CHECK(cudnnConvolutionForward(
-        cudnn_handle_, &alpha, rsc2d_->x_desc, x + x_offset_ * g,
-        rsc2d_->w_desc, w + w_offset_ * g, rsc2d_->conv_desc, rsc2d_->fwd_algo,
-        NULL, 0, &beta, rsc2d_->y_desc, y + y_offset_ * g));
-#endif
     if (inputs.size() == 3) {
       // TODO: Bias addition should be outside of the loop. In that case,
       // b_desc and y_desc must be whole image descriptor.
@@ -174,42 +165,24 @@ void ConvolutionCudaCudnn<T>::backward_impl(const Variables &inputs,
     db = inputs[2]->cast_grad_and_get_pointer<T>(this->ctx_);
   }
   T alpha = 1;
-#ifdef NBLA_CUDNN_USE_WORKSPACE
   void *workspace = SingletonManager::get<Cuda>()->get_workspace(
       rsc2d_->workspace_size(), this->device_);
-#endif
   for (int g = 0; g < this->group_; ++g) {
     if (propagate_down[0]) {
       T beta = accum[0] ? 1 : 0;
-#ifdef NBLA_CUDNN_USE_WORKSPACE
       NBLA_CUDNN_CHECK(cudnnConvolutionBackwardData(
           cudnn_handle_, &alpha, rsc2d_->w_desc, w + w_offset_ * g,
           rsc2d_->y_desc, dy + y_offset_ * g, rsc2d_->conv_desc,
           rsc2d_->bwd_data_algo, workspace, rsc2d_->bwd_data_workspace_size,
           &beta, rsc2d_->x_desc, dx + x_offset_ * g));
-#else
-      NBLA_CUDNN_CHECK(cudnnConvolutionBackwardData(
-          cudnn_handle_, &alpha, rsc2d_->w_desc, w + w_offset_ * g,
-          rsc2d_->y_desc, dy + y_offset_ * g, rsc2d_->conv_desc,
-          rsc2d_->bwd_data_algo, NULL, 0, &beta, rsc2d_->x_desc,
-          dx + x_offset_ * g));
-#endif
     }
     if (propagate_down[1]) {
       T beta = accum[1] ? 1 : 0;
-#ifdef NBLA_CUDNN_USE_WORKSPACE
       NBLA_CUDNN_CHECK(cudnnConvolutionBackwardFilter(
           cudnn_handle_, &alpha, rsc2d_->x_desc, x + x_offset_ * g,
           rsc2d_->y_desc, dy + y_offset_ * g, rsc2d_->conv_desc,
           rsc2d_->bwd_filter_algo, workspace, rsc2d_->bwd_filter_workspace_size,
           &beta, rsc2d_->w_desc, dw + w_offset_ * g));
-#else
-      NBLA_CUDNN_CHECK(cudnnConvolutionBackwardFilter(
-          cudnn_handle_, &alpha, rsc2d_->x_desc, x + x_offset_ * g,
-          rsc2d_->y_desc, dy + y_offset_ * g, rsc2d_->conv_desc,
-          rsc2d_->bwd_filter_algo, NULL, 0, &beta, rsc2d_->w_desc,
-          dw + w_offset_ * g));
-#endif
     }
     if (inputs.size() == 3 && propagate_down[2]) {
       T beta = accum[2] ? 1 : 0;
