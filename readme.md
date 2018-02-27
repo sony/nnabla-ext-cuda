@@ -12,8 +12,10 @@ ctx = extension_context('cuda.cudnn', device_id=args.device_id)
 nn.set_default_context(ctx)
 ```
 
-Currently, the installation documentation and usage is integrated into the base
-NNabla.
+Currently, the binary package install manual and the usage documentation are integrated into the [NNabla's documentation](http://nnabla.readthedocs.io/en/latest/).
+For build instructions, see below.
+
+* [Build CUDA extension](doc/build/README.md)
 
 ## Performance notes
 
