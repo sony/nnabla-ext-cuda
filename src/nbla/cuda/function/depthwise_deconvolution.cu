@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <nbla/cuda/function/depthwise_convolution.hpp>
+#include <nbla/cuda/function/depthwise_deconvolution.hpp>
 #include <nbla/cuda/math.hpp>
 #include <nbla/cuda/utils/block_reduce.cuh>
 #include <nbla/singleton_manager.hpp>
 
 namespace nbla {
 
-namespace depthwise_convolution_cuda {
+namespace depthwise_deconvolution_cuda {
 
 template <typename T, int K>
 __global__ void forward_kernel(const T *input_data, T *output_data,
@@ -27,35 +27,45 @@ __global__ void forward_kernel(const T *input_data, T *output_data,
                                const int output_data_size, const int2 sample,
                                const int2 outmap, const int kernel,
                                const int stride, const int padding,
-                               const int dilation, const int multiplier) {
+                               const int dilation, const int divisor) {
   // sample/outmap (x, y) == (length, channels)
-  // outmap.y == sample.y * multiplier
+  // outmap.y == sample.y / divisor
   const auto &sample_channels = sample.y;
   const auto &outmap_channels = outmap.y;
   const auto &sample_size = sample.x;
   const auto &outmap_size = outmap.x;
 
-  const int KERNEL = (K != 0) ? K : kernel;
+  const int kernel_size = (K != 0) ? K : kernel;
 
   NBLA_CUDA_KERNEL_LOOP(output_offset, output_data_size) {
     const int s = output_offset / (outmap_channels * outmap_size);
     const int outmap_x = output_offset % outmap_size;
     const int outmap_chan = (output_offset / outmap_size) % outmap_channels;
-    const int sample_chan = outmap_chan / multiplier;
+    const int sample_chan = outmap_chan * divisor;
     const int sample_base = (s * sample_channels + sample_chan) * sample_size;
-    int weight_offset = outmap_chan * kernel;
+    const int weight_base = sample_chan * kernel;
 
-    T value = (bias_data != nullptr) ? bias_data[outmap_chan] : 0;
+    T value = bias_data ? bias_data[outmap_chan] : 0;
 
 #pragma unroll
-    for (int k = 0; k < KERNEL; ++k) {
-      const int sample_x = outmap_x * stride + k * dilation - padding;
+    for (int kernel_x = 0; kernel_x < kernel_size; ++kernel_x) {
+      int sample_x = outmap_x - kernel_x * dilation + padding;
 
-      if ((sample_x >= 0) && (sample_x < sample_size)) {
-        const int input_offset = sample_base + sample_x;
-        value += weight_data[weight_offset] * input_data[input_offset];
+      const int sample_x_div_stride = sample_x / stride;
+
+      if (sample_x - sample_x_div_stride * stride == 0) {
+        sample_x = sample_x_div_stride;
+
+        if ((sample_x >= 0) && (sample_x < sample.x)) {
+          int sample_offset = sample_base + sample_x;
+          int weight_offset = weight_base + kernel_x;
+          for (int d = 0; d < divisor; d++) {
+            value += weight_data[weight_offset] * input_data[sample_offset];
+            sample_offset += sample_size;
+            weight_offset += kernel_size;
+          }
+        }
       }
-      ++weight_offset;
     }
     output_data[output_offset] = value;
   }
@@ -67,44 +77,58 @@ __global__ void forward_kernel(const T *input_data, T *output_data,
                                const int output_data_size, const int3 sample,
                                const int3 outmap, const int2 kernel,
                                const int2 stride, const int2 padding,
-                               const int2 dilation, const int multiplier) {
+                               const int2 dilation, const int divisor) {
   // sample/outmap (x, y, z) == (width, height, channels)
-  // outmap.z == sample.z * multiplier
+  // outmap.z == sample.z / divisor
   // sample/outmap/kernel size == width * height
   const auto &sample_channels = sample.z;
   const auto &outmap_channels = outmap.z;
-
-  const int sample_size = sample.x * sample.y;
-  const int outmap_size = outmap.x * outmap.y;
+  const auto sample_size = sample.x * sample.y;
+  const auto outmap_size = outmap.x * outmap.y;
 
   const int KERNEL_X = (K != 0) ? K : kernel.x;
   const int KERNEL_Y = (K != 0) ? K : kernel.y;
-  const int kernel_size = KERNEL_X * KERNEL_Y;
+  const auto kernel_size = KERNEL_X * KERNEL_Y;
 
   NBLA_CUDA_KERNEL_LOOP(output_offset, output_data_size) {
     const int s = output_offset / (outmap_channels * outmap_size);
     const int outmap_y = (output_offset / outmap.x) % outmap.y;
     const int outmap_x = output_offset % outmap.x;
     const int outmap_chan = (output_offset / outmap_size) % outmap_channels;
-    const int sample_chan = outmap_chan / multiplier;
+    const int sample_chan = outmap_chan * divisor;
     const int sample_base = (s * sample_channels + sample_chan) * sample_size;
+    const int weight_base = sample_chan * kernel_size;
+    int weight_incr = 0;
 
-    T value = (bias_data != nullptr) ? bias_data[outmap_chan] : 0;
-    int weight_offset = outmap_chan * kernel_size;
+    T value = bias_data ? bias_data[outmap_chan] : 0;
 
 #pragma unroll
     for (int k_y = 0; k_y < KERNEL_Y; ++k_y) {
 #pragma unroll
       for (int k_x = 0; k_x < KERNEL_X; ++k_x) {
-        const int sample_y = outmap_y * stride.y + k_y * dilation.y - padding.y;
-        const int sample_x = outmap_x * stride.x + k_x * dilation.x - padding.x;
+        int sample_y = outmap_y - k_y * dilation.y + padding.y;
+        int sample_x = outmap_x - k_x * dilation.x + padding.x;
 
-        if ((sample_y >= 0) && (sample_y < sample.y) && //
-            (sample_x >= 0) && (sample_x < sample.x)) {
-          int input_offset = sample_base + sample_y * sample.x + sample_x;
-          value += weight_data[weight_offset] * input_data[input_offset];
+        const int sample_y_div_stride = sample_y / stride.y;
+        const int sample_x_div_stride = sample_x / stride.x;
+
+        if ((sample_y - sample_y_div_stride * stride.y == 0) &&
+            (sample_x - sample_x_div_stride * stride.x == 0)) {
+          sample_y = sample_y_div_stride;
+          sample_x = sample_x_div_stride;
+
+          if ((sample_y >= 0) && (sample_y < sample.y) && //
+              (sample_x >= 0) && (sample_x < sample.x)) {
+            int weight_offset = weight_base + weight_incr;
+            int sample_offset = sample_base + sample_y * sample.x + sample_x;
+            for (int d = 0; d < divisor; d++) {
+              value += weight_data[weight_offset] * input_data[sample_offset];
+              sample_offset += sample_size;
+              weight_offset += kernel_size;
+            }
+          }
         }
-        ++weight_offset;
+        weight_incr++;
       }
     }
     output_data[output_offset] = value;
@@ -116,9 +140,9 @@ __global__ void
 backprop_input(T *input_grad, const T *output_grad, const T *weight_data,
                const int input_data_size, const int2 sample, const int2 outmap,
                const int kernel, const int stride, const int padding,
-               const int dilation, const int multiplier) {
+               const int dilation, const int divisor) {
   // sample/outmap (x, y) == (length, channels)
-  // outmap.y == sample.y * multiplier
+  // outmap.y == sample.y / divisor
   const auto &sample_channels = sample.y;
   const auto &outmap_channels = outmap.y;
   const auto &sample_size = sample.x;
@@ -130,31 +154,21 @@ backprop_input(T *input_grad, const T *output_grad, const T *weight_data,
     const int s = input_offset / (sample_channels * sample_size);
     const int sample_x = input_offset % sample_size;
     const int sample_chan = (input_offset / sample_size) % sample_channels;
-    const int outmap_chan = sample_chan * multiplier;
+    const int outmap_chan = sample_chan / divisor;
     const int outmap_base = (s * outmap_channels + outmap_chan) * outmap_size;
-    const int weight_base = outmap_chan * kernel_size;
+    int weight_offset = sample_chan * kernel;
 
     T value = 0;
 
 #pragma unroll
-    for (int kernel_x = 0; kernel_x < kernel_size; ++kernel_x) {
-      int outmap_x = sample_x + padding - kernel_x * dilation;
+    for (int k = 0; k < kernel_size; ++k) {
+      const int outmap_x = sample_x * stride + k * dilation - padding;
 
-      const int outmap_x_div_stride = outmap_x / stride;
-
-      if (outmap_x - outmap_x_div_stride * stride == 0) {
-        outmap_x = outmap_x_div_stride;
-
-        if ((outmap_x >= 0) && (outmap_x < outmap.x)) {
-          int output_offset = outmap_base + outmap_x;
-          int weight_offset = weight_base + kernel_x;
-          for (int m = 0; m < multiplier; ++m) {
-            value += weight_data[weight_offset] * output_grad[output_offset];
-            output_offset += outmap_size;
-            weight_offset += kernel_size;
-          }
-        }
+      if ((outmap_x >= 0) && (outmap_x < outmap_size)) {
+        const int output_offset = outmap_base + outmap_x;
+        value += weight_data[weight_offset] * output_grad[output_offset];
       }
+      weight_offset++;
     }
     input_grad[input_offset] += value;
   }
@@ -165,14 +179,15 @@ __global__ void
 backprop_input(T *input_grad, const T *output_grad, const T *weight_data,
                const int input_data_size, const int3 sample, const int3 outmap,
                const int2 kernel, const int2 stride, const int2 padding,
-               const int2 dilation, const int multiplier) {
+               const int2 dilation, const int divisor) {
   // sample/outmap (x, y, z) == (width, height, channels)
-  // outmap.z == sample.z * multiplier
+  // outmap.z == sample.z / divisor
   // sample/outmap/kernel size == width * height
   const auto &sample_channels = sample.z;
   const auto &outmap_channels = outmap.z;
-  const auto sample_size = sample.x * sample.y;
-  const auto outmap_size = outmap.x * outmap.y;
+
+  const int sample_size = sample.x * sample.y;
+  const int outmap_size = outmap.x * outmap.y;
 
   const int KERNEL_X = (K != 0) ? K : kernel.x;
   const int KERNEL_Y = (K != 0) ? K : kernel.y;
@@ -183,39 +198,25 @@ backprop_input(T *input_grad, const T *output_grad, const T *weight_data,
     const int sample_y = (input_offset / sample.x) % sample.y;
     const int sample_x = input_offset % sample.x;
     const int sample_chan = (input_offset / sample_size) % sample_channels;
-    const int outmap_chan = sample_chan * multiplier;
+    const int outmap_chan = sample_chan / divisor;
     const int outmap_base = (s * outmap_channels + outmap_chan) * outmap_size;
-    const int weight_base = outmap_chan * kernel_size;
-    int weight_incr = 0;
+    int weight_offset = sample_chan * kernel_size;
+
     T value = 0;
 
 #pragma unroll
     for (int k_y = 0; k_y < KERNEL_Y; ++k_y) {
 #pragma unroll
       for (int k_x = 0; k_x < KERNEL_X; ++k_x) {
-        int outmap_y = sample_y + padding.y - k_y * dilation.y;
-        int outmap_x = sample_x + padding.x - k_x * dilation.x;
+        const int outmap_y = sample_y * stride.y + k_y * dilation.y - padding.y;
+        const int outmap_x = sample_x * stride.x + k_x * dilation.x - padding.x;
 
-        const int outmap_y_div_stride = outmap_y / stride.y;
-        const int outmap_x_div_stride = outmap_x / stride.x;
-
-        if ((outmap_y - outmap_y_div_stride * stride.y == 0) &&
-            (outmap_x - outmap_x_div_stride * stride.x == 0)) {
-          outmap_y = outmap_y_div_stride;
-          outmap_x = outmap_x_div_stride;
-
-          if ((outmap_y >= 0) && (outmap_y < outmap.y) && //
-              (outmap_x >= 0) && (outmap_x < outmap.x)) {
-            int output_offset = outmap_base + outmap_y * outmap.x + outmap_x;
-            int weight_offset = weight_base + weight_incr;
-            for (int m = 0; m < multiplier; ++m) {
-              value += weight_data[weight_offset] * output_grad[output_offset];
-              output_offset += outmap_size;
-              weight_offset += kernel_size;
-            }
-          }
+        if ((outmap_y >= 0) && (outmap_y < outmap.y) && //
+            (outmap_x >= 0) && (outmap_x < outmap.x)) {
+          int output_offset = outmap_base + outmap_y * outmap.x + outmap_x;
+          value += weight_data[weight_offset] * output_grad[output_offset];
         }
-        ++weight_incr;
+        weight_offset++;
       }
     }
     input_grad[input_offset] += value;
@@ -227,7 +228,7 @@ __global__ void
 backprop_weights(const T *output_grad, const T *input_data, T *weight_grad,
                  T *bias_grad, const int batch_size, const int2 sample,
                  const int2 outmap, const int kernel, const int stride,
-                 const int padding, const int dilation, const int multiplier) {
+                 const int padding, const int dilation, const int divisor) {
   const auto &sample_channels = sample.y;
   const auto &outmap_channels = outmap.y;
   const auto &sample_size = sample.x;
@@ -243,16 +244,18 @@ backprop_weights(const T *output_grad, const T *input_data, T *weight_grad,
   const int lane = threadIdx.x % warpSize;
   const int warps = blockDim.x / warpSize;
 
+  const int sample_chan = chan;
+  const int outmap_chan = chan / divisor;
   const int sample_stride = sample_channels * sample_size;
   const int outmap_stride = outmap_channels * outmap_size;
-  const int sample_offset = (chan / multiplier) * sample_size;
-  const int outmap_offset = chan * outmap_size;
-  const int sample_skip_x = k_x * dilation;
+  const int sample_offset = sample_chan * sample_size;
+  const int outmap_offset = outmap_chan * outmap_size;
+  const int outmap_skip_x = k_x * dilation;
 
-  T weight_grad_value = 0;
-  T bias_grad_value = 0;
+  T weight_grad_value = 0; // thread local weight gradient
+  T bias_grad_value = 0;   // thread local bias gradient
 
-  // Each thread block (of outmap-channels * kernel-size blocks)
+  // Each thread block (of sample-channels * kernel-size blocks)
   // computes a weight gradient. It also computes a bias gradient
   // even if that is done kernel-size times more often than
   // needed (but we won't gain with a conditional).
@@ -260,16 +263,20 @@ backprop_weights(const T *output_grad, const T *input_data, T *weight_grad,
     const int sample_base = s * sample_stride + sample_offset;
     const int outmap_base = s * outmap_stride + outmap_offset;
 
-    for (int idx = lane; idx < outmap_size; idx += warpSize) {
-      const int outmap_x = idx;
-      const int sample_x = (outmap_x * stride) + sample_skip_x - padding;
-      const T output_grad_value = output_grad[outmap_base + idx];
+    for (int idx = lane; idx < outmap.x; idx += warpSize) {
+      const T outmap_grad = output_grad[outmap_base + idx];
+      int sample_x = idx - outmap_skip_x + padding;
+      const int sample_x_div_stride = sample_x / stride;
 
-      if ((sample_x >= 0) && (sample_x < sample.x)) {
-        int input_offset = sample_base + sample_x;
-        weight_grad_value += input_data[input_offset] * output_grad_value;
+      if (sample_x - sample_x_div_stride * stride == 0) {
+        sample_x = sample_x_div_stride;
+
+        if ((sample_x >= 0) && (sample_x < sample.x)) {
+          const T sample_data = input_data[sample_base + sample_x];
+          weight_grad_value += sample_data * outmap_grad;
+        }
       }
-      bias_grad_value += output_grad_value;
+      bias_grad_value += outmap_grad;
     }
   }
   __syncthreads();
@@ -281,49 +288,48 @@ backprop_weights(const T *output_grad, const T *input_data, T *weight_grad,
   // The first thread has the accumulated gradients. The bias
   // gradient is needed only once per output channel.
   if (threadIdx.x == 0) {
-    const int weight_offset = k_x + kernel * chan;
+    const int weight_offset = k_x + kernel * sample_chan;
     weight_grad[weight_offset] += weight_grad_value;
-    if (bias_grad && (blockIdx.x % kernel == 0)) {
-      bias_grad[chan] += bias_grad_value;
+    if (bias_grad && (blockIdx.x % (kernel * divisor) == 0)) {
+      bias_grad[outmap_chan] += bias_grad_value;
     }
   }
 }
 
 template <typename T>
-__global__ void backprop_weights(const T *output_grad, const T *input_data,
-                                 T *weight_grad, T *bias_grad,
-                                 const int batch_size, const int3 sample,
-                                 const int3 outmap, const int2 kernel,
-                                 const int2 stride, const int2 padding,
-                                 const int2 dilation, const int multiplier) {
+__global__ void
+backprop_weights(const T *output_grad, const T *input_data, T *weight_grad,
+                 T *bias_grad, const int batch_size, const int3 sample,
+                 const int3 outmap, const int2 kernel, const int2 stride,
+                 const int2 padding, const int2 dilation, const int divisor) {
   const auto &sample_channels = sample.z;
   const auto &outmap_channels = outmap.z;
-  const auto sample_size = sample.x * sample.y;
-  const auto outmap_size = outmap.x * outmap.y;
-  const auto kernel_size = kernel.x * kernel.y;
 
-  // gridDim.x == blocks == outmap_channels * kernel_size == total weights
-  // blockDim.x == threads == min(batch_size * warpSize, 256)
+  // gridDim.x == blocks == outmap_channels * kernel.y * kernel.x == weights
+  // blockDim.x == threads == min(batch_size * warpSize, 1024)
   // each block computes one weight value
 
   const int k_x = blockIdx.x % kernel.x;
   const int k_y = (blockIdx.x / kernel.x) % kernel.y;
-  const int chan = blockIdx.x / kernel_size;
+  const int chan = blockIdx.x / (kernel.y * kernel.x);
   const int samp = threadIdx.x / warpSize;
   const int lane = threadIdx.x % warpSize;
   const int warps = blockDim.x / warpSize;
 
-  const int sample_stride = sample_channels * sample_size;
-  const int outmap_stride = outmap_channels * outmap_size;
-  const int sample_offset = (chan / multiplier) * sample_size;
-  const int outmap_offset = chan * outmap_size;
-  const int sample_skip_x = k_x * dilation.x;
-  const int sample_skip_y = k_y * dilation.y;
+  const int sample_chan = chan;
+  const int outmap_chan = chan / divisor;
+  const int kernel_size = kernel.x * kernel.y;
+  const int sample_stride = sample_channels * sample.y * sample.x;
+  const int outmap_stride = outmap_channels * outmap.y * outmap.x;
+  const int sample_offset = sample_chan * sample.y * sample.x;
+  const int outmap_offset = outmap_chan * outmap.y * outmap.x;
+  const int outmap_skip_x = k_x * dilation.x;
+  const int outmap_skip_y = k_y * dilation.y;
 
-  T weight_grad_value = 0;
-  T bias_grad_value = 0;
+  T weight_grad_value = 0; // thread local weight gradient
+  T bias_grad_value = 0;   // thread local bias gradient
 
-  // Each thread block (of outmap-channels * kernel-size blocks)
+  // Each thread block (of sample-channels * kernel-size blocks)
   // computes a weight gradient. It also computes a bias gradient
   // even if that is done kernel-size times more often than
   // needed (but we won't gain with a conditional).
@@ -331,19 +337,28 @@ __global__ void backprop_weights(const T *output_grad, const T *input_data,
     const int sample_base = s * sample_stride + sample_offset;
     const int outmap_base = s * outmap_stride + outmap_offset;
 
-    for (int idx = lane; idx < outmap_size; idx += warpSize) {
-      const int outmap_x = idx % outmap.x;
-      const int outmap_y = idx / outmap.x;
-      const int sample_x = (outmap_x * stride.x) + sample_skip_x - padding.x;
-      const int sample_y = (outmap_y * stride.y) + sample_skip_y - padding.y;
-      const T output_grad_value = output_grad[outmap_base + idx];
+    for (int idx = lane; idx < outmap.x * outmap.y; idx += warpSize) {
+      const T outmap_grad = output_grad[outmap_base + idx];
 
-      if ((sample_x >= 0) && (sample_x < sample.x) && //
-          (sample_y >= 0) && (sample_y < sample.y)) {
-        int input_offset = sample_base + (sample_y * sample.x) + sample_x;
-        weight_grad_value += input_data[input_offset] * output_grad_value;
+      int sample_x = (idx % outmap.x) - outmap_skip_x + padding.x;
+      int sample_y = (idx / outmap.x) - outmap_skip_y + padding.y;
+
+      const int sample_x_div_stride = sample_x / stride.x;
+      const int sample_y_div_stride = sample_y / stride.y;
+
+      if ((sample_x - sample_x_div_stride * stride.x == 0) &&
+          (sample_y - sample_y_div_stride * stride.y == 0)) {
+        sample_x = sample_x_div_stride;
+        sample_y = sample_y_div_stride;
+
+        if ((sample_x >= 0) && (sample_x < sample.x) && //
+            (sample_y >= 0) && (sample_y < sample.y)) {
+          const int sample_offset = (sample_y * sample.x) + sample_x;
+          const T sample_data = input_data[sample_base + sample_offset];
+          weight_grad_value += sample_data * outmap_grad;
+        }
       }
-      bias_grad_value += output_grad_value;
+      bias_grad_value += outmap_grad;
     }
   }
   __syncthreads();
@@ -355,26 +370,29 @@ __global__ void backprop_weights(const T *output_grad, const T *input_data,
   // The first thread has the accumulated gradients. The bias
   // gradient is needed only once per output channel.
   if (threadIdx.x == 0) {
-    const int weight_offset = chan * kernel_size + k_y * kernel.x + k_x;
+    const int weight_offset = sample_chan * kernel_size + k_y * kernel.x + k_x;
     weight_grad[weight_offset] += weight_grad_value;
-    if (bias_grad && (blockIdx.x % kernel_size == 0)) {
-      bias_grad[chan] += bias_grad_value;
+    if (bias_grad && (blockIdx.x % (kernel_size * divisor) == 0)) {
+      bias_grad[outmap_chan] += bias_grad_value;
     }
   }
 }
 
-} // namespace depthwise_convolution_cuda
+} // namespace depthwise_deconvolution_cuda
 
-using namespace depthwise_convolution_cuda;
+using namespace depthwise_deconvolution_cuda;
 
 template <typename T>
-void DepthwiseConvolutionCuda<T>::setup_impl(const Variables &inputs,
-                                             const Variables &outputs) {
+void DepthwiseDeconvolutionCuda<T>::setup_impl(const Variables &inputs,
+                                               const Variables &outputs) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  DepthwiseConvolution<T>::setup_impl(inputs, outputs);
+  DepthwiseDeconvolution<T>::setup_impl(inputs, outputs);
 
-  input_data_size_ = inputs[0]->size();
-  output_data_size_ = outputs[0]->size();
+  Variable *const input = inputs[0];
+  Variable *const output = outputs[0];
+
+  input_data_size_ = input->size();
+  output_data_size_ = output->size();
 
   NBLA_CHECK(inputs[1]->size() <= 65536, error_code::unclassified,
              "GPU implementation limit reached: output-channels x filter-size "
@@ -405,8 +423,8 @@ void DepthwiseConvolutionCuda<T>::setup_impl(const Variables &inputs,
 }
 
 template <typename T>
-void DepthwiseConvolutionCuda<T>::forward_impl(const Variables &inputs,
-                                               const Variables &outputs) {
+void DepthwiseDeconvolutionCuda<T>::forward_impl(const Variables &inputs,
+                                                 const Variables &outputs) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
 
   Variable *const input = inputs[0];
@@ -427,40 +445,40 @@ void DepthwiseConvolutionCuda<T>::forward_impl(const Variables &inputs,
       forward_kernel<T, 3><<<blocks, threads>>>(
           input_data, output_data, weight_data, bias_data, output_data_size_,
           sample_1d_, outmap_1d_, kernel_1d_, stride_1d_, padding_1d_,
-          dilation_1d_, this->multiplier_);
+          dilation_1d_, this->divisor_);
     } else if (kernel_1d_ == 5) {
       forward_kernel<T, 5><<<blocks, threads>>>(
           input_data, output_data, weight_data, bias_data, output_data_size_,
           sample_1d_, outmap_1d_, kernel_1d_, stride_1d_, padding_1d_,
-          dilation_1d_, this->multiplier_);
+          dilation_1d_, this->divisor_);
     } else {
       forward_kernel<T, 0><<<blocks, threads>>>(
           input_data, output_data, weight_data, bias_data, output_data_size_,
           sample_1d_, outmap_1d_, kernel_1d_, stride_1d_, padding_1d_,
-          dilation_1d_, this->multiplier_);
+          dilation_1d_, this->divisor_);
     }
   } else {
     if ((kernel_2d_.x == 3) && (kernel_2d_.y == 3)) {
       forward_kernel<T, 3><<<blocks, threads>>>(
           input_data, output_data, weight_data, bias_data, output_data_size_,
           sample_2d_, outmap_2d_, kernel_2d_, stride_2d_, padding_2d_,
-          dilation_2d_, this->multiplier_);
+          dilation_2d_, this->divisor_);
     } else if ((kernel_2d_.x == 5) && (kernel_2d_.y == 5)) {
       forward_kernel<T, 5><<<blocks, threads>>>(
           input_data, output_data, weight_data, bias_data, output_data_size_,
           sample_2d_, outmap_2d_, kernel_2d_, stride_2d_, padding_2d_,
-          dilation_2d_, this->multiplier_);
+          dilation_2d_, this->divisor_);
     } else {
       forward_kernel<T, 0><<<blocks, threads>>>(
           input_data, output_data, weight_data, bias_data, output_data_size_,
           sample_2d_, outmap_2d_, kernel_2d_, stride_2d_, padding_2d_,
-          dilation_2d_, this->multiplier_);
+          dilation_2d_, this->divisor_);
     }
   }
 }
 
 template <typename T>
-void DepthwiseConvolutionCuda<T>::backward_impl(
+void DepthwiseDeconvolutionCuda<T>::backward_impl(
     const Variables &inputs, const Variables &outputs,
     const vector<bool> &propagate_down, const vector<bool> &accum) {
   if (!(propagate_down[0] || propagate_down[1] ||
@@ -510,34 +528,34 @@ void DepthwiseConvolutionCuda<T>::backward_impl(
         backprop_input<T, 3><<<blocks, threads>>>(
             input_grad, output_grad, weight_data, input_data_size_, sample_1d_,
             outmap_1d_, kernel_1d_, stride_1d_, padding_1d_, dilation_1d_,
-            this->multiplier_);
+            this->divisor_);
       } else if (kernel_1d_ == 5) {
         backprop_input<T, 5><<<blocks, threads>>>(
             input_grad, output_grad, weight_data, input_data_size_, sample_1d_,
             outmap_1d_, kernel_1d_, stride_1d_, padding_1d_, dilation_1d_,
-            this->multiplier_);
+            this->divisor_);
       } else {
         backprop_input<T, 0><<<blocks, threads>>>(
             input_grad, output_grad, weight_data, input_data_size_, sample_1d_,
             outmap_1d_, kernel_1d_, stride_1d_, padding_1d_, dilation_1d_,
-            this->multiplier_);
+            this->divisor_);
       }
     } else {
       if ((kernel_2d_.x == 3) && (kernel_2d_.y == 3)) {
         backprop_input<T, 3><<<blocks, threads>>>(
             input_grad, output_grad, weight_data, input_data_size_, sample_2d_,
             outmap_2d_, kernel_2d_, stride_2d_, padding_2d_, dilation_2d_,
-            this->multiplier_);
+            this->divisor_);
       } else if ((kernel_2d_.x == 5) && (kernel_2d_.y == 5)) {
         backprop_input<T, 5><<<blocks, threads>>>(
             input_grad, output_grad, weight_data, input_data_size_, sample_2d_,
             outmap_2d_, kernel_2d_, stride_2d_, padding_2d_, dilation_2d_,
-            this->multiplier_);
+            this->divisor_);
       } else {
         backprop_input<T, 0><<<blocks, threads>>>(
             input_grad, output_grad, weight_data, input_data_size_, sample_2d_,
             outmap_2d_, kernel_2d_, stride_2d_, padding_2d_, dilation_2d_,
-            this->multiplier_);
+            this->divisor_);
       }
     }
     NBLA_CUDA_KERNEL_CHECK();
@@ -565,20 +583,20 @@ void DepthwiseConvolutionCuda<T>::backward_impl(
     const int threads = min(batch_size * warp_size_, max_threads_per_block_);
     if (this->kernel_shape_.size() == 1) {
       const int kernel_size = kernel_1d_;
-      const int output_channels = outmap_1d_.y;
-      const int blocks = output_channels * kernel_size;
+      const int sample_channels = sample_1d_.y;
+      const int blocks = sample_channels * kernel_size;
       backprop_weights<T><<<blocks, threads>>>(
           output_grad, input_data, weight_grad, bias_grad, batch_size,
           sample_1d_, outmap_1d_, kernel_1d_, stride_1d_, padding_1d_,
-          dilation_1d_, this->multiplier_);
+          dilation_1d_, this->divisor_);
     } else {
       const int kernel_size = kernel_2d_.x * kernel_2d_.y;
-      const int output_channels = outmap_2d_.z;
-      const int blocks = output_channels * kernel_size;
+      const int sample_channels = sample_2d_.z;
+      const int blocks = sample_channels * kernel_size;
       backprop_weights<T><<<blocks, threads>>>(
           output_grad, input_data, weight_grad, bias_grad, batch_size,
           sample_2d_, outmap_2d_, kernel_2d_, stride_2d_, padding_2d_,
-          dilation_2d_, this->multiplier_);
+          dilation_2d_, this->divisor_);
     }
     NBLA_CUDA_KERNEL_CHECK();
   }
@@ -619,6 +637,6 @@ void DepthwiseConvolutionCuda<T>::backward_impl(
 }
 
 // Template instantiation
-template class DepthwiseConvolutionCuda<float>;
+template class DepthwiseDeconvolutionCuda<float>;
 
 } // namespace nbla

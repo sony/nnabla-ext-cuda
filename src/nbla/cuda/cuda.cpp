@@ -79,7 +79,10 @@ void Cuda::register_array_class(const string &name) {
 MemoryCache<CudaMemory> &Cuda::memcache() { return memcache_; }
 
 void *Cuda::get_workspace(Size_t size_in_bytes, int device) {
-  // TODO: Make this function thread-safe with mutex.
+  if (size_in_bytes == 0) {
+    return nullptr;
+  }
+  std::lock_guard<decltype(mtx_workspace_)> lock(mtx_workspace_);
   auto it = workspace_.find(device);
   if (it == workspace_.end()) {
     workspace_[device] =

@@ -78,7 +78,16 @@ template <typename T> void DataParallelCommunicatorNccl<T>::init() {
 }
 
 template <typename T>
-void DataParallelCommunicatorNccl<T>::reduce(bool division) {
+void DataParallelCommunicatorNccl<T>::reduce(
+    const vector<NdArrayPtr> &ndarray_list, int dst, bool division,
+    bool inplace, const string &group) {
+  NBLA_ERROR(error_code::not_implemented, "CUDA GPU reduce is not implemented.")
+}
+
+template <typename T>
+void DataParallelCommunicatorNccl<T>::reduce(NdArrayPtr ndarray, int dst,
+                                             bool division, bool inplace,
+                                             const string &group) {
   NBLA_ERROR(error_code::not_implemented, "CUDA GPU reduce is not implemented.")
 }
 
@@ -206,31 +215,47 @@ void DataParallelCommunicatorNccl<T>::allreduce(bool division, bool inplace) {
 
 template <typename T>
 void DataParallelCommunicatorNccl<T>::all_reduce(
-    vector<NdArrayPtr> ndarray_list, bool division, bool inplace) {
+    const vector<NdArrayPtr> &ndarray_list, bool division, bool inplace,
+    const string &group) {
   NBLA_ERROR(error_code::not_implemented,
              "CUDA GPU all_reduce is not implemented.")
 }
 
 template <typename T>
-void DataParallelCommunicatorNccl<T>::all_reduce(NdArrayPtr data, bool division,
-                                                 bool inplace) {
+void DataParallelCommunicatorNccl<T>::all_reduce(NdArrayPtr ndarray,
+                                                 bool division, bool inplace,
+                                                 const string &group) {
   NBLA_ERROR(error_code::not_implemented,
              "CUDA GPU all_reduce is not implemented.")
 }
 
 template <typename T>
-void DataParallelCommunicatorNccl<T>::reducescatter(bool division) {
+void DataParallelCommunicatorNccl<T>::reduce_scatter(
+    const vector<NdArrayPtr> &ndarray_list, NdArrayPtr ndarray, bool division,
+    const string &group) {
   NBLA_ERROR(error_code::not_implemented,
-             "CUDA GPU reducescatter is not implemented.")
+             "CUDA GPU reduce_scatter is not implemented.")
 }
 
-template <typename T> void DataParallelCommunicatorNccl<T>::bcast() {
+template <typename T>
+void DataParallelCommunicatorNccl<T>::bcast(
+    const vector<NdArrayPtr> &ndarray_list, int src, bool inplace,
+    const string &group) {
   NBLA_ERROR(error_code::not_implemented, "CUDA GPU bcast is not implemented.")
 }
 
-template <typename T> void DataParallelCommunicatorNccl<T>::allgather() {
+template <typename T>
+void DataParallelCommunicatorNccl<T>::bcast(NdArrayPtr ndarray, int src,
+                                            bool inplace, const string &group) {
+  NBLA_ERROR(error_code::not_implemented, "CUDA GPU bcast is not implemented.")
+}
+
+template <typename T>
+void DataParallelCommunicatorNccl<T>::all_gather(
+    NdArrayPtr ndarray, const vector<NdArrayPtr> &ndarray_list,
+    const string &group) {
   NBLA_ERROR(error_code::not_implemented,
-             "CUDA GPU allgather is not implemented.")
+             "CUDA GPU all_gather is not implemented.")
 }
 
 template <typename T>
