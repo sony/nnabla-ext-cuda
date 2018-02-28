@@ -343,7 +343,8 @@ void MultiProcessDataParallelCommunicatorNccl<T>::reduce(NdArrayPtr ndarray,
   if (division) {
     NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace, stream, n_param,
                                       this->size_, dw1);
-    // TODO: strange because of implicit synchronization without inplace and with division does not occur.
+    // TODO: strange because of implicit synchronization without inplace and
+    // with division does not occur.
     // copy(streams) -> all_reduce(default stream) ->
     // -> division(default stream) -> copy_back(streams) -> xxx(default stream)
     // Even if launching null kernel, no sync. Thus, call stream synchronize.
@@ -522,7 +523,8 @@ void MultiProcessDataParallelCommunicatorNccl<T>::all_reduce(
   if (division) {
     NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace, stream, n_param,
                                       this->size_, dw1);
-    // TODO: strange because of implicit synchronization without inplace and with division does not occur.
+    // TODO: strange because of implicit synchronization without inplace and
+    // with division does not occur.
     // copy(streams) -> all_reduce(default stream) ->
     // -> division(default stream) -> copy_back(streams) -> xxx(default stream)
     // Even if launching null kernel, no sync. Thus, call stream synchronize.
