@@ -164,6 +164,11 @@ template <typename T> void MultiProcessDataParallelCommunicatorNccl<T>::init() {
 }
 
 template <typename T>
+void MultiProcessDataParallelCommunicatorNccl<T>::abort() {
+  MPI_Abort(MPI_COMM_WORLD, -1);
+}
+
+template <typename T>
 string MultiProcessDataParallelCommunicatorNccl<T>::new_group(
     pair<string, vector<int>> name_ranks_pair) {
   string group_name = name_ranks_pair.first;
