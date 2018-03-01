@@ -72,10 +72,8 @@ protected:
   int w_offset_;
   int b_offset_;
   int y_offset_;
-  shared_ptr<CudnnConv2dResource> rsc2d_;
+  shared_ptr<CudnnConvResource> rsc_;
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
-  void setup_impl_2d(const Variables &inputs, const Variables &outputs);
-  void setup_impl_nd(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,
                              const vector<bool> &propagate_down,
