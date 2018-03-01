@@ -21,6 +21,37 @@
 
 namespace nbla {
 
+void cudnn_set_tensor_nd_descriptor_force_dim(cudnnTensorDescriptor_t &desc,
+                                              cudnnDataType_t dtype,
+                                              vector<int> dims,
+                                              vector<int> strides,
+                                              int force_ndim) {
+  if (dims.size() < force_ndim) {
+    dims.resize(force_ndim, 1);
+    strides.resize(force_ndim, 1);
+  }
+  NBLA_CUDNN_CHECK(cudnnSetTensorNdDescriptor(desc, dtype, dims.size(),
+                                              dims.data(), strides.data()));
+}
+
+/* Wrapper function of cudnnSetConvolutionNdDescriptor with ensuring filter
+ * dimension >= 1.
+ */
+inline void cudnn_set_convolution_nd_descriptor_force_2dim(
+    cudnnConvolutionDescriptor_t &conv_desc, int ndim, vector<int> pad,
+    vector<int> stride, vector<int> dilation, cudnnConvolutionMode_t mode,
+    cudnnDataType_t dtype) {
+  if (ndim == 1) {
+    ndim = 2;
+    pad.resize(2, 0);
+    stride.resize(2, 1);
+    dilation.resize(2, 1);
+  }
+  NBLA_CUDNN_CHECK(cudnnSetConvolutionNdDescriptor(
+      conv_desc, ndim, pad.data(), stride.data(), dilation.data(), mode,
+      dtype));
+}
+
 static size_t get_conv_outsize(int w, int k, int p, int s, int d) {
   const int dk = d * (k - 1) + 1;
   return (w + 2 * p - dk) / s + 1;
@@ -92,8 +123,8 @@ CudnnConvResource::CudnnConvResource(const CudnnConvDesc &desc) {
   // Set input desc
   auto dims = get_conv_dims(desc.n, desc.c, desc.group, desc.sample);
   auto strides = get_conv_strides(desc.c, desc.sample);
-  NBLA_CUDNN_CHECK(cudnnSetTensorNdDescriptor(x_desc, desc.dtype, dims.size(),
-                                              dims.data(), strides.data()));
+  cudnn_set_tensor_nd_descriptor_force_dim(x_desc, desc.dtype, dims, strides,
+                                           4);
 
   // Set output desc
   vector<int> osample(desc.ndim);
@@ -103,15 +134,18 @@ CudnnConvResource::CudnnConvResource(const CudnnConvDesc &desc) {
   }
   auto odims = get_conv_dims(desc.n, desc.o, desc.group, osample);
   auto ostrides = get_conv_strides(desc.o, osample);
-  NBLA_CUDNN_CHECK(cudnnSetTensorNdDescriptor(y_desc, desc.dtype, odims.size(),
-                                              odims.data(), ostrides.data()));
+  cudnn_set_tensor_nd_descriptor_force_dim(y_desc, desc.dtype, odims, ostrides,
+                                           4);
 
-  // Set kernel desc
+  // Set kernel (filter) desc
   vector<int> fdims(desc.ndim + 2);
   fdims[0] = desc.o / desc.group;
   fdims[1] = desc.c / desc.group;
   for (int d = 0; d < desc.ndim; d++) {
     fdims[d + 2] = desc.kernel[d];
+  }
+  if (desc.ndim == 1) {
+    fdims.resize(4, 1);
   }
   NBLA_CUDNN_CHECK(cudnnSetFilterNdDescriptor(
       w_desc, desc.dtype, CUDNN_TENSOR_NCHW, fdims.size(), fdims.data()));
@@ -121,20 +155,20 @@ CudnnConvResource::CudnnConvResource(const CudnnConvDesc &desc) {
   bdims[1] = desc.o / desc.group;
   vector<int> bstrides(desc.ndim + 2, 1);
   bstrides[0] = bdims[1];
-  NBLA_CUDNN_CHECK(cudnnSetTensorNdDescriptor(b_desc, desc.dtype, bdims.size(),
-                                              bdims.data(), bstrides.data()));
+  cudnn_set_tensor_nd_descriptor_force_dim(b_desc, desc.dtype, bdims, bstrides,
+                                           4);
 
   // Set bias desc for deconvolution
   bdims[1] = desc.c / desc.group;
   bstrides[0] = bdims[1];
-  NBLA_CUDNN_CHECK(cudnnSetTensorNdDescriptor(
-      b_desc_deconv, desc.dtype, bdims.size(), bdims.data(), bstrides.data()));
+  cudnn_set_tensor_nd_descriptor_force_dim(b_desc_deconv, desc.dtype, bdims,
+                                           bstrides, 4);
 
   // Set Conv desc
-  // TODO: Support data type config
-  NBLA_CUDNN_CHECK(cudnnSetConvolutionNdDescriptor(
-      conv_desc, desc.ndim, desc.pad.data(), desc.stride.data(),
-      desc.dilation.data(), desc.mode, cudnn_data_type<float>::type()));
+  // TODO: Support compute type config
+  cudnn_set_convolution_nd_descriptor_force_2dim(
+      conv_desc, desc.ndim, desc.pad, desc.stride, desc.dilation, desc.mode,
+      cudnn_data_type<float>::type());
 
   // Find best algorithm
   find_best_algorithms();

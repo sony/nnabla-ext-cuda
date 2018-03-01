@@ -82,6 +82,22 @@ inline string cudnn_status_to_string(cudnnStatus_t status) {
                cudnn_status_to_string(status));                                \
   }
 
+/** Wrapper function of cudnnSetTensorNdDescriptor with ensuring least dims.
+
+http://docs.nvidia.com/deeplearning/sdk/cudnn-developer-guide/index.html#cudnnSetTensorNdDescriptor
+
+According to the doc above, cudnnSetTensorNdDescriptor does not suport a tensor
+less than 4 dimensions. This wrapper function adds unused dimensions with a
+value of 1 at last.
+
+@param force_ndim
+ */
+void cudnn_set_tensor_nd_descriptor_force_dim(cudnnTensorDescriptor_t &desc,
+                                              cudnnDataType_t dtype,
+                                              vector<int> dims,
+                                              vector<int> strides,
+                                              int force_ndim = 4);
+
 /** cuDNN Convolution Descriptor used as a key to find previously used
  * (cached) config.
 */
