@@ -125,7 +125,9 @@ RUN wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh \
 ENV PATH /opt/miniconda3/bin:$PATH
 
 ADD python/requirements.txt /tmp/deps/
-RUN set -xe ; for PYV in 2.7.14 3.4.5 3.5.3 3.6.2 \
+RUN set -xe \
+    ; umask 0 \
+    ; for PYV in 2.7.14 3.4.5 3.5.3 3.6.2 \
     ; do PY=${PYV%.*} \
     ; echo Setup Python $PYV \
     ; conda create -y -n py$PY python=$PYV \
@@ -142,4 +144,3 @@ RUN set -xe ; for PYV in 2.7.14 3.4.5 3.5.3 3.6.2 \
     ; source deactivate \
     ; done
 
-RUN chmod -R ugo+w /opt/miniconda3
