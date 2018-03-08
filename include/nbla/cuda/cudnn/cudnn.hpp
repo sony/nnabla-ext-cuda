@@ -35,11 +35,6 @@ using std::shared_ptr;
 using std::unordered_map;
 using std::hash;
 
-#if CUDNN_VERSION >= 5000
-#define NBLA_CUDNN_USE_WORKSPACE
-#else
-#endif
-
 template <class T> class cudnn_data_type;
 
 template <> class cudnn_data_type<float> {
@@ -156,23 +151,23 @@ struct NBLA_CUDA_API CudnnConv2dResource {
   cudnnConvolutionBwdFilterAlgo_t
       bwd_filter_algo; ///< Best Backward filter algorithm found.
   cudnnConvolutionBwdDataAlgo_t
-      bwd_data_algo; ///< Best backward data algorithm found.
-#ifdef NBLA_CUDNN_USE_WORKSPACE
+      bwd_data_algo;                ///< Best backward data algorithm found.
   size_t fwd_workspace_size;        ///< Forward workspace size.
   size_t bwd_filter_workspace_size; ///< Backward filter workspace size.
   size_t bwd_data_workspace_size;   ///< Backward data workspace size.
-#endif
+
   CudnnConv2dResource(const CudnnConv2dDesc &desc);
   ~CudnnConv2dResource();
 
-#ifdef NBLA_CUDNN_USE_WORKSPACE
   /** Get maximum workspace size.
    */
   size_t workspace_size() const;
-#endif
 
 private:
   void find_best_algorithms();
+  void find_best_algorithms_no_limit();
+  void find_best_algorithms_no_workspace();
+  void find_best_algorithms_limit(int limit);
 };
 
 /**
@@ -193,8 +188,26 @@ public:
                 typename CudnnConv2dDesc::Hash>
       conv2d_resource;
 
+  /** Get a workspace limit.
+
+      The negative value means no limit of workspace size.
+
+      @note The default value is -1. The default value is overwritten if an
+            environment variable NNABLA_CUDNN_WORKSPACE_LIMIT is specified.
+   */
+  int get_workspace_limit_in_bytes();
+
+  /** Set a workspace limit.
+
+      The negative value means no limit of workspace size.
+
+      @param[in] Limit in bytes.
+   */
+  void set_workspace_limit_in_bytes(int bytes);
+
 protected:
   map<int, cudnnHandle_t> handles_;
+  int workspace_limit_{0}; ///< Workspace limit in bytes.
 
 private:
   friend SingletonManager;

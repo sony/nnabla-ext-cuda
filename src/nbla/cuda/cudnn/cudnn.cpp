@@ -16,7 +16,8 @@
 #include <nbla/cuda/cudnn/cudnn.hpp>
 #include <nbla/singleton_manager-internal.hpp>
 
-// #include <iostream>  // TODO: remove
+#include <cstdlib>
+#include <string>
 
 namespace nbla {
 
@@ -125,10 +126,10 @@ CudnnConv2dResource::~CudnnConv2dResource() {
   NBLA_CUDNN_CHECK(cudnnDestroyConvolutionDescriptor(conv_desc));
 }
 
-void CudnnConv2dResource::find_best_algorithms() {
+void CudnnConv2dResource::find_best_algorithms_no_limit() {
+#if CUDNN_VERSION >= 3000
   cudnnHandle_t cudnn_handle =
       SingletonManager::get<CudnnHandleManager>()->handle(device);
-#ifdef NBLA_CUDNN_USE_WORKSPACE
   // Get forward algorithm
   int fwd_algo_count = 0;
   cudnnConvolutionFwdAlgoPerf_t fwd_data_perf_results[1];
@@ -162,7 +163,44 @@ void CudnnConv2dResource::find_best_algorithms() {
   NBLA_CUDNN_CHECK(cudnnGetConvolutionBackwardFilterWorkspaceSize(
       cudnn_handle, x_desc, y_desc, conv_desc, w_desc, bwd_filter_algo,
       &bwd_filter_workspace_size));
-#else // NOT_USE_WORKSPACE
+#else
+  // TODO: Logger?
+  std::cout << "CUDNN version less than 3000 doesn't have "
+               "cudnnFindConvolution*Algorithm. Fallen back to no-workspace "
+               "mode. If you want a more faster convolution, you should set "
+               "NNABLA_CUDNN_WORKSPACE_LIMIT greater than 0 as an environment "
+               "variable."
+            << std::endl;
+  find_best_algorithms_no_workspace();
+#endif
+}
+
+void CudnnConv2dResource::find_best_algorithms_limit(int limit) {
+  cudnnHandle_t cudnn_handle =
+      SingletonManager::get<CudnnHandleManager>()->handle(device);
+  // Get forward algorithm
+  NBLA_CUDNN_CHECK(cudnnGetConvolutionForwardAlgorithm(
+      cudnn_handle, x_desc, w_desc, conv_desc, y_desc,
+      CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT, limit, &fwd_algo));
+  // Get data backward workspace
+  NBLA_CUDNN_CHECK(cudnnGetConvolutionBackwardDataAlgorithm(
+      cudnn_handle, w_desc, y_desc, conv_desc, x_desc,
+      CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT, limit,
+      &bwd_data_algo));
+  // Get filter backward workspace
+  NBLA_CUDNN_CHECK(cudnnGetConvolutionBackwardFilterAlgorithm(
+      cudnn_handle, x_desc, y_desc, conv_desc, w_desc,
+      CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT, limit,
+      &bwd_filter_algo));
+  // Set workspace
+  fwd_workspace_size = limit;
+  bwd_data_workspace_size = limit;
+  bwd_filter_workspace_size = limit;
+}
+
+void CudnnConv2dResource::find_best_algorithms_no_workspace() {
+  cudnnHandle_t cudnn_handle =
+      SingletonManager::get<CudnnHandleManager>()->handle(device);
   // Get forward algorithm
   NBLA_CUDNN_CHECK(cudnnGetConvolutionForwardAlgorithm(
       cudnn_handle, x_desc, w_desc, conv_desc, y_desc,
@@ -175,15 +213,27 @@ void CudnnConv2dResource::find_best_algorithms() {
   NBLA_CUDNN_CHECK(cudnnGetConvolutionBackwardFilterAlgorithm(
       cudnn_handle, x_desc, y_desc, conv_desc, w_desc,
       CUDNN_CONVOLUTION_BWD_FILTER_NO_WORKSPACE, 0, &bwd_filter_algo));
-#endif
+  fwd_workspace_size = 0;
+  bwd_data_workspace_size = 0;
+  bwd_filter_workspace_size = 0;
 }
 
-#ifdef NBLA_CUDNN_USE_WORKSPACE
+void CudnnConv2dResource::find_best_algorithms() {
+  int workspace_limit = SingletonManager::get<CudnnHandleManager>()
+                            ->get_workspace_limit_in_bytes();
+  if (workspace_limit < 0) {
+    find_best_algorithms_no_limit();
+  } else if (workspace_limit == 0) {
+    find_best_algorithms_no_workspace();
+  } else {
+    find_best_algorithms_limit(workspace_limit);
+  }
+}
+
 size_t CudnnConv2dResource::workspace_size() const {
   return std::max(fwd_workspace_size,
                   std::max(bwd_filter_workspace_size, bwd_data_workspace_size));
 }
-#endif
 
 //////////////////////////////
 // cuDNN Handle implementation
@@ -207,5 +257,34 @@ cudnnHandle_t CudnnHandleManager::handle(int device) {
   }
   return this->handles_[device];
 }
+
+int CudnnHandleManager::get_workspace_limit_in_bytes() {
+  static bool called = false;
+  static std::mutex mtx;
+  std::lock_guard<std::mutex> lock(mtx);
+  if (!called) {
+    // trying to get a default value from env var.
+    const char *e = std::getenv("NNABLA_CUDNN_WORKSPACE_LIMIT");
+    if (!e) {
+      workspace_limit_ = -1; // default is no limit.
+    } else {
+      try {
+        workspace_limit_ = std::stoi(e);
+      } catch (std::exception &exc) {
+        NBLA_ERROR(
+            error_code::value,
+            "Invalid value: NNBLA_CUDNN_WORKSPACE_LIMIT=%s. Integer required.",
+            e);
+      }
+    }
+    called = true;
+  }
+  return workspace_limit_;
+}
+
+void CudnnHandleManager::set_workspace_limit_in_bytes(int bytes) {
+  workspace_limit_ = bytes;
+}
+
 NBLA_INSTANTIATE_SINGLETON(NBLA_CUDA_API, CudnnHandleManager);
 }

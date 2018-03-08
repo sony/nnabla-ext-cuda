@@ -295,10 +295,10 @@ Function Implements
      - x
      - 
    * - BinaryWeightAffine
-     - 
+     - x
      - 
    * - BinaryWeightConvolution
-     - 
+     - x
      - 
    * - INQAffine
      - x
@@ -346,6 +346,9 @@ Function Implements
      - 
      - 
    * - DepthwiseConvolution
+     - x
+     -
+   * - DepthwiseDeconvolution
      - x
      -
    * - Round
