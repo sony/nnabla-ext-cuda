@@ -164,6 +164,11 @@ template <typename T> void MultiProcessDataParallelCommunicatorNccl<T>::init() {
 }
 
 template <typename T>
+void MultiProcessDataParallelCommunicatorNccl<T>::barrier() {
+  MPI_Barrier(MPI_COMM_WORLD);
+}
+
+template <typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::abort() {
   MPI_Abort(MPI_COMM_WORLD, -1);
 }
