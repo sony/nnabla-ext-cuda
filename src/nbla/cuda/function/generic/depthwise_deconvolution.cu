@@ -636,7 +636,4 @@ void DepthwiseDeconvolutionCuda<T>::backward_impl(
   }
 }
 
-// Template instantiation
-template class DepthwiseDeconvolutionCuda<float>;
-
 } // namespace nbla

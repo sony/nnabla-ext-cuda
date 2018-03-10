@@ -206,10 +206,10 @@ BinaryConnectAffine:
   float: [float]
 BinaryConnectConvolution:
   float: [float]
-# BinaryWeightAffine:
-#   float: [float]
-# BinaryWeightConvolution:
-#   float: [float]
+BinaryWeightAffine:
+  float: [float]
+BinaryWeightConvolution:
+  float: [float]
 INQAffine:
   float: [float, int]
 INQConvolution:
@@ -230,3 +230,7 @@ BinaryError:
 #   float: [float]
 # Sink:
 #   float: [float]
+DepthwiseDeconvolution:
+  float: [float]
+Round:
+  float: [float]

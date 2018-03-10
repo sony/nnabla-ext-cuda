@@ -36,6 +36,4 @@ void BinaryWeightConvolutionCuda<T>::backward_impl(
                                             accum);
 }
 
-// Template instantiation
-template class BinaryWeightConvolutionCuda<float>;
 } // namespace nbla

@@ -34,7 +34,4 @@ void BinaryWeightAffineCuda<T>::backward_impl(
     const vector<bool> &propagate_down, const vector<bool> &accum) {
   BinaryWeightAffine<T>::backward_impl(inputs, outputs, propagate_down, accum);
 }
-
-// Template instantiation
-template class BinaryWeightAffineCuda<float>;
 } // namespace nbla

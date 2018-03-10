@@ -18,6 +18,4 @@
 namespace nbla {
 
 NBLA_DEFINE_TRANSFORM_UNARY_CUDA(Round, round(x), dy);
-// template instantiation
-template class RoundCuda<float>;
 }
