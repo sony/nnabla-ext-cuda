@@ -70,6 +70,10 @@ inline string cudnn_status_to_string(cudnnStatus_t status) {
 #if CUDNN_VERSION >= 6000
     CASE_CUDNN_STATUS(RUNTIME_PREREQUISITE_MISSING);
 #endif
+#if CUDNN_VERSION >= 7000
+    CASE_CUDNN_STATUS(RUNTIME_IN_PROGRESS);
+    CASE_CUDNN_STATUS(RUNTIME_FP_OVERFLOW);
+#endif
   }
   return "UNKNOWN";
 #undef CASE_CUDNN_STATUS
