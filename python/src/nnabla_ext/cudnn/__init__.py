@@ -35,8 +35,18 @@ from nnabla_ext.cuda import (
 )
 
 
-def context(device_id='0', *kw):
+def context(device_id='0', type_config='float', *kw):
     """CUDNN context"""
     from nnabla_ext.cuda import array_classes
-    return Context(['cudnn:float', 'cuda:float', 'cpu:float'],
-                   array_classes()[0], device_id=str(device_id))
+    backends = ['cudnn:float', 'cuda:float', 'cpu:float']
+    if type_config == 'half':
+        backends = ['cudnn:half', 'cudnn:float',
+                    'cuda:half', 'cuda:float', 'cpu:float']
+    elif type_config == 'mixed_half':
+        backends = ['cudnn:mixed_half', 'cudnn:half', 'cudnn:float',
+                    'cuda:mixed_half', 'cuda:half', 'cuda:float', 'cpu:float']
+    elif type_config == 'float':
+        pass
+    else:
+        raise ValueError("Unknown data type config is given %s" % type_config)
+    return Context(backends, array_classes()[0], device_id=str(device_id))

@@ -32,9 +32,18 @@ from ._version import (
 from nnabla.variable import Context
 
 
-def context(device_id=0, **kw):
+def context(device_id=0, type_config='float', **kw):
     """CUDA context."""
-    return Context(['cuda:float', 'cpu:float'], array_classes()[0], device_id=str(device_id))
+    backends = ['cuda:float', 'cpu:float']
+    if type_config == 'half':
+        backends = ['cuda:half', 'cuda:float', 'cpu:float']
+    elif type_config == 'mixed_half':
+        backends = ['cuda:mixed_half', 'cuda:float', 'cpu:float']
+    elif type_config == 'float':
+        pass
+    else:
+        raise ValueError("Unknown data type config is given %s" % type_config)
+    return Context(backends, array_classes()[0], device_id=str(device_id))
 
 
 def synchronize(device_id=0, **kw):
