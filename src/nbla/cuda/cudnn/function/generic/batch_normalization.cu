@@ -24,6 +24,8 @@
 
 namespace nbla {
 
+#define DRV_BN_T() get_dtype_by_cudnn_data_type(derived_bn_dtype_)
+
 template <typename T>
 void BatchNormalizationCudaCudnn<T>::setup_impl(const Variables &inputs,
                                                 const Variables &outputs) {
@@ -39,6 +41,10 @@ void BatchNormalizationCudaCudnn<T>::setup_impl(const Variables &inputs,
       output_desc_, CUDNN_TENSOR_NCHW, cudnn_data_type<T>::type(), N, C, H, W));
   NBLA_CUDNN_CHECK(cudnnDeriveBNTensorDescriptor(bn_scale_bias_mean_var_desc_,
                                                  input_desc_, mode_));
+  int n, c, h, w, sn, sc, sh, sw; // garbage
+  NBLA_CUDNN_CHECK(cudnnGetTensor4dDescriptor(bn_scale_bias_mean_var_desc_,
+                                              &derived_bn_dtype_, &n, &c, &h,
+                                              &w, &sn, &sc, &sh, &sw));
 }
 
 template <class T>
@@ -70,19 +76,27 @@ void BatchNormalizationCudaCudnn<T>::forward_impl_batch(
     return;
   }
   // Inputs
-  const T *x = inputs[0]->get_data_pointer<T>(this->ctx_);
-  const T *beta = inputs[1]->get_data_pointer<T>(this->ctx_);
-  const T *gamma = inputs[2]->get_data_pointer<T>(this->ctx_);
+  const Tw *x = inputs[0]->get_data_pointer<Tw>(this->ctx_);
+  const void *beta =
+      inputs[1]->data()->get(DRV_BN_T(), this->ctx_)->const_pointer();
+  const void *gamma =
+      inputs[2]->data()->get(DRV_BN_T(), this->ctx_)->const_pointer();
 
   // Output
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
-  T *m = batch_mean->cast_data_and_get_pointer<T>(this->ctx_); // batch mean
-  T *v = batch_var->cast_data_and_get_pointer<T>(this->ctx_);  // batch varf
+  Tw *y = outputs[0]->cast_data_and_get_pointer<Tw>(this->ctx_);
+  void *m =
+      batch_mean->data()->cast(DRV_BN_T(), this->ctx_)->pointer(); // batch mean
+  void *v =
+      batch_var->data()->cast(DRV_BN_T(), this->ctx_)->pointer(); // batch var
   // Inputs/Outputs
-  T *rm = inputs[3]->cast_data_and_get_pointer<T>(this->ctx_); // running mean
-  T *rv = inputs[4]->cast_data_and_get_pointer<T>(this->ctx_); // running var
-  T a = 1;
-  T b = 0;
+  void *rm = inputs[3]
+                 ->data()
+                 ->cast(DRV_BN_T(), this->ctx_)
+                 ->pointer(); // running mean
+  void *rv =
+      inputs[4]->data()->cast(DRV_BN_T(), this->ctx_)->pointer(); // running var
+  auto a = get_cudnn_scalar_arg<T>(1);
+  auto b = get_cudnn_scalar_arg<T>(0);
   NBLA_CUDNN_CHECK(cudnnBatchNormalizationForwardTraining(
       cudnn_handle_, mode_, &a, &b, input_desc_, x, output_desc_, y,
       bn_scale_bias_mean_var_desc_, gamma, beta, 1 - this->decay_rate_, rm, rv,
@@ -94,16 +108,24 @@ void BatchNormalizationCudaCudnn<T>::forward_impl_global(
     const Variables &inputs, const Variables &outputs) {
   // Inputs
   // while(1);
-  const T *x = inputs[0]->get_data_pointer<T>(this->ctx_);
-  const T *beta = inputs[1]->get_data_pointer<T>(this->ctx_);
-  const T *gamma = inputs[2]->get_data_pointer<T>(this->ctx_);
-  const T *rm = inputs[3]->get_data_pointer<T>(this->ctx_); // running mean
-  const T *rv = inputs[4]->get_data_pointer<T>(this->ctx_); // running var
+  const Tw *x = inputs[0]->get_data_pointer<Tw>(this->ctx_);
+  const void *beta =
+      inputs[1]->data()->get(DRV_BN_T(), this->ctx_)->const_pointer();
+  const void *gamma =
+      inputs[2]->data()->get(DRV_BN_T(), this->ctx_)->const_pointer();
+  const void *rm = inputs[3]
+                       ->data()
+                       ->get(DRV_BN_T(), this->ctx_)
+                       ->const_pointer(); // running mean
+  const void *rv = inputs[4]
+                       ->data()
+                       ->get(DRV_BN_T(), this->ctx_)
+                       ->const_pointer(); // running var
   // Output
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
+  Tw *y = outputs[0]->cast_data_and_get_pointer<Tw>(this->ctx_);
 
-  T a = 1;
-  T b = 0;
+  auto a = get_cudnn_scalar_arg<T>(1);
+  auto b = get_cudnn_scalar_arg<T>(0);
   double epsilon = max(this->eps_, CUDNN_BN_MIN_EPSILON);
   NBLA_CUDNN_CHECK(cudnnBatchNormalizationForwardInference(
       cudnn_handle_, mode_, &a, &b, input_desc_, x, output_desc_, y,
@@ -145,16 +167,20 @@ void BatchNormalizationCudaCudnn<T>::backward_impl_batch(
     return;
   }
   // Commont inputs wrt. gradient.
-  const T *dy = outputs[0]->get_grad_pointer<T>(this->ctx_);
-  const T *m = batch_mean->get_data_pointer<T>(this->ctx_);
-  const T *v = batch_var->get_data_pointer<T>(this->ctx_);
-  const T *x = inputs[0]->get_data_pointer<T>(this->ctx_);
+  const Tw *dy = outputs[0]->get_grad_pointer<Tw>(this->ctx_);
+  const void *m =
+      batch_mean->data()->get(DRV_BN_T(), this->ctx_)->const_pointer();
+  const void *v =
+      batch_var->data()->get(DRV_BN_T(), this->ctx_)->const_pointer();
+  const Tw *x = inputs[0]->get_data_pointer<Tw>(this->ctx_);
 
   if (propagate_down[0] || propagate_down[1] || propagate_down[2]) {
-    T a_data = propagate_down[0] ? 1 : 0;
-    T b_data = accum[0] && propagate_down[0] ? 1 : 0;
-    T a_param = propagate_down[1] || propagate_down[2] ? 1 : 0;
-    T b_param = a_param;
+    auto a_data = get_cudnn_scalar_arg<T>(propagate_down[0] ? 1 : 0);
+    auto b_data =
+        get_cudnn_scalar_arg<T>(accum[0] && propagate_down[0] ? 1 : 0);
+    auto a_param =
+        get_cudnn_scalar_arg<T>(propagate_down[1] || propagate_down[2] ? 1 : 0);
+    auto b_param = a_param;
     if (!(accum[1] || accum[2])) {
       b_param = 0;
     } else {
@@ -166,29 +192,33 @@ void BatchNormalizationCudaCudnn<T>::backward_impl_batch(
 
     size_t workspace_size = 0;
     if (!propagate_down[0]) {
-      workspace_size = inputs[0]->size() * sizeof(T);
-    } else if (!propagate_down[1] || !propagate_down[2]) {
-      workspace_size = inputs[1]->size() * sizeof(T);
+      workspace_size = std::max(workspace_size,
+                                inputs[0]->size() * sizeof_dtype(DRV_BN_T()));
     }
-    T *tmp_buf = nullptr;
+    if (!propagate_down[1] || !propagate_down[2]) {
+      workspace_size = std::max(workspace_size,
+                                inputs[1]->size() * sizeof_dtype(DRV_BN_T()));
+    }
+    void *tmp_buf = nullptr;
     shared_ptr<CudaCachedArray> mem_workspace(
         workspace_size
             ? new CudaCachedArray(workspace_size, dtypes::BYTE, this->ctx_)
             : nullptr);
     if (workspace_size) {
-      tmp_buf = (T *)mem_workspace->pointer();
+      tmp_buf = mem_workspace->pointer();
     }
 
-    T *dx = propagate_down[0]
-                ? inputs[0]->cast_grad_and_get_pointer<T>(this->ctx_)
-                : tmp_buf;
-    const T *gamma = inputs[2]->get_data_pointer<T>(this->ctx_);
-    T *db = propagate_down[1]
-                ? inputs[1]->cast_grad_and_get_pointer<T>(this->ctx_)
-                : tmp_buf;
-    T *dg = propagate_down[2]
-                ? inputs[2]->cast_grad_and_get_pointer<T>(this->ctx_)
-                : tmp_buf;
+    Tw *dx = propagate_down[0]
+                 ? inputs[0]->cast_grad_and_get_pointer<Tw>(this->ctx_)
+                 : (Tw *)tmp_buf;
+    const void *gamma =
+        inputs[2]->data()->get(DRV_BN_T(), this->ctx_)->const_pointer();
+    void *db = propagate_down[1]
+                   ? inputs[1]->grad()->cast(DRV_BN_T(), this->ctx_)->pointer()
+                   : tmp_buf;
+    void *dg = propagate_down[2]
+                   ? inputs[2]->grad()->cast(DRV_BN_T(), this->ctx_)->pointer()
+                   : tmp_buf;
     NBLA_CUDNN_CHECK(cudnnBatchNormalizationBackward(
         cudnn_handle_, mode_, &a_data, &b_data, &a_param, &b_param, input_desc_,
         x, output_desc_, dy, input_desc_, dx, bn_scale_bias_mean_var_desc_,

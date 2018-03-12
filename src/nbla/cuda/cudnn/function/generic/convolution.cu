@@ -69,14 +69,14 @@ template <class T>
 void ConvolutionCudaCudnn<T>::forward_impl(const Variables &inputs,
                                            const Variables &outputs) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  const T *x = inputs[0]->get_data_pointer<T>(this->ctx_);
-  const T *w = inputs[1]->get_data_pointer<T>(this->ctx_);
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
-  T alpha = 1;
-  T beta = 0;
-  const T *b;
+  const Tw *x = inputs[0]->get_data_pointer<Tw>(this->ctx_);
+  const Tw *w = inputs[1]->get_data_pointer<Tw>(this->ctx_);
+  Tw *y = outputs[0]->cast_data_and_get_pointer<Tw>(this->ctx_);
+  auto alpha = get_cudnn_scalar_arg<T>(1);
+  auto beta = get_cudnn_scalar_arg<T>(0);
+  const Tw *b;
   if (inputs.size() == 3) {
-    b = inputs[2]->get_data_pointer<T>(this->ctx_);
+    b = inputs[2]->get_data_pointer<Tw>(this->ctx_);
   }
   void *workspace = SingletonManager::get<Cuda>()->get_workspace(
       rsc_->workspace_size(), this->device_);
@@ -121,12 +121,12 @@ void ConvolutionCudaCudnn<T>::backward_impl(const Variables &inputs,
   if (propagate_down[2]) {
     db = inputs[2]->cast_grad_and_get_pointer<T>(this->ctx_);
   }
-  T alpha = 1;
+  auto alpha = get_cudnn_scalar_arg<T>(1);
   void *workspace = SingletonManager::get<Cuda>()->get_workspace(
       rsc_->workspace_size(), this->device_);
   for (int g = 0; g < this->group_; ++g) {
     if (propagate_down[0]) {
-      T beta = accum[0] ? 1 : 0;
+      auto beta = get_cudnn_scalar_arg<T>(accum[0] ? 1 : 0);
       NBLA_CUDNN_CHECK(cudnnConvolutionBackwardData(
           cudnn_handle_, &alpha, rsc_->w_desc, w + w_offset_ * g, rsc_->y_desc,
           dy + y_offset_ * g, rsc_->conv_desc, rsc_->bwd_data_algo, workspace,
@@ -134,7 +134,7 @@ void ConvolutionCudaCudnn<T>::backward_impl(const Variables &inputs,
           dx + x_offset_ * g));
     }
     if (propagate_down[1]) {
-      T beta = accum[1] ? 1 : 0;
+      auto beta = get_cudnn_scalar_arg<T>(accum[1] ? 1 : 0);
       NBLA_CUDNN_CHECK(cudnnConvolutionBackwardFilter(
           cudnn_handle_, &alpha, rsc_->x_desc, x + x_offset_ * g, rsc_->y_desc,
           dy + y_offset_ * g, rsc_->conv_desc, rsc_->bwd_filter_algo, workspace,
@@ -142,7 +142,7 @@ void ConvolutionCudaCudnn<T>::backward_impl(const Variables &inputs,
           dw + w_offset_ * g));
     }
     if (inputs.size() == 3 && propagate_down[2]) {
-      T beta = accum[2] ? 1 : 0;
+      auto beta = get_cudnn_scalar_arg<T>(accum[2] ? 1 : 0);
       NBLA_CUDNN_CHECK(cudnnConvolutionBackwardBias(
           cudnn_handle_, &alpha, rsc_->y_desc, dy + y_offset_ * g, &beta,
           rsc_->b_desc, db + b_offset_ * g));

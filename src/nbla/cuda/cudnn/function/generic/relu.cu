@@ -41,10 +41,10 @@ template <typename T>
 void ReLUCudaCudnn<T>::forward_impl(const Variables &inputs,
                                     const Variables &outputs) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  const T *x = inputs[0]->get_data_pointer<T>(this->ctx_);
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
-  T alpha = 1;
-  T beta = 0;
+  const Tw *x = inputs[0]->get_data_pointer<Tw>(this->ctx_);
+  Tw *y = outputs[0]->cast_data_and_get_pointer<Tw>(this->ctx_);
+  auto alpha = get_cudnn_scalar_arg<T>(1);
+  auto beta = get_cudnn_scalar_arg<T>(0);
 #if CUDNN_VERSION >= 5000
   NBLA_CUDNN_CHECK(cudnnActivationForward(cudnn_handle_, activation_desc_,
                                           &alpha, input_desc_, x, &beta,
@@ -65,16 +65,16 @@ void ReLUCudaCudnn<T>::backward_impl(const Variables &inputs,
     return;
   }
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  const T *y = outputs[0]->get_data_pointer<T>(this->ctx_);
-  T *dx = inputs[0]->cast_grad_and_get_pointer<T>(this->ctx_);
-  const T *dy = outputs[0]->get_grad_pointer<T>(this->ctx_);
-  const T *x = inputs[0]->get_data_pointer<T>(this->ctx_);
+  const Tw *y = outputs[0]->get_data_pointer<Tw>(this->ctx_);
+  Tw *dx = inputs[0]->cast_grad_and_get_pointer<Tw>(this->ctx_);
+  const Tw *dy = outputs[0]->get_grad_pointer<Tw>(this->ctx_);
+  const Tw *x = inputs[0]->get_data_pointer<Tw>(this->ctx_);
   if (dx == dy) {
     ReLUCuda<T>::backward_impl(inputs, outputs, propagate_down, accum);
     return;
   }
-  T alpha = 1;
-  T beta = accum[0] ? 1 : 0;
+  auto alpha = get_cudnn_scalar_arg<T>(1);
+  auto beta = get_cudnn_scalar_arg<T>(accum[0] ? 1 : 0);
 #if CUDNN_VERSION >= 5000
   NBLA_CUDNN_CHECK(cudnnActivationBackward(
       cudnn_handle_, activation_desc_, &alpha, output_desc_, y,

@@ -38,6 +38,8 @@ protected:
   cudnnPoolingMode_t mode_;
 
 public:
+  typedef typename CudaType<T>::type Tw;
+
   AveragePoolingCudaCudnn(const Context &ctx, const vector<int> &kernel,
                           const vector<int> &stride, bool ignore_border,
                           const vector<int> &pad, bool including_pad)

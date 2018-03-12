@@ -23,6 +23,8 @@
 #include <nbla/cuda/defs.hpp>
 #include <nbla/singleton_manager.hpp>
 
+#include <nbla/cuda/half.hpp>
+
 #include <iostream>
 #include <map>
 #include <memory>
@@ -35,6 +37,8 @@ using std::shared_ptr;
 using std::unordered_map;
 using std::hash;
 
+/** Convert template type to cudnnDataType_t
+*/
 template <class T> class cudnn_data_type;
 
 template <> class cudnn_data_type<float> {
@@ -45,10 +49,51 @@ template <> class cudnn_data_type<double> {
 public:
   static cudnnDataType_t type() { return CUDNN_DATA_DOUBLE; }
 };
-template <> class cudnn_data_type<unsigned short> {
+template <> class cudnn_data_type<half> {
 public:
   static cudnnDataType_t type() { return CUDNN_DATA_HALF; }
 };
+template <> class cudnn_data_type<Half> {
+public:
+  static cudnnDataType_t type() { return CUDNN_DATA_HALF; }
+};
+template <> class cudnn_data_type<HalfCuda> {
+public:
+  static cudnnDataType_t type() { return CUDNN_DATA_HALF; }
+};
+
+/** Convret cuDNN enum dtype to NNabla enum dtype.
+ */
+inline dtypes get_dtype_by_cudnn_data_type(cudnnDataType_t dtype) {
+  switch (dtype) {
+#define _T(TYPE, RET_TYPE)                                                     \
+  case CUDNN_DATA_##TYPE:                                                      \
+    return dtypes::RET_TYPE;
+    _T(FLOAT, FLOAT);
+    _T(DOUBLE, FLOAT);
+    _T(HALF, HALF);
+    _T(INT8, BYTE);
+#if CUDNN_VERSION >= 7100
+    _T(UINT8, UBYTE);
+#endif
+    _T(INT32, INT);
+// TODO: INT8x4, UINT8x4
+#undef _T
+  default:
+    NBLA_ERROR(error_code::value, "Unknown value of cudnnDataType_t. INT8x4 "
+                                  "and UINT8x4 are not supported yet.");
+  }
+}
+
+/** Return scalar value used in alpha and beta in cuDNN APIs.
+
+    This implementation is based on the fact that cuDNN algorithm APIs take
+   alpha and beta as float when storage data type is half.
+ */
+template <class T>
+typename CudaTypeForceFloat<T>::type get_cudnn_scalar_arg(float val) {
+  return val;
+}
 
 inline string cudnn_status_to_string(cudnnStatus_t status) {
 #define CASE_CUDNN_STATUS(NAME)                                                \

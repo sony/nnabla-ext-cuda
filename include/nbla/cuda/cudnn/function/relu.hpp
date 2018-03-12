@@ -25,6 +25,8 @@ namespace nbla {
 */
 template <typename T> class ReLUCudaCudnn : public ReLUCuda<T> {
 public:
+  typedef typename CudaType<T>::type Tw;
+
   explicit ReLUCudaCudnn(const Context &ctx, bool inplace)
       : ReLUCuda<T>(ctx, inplace), device_(std::stoi(ctx.device_id)) {
     NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&input_desc_));

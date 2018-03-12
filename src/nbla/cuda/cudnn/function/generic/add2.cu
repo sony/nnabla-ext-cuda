@@ -52,11 +52,11 @@ template <typename T>
 void Add2CudaCudnn<T>::forward_impl(const Variables &inputs,
                                     const Variables &outputs) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  const T *x0 = inputs[0]->get_data_pointer<T>(this->ctx_);
-  const T *x1 = inputs[1]->get_data_pointer<T>(this->ctx_);
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
-  T alpha = 1;
-  T beta = 1;
+  const Tw *x0 = inputs[0]->get_data_pointer<Tw>(this->ctx_);
+  const Tw *x1 = inputs[1]->get_data_pointer<Tw>(this->ctx_);
+  Tw *y = outputs[0]->cast_data_and_get_pointer<Tw>(this->ctx_);
+  auto alpha = get_cudnn_scalar_arg<T>(1);
+  auto beta = get_cudnn_scalar_arg<T>(1);
   if (x0 == y) {
 #if CUDNN_VERSION >= 4000
     NBLA_CUDNN_CHECK(cudnnAddTensor(cudnn_handle_, &alpha, input_desc_, x1,
@@ -86,13 +86,13 @@ void Add2CudaCudnn<T>::backward_impl(const Variables &inputs,
                                      const vector<bool> &propagate_down,
                                      const vector<bool> &accum) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  T *dx0 = inputs[0]->cast_grad_and_get_pointer<T>(this->ctx_);
-  T *dx1 = inputs[1]->cast_grad_and_get_pointer<T>(this->ctx_);
-  const T *dy = outputs[0]->get_grad_pointer<T>(this->ctx_);
-  T alpha = 1;
+  Tw *dx0 = inputs[0]->cast_grad_and_get_pointer<Tw>(this->ctx_);
+  Tw *dx1 = inputs[1]->cast_grad_and_get_pointer<Tw>(this->ctx_);
+  const Tw *dy = outputs[0]->get_grad_pointer<Tw>(this->ctx_);
+  auto alpha = get_cudnn_scalar_arg<T>(1);
 
   if (dx0 != dy && propagate_down[0]) {
-    T beta = accum[0] ? 1 : 0;
+    auto beta = get_cudnn_scalar_arg<T>(accum[0] ? 1 : 0);
 #if CUDNN_VERSION >= 4000
     NBLA_CUDNN_CHECK(cudnnAddTensor(cudnn_handle_, &alpha, input_desc_, dy,
                                     &beta, output_desc_, dx0));
@@ -103,7 +103,7 @@ void Add2CudaCudnn<T>::backward_impl(const Variables &inputs,
 #endif
   }
   if (dx1 != dy && propagate_down[1]) {
-    T beta = accum[1] ? 1 : 0;
+    auto beta = get_cudnn_scalar_arg<T>(accum[1] ? 1 : 0);
 #if CUDNN_VERSION >= 4000
     NBLA_CUDNN_CHECK(cudnnAddTensor(cudnn_handle_, &alpha, input_desc_, dy,
                                     &beta, output_desc_, dx1));
