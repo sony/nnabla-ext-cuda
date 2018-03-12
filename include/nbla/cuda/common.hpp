@@ -21,7 +21,9 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <curand.h>
+#if CUDA_VERSION >= 8000
 #include <library_types.h>
+#endif
 
 #include <nbla/common.hpp>
 #include <nbla/cuda/defs.hpp>
@@ -118,6 +120,7 @@ inline string curand_status_to_string(curandStatus_t status) {
   }
 
 /** Data type */
+#if CUDA_VERSION >= 8000
 template <typename T> struct cuda_data_type;
 #define CUDA_TYPE_T(TYPE, ENUM)                                                \
   template <> struct cuda_data_type<TYPE> {                                    \
@@ -131,6 +134,20 @@ CUDA_TYPE_T(HalfCuda, R_16F);
 CUDA_TYPE_T(uint8_t, R_8U);
 CUDA_TYPE_T(int8_t, R_8I);
 #undef CUDA_TYPE_T
+
+#else // CUDA_VERSION >= 8000
+template <typename T> struct cuda_data_type;
+#define CUBLAS_TYPE_T(TYPE, UTYPE)                                             \
+  template <> struct cuda_data_type<TYPE> {                                    \
+    static cublasDataType_t type() { return CUBLAS_DATA_##UTYPE; }             \
+  }
+CUBLAS_TYPE_T(double, DOUBLE);
+CUBLAS_TYPE_T(float, FLOAT);
+CUBLAS_TYPE_T(half, HALF);
+CUBLAS_TYPE_T(Half, HALF);
+CUBLAS_TYPE_T(HalfCuda, HALF);
+#undef CUBLAS_TYPE_T
+#endif
 
 /** ceil(N/D) where N and D are integers */
 #define NBLA_CEIL_INT_DIV(N, D)                                                \
