@@ -2,14 +2,18 @@
 #   float: [float]
 Convolution:
   float: [float]
+  half: [Half]
 # DepthwiseConvolution:
 #   float: [float]
 Deconvolution:
   float: [float]
+  half: [Half]
 MaxPooling:
   float: [float]
+  half: [Half]
 AveragePooling:
   float: [float]
+  half: [Half]
 # SumPooling:
 #   float: [float]
 # Unpooling:
@@ -18,16 +22,20 @@ AveragePooling:
 #   float: [int, float]
 Sigmoid:
   float: [float]
+  half: [Half]
 # Swish:
 #   float: [float]
 Tanh:
   float: [float]
+  half: [Half]
 ReLU:
   float: [float]
+  half: [Half]
 # LeakyReLU:
 #   float: [float]
 Softmax:
   float: [float]
+  half: [Half]
 # ELU:
 #   float: [float]
 # SELU:
@@ -40,6 +48,7 @@ Softmax:
 #   float: [float]
 BatchNormalization:
   float: [float]
+  half: [Half]
 # MeanSubtraction:
 #   float: [float]
 # Sum:
@@ -58,6 +67,7 @@ BatchNormalization:
 #   float: [float]
 Add2:
   float: [float]
+  half: [Half]
 # BcAdd2:
 #   float: [float]
 # Sub2:
