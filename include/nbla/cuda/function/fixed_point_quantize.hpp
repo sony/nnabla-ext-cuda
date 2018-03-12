@@ -26,10 +26,12 @@ namespace nbla {
  */
 template <typename T>
 class FixedPointQuantizeCuda : public FixedPointQuantize<T> {
+
 protected:
   int device_;
 
 public:
+  typedef typename CudaType<T>::type Tc;
   explicit FixedPointQuantizeCuda(const Context &ctx, bool sign, int bw,
                                   float delta, bool ste_fine_grained)
       : FixedPointQuantize<T>(ctx, sign, bw, delta, ste_fine_grained),

@@ -23,10 +23,12 @@
 namespace nbla {
 
 template <typename T> class CReLUCuda : public CReLU<T> {
+
 protected:
   int device_;
 
 public:
+  typedef typename CudaType<T>::type Tc;
   explicit CReLUCuda(const Context &ctx, int axis)
       : CReLU<T>(ctx, axis), device_(std::stoi(ctx.device_id)) {}
   virtual ~CReLUCuda() {}

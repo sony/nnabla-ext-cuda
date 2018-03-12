@@ -26,8 +26,8 @@ namespace nbla {
 
 template <typename T>
 __global__ void kernel_quantize_forward(const int num, T *y, const T *x,
-                                        const T max, const T min,
-                                        const T delta) {
+                                        const float max, const float min,
+                                        const float delta) {
   NBLA_CUDA_KERNEL_LOOP(idx, num) {
     T x_idx = x[idx];
     bool sign_x;
@@ -53,8 +53,8 @@ void FixedPointQuantizeCuda<T>::forward_impl(const Variables &inputs,
                                              const Variables &outputs) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
 
-  const T *x = inputs[0]->get_data_pointer<T>(this->ctx_);
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
+  const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
   size_t size = inputs[0]->size();
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_quantize_forward, size, y, x,
                                  this->max_, this->min_, this->delta_);
@@ -74,7 +74,8 @@ __global__ void kernel_naive_quantize_backward(const int num, T *dx,
 
 template <typename T, bool accum = true>
 __global__ void kernel_quantize_backward(const int num, T *dx, const T *dy,
-                                         const T *x, const T max, const T min) {
+                                         const T *x, const float max,
+                                         const float min) {
   NBLA_CUDA_KERNEL_LOOP(idx, num) {
     if (x[idx] > max) {
       if (!accum)
@@ -104,24 +105,24 @@ void FixedPointQuantizeCuda<T>::backward_impl(
   }
 
   Size_t size = inputs[0]->size();
-  T *dx = inputs[0]->cast_grad_and_get_pointer<T>(this->ctx_);
-  const T *dy = outputs[0]->get_grad_pointer<T>(this->ctx_);
-  const T *x = inputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
+  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
+  const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
+  const Tc *x = inputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
   if (this->ste_fine_grained_) {
     if (accum[0]) {
-      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_quantize_backward<T, true>), size,
+      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_quantize_backward<Tc, true>), size,
                                      dx, dy, x, this->max_, this->min_);
     } else {
-      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_quantize_backward<T, false>), size,
-                                     dx, dy, x, this->max_, this->min_);
+      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_quantize_backward<Tc, false>),
+                                     size, dx, dy, x, this->max_, this->min_);
     }
   } else {
     if (accum[0]) {
-      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_naive_quantize_backward<T, true>),
+      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_naive_quantize_backward<Tc, true>),
                                      size, dx, dy);
     } else {
-      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_naive_quantize_backward<T, false>),
-                                     size, dx, dy);
+      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
+          (kernel_naive_quantize_backward<Tc, false>), size, dx, dy);
     }
   }
 }

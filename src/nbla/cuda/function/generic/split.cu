@@ -37,9 +37,9 @@ template <typename T>
 void SplitCuda<T>::forward_impl(const Variables &inputs,
                                 const Variables &outputs) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  const T *x = inputs[0]->get_data_pointer<T>(this->ctx_);
+  const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
   for (int i0 = 0; i0 < this->num_outputs_; ++i0) {
-    T *y = outputs[i0]->cast_data_and_get_pointer<T>(this->ctx_);
+    Tc *y = outputs[i0]->cast_data_and_get_pointer<Tc>(this->ctx_);
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
         forward_split_kernel, this->inner_size_ * this->outer_size_,
         this->num_outputs_, this->outer_size_, this->inner_size_, i0, x, y);
@@ -55,7 +55,7 @@ __global__ void backward_split_kernel(const int num, const int num_outputs_,
     const int i1 = idx / inner_size_;
     const int i2 = idx % inner_size_;
     T &ref = dx[i1 * (inner_size_ * num_outputs_) + i0 * inner_size_ + i2];
-    ref = (accum ? ref : 0) + dy[i1 * inner_size_ + i2];
+    ref = (accum ? ref : (T)0) + dy[i1 * inner_size_ + i2];
   }
 }
 
@@ -68,16 +68,16 @@ void SplitCuda<T>::backward_impl(const Variables &inputs,
     return;
   }
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  T *dx = inputs[0]->cast_grad_and_get_pointer<T>(this->ctx_);
+  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
   for (int i0 = 0; i0 < this->num_outputs_; ++i0) {
-    const T *dy = outputs[i0]->get_grad_pointer<T>(this->ctx_);
+    const Tc *dy = outputs[i0]->get_grad_pointer<Tc>(this->ctx_);
     if (accum[0]) {
-      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((backward_split_kernel<T, true>),
+      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((backward_split_kernel<Tc, true>),
                                      this->inner_size_ * this->outer_size_,
                                      this->num_outputs_, this->outer_size_,
                                      this->inner_size_, i0, dx, dy);
     } else {
-      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((backward_split_kernel<T, false>),
+      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((backward_split_kernel<Tc, false>),
                                      this->inner_size_ * this->outer_size_,
                                      this->num_outputs_, this->outer_size_,
                                      this->inner_size_, i0, dx, dy);

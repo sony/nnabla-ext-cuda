@@ -25,7 +25,9 @@ namespace nbla {
 */
 
 template <typename T> class ProdCuda : public Prod<T> {
+
 public:
+  typedef typename CudaType<T>::type Tc;
   explicit ProdCuda(const Context &ctx, const vector<int> &axes, bool keep_dims)
       : Prod<T>(ctx, axes, keep_dims), device_(std::stoi(ctx.device_id)) {}
   virtual ~ProdCuda() {}

@@ -36,7 +36,7 @@ __global__ void kernel_sigmoid_cross_entropy_backward(const int size,
                                                       const T *dy, const T *x0,
                                                       const Tl *x1, T *dx0) {
   NBLA_CUDA_KERNEL_LOOP(s, size) {
-    dx0[s] = (accum ? dx0[s] : 0) + dy[s] * (1 / (1 + exp(-x0[s])) - x1[s]);
+    dx0[s] = (accum ? dx0[s] : (T)0) + dy[s] * (1 / (1 + exp(-x0[s])) - x1[s]);
   }
 }
 
@@ -50,9 +50,9 @@ template <typename T, typename Tl>
 void SigmoidCrossEntropyCuda<T, Tl>::forward_impl(const Variables &inputs,
                                                   const Variables &outputs) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  const T *x0 = inputs[0]->get_data_pointer<T>(this->ctx_);
+  const Tc *x0 = inputs[0]->get_data_pointer<Tc>(this->ctx_);
   const Tl *x1 = inputs[1]->get_data_pointer<Tl>(this->ctx_);
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
   const Size_t size = inputs[0]->size();
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_sigmoid_cross_entropy_forward, size, x0,
                                  x1, y);
@@ -68,19 +68,19 @@ void SigmoidCrossEntropyCuda<T, Tl>::backward_impl(
     return;
   }
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  const T *dy = outputs[0]->get_grad_pointer<T>(this->ctx_);
-  const T *x0 = inputs[0]->get_data_pointer<T>(this->ctx_);
+  const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
+  const Tc *x0 = inputs[0]->get_data_pointer<Tc>(this->ctx_);
   const Tl *x1 = inputs[1]->get_data_pointer<Tl>(this->ctx_);
   const Size_t size = inputs[0]->size();
   if (propagate_down[0]) {
-    T *dx0 = inputs[0]->cast_grad_and_get_pointer<T>(this->ctx_);
+    Tc *dx0 = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
     if (accum[0]) {
       NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-          (kernel_sigmoid_cross_entropy_backward<T, Tl, true>), size, dy, x0,
+          (kernel_sigmoid_cross_entropy_backward<Tc, Tl, true>), size, dy, x0,
           x1, dx0);
     } else {
       NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-          (kernel_sigmoid_cross_entropy_backward<T, Tl, false>), size, dy, x0,
+          (kernel_sigmoid_cross_entropy_backward<Tc, Tl, false>), size, dy, x0,
           x1, dx0);
     }
   }

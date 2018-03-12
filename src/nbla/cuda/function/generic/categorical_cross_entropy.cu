@@ -102,9 +102,9 @@ void CategoricalCrossEntropyCuda<T, Tl>::forward_impl(
     const Variables &inputs, const Variables &outputs) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
   // Setting up variables
-  const T *p = inputs[0]->get_data_pointer<T>(this->ctx_);
+  const Tc *p = inputs[0]->get_data_pointer<Tc>(this->ctx_);
   const Tl *l = inputs[1]->get_data_pointer<Tl>(this->ctx_);
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
 #if CATEGORICAL_CROSS_ENTROPY_CUDA_OF_PARALLEL_OVER_SIZE0
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_categorical_cross_entropy_forward_naive,
                                  this->size0_, this->size1_, this->size2_, p, l,
@@ -128,10 +128,10 @@ void CategoricalCrossEntropyCuda<T, Tl>::backward_impl(
     inputs[0]->grad()->zero();
 
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  const T *p = inputs[0]->get_data_pointer<T>(this->ctx_);
-  const T *dy = outputs[0]->get_grad_pointer<T>(this->ctx_);
+  const Tc *p = inputs[0]->get_data_pointer<Tc>(this->ctx_);
+  const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
   const Tl *l = inputs[1]->get_data_pointer<Tl>(this->ctx_);
-  T *dx = inputs[0]->cast_grad_and_get_pointer<T>(this->ctx_);
+  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
 #if CATEGORICAL_CROSS_ENTROPY_CUDA_OF_PARALLEL_OVER_SIZE0
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
       kernel_categorical_cross_entropy_backward_naive, this->size0_,

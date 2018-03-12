@@ -128,8 +128,8 @@ template <typename T> struct switch_broadcast<-1, T> {
 template <typename T>
 void BroadcastCuda<T>::forward_impl(const Variables &inputs,
                                     const Variables &outputs) {
-  const T *x = inputs[0]->get_data_pointer<T>(this->ctx_);
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
+  const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
   auto _iarr = [this](Variable &v) {
     return v.get_data_pointer<int>(this->ctx_);
   };
@@ -138,8 +138,8 @@ void BroadcastCuda<T>::forward_impl(const Variables &inputs,
   int ndim = inputs[0]->ndim();
   int size = outputs[0]->size();
   cuda_set_device(device_);
-  switch_broadcast<NBLA_BROADCAST_MAX_DIM, T>::call(ndim, size, x, stride_x,
-                                                    shape_y, y);
+  switch_broadcast<NBLA_BROADCAST_MAX_DIM, Tc>::call(ndim, size, x, stride_x,
+                                                     shape_y, y);
 }
 
 template <typename T>
@@ -169,14 +169,14 @@ void BroadcastCuda<T>::backward_impl(const Variables &inputs,
     inputs[0]->grad()->zero();
   }
   auto _get = [this](Variable *v) {
-    return v->get_data_pointer<T>(this->ctx_);
+    return v->get_data_pointer<Tc>(this->ctx_);
   };
   auto _gget = [this](Variable *v) {
-    return v->get_grad_pointer<T>(this->ctx_);
+    return v->get_grad_pointer<Tc>(this->ctx_);
   };
   cuda_set_device(device_);
-  const T *g = f_sum_ ? _get(sum_output_.get()) : _gget(outputs[0]);
-  T *dx = inputs[0]->cast_grad_and_get_pointer<T>(this->ctx_);
+  const Tc *g = f_sum_ ? _get(sum_output_.get()) : _gget(outputs[0]);
+  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_add_grad, inputs[0]->size(), g, dx);
 }
 }

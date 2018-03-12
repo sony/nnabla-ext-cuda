@@ -150,14 +150,14 @@ void ImageAugmentationCuda<T>::forward_impl(const Variables &inputs,
   const int h_out = shape_out[shape_out.size() - 2];
   // std::cout << "shape_out : w=" << w_out << ", h=" << h_out << "\n";
 
-  const T *x = inputs[0]->get_data_pointer<T>(this->ctx_);
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
+  const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
 
   const int ch_size_in = h_in * w_in;
   const int ch_size_out = h_out * w_out;
 
-  T *channel_brightness = new T[num_ch];
-  T *channel_contrast = new T[num_ch];
+  vector<float> channel_brightness(num_ch);
+  vector<float> channel_contrast(num_ch);
 
   int *state = this->noise_ > 0.0
                    ? curand_state_.cast_data_and_get_pointer<int>(this->ctx_)
@@ -167,9 +167,9 @@ void ImageAugmentationCuda<T>::forward_impl(const Variables &inputs,
     // std::cout << "* image " << iim << "\n";
 
     const int im_offset_in = iim * w_in * h_in * num_ch;
-    const T *x_im = x + im_offset_in;
+    const Tc *x_im = x + im_offset_in;
     int im_offset_out = iim * w_out * h_out * num_ch;
-    T *y_im = y + im_offset_out;
+    Tc *y_im = y + im_offset_out;
     // std::cout << "offset : in=" << im_offset_in << ", out=" << im_offset_out
     // << "\n";
 
@@ -269,10 +269,9 @@ void ImageAugmentationCuda<T>::forward_impl(const Variables &inputs,
           y_im + ch_size_out * ic, w_out, h_out, x_ax, y_ax, x_ay, y_ay,
           distortion, channel_brightness[ic], channel_contrast[ic],
           this->contrast_center_, (curandStateXORWOW_t *)state, noise);
+      NBLA_CUDA_KERNEL_CHECK();
     }
   }
-  delete[] channel_brightness;
-  delete[] channel_contrast;
 }
 
 template <typename T>

@@ -21,7 +21,9 @@
 namespace nbla {
 
 template <typename T> class ReLUCuda : public ReLU<T> {
+
 public:
+  typedef typename CudaType<T>::type Tc;
   explicit ReLUCuda(const Context &ctx, bool inplace) : ReLU<T>(ctx, inplace) {}
   virtual ~ReLUCuda() {}
   virtual string name() { return "ReLUCuda"; }

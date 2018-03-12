@@ -24,7 +24,9 @@ namespace nbla {
 */
 
 template <typename T> class PReLUCuda : public PReLU<T> {
+
 public:
+  typedef typename CudaType<T>::type Tc;
   explicit PReLUCuda(const Context &ctx, int base_axis)
       : PReLU<T>(ctx, base_axis), device_(std::stoi(ctx.device_id)) {}
   virtual ~PReLUCuda() {}

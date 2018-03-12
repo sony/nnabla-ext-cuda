@@ -29,6 +29,8 @@ protected:
   int device_;
 
 public:
+  typedef typename CudaType<T>::type Tc;
+
   explicit Pow2QuantizeCuda(const Context &ctx, bool sign, bool with_zero,
                             int n, int m, bool ste_fine_grained)
       : Pow2Quantize<T>(ctx, sign, with_zero, n, m, ste_fine_grained),

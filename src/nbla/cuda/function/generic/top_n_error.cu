@@ -46,9 +46,9 @@ template <typename T, typename T1>
 void TopNErrorCuda<T, T1>::forward_impl(const Variables &inputs,
                                         const Variables &outputs) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  const T *p = inputs[0]->get_data_pointer<T>(this->ctx_);
+  const Tc *p = inputs[0]->get_data_pointer<Tc>(this->ctx_);
   const T1 *l = inputs[1]->get_data_pointer<T1>(this->ctx_);
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
 
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_top_n_error_reduction,
                                  this->size0_ * this->size2_, this->size1_,

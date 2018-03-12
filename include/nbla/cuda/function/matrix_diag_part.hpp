@@ -25,7 +25,9 @@ namespace nbla {
 */
 
 template <typename T> class MatrixDiagPartCuda : public MatrixDiagPart<T> {
+
 public:
+  typedef typename CudaType<T>::type Tc;
   explicit MatrixDiagPartCuda(const Context &ctx)
       : MatrixDiagPart<T>(ctx), device_(std::stoi(ctx.device_id)) {}
   virtual ~MatrixDiagPartCuda() {}

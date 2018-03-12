@@ -19,7 +19,8 @@
 
 namespace nbla {
 
-NBLA_DEFINE_TRANSFORM_UNARY_CUDA_1(ELU, x >= (T)0 ? x : (T)a0 * (exp(x) - (T)1),
-                                   x >= (T)0 ? dy : dy * (T)a0 * exp(x),
+NBLA_DEFINE_TRANSFORM_UNARY_CUDA_1(ELU,
+                                   x >= (T)0 ? x : (T)a0 * (std::exp(x) - (T)1),
+                                   x >= (T)0 ? dy : dy * (T)a0 * std::exp(x),
                                    double);
 }

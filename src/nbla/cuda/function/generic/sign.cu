@@ -19,7 +19,8 @@
 
 namespace nbla {
 
-NBLA_DEFINE_TRANSFORM_UNARY_CUDA_1(Sign, (x > (T)0) ? (T)1
-                                                    : ((x < (T)0) ? (T)-1 : a0),
+NBLA_DEFINE_TRANSFORM_UNARY_CUDA_1(Sign,
+                                   (x > (T)0) ? (T)1
+                                              : ((x < (T)0) ? (T)-1 : (T)a0),
                                    dy, float);
 }

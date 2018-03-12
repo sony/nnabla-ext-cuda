@@ -19,6 +19,18 @@
 
 namespace nbla {
 
+/*
+  TODO: We haven't digged into this, but only in half precision computation, we
+  encounter a runtime error caused by a limit of number of registers per block.
+  We naively reduce the number of threads in half precision computation.
+ */
+template <class T> struct max_threads_per_block_for_half {
+  static int reduce(int threads) { return threads; }
+};
+template <> struct max_threads_per_block_for_half<Half> {
+  static inline int reduce(int threads) { return threads / 2; }
+};
+
 namespace depthwise_convolution_cuda {
 
 template <typename T, int K>
@@ -45,7 +57,7 @@ __global__ void forward_kernel(const T *input_data, T *output_data,
     const int sample_base = (s * sample_channels + sample_chan) * sample_size;
     int weight_offset = outmap_chan * kernel;
 
-    T value = (bias_data != nullptr) ? bias_data[outmap_chan] : 0;
+    T value = (bias_data != nullptr) ? bias_data[outmap_chan] : (T)0;
 
 #pragma unroll
     for (int k = 0; k < KERNEL; ++k) {
@@ -89,7 +101,7 @@ __global__ void forward_kernel(const T *input_data, T *output_data,
     const int sample_chan = outmap_chan / multiplier;
     const int sample_base = (s * sample_channels + sample_chan) * sample_size;
 
-    T value = (bias_data != nullptr) ? bias_data[outmap_chan] : 0;
+    T value = (bias_data != nullptr) ? bias_data[outmap_chan] : (T)0;
     int weight_offset = outmap_chan * kernel_size;
 
 #pragma unroll
@@ -400,7 +412,10 @@ void DepthwiseConvolutionCuda<T>::setup_impl(const Variables &inputs,
 
   cudaDeviceProp prop;
   cudaGetDeviceProperties(&prop, std::stoi(this->ctx_.device_id));
-  max_threads_per_block_ = prop.maxThreadsPerBlock;
+  // TODO: See the funcion definition of `max_threads_per_block_for_half`
+  // found above.
+  max_threads_per_block_ =
+      max_threads_per_block_for_half<T>::reduce(prop.maxThreadsPerBlock);
   warp_size_ = prop.warpSize;
 }
 
@@ -414,44 +429,45 @@ void DepthwiseConvolutionCuda<T>::forward_impl(const Variables &inputs,
   Variable *const bias = (inputs.size() == 3) ? inputs[2] : nullptr;
   Variable *const output = outputs[0];
 
-  const T *input_data = input->get_data_pointer<T>(this->ctx_);
-  const T *weight_data = weight->get_data_pointer<T>(this->ctx_);
-  const T *bias_data = (bias) ? bias->get_data_pointer<T>(this->ctx_) : nullptr;
-  T *output_data = output->cast_data_and_get_pointer<T>(this->ctx_);
+  const Tc *input_data = input->get_data_pointer<Tc>(this->ctx_);
+  const Tc *weight_data = weight->get_data_pointer<Tc>(this->ctx_);
+  const Tc *bias_data =
+      (bias) ? bias->get_data_pointer<Tc>(this->ctx_) : nullptr;
+  Tc *output_data = output->cast_data_and_get_pointer<Tc>(this->ctx_);
 
   const int threads = max_threads_per_block_;
   const int blocks = (output_data_size_ + threads - 1) / threads;
 
   if (this->kernel_shape_.size() == 1) {
     if (kernel_1d_ == 3) {
-      forward_kernel<T, 3><<<blocks, threads>>>(
+      forward_kernel<Tc, 3><<<blocks, threads>>>(
           input_data, output_data, weight_data, bias_data, output_data_size_,
           sample_1d_, outmap_1d_, kernel_1d_, stride_1d_, padding_1d_,
           dilation_1d_, this->multiplier_);
     } else if (kernel_1d_ == 5) {
-      forward_kernel<T, 5><<<blocks, threads>>>(
+      forward_kernel<Tc, 5><<<blocks, threads>>>(
           input_data, output_data, weight_data, bias_data, output_data_size_,
           sample_1d_, outmap_1d_, kernel_1d_, stride_1d_, padding_1d_,
           dilation_1d_, this->multiplier_);
     } else {
-      forward_kernel<T, 0><<<blocks, threads>>>(
+      forward_kernel<Tc, 0><<<blocks, threads>>>(
           input_data, output_data, weight_data, bias_data, output_data_size_,
           sample_1d_, outmap_1d_, kernel_1d_, stride_1d_, padding_1d_,
           dilation_1d_, this->multiplier_);
     }
   } else {
     if ((kernel_2d_.x == 3) && (kernel_2d_.y == 3)) {
-      forward_kernel<T, 3><<<blocks, threads>>>(
+      forward_kernel<Tc, 3><<<blocks, threads>>>(
           input_data, output_data, weight_data, bias_data, output_data_size_,
           sample_2d_, outmap_2d_, kernel_2d_, stride_2d_, padding_2d_,
           dilation_2d_, this->multiplier_);
     } else if ((kernel_2d_.x == 5) && (kernel_2d_.y == 5)) {
-      forward_kernel<T, 5><<<blocks, threads>>>(
+      forward_kernel<Tc, 5><<<blocks, threads>>>(
           input_data, output_data, weight_data, bias_data, output_data_size_,
           sample_2d_, outmap_2d_, kernel_2d_, stride_2d_, padding_2d_,
           dilation_2d_, this->multiplier_);
     } else {
-      forward_kernel<T, 0><<<blocks, threads>>>(
+      forward_kernel<Tc, 0><<<blocks, threads>>>(
           input_data, output_data, weight_data, bias_data, output_data_size_,
           sample_2d_, outmap_2d_, kernel_2d_, stride_2d_, padding_2d_,
           dilation_2d_, this->multiplier_);
@@ -475,29 +491,29 @@ void DepthwiseConvolutionCuda<T>::backward_impl(
   Variable *const bias = (inputs.size() == 3) ? inputs[2] : nullptr;
   Variable *const output = outputs[0];
 
-  const T *input_data = input->get_data_pointer<T>(this->ctx_);
-  const T *weight_data = weight->get_data_pointer<T>(this->ctx_);
-  const T *output_grad = output->get_grad_pointer<T>(this->ctx_);
+  const Tc *input_data = input->get_data_pointer<Tc>(this->ctx_);
+  const Tc *weight_data = weight->get_data_pointer<Tc>(this->ctx_);
+  const Tc *output_grad = output->get_grad_pointer<Tc>(this->ctx_);
 
-  T *input_grad = nullptr;
+  Tc *input_grad = nullptr;
   if (propagate_down[0]) {
     if (!accum[0])
       input->grad()->zero(); // before cast!
-    input_grad = input->cast_grad_and_get_pointer<T>(this->ctx_);
+    input_grad = input->cast_grad_and_get_pointer<Tc>(this->ctx_);
   }
 
-  T *weight_grad = nullptr;
+  Tc *weight_grad = nullptr;
   if (propagate_down[1]) {
     if (!accum[1])
       weight->grad()->zero(); // before cast!
-    weight_grad = weight->cast_grad_and_get_pointer<T>(this->ctx_);
+    weight_grad = weight->cast_grad_and_get_pointer<Tc>(this->ctx_);
   }
 
-  T *bias_grad = nullptr;
+  Tc *bias_grad = nullptr;
   if (inputs.size() == 3 && propagate_down[2]) {
     if (!accum[2])
       bias->grad()->zero(); // before cast!
-    bias_grad = bias->cast_grad_and_get_pointer<T>(this->ctx_);
+    bias_grad = bias->cast_grad_and_get_pointer<Tc>(this->ctx_);
   }
 
   if (input_grad) {
@@ -507,34 +523,34 @@ void DepthwiseConvolutionCuda<T>::backward_impl(
     const int blocks = (input_data_size_ + threads - 1) / threads;
     if (this->kernel_shape_.size() == 1) {
       if (kernel_1d_ == 3) {
-        backprop_input<T, 3><<<blocks, threads>>>(
+        backprop_input<Tc, 3><<<blocks, threads>>>(
             input_grad, output_grad, weight_data, input_data_size_, sample_1d_,
             outmap_1d_, kernel_1d_, stride_1d_, padding_1d_, dilation_1d_,
             this->multiplier_);
       } else if (kernel_1d_ == 5) {
-        backprop_input<T, 5><<<blocks, threads>>>(
+        backprop_input<Tc, 5><<<blocks, threads>>>(
             input_grad, output_grad, weight_data, input_data_size_, sample_1d_,
             outmap_1d_, kernel_1d_, stride_1d_, padding_1d_, dilation_1d_,
             this->multiplier_);
       } else {
-        backprop_input<T, 0><<<blocks, threads>>>(
+        backprop_input<Tc, 0><<<blocks, threads>>>(
             input_grad, output_grad, weight_data, input_data_size_, sample_1d_,
             outmap_1d_, kernel_1d_, stride_1d_, padding_1d_, dilation_1d_,
             this->multiplier_);
       }
     } else {
       if ((kernel_2d_.x == 3) && (kernel_2d_.y == 3)) {
-        backprop_input<T, 3><<<blocks, threads>>>(
+        backprop_input<Tc, 3><<<blocks, threads>>>(
             input_grad, output_grad, weight_data, input_data_size_, sample_2d_,
             outmap_2d_, kernel_2d_, stride_2d_, padding_2d_, dilation_2d_,
             this->multiplier_);
       } else if ((kernel_2d_.x == 5) && (kernel_2d_.y == 5)) {
-        backprop_input<T, 5><<<blocks, threads>>>(
+        backprop_input<Tc, 5><<<blocks, threads>>>(
             input_grad, output_grad, weight_data, input_data_size_, sample_2d_,
             outmap_2d_, kernel_2d_, stride_2d_, padding_2d_, dilation_2d_,
             this->multiplier_);
       } else {
-        backprop_input<T, 0><<<blocks, threads>>>(
+        backprop_input<Tc, 0><<<blocks, threads>>>(
             input_grad, output_grad, weight_data, input_data_size_, sample_2d_,
             outmap_2d_, kernel_2d_, stride_2d_, padding_2d_, dilation_2d_,
             this->multiplier_);
@@ -567,7 +583,7 @@ void DepthwiseConvolutionCuda<T>::backward_impl(
       const int kernel_size = kernel_1d_;
       const int output_channels = outmap_1d_.y;
       const int blocks = output_channels * kernel_size;
-      backprop_weights<T><<<blocks, threads>>>(
+      backprop_weights<Tc><<<blocks, threads>>>(
           output_grad, input_data, weight_grad, bias_grad, batch_size,
           sample_1d_, outmap_1d_, kernel_1d_, stride_1d_, padding_1d_,
           dilation_1d_, this->multiplier_);
@@ -575,7 +591,7 @@ void DepthwiseConvolutionCuda<T>::backward_impl(
       const int kernel_size = kernel_2d_.x * kernel_2d_.y;
       const int output_channels = outmap_2d_.z;
       const int blocks = output_channels * kernel_size;
-      backprop_weights<T><<<blocks, threads>>>(
+      backprop_weights<Tc><<<blocks, threads>>>(
           output_grad, input_data, weight_grad, bias_grad, batch_size,
           sample_2d_, outmap_2d_, kernel_2d_, stride_2d_, padding_2d_,
           dilation_2d_, this->multiplier_);
@@ -591,28 +607,28 @@ void DepthwiseConvolutionCuda<T>::backward_impl(
     if (this->kernel_shape_.size() == 1) {
       const int outmap_size = outmap_1d_.x;
       const int outmap_channels = outmap_1d_.y;
-      const T *ones =
-          static_cast<const T *>(SingletonManager::get<NNabla>()->ones(
-              outmap_size, get_dtype<T>(), this->ctx_));
+      const Tc *ones =
+          static_cast<const Tc *>(SingletonManager::get<NNabla>()->ones(
+              outmap_size, get_dtype<Tc>(), this->ctx_));
 
       for (int samp = 0; samp < this->batch_size_; ++samp) {
         const int output_offset = samp * outmap_channels * outmap_size;
-        cuda_gemv<T>(device_, bias_grad, &output_grad[output_offset],
-                     outmap_size, outmap_channels, true, ones, outmap_size,
-                     T(1), T(1));
+        cuda_gemv<Tc>(device_, bias_grad, &output_grad[output_offset],
+                      outmap_size, outmap_channels, true, ones, outmap_size, 1,
+                      1);
       }
     } else {
       const int outmap_size = outmap_2d_.x * outmap_2d_.y;
       const int outmap_channels = outmap_2d_.z;
-      const T *ones =
-          static_cast<const T *>(SingletonManager::get<NNabla>()->ones(
-              outmap_size, get_dtype<T>(), this->ctx_));
+      const Tc *ones =
+          static_cast<const Tc *>(SingletonManager::get<NNabla>()->ones(
+              outmap_size, get_dtype<Tc>(), this->ctx_));
 
       for (int samp = 0; samp < this->batch_size_; ++samp) {
         const int output_offset = samp * outmap_channels * outmap_size;
-        cuda_gemv<T>(device_, bias_grad, &output_grad[output_offset],
-                     outmap_size, outmap_channels, true, ones, outmap_size,
-                     T(1), T(1));
+        cuda_gemv<Tc>(device_, bias_grad, &output_grad[output_offset],
+                      outmap_size, outmap_channels, true, ones, outmap_size, 1,
+                      1);
       }
     }
   }

@@ -29,10 +29,12 @@ void RandCuda<T>::setup_impl(const Variables &inputs,
 template <typename T>
 void RandCuda<T>::forward_impl(const Variables &inputs,
                                const Variables &outputs) {
+  // In any type, this uses float32 type.
+  typedef typename CudaTypeForceFloat<T>::type Tc;
   cuda_set_device(device_);
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
-  curand_generate_rand<T>(curand_generator_, this->low_, this->high_, y,
-                          outputs[0]->size());
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
+  curand_generate_rand<float>(curand_generator_, this->low_, this->high_, y,
+                              outputs[0]->size());
 }
 
 template <typename T>

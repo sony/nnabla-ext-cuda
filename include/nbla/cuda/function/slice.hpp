@@ -28,6 +28,8 @@ protected:
   Variable addr_table_;
 
 public:
+  typedef typename CudaType<T>::type Tc;
+
   explicit SliceCuda(const Context &ctx, const vector<int> &start,
                      const vector<int> &stop, const vector<int> &step)
       : Slice<T>(ctx, start, stop, step), device_(std::stoi(ctx.device_id)) {}

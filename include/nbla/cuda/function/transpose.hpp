@@ -25,6 +25,8 @@ namespace nbla {
 template <typename T> class TransposeCuda : public Transpose<T> {
 protected:
 public:
+  typedef typename CudaType<T>::type Tc;
+
   explicit TransposeCuda(const Context &ctx, const vector<int> &axes)
       : Transpose<T>(ctx, axes) {}
   virtual ~TransposeCuda() {}

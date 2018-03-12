@@ -91,10 +91,10 @@ template <typename T>
 void FlipCuda<T>::forward_impl(const Variables &inputs,
                                const Variables &outputs) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  const T *x = inputs[0]->get_data_pointer<T>(this->ctx_);
+  const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
   const int *addr_table_buf =
       this->addr_table_.get_data_pointer<int>(this->ctx_);
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
   size_t size = outputs[0]->size();
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_flip_forward, size, y, x,
                                  addr_table_buf);
@@ -105,7 +105,7 @@ __global__ void kernel_flip_backward(const int num, T *dx, const T *dy,
                                      const int *addr_table_buf) {
   NBLA_CUDA_KERNEL_LOOP(idx, num) {
     T &ref = dx[addr_table_buf[idx]];
-    ref = (accum ? ref : 0) + dy[idx];
+    ref = (accum ? ref : (T)0) + dy[idx];
   }
 }
 
@@ -118,16 +118,16 @@ void FlipCuda<T>::backward_impl(const Variables &inputs,
     return;
   }
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  T *dx = inputs[0]->cast_grad_and_get_pointer<T>(this->ctx_);
+  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
   const int *addr_table_buf =
       this->addr_table_.get_data_pointer<int>(this->ctx_);
-  const T *dy = outputs[0]->get_grad_pointer<T>(this->ctx_);
+  const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
   size_t size = outputs[0]->size();
   if (accum[0]) {
-    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_flip_backward<T, true>), size, dx,
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_flip_backward<Tc, true>), size, dx,
                                    dy, addr_table_buf);
   } else {
-    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_flip_backward<T, false>), size, dx,
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_flip_backward<Tc, false>), size, dx,
                                    dy, addr_table_buf);
   }
 }

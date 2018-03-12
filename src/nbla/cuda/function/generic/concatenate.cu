@@ -43,8 +43,8 @@ kernel_concatenate_backward(const int size, const int inner_total_size,
   NBLA_CUDA_KERNEL_LOOP(index, size) {
     const int o = index / inner_size;
     const int c = index % inner_size;
-    dx[index] =
-        (accum ? dx[index] : 0) + dy[o * inner_total_size + inner_offset + c];
+    dx[index] = (accum ? dx[index] : (T)0) +
+                dy[o * inner_total_size + inner_offset + c];
   }
 }
 
@@ -58,10 +58,10 @@ template <class T>
 void ConcatenateCuda<T>::forward_impl(const Variables &inputs,
                                       const Variables &outputs) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
   int inner_offset = 0;
   for (int c = 0; c < inputs.size(); ++c) {
-    const T *x = inputs[c]->get_data_pointer<T>(this->ctx_);
+    const Tc *x = inputs[c]->get_data_pointer<Tc>(this->ctx_);
     const int inner_size = inputs[c]->size(this->axis_);
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
         kernel_concatenate_forward, this->outer_size_ * inner_size,
@@ -79,19 +79,19 @@ void ConcatenateCuda<T>::backward_impl(const Variables &inputs,
     return;
   }
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  const T *dy = outputs[0]->get_grad_pointer<T>(this->ctx_);
+  const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
   int inner_offset = 0;
   for (int c = 0; c < inputs.size(); ++c) {
     const int inner_size = inputs[c]->size(this->axis_);
     if (propagate_down[c]) {
-      T *dx = inputs[c]->cast_grad_and_get_pointer<T>(this->ctx_);
+      Tc *dx = inputs[c]->cast_grad_and_get_pointer<Tc>(this->ctx_);
       if (accum[c]) {
-        NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_concatenate_backward<T, true>),
+        NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_concatenate_backward<Tc, true>),
                                        this->outer_size_ * inner_size,
                                        this->inner_total_size_, inner_size,
                                        inner_offset, dy, dx);
       } else {
-        NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_concatenate_backward<T, false>),
+        NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_concatenate_backward<Tc, false>),
                                        this->outer_size_ * inner_size,
                                        this->inner_total_size_, inner_size,
                                        inner_offset, dy, dx);

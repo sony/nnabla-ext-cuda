@@ -51,8 +51,8 @@ kernel_softmax_cross_entropy_backward(const int size0x2_, const int size1_,
     T grad = dy[j];
     for (int i1 = 0; i1 < size1_; ++i1) {
       const int k = i0 * size1_ * size2_ + i1 * size2_ + i2;
-      dx[k] =
-          (accum ? dx[k] : 0) + grad * (p[k] - static_cast<int>(label == i1));
+      dx[k] = (accum ? dx[k] : (T)0) +
+              grad * (p[k] - static_cast<int>(label == i1));
     }
   }
 }
@@ -70,9 +70,9 @@ void SoftmaxCrossEntropyCuda<T, Tl>::forward_impl(const Variables &inputs,
   Variable &tso = this->softmax_output_;
   this->softmax_->forward(Variables{inputs[0]}, Variables{&tso});
   // Setting up variables
-  const T *p = tso.get_data_pointer<T>(this->ctx_);
+  const Tc *p = tso.get_data_pointer<Tc>(this->ctx_);
   const Tl *l = inputs[1]->get_data_pointer<Tl>(this->ctx_);
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_softmax_cross_entropy_forward,
                                  this->size0_ * this->size2_, this->size1_,
                                  this->size2_, p, l, y);
@@ -89,17 +89,17 @@ void SoftmaxCrossEntropyCuda<T, Tl>::backward_impl(
 
   cuda_set_device(std::stoi(this->ctx_.device_id));
   Variable &tso = this->softmax_output_;
-  const T *p = tso.get_data_pointer<T>(this->ctx_);
-  const T *dy = outputs[0]->get_grad_pointer<T>(this->ctx_);
+  const Tc *p = tso.get_data_pointer<Tc>(this->ctx_);
+  const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
   const Tl *l = inputs[1]->get_data_pointer<Tl>(this->ctx_);
-  T *dx = inputs[0]->cast_grad_and_get_pointer<T>(this->ctx_);
+  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
   if (accum[0]) {
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-        (kernel_softmax_cross_entropy_backward<T, Tl, true>),
+        (kernel_softmax_cross_entropy_backward<Tc, Tl, true>),
         this->size0_ * this->size2_, this->size1_, this->size2_, p, dy, l, dx);
   } else {
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-        (kernel_softmax_cross_entropy_backward<T, Tl, false>),
+        (kernel_softmax_cross_entropy_backward<Tc, Tl, false>),
         this->size0_ * this->size2_, this->size1_, this->size2_, p, dy, l, dx);
   }
 }

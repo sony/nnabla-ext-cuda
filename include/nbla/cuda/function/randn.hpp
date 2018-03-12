@@ -28,6 +28,8 @@ namespace nbla {
 
 template <typename T> class RandnCuda : public Randn<T> {
 public:
+  typedef typename CudaType<T>::type Tc;
+
   explicit RandnCuda(const Context &ctx, float mu, float sigma,
                      const vector<int> &shape, int seed)
       : Randn<T>(ctx, mu, sigma, shape, seed),

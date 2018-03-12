@@ -25,6 +25,8 @@ namespace nbla {
 
 template <typename T> class StackCuda : public Stack<T> {
 public:
+  typedef typename CudaType<T>::type Tc;
+
   explicit StackCuda(const Context &ctx, int axis)
       : Stack<T>(ctx, axis), device_(std::stoi(ctx.device_id)) {}
   virtual ~StackCuda() {}

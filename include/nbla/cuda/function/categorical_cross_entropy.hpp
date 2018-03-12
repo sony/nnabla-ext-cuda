@@ -30,6 +30,8 @@ protected:
   int device_;
 
 public:
+  typedef typename CudaType<T>::type Tc;
+
   CategoricalCrossEntropyCuda(const Context &ctx, int axis)
       : CategoricalCrossEntropy<T>(ctx, axis),
         device_(std::stoi(ctx.device_id)) {}

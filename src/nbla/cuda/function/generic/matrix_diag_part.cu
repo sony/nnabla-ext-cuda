@@ -54,8 +54,8 @@ template <typename T>
 void MatrixDiagPartCuda<T>::forward_impl(const Variables &inputs,
                                          const Variables &outputs) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  const T *x = inputs[0]->get_data_pointer<T>(this->ctx_);
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
+  const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
   size_t size = outputs[0]->size();
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_matrix_diag_part_forward, size,
                                  this->last_ndim_, y, x)
@@ -71,16 +71,16 @@ void MatrixDiagPartCuda<T>::backward_impl(const Variables &inputs,
     return;
   }
 
-  T *dx = inputs[0]->cast_grad_and_get_pointer<T>(this->ctx_);
-  const T *dy = outputs[0]->get_grad_pointer<T>(this->ctx_);
+  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
+  const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
   Size_t size = outputs[0]->size();
   if (accum[0]) {
-    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_matrix_diag_part_backward_accum<T>),
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_matrix_diag_part_backward_accum<Tc>),
                                    size, this->last_ndim_, dx, dy);
   } else {
     Size_t size_by_last_ndim = size * this->last_ndim_;
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-        (kernel_matrix_diag_part_backward_nonaccum<T>), size_by_last_ndim,
+        (kernel_matrix_diag_part_backward_nonaccum<Tc>), size_by_last_ndim,
         this->last_ndim_, dx, dy);
   }
 }

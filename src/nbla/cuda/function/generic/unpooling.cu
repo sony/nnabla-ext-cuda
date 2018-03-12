@@ -114,10 +114,10 @@ template <typename T>
 void UnpoolingCuda<T>::forward_impl(const Variables &inputs,
                                     const Variables &outputs) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  const T *x = inputs[0]->get_data_pointer<T>(this->ctx_);
+  const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
   const int *addr_table_buf =
       this->addr_table_.get_data_pointer<int>(this->ctx_);
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
   size_t size = inputs[0]->size();
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_unpooling_forward, size, y, x,
                                  addr_table_buf, this->kernel_size_);
@@ -146,10 +146,10 @@ void UnpoolingCuda<T>::backward_impl(const Variables &inputs,
   cuda_set_device(std::stoi(this->ctx_.device_id));
   if (!accum[0])
     inputs[0]->grad()->zero();
-  T *dx = inputs[0]->cast_grad_and_get_pointer<T>(this->ctx_);
+  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
   const int *addr_table_buf =
       this->addr_table_.get_data_pointer<int>(this->ctx_);
-  const T *dy = outputs[0]->get_grad_pointer<T>(this->ctx_);
+  const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
   size_t size = inputs[0]->size();
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_unpooling_backward, size, dx, dy,
                                  addr_table_buf, this->kernel_size_);

@@ -22,8 +22,9 @@ namespace nbla {
 template <typename T>
 __global__ void kernel_reduce_per_block(const int N, const T *x, T *buff,
                                         T scale = 1) {
-  T thread_data = 0;
-  NBLA_CUDA_KERNEL_LOOP(i, N) { thread_data += x[i]; }
+  typedef typename CudaTypeForceFloat<T>::type AccT;
+  AccT thread_data = 0;
+  NBLA_CUDA_KERNEL_LOOP(i, N) { thread_data += (AccT)x[i]; }
   thread_data = blockReduceSum(thread_data);
   if (threadIdx.x == 0) {
     buff[blockIdx.x] = thread_data * scale;
@@ -31,60 +32,68 @@ __global__ void kernel_reduce_per_block(const int N, const T *x, T *buff,
 }
 
 template <typename T>
-void MeanCuda<T>::forward_impl_reduce(const T *x, T *y, int outer_size,
+void MeanCuda<T>::forward_impl_reduce(const T *x_, T *y_, int outer_size,
                                       int reduction_size) {
+  const Tc *x = reinterpret_cast<const Tc *>(x_);
+  Tc *y = reinterpret_cast<Tc *>(y_);
   cuda_set_device(this->device_);
   if (outer_size == 1) {
     if (reduction_size >= 1024) {
       int blocks =
           min(NBLA_CUDA_GET_BLOCKS(reduction_size), /*max blocks*/ 1024);
       shared_ptr<CudaCachedArray> arr_buff =
-          make_shared<CudaCachedArray>(blocks, get_dtype<T>(), this->ctx_);
-      T *buff = arr_buff->pointer<T>();
+          make_shared<CudaCachedArray>(blocks, get_dtype<Tc>(), this->ctx_);
+      Tc *buff = arr_buff->pointer<Tc>();
       kernel_reduce_per_block<<<blocks, NBLA_CUDA_NUM_THREADS>>>(reduction_size,
                                                                  x, buff);
-      kernel_reduce_per_block<<<1, 1024>>>(blocks, buff, y,
-                                           (T)(1. / reduction_size));
+      NBLA_CUDA_KERNEL_CHECK();
+      kernel_reduce_per_block<Tc><<<1, 1024>>>(blocks, buff, y,
+                                               (T)(1. / reduction_size));
+      NBLA_CUDA_KERNEL_CHECK();
     } else {
-      kernel_reduce_per_block<<<1, 1024>>>(reduction_size, x, y,
-                                           (T)(1. / reduction_size));
+      kernel_reduce_per_block<Tc><<<1, 1024>>>(reduction_size, x, y,
+                                               (T)(1. / reduction_size));
+      NBLA_CUDA_KERNEL_CHECK();
     }
     return;
   }
-  const T *ones = static_cast<const T *>(SingletonManager::get<NNabla>()->ones(
-      reduction_size, get_dtype<T>(), this->ctx_));
-  cuda_gemv(this->device_, y, x, reduction_size, outer_size, true, ones,
-            reduction_size, (T)(1. / reduction_size), (T)0);
+  const Tc *ones =
+      static_cast<const Tc *>(SingletonManager::get<NNabla>()->ones(
+          reduction_size, get_dtype<Tc>(), this->ctx_));
+  cuda_gemv<Tc>(this->device_, y, x, reduction_size, outer_size, true, ones,
+                reduction_size, 1. / reduction_size, 0);
 }
 
 template <typename T, bool accum>
 __global__ void kernel_reduce_mean_backward(const int num, T *dx, const T *dy,
                                             T scale) {
   NBLA_CUDA_KERNEL_LOOP(idx, num) {
-    dx[idx] = (accum ? dx[idx] : 0) + scale * (*dy);
+    dx[idx] = (accum ? dx[idx] : (T)0) + scale * (*dy);
   }
 }
 
 template <typename T>
-void MeanCuda<T>::backward_impl_reduce(const T *dy, T *dx, int outer_size,
+void MeanCuda<T>::backward_impl_reduce(const T *dy_, T *dx_, int outer_size,
                                        int reduction_size, bool accum) {
+  const Tc *dy = reinterpret_cast<const Tc *>(dy_);
+  Tc *dx = reinterpret_cast<Tc *>(dx_);
   cuda_set_device(this->device_);
   if (outer_size == 1) {
     if (accum) {
-      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_reduce_mean_backward<T, true>),
+      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_reduce_mean_backward<Tc, true>),
                                      reduction_size, dx, dy,
                                      (T)(1. / reduction_size));
     } else {
-      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_reduce_mean_backward<T, false>),
+      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_reduce_mean_backward<Tc, false>),
                                      reduction_size, dx, dy,
                                      (T)(1. / reduction_size));
     }
     return;
   }
-  const T *ones = static_cast<const T *>(SingletonManager::get<NNabla>()->ones(
-      reduction_size, get_dtype<T>(), this->ctx_));
-  cuda_gemm<T>(this->device_, dx, true, dy, outer_size, 1, false, ones, 1,
-               reduction_size, false, (T)(1. / reduction_size),
-               (T)(accum ? 1 : 0));
+  const Tc *ones =
+      static_cast<const Tc *>(SingletonManager::get<NNabla>()->ones(
+          reduction_size, get_dtype<Tc>(), this->ctx_));
+  cuda_gemm<Tc>(this->device_, dx, true, dy, outer_size, 1, false, ones, 1,
+                reduction_size, false, 1. / reduction_size, accum ? 1 : 0);
 }
 }

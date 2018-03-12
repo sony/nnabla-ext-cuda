@@ -61,7 +61,8 @@ __global__ void kernel_transform_binary_grad0(int size, const T *dy,
                                               const T *x0, const T *x1,
                                               const T *y, T *g0, BinaryOp op) {
   NBLA_CUDA_KERNEL_LOOP(idx, size) {
-    g0[idx] = (accum ? g0[idx] : 0) + op.g0(dy[idx], x0[idx], x1[idx], y[idx]);
+    g0[idx] =
+        (accum ? g0[idx] : (T)0) + op.g0(dy[idx], x0[idx], x1[idx], y[idx]);
   }
 }
 
@@ -70,7 +71,8 @@ __global__ void kernel_transform_binary_grad1(int size, const T *dy,
                                               const T *x0, const T *x1,
                                               const T *y, T *g1, BinaryOp op) {
   NBLA_CUDA_KERNEL_LOOP(idx, size) {
-    g1[idx] = (accum ? g1[idx] : 0) + op.g1(dy[idx], x0[idx], x1[idx], y[idx]);
+    g1[idx] =
+        (accum ? g1[idx] : (T)0) + op.g1(dy[idx], x0[idx], x1[idx], y[idx]);
   }
 }
 
@@ -176,17 +178,17 @@ void backward_impl_transform_binary(const Variables &inputs,
   template <typename T>                                                        \
   void NAME##Cuda<T>::forward_impl(const Variables &inputs,                    \
                                    const Variables &outputs) {                 \
-    forward_impl_transform_binary<T>(inputs, outputs, this->ctx_,              \
-                                     this->f_bc0_.get(), this->o_bc0_.get(),   \
-                                     this->f_bc1_.get(), this->o_bc1_.get(),   \
-                                     NAME##BinaryOpCuda(this->args_));         \
+    forward_impl_transform_binary<typename CudaType<T>::type>(                 \
+        inputs, outputs, this->ctx_, this->f_bc0_.get(), this->o_bc0_.get(),   \
+        this->f_bc1_.get(), this->o_bc1_.get(),                                \
+        NAME##BinaryOpCuda(this->args_));                                      \
   }                                                                            \
                                                                                \
   template <typename T>                                                        \
   void NAME##Cuda<T>::backward_impl(                                           \
       const Variables &inputs, const Variables &outputs,                       \
       const vector<bool> &propagate_down, const vector<bool> &accum) {         \
-    backward_impl_transform_binary<T>(                                         \
+    backward_impl_transform_binary<typename CudaType<T>::type>(                \
         inputs, outputs, propagate_down, accum, this->ctx_,                    \
         this->f_bc0_.get(), this->o_bc0_.get(), this->f_bc1_.get(),            \
         this->o_bc1_.get(), NAME##BinaryOpCuda(this->args_));                  \

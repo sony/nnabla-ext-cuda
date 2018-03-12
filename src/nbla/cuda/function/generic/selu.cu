@@ -21,21 +21,22 @@
 namespace nbla {
 
 template <typename T>
-__global__ void kernel_selu_forward(const int num, const T scale_, const T coef,
-                                    T *y, const T *x) {
+__global__ void kernel_selu_forward(const int num, const float scale_,
+                                    const float coef, T *y, const T *x) {
   NBLA_CUDA_KERNEL_LOOP(idx, num) {
-    y[idx] = x[idx] > (T)0 ? scale_ * x[idx] : coef * (std::exp(x[idx]) - (T)1);
+    y[idx] = x[idx] > (T)0 ? (T)scale_ * x[idx]
+                           : (T)coef * (std::exp(x[idx]) - (T)1);
   }
 }
 
 template <typename T, bool accum = true>
-__global__ void kernel_selu_backward(const int num, const T scale_,
-                                     const T coef, T *dx, const T *x,
+__global__ void kernel_selu_backward(const int num, const float scale_,
+                                     const float coef, T *dx, const T *x,
                                      const T *dy) {
   NBLA_CUDA_KERNEL_LOOP(idx, num) {
-    dx[idx] =
-        (accum ? dx[idx] : (T)0) +
-        (x[idx] > (T)0 ? dy[idx] * scale_ : dy[idx] * coef * std::exp(x[idx]));
+    dx[idx] = (accum ? dx[idx] : (T)0) +
+              (x[idx] > (T)0 ? dy[idx] * (T)scale_
+                             : dy[idx] * (T)coef * std::exp(x[idx]));
   }
 }
 
@@ -50,10 +51,10 @@ template <typename T>
 void SELUCuda<T>::forward_impl(const Variables &inputs,
                                const Variables &outputs) {
   cuda_set_device(this->device_);
-  const T *x = inputs[0]->get_data_pointer<T>(this->ctx_);
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
+  const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
   size_t size = inputs[0]->size();
-  const T coef = this->alpha_ * this->scale_;
+  const float coef = this->alpha_ * this->scale_;
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_selu_forward, size, this->scale_, coef,
                                  y, x);
 }
@@ -67,16 +68,16 @@ void SELUCuda<T>::backward_impl(const Variables &inputs,
     return;
   }
   cuda_set_device(this->device_);
-  const T *x = inputs[0]->get_data_pointer<T>(this->ctx_);
-  T *dx = inputs[0]->cast_grad_and_get_pointer<T>(this->ctx_);
-  const T *dy = outputs[0]->get_grad_pointer<T>(this->ctx_);
+  const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
+  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
+  const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
   size_t size = inputs[0]->size();
-  const T coef = this->alpha_ * this->scale_;
+  const float coef = this->alpha_ * this->scale_;
   if (accum[0]) {
-    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_selu_backward<T, true>), size,
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_selu_backward<Tc, true>), size,
                                    this->scale_, coef, dx, x, dy);
   } else {
-    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_selu_backward<T, false>), size,
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_selu_backward<Tc, false>), size,
                                    this->scale_, coef, dx, x, dy);
   }
 }

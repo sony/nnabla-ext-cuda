@@ -67,7 +67,7 @@ __global__ void kernel_softmax_backward(const int size0x2_, const int size1_,
     // Compute backward
     for (int i1 = 0; i1 < size1_; ++i1) {
       const int k = (i0 * size1_ + i1) * size2_ + i2;
-      dx[k] = (accum ? dx[k] : 0) + y[k] * (dy[k] - dyy_sum);
+      dx[k] = (accum ? dx[k] : (T)0) + y[k] * (dy[k] - dyy_sum);
     }
   }
 }
@@ -77,8 +77,8 @@ void SoftmaxCuda<T>::forward_impl(const Variables &inputs,
                                   const Variables &outputs) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
   // Setting up variables
-  const T *x = inputs[0]->get_data_pointer<T>(this->ctx_);
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
+  const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_softmax_forward,
                                  this->size0_ * this->size2_, this->size1_,
                                  this->size2_, x, y);
@@ -94,15 +94,15 @@ void SoftmaxCuda<T>::backward_impl(const Variables &inputs,
   }
   cuda_set_device(std::stoi(this->ctx_.device_id));
   // Setting up variables
-  const T *y = outputs[0]->get_data_pointer<T>(this->ctx_);
-  const T *dy = outputs[0]->get_grad_pointer<T>(this->ctx_);
-  T *dx = inputs[0]->cast_grad_and_get_pointer<T>(this->ctx_);
+  const Tc *y = outputs[0]->get_data_pointer<Tc>(this->ctx_);
+  const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
+  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
   if (accum[0]) {
-    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_softmax_backward<T, true>),
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_softmax_backward<Tc, true>),
                                    this->size0_ * this->size2_, this->size1_,
                                    this->size2_, y, dy, dx);
   } else {
-    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_softmax_backward<T, false>),
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_softmax_backward<Tc, false>),
                                    this->size0_ * this->size2_, this->size1_,
                                    this->size2_, y, dy, dx);
   }

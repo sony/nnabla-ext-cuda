@@ -24,7 +24,9 @@ namespace nbla {
 */
 
 template <typename T> class CELUCuda : public CELU<T> {
+
 public:
+  typedef typename CudaType<T>::type Tc;
   explicit CELUCuda(const Context &ctx, double alpha, int axis)
       : CELU<T>(ctx, alpha, axis), device_(std::stoi(ctx.device_id)) {}
   virtual ~CELUCuda() {}

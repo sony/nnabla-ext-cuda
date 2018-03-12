@@ -49,7 +49,7 @@ kernel_transpose_backward(const int num, const int ndim, const int64_t *axes,
       const int k = int(o / y_strides[d]) % y_shape[d];
       i += k * x_strides[axes[d]];
     }
-    dx[i] = (accum ? dx[i] : 0) + dy[o];
+    dx[i] = (accum ? dx[i] : (T)0) + dy[o];
   }
 }
 
@@ -63,8 +63,8 @@ template <class T>
 void TransposeCuda<T>::forward_impl(const Variables &inputs,
                                     const Variables &outputs) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  const T *x = inputs[0]->get_data_pointer<T>(this->ctx_);
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
+  const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
 
   // To avoid compiler error : type name is not allowed.
   // The following statement causes a compiler error.
@@ -92,8 +92,8 @@ void TransposeCuda<T>::backward_impl(const Variables &inputs,
     return;
 
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  const T *dy = outputs[0]->get_grad_pointer<T>(this->ctx_);
-  T *dx = inputs[0]->cast_grad_and_get_pointer<T>(this->ctx_);
+  const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
+  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
 
   // To avoid compiler error : type name is not allowed.
   // The following statement causes a compiler error.
@@ -108,11 +108,11 @@ void TransposeCuda<T>::backward_impl(const Variables &inputs,
   const int ndim = inputs[0]->ndim();
   const int size = outputs[0]->size();
   if (accum[0]) {
-    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_transpose_backward<T, true>), size,
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_transpose_backward<Tc, true>), size,
                                    ndim, axes, x_strides, y_strides, y_shape,
                                    dy, dx);
   } else {
-    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_transpose_backward<T, false>), size,
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_transpose_backward<Tc, false>), size,
                                    ndim, axes, x_strides, y_strides, y_shape,
                                    dy, dx);
   }

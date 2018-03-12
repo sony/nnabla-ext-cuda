@@ -166,11 +166,12 @@ void INQAffineCuda<T, T1>::setup_impl(const Variables &inputs,
 template <typename T, typename T1>
 void INQAffineCuda<T, T1>::forward_impl(const Variables &inputs,
                                         const Variables &outputs) {
+  typedef typename CudaTypeForceFloat<T>::type Tc;
   cuda_set_device(this->device_);
 
-  T *weights = inputs[1]->cast_data_and_get_pointer<T>(this->ctx_);
-  T *old_weights =
-      ((Variable &)this->old_weights_).cast_data_and_get_pointer<T>(this->ctx_);
+  Tc *weights = inputs[1]->cast_data_and_get_pointer<Tc>(this->ctx_);
+  Tc *old_weights = ((Variable &)this->old_weights_)
+                        .cast_data_and_get_pointer<Tc>(this->ctx_);
 
   T1 *indicators = inputs[2]->cast_data_and_get_pointer<T1>(this->ctx_);
   T1 *old_indicators = ((Variable &)this->old_indicators_)
@@ -184,7 +185,7 @@ void INQAffineCuda<T, T1>::forward_impl(const Variables &inputs,
   // A: Go through each element and copy old value for weights if weight was
   // fixed before.
   //    This is done to make sure that we do not update fixed weights.
-  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_copy_fixedweights<T, T1>),
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_copy_fixedweights<Tc, T1>),
                                  inputs[1]->size(), old_weights, old_indicators,
                                  weights);
 
@@ -214,7 +215,7 @@ void INQAffineCuda<T, T1>::forward_impl(const Variables &inputs,
         thrust::sort(thrust::device_pointer_cast<int>(indices),
                      thrust::device_pointer_cast<int>(indices) +
                          inputs[1]->size(),
-                     cmp<T, T1>(thrust::raw_pointer_cast(weights)));
+                     cmp<Tc, T1>(thrust::raw_pointer_cast(weights)));
 
         int num_learnable =
             inputs[1]->size() -
@@ -232,9 +233,9 @@ void INQAffineCuda<T, T1>::forward_impl(const Variables &inputs,
                 thrust::device_pointer_cast<int>(indices) + inputs[1]->size()),
             thrust::device_pointer_cast<T1>(cumulative_count));
         NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-            (kernel_compute_learnable<T, T1>), // turns number of fixed weights
-                                               // into number of learnable
-                                               // weights
+            (kernel_compute_learnable<Tc, T1>), // turns number of fixed weights
+                                                // into number of learnable
+                                                // weights
             inputs[1]->size(), cumulative_count);
 
         int idx =
@@ -243,14 +244,14 @@ void INQAffineCuda<T, T1>::forward_impl(const Variables &inputs,
                              inputs[1]->size(),
                          num_learnable / 2) -
             thrust::device_pointer_cast<int>(cumulative_count) + 1;
-        NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_fix_largestabs<T, T1>), idx,
+        NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_fix_largestabs<Tc, T1>), idx,
                                        indicators, indices);
       } else {
         // random selection (we re-use old_weights here to keep the random
         // values)
-        curand_generate_rand<T>(curand_generator_, 0.0f, 1.0f, old_weights,
-                                inputs[0]->size());
-        NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_random_selection<T, T1>),
+        curand_generate_rand<Tc>(curand_generator_, 0.0f, 1.0f, old_weights,
+                                 inputs[0]->size());
+        NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_random_selection<Tc, T1>),
                                        inputs[1]->size(), indicators,
                                        old_weights);
       }
@@ -258,10 +259,10 @@ void INQAffineCuda<T, T1>::forward_impl(const Variables &inputs,
   }
 
   // C: convert all fixed weights to power-of-two values
-  T max_absval = thrust::transform_reduce(
-      thrust::device_pointer_cast<T>(weights),
-      thrust::device_pointer_cast<T>(weights) + inputs[1]->size(),
-      absolute_value<T>(), 0.0, thrust::maximum<T>());
+  Tc max_absval = thrust::transform_reduce(
+      thrust::device_pointer_cast<Tc>(weights),
+      thrust::device_pointer_cast<Tc>(weights) + inputs[1]->size(),
+      absolute_value<Tc>(), 0.0, thrust::maximum<Tc>());
 
   if (max_absval == 0.0f) {
     max_absval = 1.0f;
@@ -270,9 +271,9 @@ void INQAffineCuda<T, T1>::forward_impl(const Variables &inputs,
                  (std::log2(max_absval) - std::floor(std::log2(max_absval)) >=
                   std::log2(1.5)));
   int n2 = n1 + 1 - (int)std::pow(2, this->num_bits_ - 2);
-  T pruning_threshold = std::pow(2, n2 - 1);
+  Tc pruning_threshold = std::pow(2, n2 - 1);
 
-  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_quantize_weights<T, T1>),
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_quantize_weights<Tc, T1>),
                                  inputs[1]->size(), indicators, weights, n1, n2,
                                  pruning_threshold);
 
@@ -287,7 +288,7 @@ void INQAffineCuda<T, T1>::forward_impl(const Variables &inputs,
   this->minibatch_counter_++;
 
   // F: Store weights/indicators
-  cudaMemcpy(old_weights, weights, inputs[1]->size() * sizeof(T),
+  cudaMemcpy(old_weights, weights, inputs[1]->size() * sizeof(Tc),
              cudaMemcpyDeviceToDevice);
   cudaMemcpy(old_indicators, indicators, inputs[1]->size() * sizeof(T1),
              cudaMemcpyDeviceToDevice);

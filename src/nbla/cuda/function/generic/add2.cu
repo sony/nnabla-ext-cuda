@@ -31,16 +31,18 @@ __global__ void kernel_add2_forward(const int num, T *y, const T *x0,
 
 template <typename T, bool accum>
 __global__ void kernel_add2_backward(const int num, T *d, const T *dy) {
-  NBLA_CUDA_KERNEL_LOOP(idx, num) { d[idx] = (accum ? d[idx] : 0) + dy[idx]; }
+  NBLA_CUDA_KERNEL_LOOP(idx, num) {
+    d[idx] = (accum ? d[idx] : (T)0) + dy[idx];
+  }
 }
 
 template <class T>
 void Add2Cuda<T>::forward_impl(const Variables &inputs,
                                const Variables &outputs) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  const T *x0 = inputs[0]->get_data_pointer<T>(this->ctx_);
-  const T *x1 = inputs[1]->get_data_pointer<T>(this->ctx_);
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
+  const Tc *x0 = inputs[0]->get_data_pointer<Tc>(this->ctx_);
+  const Tc *x1 = inputs[1]->get_data_pointer<Tc>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
   size_t size = inputs[0]->size();
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_add2_forward, size, y, x0, x1);
 }
@@ -53,18 +55,18 @@ void Add2Cuda<T>::backward_impl(const Variables &inputs,
   if (!(propagate_down[0] || propagate_down[1]))
     return;
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  const T *dy = outputs[0]->get_grad_pointer<T>(this->ctx_);
+  const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
   size_t size = inputs[0]->size();
   for (int i = 0; i < 2; ++i) {
     if (propagate_down[i]) {
-      T *dx = inputs[i]->cast_grad_and_get_pointer<T>(this->ctx_);
+      Tc *dx = inputs[i]->cast_grad_and_get_pointer<Tc>(this->ctx_);
       if (dx != dy) {
         if (accum[i]) {
-          NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_add2_backward<T, true>), size,
+          NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_add2_backward<Tc, true>), size,
                                          dx, dy);
         } else {
-          NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_add2_backward<T, false>), size,
-                                         dx, dy);
+          NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_add2_backward<Tc, false>),
+                                         size, dx, dy);
         }
       }
     }

@@ -29,14 +29,15 @@ __global__ void kernel_embed_forward(const int num, T1 *y, const T *x,
   }
 }
 
-template <typename T, typename T1>
-__global__ void kernel_embed_backward_weight(const int num, T1 *dw, const T *x,
+template <typename T, typename T1, typename Tw>
+__global__ void kernel_embed_backward_weight(const int num, Tw *dw, const T *x,
                                              const T1 *dy, int stride0) {
   // TODO: optimize
   NBLA_CUDA_KERNEL_LOOP(idx, num) {
     const int i = idx / stride0;
     const int j = idx % stride0;
-    atomicAdd(dw + x[i] * stride0 + j, dy[i * stride0 + j]);
+    atomicAdd(dw + x[i] * stride0 + j,
+              (typename CudaTypeForceFloat<T1>::type)dy[i * stride0 + j]);
   }
 }
 
@@ -49,10 +50,11 @@ void EmbedCuda<T, T1>::setup_impl(const Variables &inputs,
 template <typename T, typename T1>
 void EmbedCuda<T, T1>::forward_impl(const Variables &inputs,
                                     const Variables &outputs) {
+  typedef typename CudaType<T1>::type Tc;
   cuda_set_device(std::stoi(this->ctx_.device_id));
   const T *x = inputs[0]->get_data_pointer<T>(this->ctx_);
-  const T1 *w = inputs[1]->get_data_pointer<T1>(this->ctx_);
-  T1 *y = outputs[0]->cast_data_and_get_pointer<T1>(this->ctx_);
+  const Tc *w = inputs[1]->get_data_pointer<Tc>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
 
   Size_t stride0 = inputs[1]->size(1);
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_embed_forward,
@@ -64,6 +66,9 @@ void EmbedCuda<T, T1>::backward_impl(const Variables &inputs,
                                      const Variables &outputs,
                                      const vector<bool> &propagate_down,
                                      const vector<bool> &accum) {
+  typedef typename CudaType<T1>::type Tc;
+  // atomicAdd doesn't support half precision. Force to use float32 instead.
+  typedef typename CudaTypeForceFloat<T1>::type Tw;
 
   NBLA_CHECK(!propagate_down[0], error_code::value,
              "Index array can not be propagated down.");
@@ -75,8 +80,8 @@ void EmbedCuda<T, T1>::backward_impl(const Variables &inputs,
   if (!accum[1])
     inputs[1]->grad()->zero();
   const T *x = inputs[0]->get_data_pointer<T>(this->ctx_);
-  T1 *dw = inputs[1]->cast_grad_and_get_pointer<T1>(this->ctx_);
-  const T1 *dy = outputs[0]->get_grad_pointer<T1>(this->ctx_);
+  Tw *dw = inputs[1]->cast_grad_and_get_pointer<Tw>(this->ctx_);
+  const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
 
   Size_t stride0 = inputs[1]->size(1);
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_embed_backward_weight,

@@ -37,9 +37,9 @@ template <typename T>
 void StackCuda<T>::forward_impl(const Variables &inputs,
                                 const Variables &outputs) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
   for (int i0 = 0; i0 < this->num_inputs_; ++i0) {
-    const T *x = inputs[i0]->get_data_pointer<T>(this->ctx_);
+    const Tc *x = inputs[i0]->get_data_pointer<Tc>(this->ctx_);
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
         forward_stack_kernel, this->inner_size_ * this->outer_size_,
         this->num_inputs_, this->outer_size_, this->inner_size_, i0, x, y);
@@ -55,7 +55,7 @@ __global__ void backward_stack_kernel(const int num, const int num_inputs_,
     const int i1 = idx / inner_size_;
     const int i2 = idx % inner_size_;
     T &ref = dx[i1 * inner_size_ + i2];
-    ref = (accum ? ref : 0) +
+    ref = (accum ? ref : (T)0) +
           dy[i1 * (inner_size_ * num_inputs_) + i0 * inner_size_ + i2];
   }
 }
@@ -66,17 +66,17 @@ void StackCuda<T>::backward_impl(const Variables &inputs,
                                  const vector<bool> &propagate_down,
                                  const vector<bool> &accum) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  const T *dy = outputs[0]->get_grad_pointer<T>(this->ctx_);
+  const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
   for (int i0 = 0; i0 < this->num_inputs_; ++i0) {
     if (propagate_down[i0]) {
-      T *dx = inputs[i0]->cast_grad_and_get_pointer<T>(this->ctx_);
+      Tc *dx = inputs[i0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
       if (accum[i0]) {
-        NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((backward_stack_kernel<T, true>),
+        NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((backward_stack_kernel<Tc, true>),
                                        this->inner_size_ * this->outer_size_,
                                        this->num_inputs_, this->outer_size_,
                                        this->inner_size_, i0, dx, dy);
       } else {
-        NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((backward_stack_kernel<T, false>),
+        NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((backward_stack_kernel<Tc, false>),
                                        this->inner_size_ * this->outer_size_,
                                        this->num_inputs_, this->outer_size_,
                                        this->inner_size_, i0, dx, dy);

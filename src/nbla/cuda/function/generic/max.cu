@@ -20,8 +20,10 @@
 namespace nbla {
 
 template <typename T>
-void MaxCuda<T>::forward_impl_reduce(const T *x, T *y, int outer_size,
+void MaxCuda<T>::forward_impl_reduce(const T *x_, T *y_, int outer_size,
                                      int reduction_size) {
+  const Tc *x = reinterpret_cast<const Tc *>(x_);
+  Tc *y = reinterpret_cast<Tc *>(y_);
   cuda_set_device(this->device_);
   VariablePtr vind = this->index_buff_;
   int *ind = vind->cast_data_and_get_pointer<int>(this->ctx_);
@@ -29,15 +31,15 @@ void MaxCuda<T>::forward_impl_reduce(const T *x, T *y, int outer_size,
   // TODO: Auto tune.
   if (reduction_size / outer_size < 32) {
     reduce_2d_mixed_parallel(outer_size, reduction_size,
-                             MaxPreOp<T>(x, y, ind));
+                             MaxPreOp<Tc>(x, y, ind));
     return;
   }
 
   // Get block reduce buffer
-  auto fbuff = cuda_get_reduction_buffer<T>(reduction_size, this->ctx_);
+  auto fbuff = cuda_get_reduction_buffer<Tc>(reduction_size, this->ctx_);
   auto ibuff = cuda_get_reduction_buffer<int>(reduction_size, this->ctx_);
-  MaxPreOp<T> pre_op(x, fbuff.second, ibuff.second);
-  MaxPostOp<T> post_op(fbuff.second, ibuff.second, y, ind);
+  MaxPreOp<Tc> pre_op(x, fbuff.second, ibuff.second);
+  MaxPostOp<Tc> post_op(fbuff.second, ibuff.second, y, ind);
   reduce_2d_parallel_reduction(outer_size, reduction_size, pre_op, post_op);
 }
 
@@ -48,8 +50,10 @@ __global__ void kernel_reduce_index_backward(const int num, T *dx,
 }
 
 template <typename T>
-void MaxCuda<T>::backward_impl_reduce(const T *dy, T *dx, int outer_size,
+void MaxCuda<T>::backward_impl_reduce(const T *dy_, T *dx_, int outer_size,
                                       int reduction_size, bool accum) {
+  const Tc *dy = reinterpret_cast<const Tc *>(dy_);
+  Tc *dx = reinterpret_cast<Tc *>(dx_);
   cuda_set_device(this->device_);
   if (!accum) {
     cudaMemsetAsync(dx, 0, sizeof(*dx) * outer_size * reduction_size);

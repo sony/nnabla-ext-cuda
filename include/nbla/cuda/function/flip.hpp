@@ -24,10 +24,12 @@ namespace nbla {
 */
 
 template <typename T> class FlipCuda : public Flip<T> {
+
 protected:
   Variable addr_table_;
 
 public:
+  typedef typename CudaType<T>::type Tc;
   explicit FlipCuda(const Context &ctx, const vector<int> &axes)
       : Flip<T>(ctx, axes), device_(std::stoi(ctx.device_id)) {}
   virtual ~FlipCuda() {}

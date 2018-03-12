@@ -104,16 +104,16 @@ void BatchNormalizationCuda<T>::forward_impl_batch(const Variables &inputs,
     batch_var = outputs[2];
   }
   // Inputs
-  const T *x = inputs[0]->get_data_pointer<T>(this->ctx_);
-  const T *beta = inputs[1]->get_data_pointer<T>(this->ctx_);
-  const T *gamma = inputs[2]->get_data_pointer<T>(this->ctx_);
+  const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
+  const Tc *beta = inputs[1]->get_data_pointer<Tc>(this->ctx_);
+  const Tc *gamma = inputs[2]->get_data_pointer<Tc>(this->ctx_);
   // Output
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
-  T *m = batch_mean->cast_data_and_get_pointer<T>(this->ctx_); // batch mean
-  T *v = batch_var->cast_data_and_get_pointer<T>(this->ctx_);  // batch varf
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
+  Tc *m = batch_mean->cast_data_and_get_pointer<Tc>(this->ctx_); // batch mean
+  Tc *v = batch_var->cast_data_and_get_pointer<Tc>(this->ctx_);  // batch varf
   // Inputs/Outputs
-  T *rm = inputs[3]->cast_data_and_get_pointer<T>(this->ctx_); // running mean
-  T *rv = inputs[4]->cast_data_and_get_pointer<T>(this->ctx_); // running var
+  Tc *rm = inputs[3]->cast_data_and_get_pointer<Tc>(this->ctx_); // running mean
+  Tc *rv = inputs[4]->cast_data_and_get_pointer<Tc>(this->ctx_); // running var
 
 #ifdef BATCH_NORMALIZATION_USE_PARALLEL_REDUCTION
   const int ndim = inputs[0]->ndim();
@@ -121,18 +121,18 @@ void BatchNormalizationCuda<T>::forward_impl_batch(const Variables &inputs,
     return var.get_data_pointer<int>(this->ctx_);
   };
   auto get_data_ptr_ = [this](Variable &var) {
-    return var.cast_data_and_get_pointer<T>(this->ctx_);
+    return var.cast_data_and_get_pointer<Tc>(this->ctx_);
   };
   const int *axes = get_(this->v_axes_);
   const int *in_strides = get_(this->v_in_strides_);
   const int *out_strides = get_(this->v_out_strides_);
   const int *in_shape = get_(this->v_in_shape_);
   const int *out_shape = get_(this->v_out_shape_);
-  T *in_trans = get_data_ptr_(this->v_in_trans_);
-  T *mean_reduction_space = get_data_ptr_(this->v_mean_reduction_space_);
-  T *variance_reduction_space =
+  Tc *in_trans = get_data_ptr_(this->v_in_trans_);
+  Tc *mean_reduction_space = get_data_ptr_(this->v_mean_reduction_space_);
+  Tc *variance_reduction_space =
       get_data_ptr_(this->v_variance_reduction_space_);
-  T *inv_sqrt_variance = get_data_ptr_(this->v_inv_sqrt_variance_);
+  Tc *inv_sqrt_variance = get_data_ptr_(this->v_inv_sqrt_variance_);
   forward_batch_parallel_reduction(
       this->size0_, this->size1_, this->size2_, ndim, axes, in_strides,
       in_shape, out_strides, out_shape, this->decay_rate_, this->eps_, x, gamma,
@@ -148,13 +148,13 @@ template <class T>
 void BatchNormalizationCuda<T>::forward_impl_global(const Variables &inputs,
                                                     const Variables &outputs) {
   // Inputs
-  const T *x = inputs[0]->get_data_pointer<T>(this->ctx_);
-  const T *beta = inputs[1]->get_data_pointer<T>(this->ctx_);
-  const T *gamma = inputs[2]->get_data_pointer<T>(this->ctx_);
-  const T *rm = inputs[3]->get_data_pointer<T>(this->ctx_); // running mean
-  const T *rv = inputs[4]->get_data_pointer<T>(this->ctx_); // running var
+  const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
+  const Tc *beta = inputs[1]->get_data_pointer<Tc>(this->ctx_);
+  const Tc *gamma = inputs[2]->get_data_pointer<Tc>(this->ctx_);
+  const Tc *rm = inputs[3]->get_data_pointer<Tc>(this->ctx_); // running mean
+  const Tc *rv = inputs[4]->get_data_pointer<Tc>(this->ctx_); // running var
   // Output
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
 
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
       forward_global_kernel, this->size1_ * this->size02_, this->size0_,
@@ -190,12 +190,12 @@ void BatchNormalizationCuda<T>::backward_impl_batch(
     batch_var = outputs[2];
   }
   // Commont inputs wrt. gradient.
-  const T *dy = outputs[0]->get_grad_pointer<T>(this->ctx_);
-  const T *m = batch_mean->get_data_pointer<T>(this->ctx_);
-  const T *v = batch_var->get_data_pointer<T>(this->ctx_);
-  const T *x = inputs[0]->get_data_pointer<T>(this->ctx_);
+  const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
+  const Tc *m = batch_mean->get_data_pointer<Tc>(this->ctx_);
+  const Tc *v = batch_var->get_data_pointer<Tc>(this->ctx_);
+  const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
   auto get_data_ptr_ = [this](Variable &var) {
-    return var.cast_data_and_get_pointer<T>(this->ctx_);
+    return var.cast_data_and_get_pointer<Tc>(this->ctx_);
   };
 #ifdef BATCH_NORMALIZATION_USE_PARALLEL_REDUCTION
   int ndim = inputs[0]->ndim();
@@ -207,12 +207,12 @@ void BatchNormalizationCuda<T>::backward_impl_batch(
   const int *out_strides = get_(this->v_out_strides_);
   const int *in_shape = get_(this->v_in_shape_);
   const int *out_shape = get_(this->v_out_shape_);
-  T *d_x_trans = get_data_ptr_(this->v_in_trans_);
-  T *d_dy_trans = get_data_ptr_(this->v_din_trans_);
-  T *mean_reduction_space = get_data_ptr_(this->v_mean_reduction_space_);
-  T *variance_reduction_space =
+  Tc *d_x_trans = get_data_ptr_(this->v_in_trans_);
+  Tc *d_dy_trans = get_data_ptr_(this->v_din_trans_);
+  Tc *mean_reduction_space = get_data_ptr_(this->v_mean_reduction_space_);
+  Tc *variance_reduction_space =
       get_data_ptr_(this->v_variance_reduction_space_);
-  T *inv_sqrt_variance = get_data_ptr_(this->v_inv_sqrt_variance_);
+  Tc *inv_sqrt_variance = get_data_ptr_(this->v_inv_sqrt_variance_);
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
       transpose_2value_kernel, this->size1_ * this->size02_, ndim, axes,
       in_strides, out_strides, out_shape, x, dy, d_x_trans, d_dy_trans);
@@ -220,19 +220,19 @@ void BatchNormalizationCuda<T>::backward_impl_batch(
   if (propagate_down[0]) {
     if (!accum[0])
       inputs[0]->grad()->zero(); // TODO: optimize this out if possible
-    T *dx = inputs[0]->cast_grad_and_get_pointer<T>(this->ctx_);
-    const T *g = inputs[2]->get_data_pointer<T>(this->ctx_);
-    const T *dm = nullptr;
-    const T *dv = nullptr;
+    Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
+    const Tc *g = inputs[2]->get_data_pointer<Tc>(this->ctx_);
+    const Tc *dm = nullptr;
+    const Tc *dv = nullptr;
     if (outputs.size() == 3) {
-      dm = batch_mean->get_grad_pointer<T>(this->ctx_);
-      dv = batch_var->get_grad_pointer<T>(this->ctx_);
+      dm = batch_mean->get_grad_pointer<Tc>(this->ctx_);
+      dv = batch_var->get_grad_pointer<Tc>(this->ctx_);
     }
-    T *dmean = get_data_ptr_(this->v_dmean_);
-    T *dvar = get_data_ptr_(this->v_dvar_);
+    Tc *dmean = get_data_ptr_(this->v_dmean_);
+    Tc *dvar = get_data_ptr_(this->v_dvar_);
 #ifdef BATCH_NORMALIZATION_USE_PARALLEL_REDUCTION
-    T *tmp_reduction_space = get_data_ptr_(this->v_tmp_reduction_space_);
-    T *t = get_data_ptr_(this->v_t_);
+    Tc *tmp_reduction_space = get_data_ptr_(this->v_tmp_reduction_space_);
+    Tc *t = get_data_ptr_(this->v_t_);
     backward_batch_data_parallel_reduction(
         this->size0_, this->size1_, this->size2_, ndim, axes, in_strides,
         in_shape, out_strides, out_shape, this->decay_rate_, this->eps_, dy, m,
@@ -252,8 +252,8 @@ void BatchNormalizationCuda<T>::backward_impl_batch(
       inputs[1]->grad()->zero(); // TODO: optimize this out if possible
     if (!accum[2])
       inputs[2]->grad()->zero(); // TODO: optimize this out if possible
-    T *db = inputs[1]->cast_grad_and_get_pointer<T>(this->ctx_);
-    T *dg = inputs[2]->cast_grad_and_get_pointer<T>(this->ctx_);
+    Tc *db = inputs[1]->cast_grad_and_get_pointer<Tc>(this->ctx_);
+    Tc *dg = inputs[2]->cast_grad_and_get_pointer<Tc>(this->ctx_);
 #ifdef BATCH_NORMALIZATION_USE_PARALLEL_REDUCTION
     backward_batch_gamma_beta_parallel_reduction(
         this->size0_, this->size1_, this->size2_, d_dy_trans, m, v, d_x_trans,

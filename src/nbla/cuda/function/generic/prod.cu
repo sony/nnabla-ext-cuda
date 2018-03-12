@@ -20,19 +20,21 @@
 namespace nbla {
 
 template <typename T>
-void ProdCuda<T>::forward_impl_reduce(const T *x, T *y, int outer_size,
+void ProdCuda<T>::forward_impl_reduce(const T *x_, T *y_, int outer_size,
                                       int reduction_size) {
+  const Tc *x = reinterpret_cast<const Tc *>(x_);
+  Tc *y = reinterpret_cast<Tc *>(y_);
   cuda_set_device(this->device_);
   // TODO: Auto tune.
   if (reduction_size / outer_size < 32) {
-    reduce_2d_mixed_parallel(outer_size, reduction_size, ProdOp<T>(x, y));
+    reduce_2d_mixed_parallel(outer_size, reduction_size, ProdOp<Tc>(x, y));
     return;
   }
 
   // Get block reduce buffer
-  auto fbuff = cuda_get_reduction_buffer<T>(reduction_size, this->ctx_);
-  ProdOp<T> pre_op(x, fbuff.second);
-  ProdOp<T> post_op(fbuff.second, y);
+  auto fbuff = cuda_get_reduction_buffer<Tc>(reduction_size, this->ctx_);
+  ProdOp<Tc> pre_op(x, fbuff.second);
+  ProdOp<Tc> post_op(fbuff.second, y);
   reduce_2d_parallel_reduction(outer_size, reduction_size, pre_op, post_op);
 }
 
@@ -43,24 +45,28 @@ __global__ void kernel_reduce_prod_backward(const int num, int reduction_size,
   NBLA_CUDA_KERNEL_LOOP(idx, num) {
     int o = idx / reduction_size;
     if (accum) {
-      dx[idx] += x[idx] == 0 ? 0 : dy[o] * y[o] / x[idx];
+      dx[idx] += x[idx] == 0 ? (T)0 : dy[o] * y[o] / x[idx];
     } else {
-      dx[idx] = x[idx] == 0 ? 0 : dy[o] * y[o] / x[idx];
+      dx[idx] = x[idx] == 0 ? (T)0 : dy[o] * y[o] / x[idx];
     }
   }
 }
 
 template <typename T>
-void ProdCuda<T>::backward_impl_reduce_prod(const T *dy, const T *x, const T *y,
-                                            T *dx, int outer_size,
+void ProdCuda<T>::backward_impl_reduce_prod(const T *dy_, const T *x_,
+                                            const T *y_, T *dx_, int outer_size,
                                             int reduction_size, bool accum) {
+  const Tc *dy = reinterpret_cast<const Tc *>(dy_);
+  const Tc *x = reinterpret_cast<const Tc *>(x_);
+  const Tc *y = reinterpret_cast<const Tc *>(y_);
+  Tc *dx = reinterpret_cast<Tc *>(dx_);
   cuda_set_device(this->device_);
   if (accum) {
-    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_reduce_prod_backward<T, true>),
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_reduce_prod_backward<Tc, true>),
                                    outer_size * reduction_size, reduction_size,
                                    dy, x, y, dx);
   } else {
-    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_reduce_prod_backward<T, false>),
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_reduce_prod_backward<Tc, false>),
                                    outer_size * reduction_size, reduction_size,
                                    dy, x, y, dx);
   }

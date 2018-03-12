@@ -29,7 +29,7 @@ __global__ void kernel_crelu_forward(const int size10_, const int size0_,
     int i1 = idx / size0_;
     int i0 = idx % size0_;
     y[i1 * size0_ * 2 + i0] = max(T(0), x[i1 * size0_ + i0]);
-    y[i1 * size0_ * 2 + size0_ + i0] = max(T(0), -1 * x[i1 * size0_ + i0]);
+    y[i1 * size0_ * 2 + size0_ + i0] = max(T(0), -x[i1 * size0_ + i0]);
   }
 }
 
@@ -40,11 +40,11 @@ __global__ void kernel_crelu_backward(const int size10_, const int size0_,
     int i1 = idx / size0_;
     int i0 = idx % size0_;
     dx[i1 * size0_ + i0] =
-        (accum ? dx[i1 * size0_ + i0] : 0) +
+        (accum ? dx[i1 * size0_ + i0] : (T)0) +
         (x[i1 * size0_ + i0] > 0
              ? dy[i1 * size0_ * 2 + i0]
              : -(x[i1 * size0_ + i0] < 0 ? dy[i1 * size0_ * 2 + size0_ + i0]
-                                         : 0));
+                                         : (T)0));
   }
 }
 
@@ -58,8 +58,8 @@ template <class T>
 void CReLUCuda<T>::forward_impl(const Variables &inputs,
                                 const Variables &outputs) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  const T *x = inputs[0]->get_data_pointer<T>(this->ctx_);
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
+  const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
       kernel_crelu_forward, this->size0_ * this->size1_, this->size0_, x, y);
 }
@@ -73,15 +73,15 @@ void CReLUCuda<T>::backward_impl(const Variables &inputs,
     return;
   }
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  const T *x = inputs[0]->get_data_pointer<T>(this->ctx_);
-  T *dx = inputs[0]->cast_grad_and_get_pointer<T>(this->ctx_);
-  const T *dy = outputs[0]->get_grad_pointer<T>(this->ctx_);
+  const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
+  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
+  const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
   if (accum[0]) {
-    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_crelu_backward<T, true>),
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_crelu_backward<Tc, true>),
                                    this->size0_ * this->size1_, this->size0_, x,
                                    dy, dx);
   } else {
-    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_crelu_backward<T, false>),
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_crelu_backward<Tc, false>),
                                    this->size0_ * this->size1_, this->size0_, x,
                                    dy, dx);
   }

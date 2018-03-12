@@ -23,7 +23,9 @@
 namespace nbla {
 
 template <typename T> class ConcatenateCuda : public Concatenate<T> {
+
 public:
+  typedef typename CudaType<T>::type Tc;
   explicit ConcatenateCuda(const Context &ctx, int axis)
       : Concatenate<T>(ctx, axis) {}
   virtual ~ConcatenateCuda() {}

@@ -67,14 +67,14 @@ template <class T>
 void MeanSubtractionCuda<T>::forward_impl_batch(const Variables &inputs,
                                                 const Variables &outputs) {
   // Inputs
-  const T *x = inputs[0]->get_data_pointer<T>(this->ctx_);
+  const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
   // Output
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
   Variable *batch_mean = &this->mean_;
-  T *m = batch_mean->cast_data_and_get_pointer<T>(this->ctx_); // batch mean
+  Tc *m = batch_mean->cast_data_and_get_pointer<Tc>(this->ctx_); // batch mean
 
   // Inputs/Outputs
-  T *rm = inputs[1]->cast_data_and_get_pointer<T>(this->ctx_); // running mean
+  Tc *rm = inputs[1]->cast_data_and_get_pointer<Tc>(this->ctx_); // running mean
   int *t =
       inputs[2]->cast_data_and_get_pointer<int>(this->ctx_); // running count
 
@@ -99,11 +99,11 @@ template <class T>
 void MeanSubtractionCuda<T>::forward_impl_global(const Variables &inputs,
                                                  const Variables &outputs) {
   // Inputs
-  const T *x = inputs[0]->get_data_pointer<T>(this->ctx_);
-  const T *rm = inputs[1]->get_data_pointer<T>(this->ctx_); // running mean
+  const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
+  const Tc *rm = inputs[1]->get_data_pointer<Tc>(this->ctx_); // running mean
 
   // Output
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
 
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_mean_subtraction_forward_global,
                                  this->size1_, this->size0_, x, rm, y);
@@ -128,7 +128,7 @@ kernel_mean_subtraction_backward_batch(const int num, T *dx, const T *dy,
                                        const int *t, const int size0_) {
   const T factor = (T)1.0 / ((*t) * size0_);
   NBLA_CUDA_KERNEL_LOOP(idx, num) {
-    dx[idx] = (accum ? dx[idx] : 0) + dy[idx] * (1 - factor);
+    dx[idx] = (accum ? dx[idx] : (T)0) + dy[idx] * (1 - factor);
   }
 }
 
@@ -140,17 +140,17 @@ void MeanSubtractionCuda<T>::backward_impl_batch(
     return;
   }
 
-  const T *dy = outputs[0]->get_grad_pointer<T>(this->ctx_);
-  T *dx = inputs[0]->cast_grad_and_get_pointer<T>(this->ctx_);
+  const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
+  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
   const int *t = inputs[2]->get_data_pointer<int>(this->ctx_);
   size_t size = inputs[0]->size();
   if (accum[0]) {
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-        (kernel_mean_subtraction_backward_batch<T, true>), size, dx, dy, t,
+        (kernel_mean_subtraction_backward_batch<Tc, true>), size, dx, dy, t,
         this->size0_);
   } else {
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-        (kernel_mean_subtraction_backward_batch<T, false>), size, dx, dy, t,
+        (kernel_mean_subtraction_backward_batch<Tc, false>), size, dx, dy, t,
         this->size0_);
   }
 }
@@ -158,7 +158,9 @@ void MeanSubtractionCuda<T>::backward_impl_batch(
 template <typename T, bool accum>
 __global__ void kernel_mean_subtraction_backward_global(const int num, T *dx,
                                                         const T *dy) {
-  NBLA_CUDA_KERNEL_LOOP(idx, num) { dx[idx] = (accum ? dx[idx] : 0) + dy[idx]; }
+  NBLA_CUDA_KERNEL_LOOP(idx, num) {
+    dx[idx] = (accum ? dx[idx] : (T)0) + dy[idx];
+  }
 }
 
 template <class T>
@@ -169,15 +171,15 @@ void MeanSubtractionCuda<T>::backward_impl_global(
     return;
   }
 
-  const T *dy = outputs[0]->get_grad_pointer<T>(this->ctx_);
-  T *dx = inputs[0]->cast_grad_and_get_pointer<T>(this->ctx_);
+  const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
+  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
   size_t size = inputs[0]->size();
   if (accum[0]) {
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-        (kernel_mean_subtraction_backward_global<T, true>), size, dx, dy);
+        (kernel_mean_subtraction_backward_global<Tc, true>), size, dx, dy);
   } else {
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-        (kernel_mean_subtraction_backward_global<T, false>), size, dx, dy);
+        (kernel_mean_subtraction_backward_global<Tc, false>), size, dx, dy);
   }
 }
 }

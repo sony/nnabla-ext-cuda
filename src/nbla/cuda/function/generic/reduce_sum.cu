@@ -34,12 +34,13 @@ __global__ void kernel_reduce_sum_backward(const int num, T *dx, const T *dy) {
 template <class T>
 void ReduceSumCuda<T>::forward_impl(const Variables &inputs,
                                     const Variables &outputs) {
+  typedef typename CudaTypeForceFloat<T>::type Tc;
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
   const Size_t size = inputs[0]->size();
-  thrust::device_ptr<const T> x(inputs[0]->get_data_pointer<T>(this->ctx_));
-  T sum = thrust::reduce(x, x + size, (T)0, thrust::plus<T>());
-  cudaMemcpy(y, &sum, sizeof(T), cudaMemcpyHostToDevice);
+  thrust::device_ptr<const Tc> x(inputs[0]->get_data_pointer<Tc>(this->ctx_));
+  Tc sum = thrust::reduce(x, x + size, (Tc)0, thrust::plus<Tc>());
+  cudaMemcpy(y, &sum, sizeof(Tc), cudaMemcpyHostToDevice);
 }
 
 template <class T>
@@ -51,8 +52,8 @@ void ReduceSumCuda<T>::backward_impl(const Variables &inputs,
     return;
   }
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  const T *dy = outputs[0]->get_grad_pointer<T>(this->ctx_);
-  T *dx = inputs[0]->cast_grad_and_get_pointer<T>(this->ctx_);
+  const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
+  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
   const Size_t size = inputs[0]->size();
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_reduce_sum_backward, size, dx, dy);
 }
