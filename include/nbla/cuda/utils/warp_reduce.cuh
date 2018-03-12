@@ -36,55 +36,35 @@ __inline__ __device__ void warpReduce(ReduceOp &op,
 }
 
 template <typename T> __inline__ __device__ T warpReduceSum(T val) {
-#if __CUDA_ARCH__ >= 300
-#define SHFL_DOWN __shfl_down
-#else
-#define SHFL_DOWN pre_fermi_shfl_down
-#endif
   for (int offset = warpSize / 2; offset > 0; offset /= 2) {
-    val += SHFL_DOWN(val, offset);
+    val += shuffle_down(val, offset);
   }
   return val;
 }
 
 __inline__ __device__ float2 warpReduceSumOfFloat2(float2 val) {
-#if __CUDA_ARCH__ >= 300
-#define SHFL_DOWN __shfl_down
-#else
-#define SHFL_DOWN pre_fermi_shfl_down
-#endif
   for (int offset = warpSize / 2; offset > 0; offset /= 2) {
-    val.x += SHFL_DOWN(val.x, offset);
-    val.y += SHFL_DOWN(val.y, offset);
+    val.x += shuffle_down(val.x, offset);
+    val.y += shuffle_down(val.y, offset);
   }
   return val;
 }
 
 __inline__ __device__ float3 warpReduceSumOfFloat3(float3 val) {
-#if __CUDA_ARCH__ >= 300
-#define SHFL_DOWN __shfl_down
-#else
-#define SHFL_DOWN pre_fermi_shfl_down
-#endif
   for (int offset = warpSize / 2; offset > 0; offset /= 2) {
-    val.x += SHFL_DOWN(val.x, offset);
-    val.y += SHFL_DOWN(val.y, offset);
-    val.z += SHFL_DOWN(val.z, offset);
+    val.x += shuffle_down(val.x, offset);
+    val.y += shuffle_down(val.y, offset);
+    val.z += shuffle_down(val.z, offset);
   }
   return val;
 }
 
 __inline__ __device__ float4 warpReduceSumOfFloat4(float4 val) {
-#if __CUDA_ARCH__ >= 300
-#define SHFL_DOWN __shfl_down
-#else
-#define SHFL_DOWN pre_fermi_shfl_down
-#endif
   for (int offset = warpSize / 2; offset > 0; offset /= 2) {
-    val.x += SHFL_DOWN(val.x, offset);
-    val.y += SHFL_DOWN(val.y, offset);
-    val.z += SHFL_DOWN(val.z, offset);
-    val.w += SHFL_DOWN(val.w, offset);
+    val.x += shuffle_down(val.x, offset);
+    val.y += shuffle_down(val.y, offset);
+    val.z += shuffle_down(val.z, offset);
+    val.w += shuffle_down(val.w, offset);
   }
   return val;
 }
