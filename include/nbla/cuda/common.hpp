@@ -21,11 +21,14 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <curand.h>
+#include <library_types.h>
 
 #include <nbla/common.hpp>
 #include <nbla/cuda/defs.hpp>
 #include <nbla/cuda/init.hpp>
 #include <nbla/exception.hpp>
+
+#include <nbla/cuda/half.hpp>
 
 #include <map>
 
@@ -113,6 +116,21 @@ inline string curand_status_to_string(curandStatus_t status) {
     NBLA_CHECK(status == CURAND_STATUS_SUCCESS, error_code::target_specific,   \
                curand_status_to_string(status));                               \
   }
+
+/** Data type */
+template <typename T> struct cuda_data_type;
+#define CUDA_TYPE_T(TYPE, ENUM)                                                \
+  template <> struct cuda_data_type<TYPE> {                                    \
+    static cudaDataType_t type() { return CUDA_##ENUM; }                       \
+  }
+CUDA_TYPE_T(double, R_64F);
+CUDA_TYPE_T(float, R_32F);
+CUDA_TYPE_T(half, R_16F);
+CUDA_TYPE_T(Half, R_16F);
+CUDA_TYPE_T(HalfCuda, R_16F);
+CUDA_TYPE_T(uint8_t, R_8U);
+CUDA_TYPE_T(int8_t, R_8I);
+#undef CUDA_TYPE_T
 
 /** ceil(N/D) where N and D are integers */
 #define NBLA_CEIL_INT_DIV(N, D)                                                \
