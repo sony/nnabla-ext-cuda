@@ -69,4 +69,26 @@ im2col_kernel(const int col_size, const T *img, const int height,
 #endif
   }
 }
+template <>
+inline __global__ void
+im2col_kernel(const int col_size, const HalfCuda *img, const int height,
+              const int width, const int kernel_h, const int kernel_w,
+              const int pad_h, const int pad_w, const int stride_h,
+              const int stride_w, const int dilation_h, const int dilation_w,
+              const int h_o, const int w_o, HalfCuda *col) {
+  NBLA_CUDA_KERNEL_LOOP(idx, col_size) {
+    const int c_col = idx / (kernel_h * kernel_w * h_o * w_o);
+    const int h_idx = idx / w_o;
+    const int h_col = h_idx % h_o;
+    const int w_col = idx % w_o;
+    const int c_im = h_idx / h_o;
+    const int y_k = c_im / kernel_w % kernel_h;
+    const int x_k = c_im % kernel_w;
+    const int y_i = h_col * stride_h - pad_h + y_k * dilation_h;
+    const int x_i = w_col * stride_w - pad_w + x_k * dilation_w;
+    col[idx] = (y_i >= 0 && x_i >= 0 && y_i < height && x_i < width)
+                   ? img[(c_col * height + y_i) * width + x_i]
+                   : (HalfCuda)0;
+  }
+}
 }
