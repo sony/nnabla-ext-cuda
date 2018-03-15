@@ -78,7 +78,7 @@ void SoftmaxCuda<T>::forward_impl(const Variables &inputs,
   cuda_set_device(std::stoi(this->ctx_.device_id));
   // Setting up variables
   const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
-  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_softmax_forward,
                                  this->size0_ * this->size2_, this->size1_,
                                  this->size2_, x, y);
@@ -96,7 +96,7 @@ void SoftmaxCuda<T>::backward_impl(const Variables &inputs,
   // Setting up variables
   const Tc *y = outputs[0]->get_data_pointer<Tc>(this->ctx_);
   const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
-  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
+  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_, !accum[0]);
   if (accum[0]) {
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_softmax_backward<Tc, true>),
                                    this->size0_ * this->size2_, this->size1_,

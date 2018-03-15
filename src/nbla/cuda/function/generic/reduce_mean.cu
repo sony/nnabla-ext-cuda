@@ -38,7 +38,7 @@ void ReduceMeanCuda<T>::forward_impl(const Variables &inputs,
   // Thrust doesn't support half reduction.
   typedef typename CudaTypeForceFloat<T>::type Tc;
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
   const Size_t size = inputs[0]->size();
   thrust::device_ptr<const Tc> x(inputs[0]->get_data_pointer<Tc>(this->ctx_));
   Tc sum = thrust::reduce(x, x + size, (Tc)0, thrust::plus<Tc>());
@@ -56,7 +56,7 @@ void ReduceMeanCuda<T>::backward_impl(const Variables &inputs,
   }
   cuda_set_device(std::stoi(this->ctx_.device_id));
   const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
-  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
+  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_, !accum[0]);
   const Size_t size = inputs[0]->size();
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_reduce_mean_backward, size, dx, dy);
 }

@@ -28,7 +28,7 @@ void AffineCuda<T>::forward_impl(const Variables &inputs,
   cuda_set_device(std::stoi(this->ctx_.device_id));
   const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
   const Tc *w = inputs[1]->get_data_pointer<Tc>(this->ctx_);
-  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
   // y = x * w.
   cuda_gemm<Tc>(device_, y, true, x, this->i_col_, this->i_row_, true, w,
                 this->w_col_, this->w_row_, true, 1,
@@ -57,7 +57,7 @@ void AffineCuda<T>::backward_impl(const Variables &inputs,
   cuda_set_device(std::stoi(this->ctx_.device_id));
   const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
   if (propagate_down[0]) {
-    Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
+    Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_, !accum[0]);
     const Tc *w = inputs[1]->get_data_pointer<Tc>(this->ctx_);
     // dx += dy * w^t
     cuda_gemm<Tc>(device_, dx, true, dy, this->o_col_, this->o_row_, true, w,
@@ -66,7 +66,7 @@ void AffineCuda<T>::backward_impl(const Variables &inputs,
   }
   if (propagate_down[1]) {
     const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
-    Tc *dw = inputs[1]->cast_grad_and_get_pointer<Tc>(this->ctx_);
+    Tc *dw = inputs[1]->cast_grad_and_get_pointer<Tc>(this->ctx_, !accum[1]);
     // dw += x^t * dy;
     cuda_gemm<Tc>(device_, dw, true, x, this->i_col_, this->i_row_, false, dy,
                   this->o_col_, this->o_row_, true, 1,
@@ -74,7 +74,7 @@ void AffineCuda<T>::backward_impl(const Variables &inputs,
   }
   if (inputs.size() == 3 && propagate_down[2]) {
     // With bias.
-    Tc *db = inputs[2]->cast_grad_and_get_pointer<Tc>(this->ctx_);
+    Tc *db = inputs[2]->cast_grad_and_get_pointer<Tc>(this->ctx_, !accum[2]);
     const Tc *ones =
         static_cast<const Tc *>(SingletonManager::get<NNabla>()->ones(
             this->o_row_, get_dtype<Tc>(), this->ctx_));

@@ -32,7 +32,7 @@ void BinaryErrorCuda<T>::forward_impl(const Variables &inputs,
   cuda_set_device(std::stoi(this->ctx_.device_id));
   const Tc *x0 = inputs[0]->get_data_pointer<Tc>(this->ctx_);
   const Tc *x1 = inputs[1]->get_data_pointer<Tc>(this->ctx_);
-  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
   const Size_t size = inputs[0]->size();
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_binary_error_forward, size, x0, x1, y);
 }

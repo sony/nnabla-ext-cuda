@@ -58,11 +58,11 @@ void BatchNormalizationCuda<T>::setup_impl(const Variables &inputs,
 
   // make shape for transpose
   Context cpu; // CPU Context
-  int *p_axes = v_axes_.cast_data_and_get_pointer<int>(cpu);
-  int *p_in_strides = v_in_strides_.cast_data_and_get_pointer<int>(cpu);
-  int *p_out_strides = v_out_strides_.cast_data_and_get_pointer<int>(cpu);
-  int *p_out_shape = v_out_shape_.cast_data_and_get_pointer<int>(cpu);
-  int *p_in_shape = v_in_shape_.cast_data_and_get_pointer<int>(cpu);
+  int *p_axes = v_axes_.cast_data_and_get_pointer<int>(cpu, true);
+  int *p_in_strides = v_in_strides_.cast_data_and_get_pointer<int>(cpu, true);
+  int *p_out_strides = v_out_strides_.cast_data_and_get_pointer<int>(cpu, true);
+  int *p_out_shape = v_out_shape_.cast_data_and_get_pointer<int>(cpu, true);
+  int *p_in_shape = v_in_shape_.cast_data_and_get_pointer<int>(cpu, true);
   for (int i = 0; i < ndim; p_axes[i] = i, ++i)
     ;
   if (this->axes_[0] != 0) {
@@ -108,9 +108,11 @@ void BatchNormalizationCuda<T>::forward_impl_batch(const Variables &inputs,
   const Tc *beta = inputs[1]->get_data_pointer<Tc>(this->ctx_);
   const Tc *gamma = inputs[2]->get_data_pointer<Tc>(this->ctx_);
   // Output
-  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
-  Tc *m = batch_mean->cast_data_and_get_pointer<Tc>(this->ctx_); // batch mean
-  Tc *v = batch_var->cast_data_and_get_pointer<Tc>(this->ctx_);  // batch varf
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
+  Tc *m =
+      batch_mean->cast_data_and_get_pointer<Tc>(this->ctx_, true); // batch mean
+  Tc *v =
+      batch_var->cast_data_and_get_pointer<Tc>(this->ctx_, true); // batch varf
   // Inputs/Outputs
   Tc *rm = inputs[3]->cast_data_and_get_pointer<Tc>(this->ctx_); // running mean
   Tc *rv = inputs[4]->cast_data_and_get_pointer<Tc>(this->ctx_); // running var
@@ -154,7 +156,7 @@ void BatchNormalizationCuda<T>::forward_impl_global(const Variables &inputs,
   const Tc *rm = inputs[3]->get_data_pointer<Tc>(this->ctx_); // running mean
   const Tc *rv = inputs[4]->get_data_pointer<Tc>(this->ctx_); // running var
   // Output
-  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
 
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
       forward_global_kernel, this->size1_ * this->size02_, this->size0_,
@@ -207,6 +209,7 @@ void BatchNormalizationCuda<T>::backward_impl_batch(
   const int *out_strides = get_(this->v_out_strides_);
   const int *in_shape = get_(this->v_in_shape_);
   const int *out_shape = get_(this->v_out_shape_);
+  // TODO: write_only flags
   Tc *d_x_trans = get_data_ptr_(this->v_in_trans_);
   Tc *d_dy_trans = get_data_ptr_(this->v_din_trans_);
   Tc *mean_reduction_space = get_data_ptr_(this->v_mean_reduction_space_);
@@ -220,7 +223,7 @@ void BatchNormalizationCuda<T>::backward_impl_batch(
   if (propagate_down[0]) {
     if (!accum[0])
       inputs[0]->grad()->zero(); // TODO: optimize this out if possible
-    Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
+    Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_, false);
     const Tc *g = inputs[2]->get_data_pointer<Tc>(this->ctx_);
     const Tc *dm = nullptr;
     const Tc *dv = nullptr;
@@ -252,8 +255,8 @@ void BatchNormalizationCuda<T>::backward_impl_batch(
       inputs[1]->grad()->zero(); // TODO: optimize this out if possible
     if (!accum[2])
       inputs[2]->grad()->zero(); // TODO: optimize this out if possible
-    Tc *db = inputs[1]->cast_grad_and_get_pointer<Tc>(this->ctx_);
-    Tc *dg = inputs[2]->cast_grad_and_get_pointer<Tc>(this->ctx_);
+    Tc *db = inputs[1]->cast_grad_and_get_pointer<Tc>(this->ctx_, false);
+    Tc *dg = inputs[2]->cast_grad_and_get_pointer<Tc>(this->ctx_, false);
 #ifdef BATCH_NORMALIZATION_USE_PARALLEL_REDUCTION
     backward_batch_gamma_beta_parallel_reduction(
         this->size0_, this->size1_, this->size2_, d_dy_trans, m, v, d_x_trans,

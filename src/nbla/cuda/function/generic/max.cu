@@ -26,7 +26,7 @@ void MaxCuda<T>::forward_impl_reduce(const T *x_, T *y_, int outer_size,
   Tc *y = reinterpret_cast<Tc *>(y_);
   cuda_set_device(this->device_);
   VariablePtr vind = this->index_buff_;
-  int *ind = vind->cast_data_and_get_pointer<int>(this->ctx_);
+  int *ind = vind->cast_data_and_get_pointer<int>(this->ctx_, true);
 
   // TODO: Auto tune.
   if (reduction_size / outer_size < 32) {

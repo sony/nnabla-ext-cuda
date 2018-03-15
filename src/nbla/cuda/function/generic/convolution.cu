@@ -42,8 +42,8 @@ void ConvolutionCuda<T>::forward_impl(const Variables &inputs,
   const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
   const Tc *w = inputs[1]->get_data_pointer<Tc>(this->ctx_);
   Variable *vcol = &this->col_;
-  Tc *col = vcol->cast_data_and_get_pointer<Tc>(this->ctx_);
-  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
+  Tc *col = vcol->cast_data_and_get_pointer<Tc>(this->ctx_, true);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
   const Tc *b;
   if (inputs.size() == 3) {
     b = inputs[2]->get_data_pointer<Tc>(this->ctx_);
@@ -99,24 +99,24 @@ void ConvolutionCuda<T>::backward_impl(const Variables &inputs,
   Tc *dx, *dw, *db, *col;
   Variable *temp_col = &this->col_;
   if (propagate_down[0] || propagate_down[1]) {
-    col = temp_col->cast_data_and_get_pointer<Tc>(this->ctx_);
+    col = temp_col->cast_data_and_get_pointer<Tc>(this->ctx_, true);
   }
   if (propagate_down[0]) {
     if (!accum[0])
       inputs[0]->grad()->zero();
     w = inputs[1]->get_data_pointer<Tc>(this->ctx_);
-    dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
+    dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_, false);
   }
   if (propagate_down[1]) {
     if (!accum[1])
       inputs[1]->grad()->zero();
     x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
-    dw = inputs[1]->cast_grad_and_get_pointer<Tc>(this->ctx_);
+    dw = inputs[1]->cast_grad_and_get_pointer<Tc>(this->ctx_, false);
   }
   if (inputs.size() == 3 && propagate_down[2]) {
     if (!accum[2])
       inputs[2]->grad()->zero();
-    db = inputs[2]->cast_grad_and_get_pointer<Tc>(this->ctx_);
+    db = inputs[2]->cast_grad_and_get_pointer<Tc>(this->ctx_, false);
   }
   // Sample loop
   for (int n = 0; n < this->outer_size_; ++n) {

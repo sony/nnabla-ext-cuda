@@ -58,7 +58,7 @@ template <class T>
 void ConcatenateCuda<T>::forward_impl(const Variables &inputs,
                                       const Variables &outputs) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
   int inner_offset = 0;
   for (int c = 0; c < inputs.size(); ++c) {
     const Tc *x = inputs[c]->get_data_pointer<Tc>(this->ctx_);
@@ -84,7 +84,7 @@ void ConcatenateCuda<T>::backward_impl(const Variables &inputs,
   for (int c = 0; c < inputs.size(); ++c) {
     const int inner_size = inputs[c]->size(this->axis_);
     if (propagate_down[c]) {
-      Tc *dx = inputs[c]->cast_grad_and_get_pointer<Tc>(this->ctx_);
+      Tc *dx = inputs[c]->cast_grad_and_get_pointer<Tc>(this->ctx_, !accum[c]);
       if (accum[c]) {
         NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_concatenate_backward<Tc, true>),
                                        this->outer_size_ * inner_size,

@@ -30,7 +30,7 @@ template <typename T>
 void RandintCuda<T>::forward_impl(const Variables &inputs,
                                   const Variables &outputs) {
   cuda_set_device(device_);
-  int *y = outputs[0]->cast_data_and_get_pointer<int>(this->ctx_);
+  int *y = outputs[0]->cast_data_and_get_pointer<int>(this->ctx_, true);
   curand_generate_rand<int>(curand_generator_, this->low_, this->high_, y,
                             outputs[0]->size());
 }

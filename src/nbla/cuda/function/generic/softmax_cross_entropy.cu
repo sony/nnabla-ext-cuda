@@ -72,7 +72,7 @@ void SoftmaxCrossEntropyCuda<T, Tl>::forward_impl(const Variables &inputs,
   // Setting up variables
   const Tc *p = tso.get_data_pointer<Tc>(this->ctx_);
   const Tl *l = inputs[1]->get_data_pointer<Tl>(this->ctx_);
-  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_softmax_cross_entropy_forward,
                                  this->size0_ * this->size2_, this->size1_,
                                  this->size2_, p, l, y);
@@ -92,7 +92,7 @@ void SoftmaxCrossEntropyCuda<T, Tl>::backward_impl(
   const Tc *p = tso.get_data_pointer<Tc>(this->ctx_);
   const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
   const Tl *l = inputs[1]->get_data_pointer<Tl>(this->ctx_);
-  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
+  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_, !accum[0]);
   if (accum[0]) {
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
         (kernel_softmax_cross_entropy_backward<Tc, Tl, true>),

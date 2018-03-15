@@ -74,7 +74,7 @@ void DeconvolutionCudaCudnn<T>::forward_impl(const Variables &inputs,
   cuda_set_device(std::stoi(this->ctx_.device_id));
   const Tw *y = inputs[0]->get_data_pointer<Tw>(this->ctx_);
   const Tw *w = inputs[1]->get_data_pointer<Tw>(this->ctx_);
-  Tw *x = outputs[0]->cast_data_and_get_pointer<Tw>(this->ctx_);
+  Tw *x = outputs[0]->cast_data_and_get_pointer<Tw>(this->ctx_, true);
   auto alpha = get_cudnn_scalar_arg<T>(1);
   auto beta = get_cudnn_scalar_arg<T>(0);
   const Tw *b;
@@ -114,14 +114,14 @@ void DeconvolutionCudaCudnn<T>::backward_impl(
   Tw *dy, *dw, *db;
   if (propagate_down[0]) {
     w = inputs[1]->get_data_pointer<Tw>(this->ctx_);
-    dy = inputs[0]->cast_grad_and_get_pointer<Tw>(this->ctx_);
+    dy = inputs[0]->cast_grad_and_get_pointer<Tw>(this->ctx_, !accum[0]);
   }
   if (propagate_down[1]) {
     y = inputs[0]->get_data_pointer<Tw>(this->ctx_);
-    dw = inputs[1]->cast_grad_and_get_pointer<Tw>(this->ctx_);
+    dw = inputs[1]->cast_grad_and_get_pointer<Tw>(this->ctx_, !accum[1]);
   }
   if (propagate_down[2]) {
-    db = inputs[2]->cast_grad_and_get_pointer<Tw>(this->ctx_);
+    db = inputs[2]->cast_grad_and_get_pointer<Tw>(this->ctx_, !accum[2]);
   }
   auto alpha = get_cudnn_scalar_arg<T>(1);
   void *workspace = SingletonManager::get<Cuda>()->get_workspace(

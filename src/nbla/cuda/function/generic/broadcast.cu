@@ -129,7 +129,7 @@ template <typename T>
 void BroadcastCuda<T>::forward_impl(const Variables &inputs,
                                     const Variables &outputs) {
   const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
-  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
   auto _iarr = [this](Variable &v) {
     return v.get_data_pointer<int>(this->ctx_);
   };
@@ -155,7 +155,9 @@ void BroadcastCuda<T>::backward_impl(const Variables &inputs,
   if (!propagate_down[0])
     return;
   if (f_sum_) {
-    sum_input_->set_grad(outputs[0]->grad());
+    sum_input_->set_grad(outputs[0]->grad()); // What is this??? Seems like no
+                                              // effect. set_data()? set_data is
+                                              // done in setup_impl anyway.
     if (!accum[0]) {
       auto data_backup = sum_output_->data()->array();
       sum_output_->data()->set_array(inputs[0]->grad()->array());
@@ -176,7 +178,7 @@ void BroadcastCuda<T>::backward_impl(const Variables &inputs,
   };
   cuda_set_device(device_);
   const Tc *g = f_sum_ ? _get(sum_output_.get()) : _gget(outputs[0]);
-  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
+  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_, false);
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_add_grad, inputs[0]->size(), g, dx);
 }
 }

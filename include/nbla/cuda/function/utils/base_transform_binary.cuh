@@ -85,17 +85,13 @@ void forward_impl_transform_binary(const Variables &inputs,
   auto _get = [&ctx](Variable *v) { return v->get_data_pointer<T>(ctx); };
   if (f_bc0) {
     f_bc0->forward(Variables{inputs[0]}, Variables{o_bc0});
-    if (o_bc0->need_grad())
-      o_bc0->grad()->zero();
   }
   if (f_bc1) {
     f_bc1->forward(Variables{inputs[1]}, Variables{o_bc1});
-    if (o_bc1->need_grad())
-      o_bc1->grad()->zero();
   }
   const T *x0 = _get(f_bc0 ? o_bc0 : inputs[0]);
   const T *x1 = _get(f_bc1 ? o_bc1 : inputs[1]);
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(ctx);
+  T *y = outputs[0]->cast_data_and_get_pointer<T>(ctx, true);
   int size = outputs[0]->size();
   cuda_set_device(std::stoi(ctx.device_id));
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_transform_binary, size, x0, x1, y, op);
@@ -113,8 +109,8 @@ void backward_impl_transform_binary(const Variables &inputs,
     return;
   cuda_set_device(std::stoi(ctx.device_id));
   auto _get_data = [&ctx](Variable *v) { return v->get_data_pointer<T>(ctx); };
-  auto _cast_grad = [&ctx](Variable *v) {
-    return v->cast_grad_and_get_pointer<T>(ctx);
+  auto _cast_grad = [&ctx](Variable *v, bool wo) {
+    return v->cast_grad_and_get_pointer<T>(ctx, wo);
   };
   const T *dy = outputs[0]->get_grad_pointer<T>(ctx);
   const T *x0 = _get_data(f_bc0 ? o_bc0 : inputs[0]);
@@ -123,7 +119,7 @@ void backward_impl_transform_binary(const Variables &inputs,
   size_t size = outputs[0]->size();
   if (propagate_down[0]) {
     op.verify_g0();
-    T *dx0 = _cast_grad(f_bc0 ? o_bc0 : inputs[0]);
+    T *dx0 = f_bc0 ? _cast_grad(o_bc0, true) : _cast_grad(inputs[0], !accum[0]);
     if ((!f_bc0) && accum[0]) {
       NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
           (kernel_transform_binary_grad0<T, BinaryOp, true>), size, dy, x0, x1,
@@ -140,7 +136,7 @@ void backward_impl_transform_binary(const Variables &inputs,
   }
   if (propagate_down[1]) {
     op.verify_g1();
-    T *dx1 = _cast_grad(f_bc1 ? o_bc1 : inputs[1]);
+    T *dx1 = f_bc1 ? _cast_grad(o_bc1, true) : _cast_grad(inputs[1], !accum[1]);
     if ((!f_bc1) && accum[1]) {
       NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
           (kernel_transform_binary_grad1<T, BinaryOp, true>), size, dy, x0, x1,

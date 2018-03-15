@@ -69,9 +69,10 @@ void MeanSubtractionCuda<T>::forward_impl_batch(const Variables &inputs,
   // Inputs
   const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
   // Output
-  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
   Variable *batch_mean = &this->mean_;
-  Tc *m = batch_mean->cast_data_and_get_pointer<Tc>(this->ctx_); // batch mean
+  Tc *m =
+      batch_mean->cast_data_and_get_pointer<Tc>(this->ctx_, true); // batch mean
 
   // Inputs/Outputs
   Tc *rm = inputs[1]->cast_data_and_get_pointer<Tc>(this->ctx_); // running mean
@@ -103,7 +104,7 @@ void MeanSubtractionCuda<T>::forward_impl_global(const Variables &inputs,
   const Tc *rm = inputs[1]->get_data_pointer<Tc>(this->ctx_); // running mean
 
   // Output
-  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
 
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_mean_subtraction_forward_global,
                                  this->size1_, this->size0_, x, rm, y);
@@ -141,7 +142,7 @@ void MeanSubtractionCuda<T>::backward_impl_batch(
   }
 
   const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
-  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
+  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_, !accum[0]);
   const int *t = inputs[2]->get_data_pointer<int>(this->ctx_);
   size_t size = inputs[0]->size();
   if (accum[0]) {
@@ -172,7 +173,7 @@ void MeanSubtractionCuda<T>::backward_impl_global(
   }
 
   const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
-  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
+  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_, !accum[0]);
   size_t size = inputs[0]->size();
   if (accum[0]) {
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(

@@ -44,7 +44,7 @@ void TanhCudaCudnn<T>::forward_impl(const Variables &inputs,
                                     const Variables &outputs) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
   const Tw *x = inputs[0]->get_data_pointer<Tw>(this->ctx_);
-  Tw *y = outputs[0]->cast_data_and_get_pointer<Tw>(this->ctx_);
+  Tw *y = outputs[0]->cast_data_and_get_pointer<Tw>(this->ctx_, true);
   auto alpha = get_cudnn_scalar_arg<T>(1);
   auto beta = get_cudnn_scalar_arg<T>(0);
 #if CUDNN_VERSION >= 5000
@@ -70,7 +70,7 @@ void TanhCudaCudnn<T>::backward_impl(const Variables &inputs,
   const Tw *dy = outputs[0]->get_grad_pointer<Tw>(this->ctx_);
   const Tw *y = outputs[0]->get_data_pointer<Tw>(this->ctx_);
   const Tw *x = inputs[0]->get_data_pointer<Tw>(this->ctx_);
-  Tw *dx = inputs[0]->cast_grad_and_get_pointer<Tw>(this->ctx_);
+  Tw *dx = inputs[0]->cast_grad_and_get_pointer<Tw>(this->ctx_, !accum[0]);
   auto alpha = get_cudnn_scalar_arg<T>(1);
   auto beta = get_cudnn_scalar_arg<T>(accum[0] ? 1 : 0);
 #if CUDNN_VERSION >= 5000

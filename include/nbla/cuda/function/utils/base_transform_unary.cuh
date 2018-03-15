@@ -59,7 +59,7 @@ void forward_impl_transform_unary(const Variables &inputs,
                                   UnaryOp op) {
   cuda_set_device(std::stoi(ctx.device_id));
   const T *x = inputs[0]->get_data_pointer<T>(ctx);
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(ctx);
+  T *y = outputs[0]->cast_data_and_get_pointer<T>(ctx, true);
   int size = inputs[0]->size();
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_transform_unary, size, x, y, op);
 }
@@ -79,7 +79,7 @@ void backward_impl_transform_unary(const Variables &inputs,
   const T *x = inputs[0]->get_data_pointer<T>(ctx);
   const T *y = outputs[0]->get_data_pointer<T>(ctx);
   size_t size = inputs[0]->size();
-  T *g = inputs[0]->cast_grad_and_get_pointer<T>(ctx);
+  T *g = inputs[0]->cast_grad_and_get_pointer<T>(ctx, !accum[0]);
   if (accum[0]) {
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
         (kernel_transform_unary_grad<T, UnaryOp, true>), size, dy, x, y, g, op);

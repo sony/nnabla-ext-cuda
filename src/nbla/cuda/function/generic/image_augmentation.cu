@@ -125,7 +125,7 @@ void ImageAugmentationCuda<T>::setup_impl(const Variables &inputs,
     Shape_t state_shape;
     state_shape.push_back(curand_state_len * curand_state_size);
     curand_state_.reshape(state_shape, true);
-    int *state = curand_state_.cast_data_and_get_pointer<int>(this->ctx_);
+    int *state = curand_state_.cast_data_and_get_pointer<int>(this->ctx_, true);
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_prepare_curand, curand_state_len,
                                    (curandStateXORWOW_t *)state, this->seed_);
   }
@@ -151,7 +151,7 @@ void ImageAugmentationCuda<T>::forward_impl(const Variables &inputs,
   // std::cout << "shape_out : w=" << w_out << ", h=" << h_out << "\n";
 
   const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
-  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
 
   const int ch_size_in = h_in * w_in;
   const int ch_size_out = h_out * w_out;
@@ -159,9 +159,10 @@ void ImageAugmentationCuda<T>::forward_impl(const Variables &inputs,
   vector<float> channel_brightness(num_ch);
   vector<float> channel_contrast(num_ch);
 
-  int *state = this->noise_ > 0.0
-                   ? curand_state_.cast_data_and_get_pointer<int>(this->ctx_)
-                   : NULL;
+  int *state =
+      this->noise_ > 0.0
+          ? curand_state_.cast_data_and_get_pointer<int>(this->ctx_, false)
+          : NULL;
   for (int iim = 0; iim < num_image; ++iim) {
     // Define augmentation settings
     // std::cout << "* image " << iim << "\n";

@@ -36,7 +36,7 @@ void BatchMatmulCuda<T>::forward_impl(const Variables &inputs,
   cuda_set_device(this->device_);
   const Tc *a = inputs[0]->get_data_pointer<Tc>(this->ctx_);
   const Tc *b = inputs[1]->get_data_pointer<Tc>(this->ctx_);
-  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
   cuda_gemm_strided_batched<Tc>(this->device_, y, true, a, this->col_a_,
                                 this->row_a_, !this->transpose_a_, b,
                                 this->col_b_, this->row_b_, !this->transpose_b_,
@@ -54,7 +54,7 @@ void BatchMatmulCuda<T>::backward_impl(const Variables &inputs,
   const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
   if (propagate_down[0]) {
     const Tc *b = inputs[1]->get_data_pointer<Tc>(this->ctx_);
-    Tc *da = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
+    Tc *da = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_, !accum[0]);
     cuda_gemm_strided_batched<Tc>(
         this->device_, da, !this->transpose_a_, dy, this->col_y_, this->row_y_,
         true, b, this->col_b_, this->row_b_, this->transpose_b_, 1,
@@ -62,7 +62,7 @@ void BatchMatmulCuda<T>::backward_impl(const Variables &inputs,
   }
   if (propagate_down[1]) {
     const Tc *a = inputs[0]->get_data_pointer<Tc>(this->ctx_);
-    Tc *db = inputs[1]->cast_grad_and_get_pointer<Tc>(this->ctx_);
+    Tc *db = inputs[1]->cast_grad_and_get_pointer<Tc>(this->ctx_, !accum[1]);
     cuda_gemm_strided_batched<Tc>(
         this->device_, db, !this->transpose_b_, a, this->col_a_, this->row_a_,
         this->transpose_a_, dy, this->col_y_, this->row_y_, true, 1,
@@ -97,7 +97,7 @@ void BatchMatmulCuda<T>::forward_impl(const Variables &inputs,
   cuda_set_device(this->device_);
   const Tc *a = inputs[0]->get_data_pointer<Tc>(this->ctx_);
   const Tc *b = inputs[1]->get_data_pointer<Tc>(this->ctx_);
-  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
   NBLA_GET_BATCH_POINTERS(a, a, const); // dev_list_a
   NBLA_GET_BATCH_POINTERS(b, b, const); // dev_list_b
   NBLA_GET_BATCH_POINTERS(y, y, );      // dev_list_y
@@ -121,7 +121,7 @@ void BatchMatmulCuda<T>::backward_impl(const Variables &inputs,
   NBLA_GET_BATCH_POINTERS(dy, y, const); // dev_list_dy
   if (propagate_down[0]) {
     const Tc *b = inputs[1]->get_data_pointer<Tc>(this->ctx_);
-    Tc *da = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
+    Tc *da = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_, !accum[0]);
     NBLA_GET_BATCH_POINTERS(b, b, const); // dev_list_b
     NBLA_GET_BATCH_POINTERS(da, a, );     // dev_list_da
     // op(dA{i}) (+)= dY{i} op(B{i}^T)
@@ -133,7 +133,7 @@ void BatchMatmulCuda<T>::backward_impl(const Variables &inputs,
   }
   if (propagate_down[1]) {
     const Tc *a = inputs[0]->get_data_pointer<Tc>(this->ctx_);
-    Tc *db = inputs[1]->cast_grad_and_get_pointer<Tc>(this->ctx_);
+    Tc *db = inputs[1]->cast_grad_and_get_pointer<Tc>(this->ctx_, !accum[1]);
     NBLA_GET_BATCH_POINTERS(a, a, const); // dev_list_a
     NBLA_GET_BATCH_POINTERS(db, b, );     // dev_list_db
     // op(dB{i}) (+)= dY{i} op(A{i}^T)

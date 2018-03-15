@@ -43,7 +43,7 @@ void DeconvolutionCuda<T>::forward_impl(const Variables &inputs,
                             get_dtype<Tc>(), this->ctx_);
   Tc *col = col_array.pointer<Tc>();
   outputs[0]->data()->zero();
-  Tc *x = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
+  Tc *x = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, false);
   const Tc *b;
   if (inputs.size() == 3) {
     b = inputs[2]->get_data_pointer<Tc>(this->ctx_);
@@ -113,18 +113,18 @@ void DeconvolutionCuda<T>::backward_impl(const Variables &inputs,
   }
   if (propagate_down[0]) {
     w = inputs[1]->get_data_pointer<Tc>(this->ctx_);
-    dy = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_);
+    dy = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_, !accum[0]);
   }
   if (propagate_down[1]) {
     if (!accum[1])
       inputs[1]->grad()->zero();
     y = inputs[0]->get_data_pointer<Tc>(this->ctx_);
-    dw = inputs[1]->cast_grad_and_get_pointer<Tc>(this->ctx_);
+    dw = inputs[1]->cast_grad_and_get_pointer<Tc>(this->ctx_, false);
   }
   if (inputs.size() == 3 && propagate_down[2]) {
     if (!accum[2])
       inputs[2]->grad()->zero();
-    db = inputs[2]->cast_grad_and_get_pointer<Tc>(this->ctx_);
+    db = inputs[2]->cast_grad_and_get_pointer<Tc>(this->ctx_, false);
   }
 
   // Sample loop

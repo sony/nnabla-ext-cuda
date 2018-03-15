@@ -436,7 +436,7 @@ void DepthwiseDeconvolutionCuda<T>::forward_impl(const Variables &inputs,
   const Tc *weight_data = weight->get_data_pointer<Tc>(this->ctx_);
   const Tc *bias_data =
       (bias) ? bias->get_data_pointer<Tc>(this->ctx_) : nullptr;
-  Tc *output_data = output->cast_data_and_get_pointer<Tc>(this->ctx_);
+  Tc *output_data = output->cast_data_and_get_pointer<Tc>(this->ctx_, true);
 
   const int threads = max_threads_per_block_;
   const int blocks = (output_data_size_ + threads - 1) / threads;
@@ -502,21 +502,21 @@ void DepthwiseDeconvolutionCuda<T>::backward_impl(
   if (propagate_down[0]) {
     if (!accum[0])
       input->grad()->zero(); // before cast!
-    input_grad = input->cast_grad_and_get_pointer<Tc>(this->ctx_);
+    input_grad = input->cast_grad_and_get_pointer<Tc>(this->ctx_, false);
   }
 
   Tc *weight_grad = nullptr;
   if (propagate_down[1]) {
     if (!accum[1])
       weight->grad()->zero(); // before cast!
-    weight_grad = weight->cast_grad_and_get_pointer<Tc>(this->ctx_);
+    weight_grad = weight->cast_grad_and_get_pointer<Tc>(this->ctx_, false);
   }
 
   Tc *bias_grad = nullptr;
   if (inputs.size() == 3 && propagate_down[2]) {
     if (!accum[2])
       bias->grad()->zero(); // before cast!
-    bias_grad = bias->cast_grad_and_get_pointer<Tc>(this->ctx_);
+    bias_grad = bias->cast_grad_and_get_pointer<Tc>(this->ctx_, false);
   }
 
   if (input_grad) {
