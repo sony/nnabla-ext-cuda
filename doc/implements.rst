@@ -348,6 +348,9 @@ Function Implements
    * - DepthwiseConvolution
      - x
      -
+   * - DepthwiseDeconvolution
+     - x
+     -
    * - Round
      - x
      -

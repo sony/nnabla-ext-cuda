@@ -69,6 +69,8 @@ public:
 
   /** Get workspace memory.
 
+      It returns nullptr if size_in_bytes is 0.
+
       @param[in] size_in_bytes Size of CUDA device memory requested.
       @param[in] device GPU ID.
 
@@ -77,14 +79,13 @@ public:
             the maximum size, it will reallocate a new memory region, which
             will cause memory allocation overhead and device synchronization.
 
-      @todo This function is not thread-safe.
-
    */
   void *get_workspace(Size_t size_in_bytes, int device);
 
 protected:
   std::mutex mtx_cublas_;
   std::mutex mtx_curand_;
+  std::mutex mtx_workspace_;
   unordered_map<int, cublasHandle_t>
       cublas_handles_; ///< cuBLAS handles for each device.
   unordered_map<int, curandGenerator_t> curand_generators_;
