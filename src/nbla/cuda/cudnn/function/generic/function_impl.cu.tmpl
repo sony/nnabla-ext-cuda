@@ -69,10 +69,12 @@ void ${name}CudaCudnn<${targs}>::forward_impl(const Variables &inputs,
     The `Variable` class owns storages of data (storage for forward propagation)
     and grad (for backprop) respectively.
 
-    You can get a raw device pointer of a scalar type of the storage using:
+    You can get a raw device pointer of a scalar type (template type
+    suffixed with `cu`. See ${snake_name}.hpp for definitions.) of the
+    storage using:
 
-    - `cosnt T* Variable::get_{data|grad}_pointer<T>(ctx)` for read-only access.
-    - `T* Variable::cast_{data|grad}_and_get_pointer<T>(ctx)` for r/w access.
+    - `cosnt T* Variable::get_{data|grad}_pointer<Tcu>(ctx)` for read-only access.
+    - `T* Variable::cast_{data|grad}_and_get_pointer<Tcu>(ctx)` for r/w access.
 
     By this, automatic type conversion would occur if data was held in a
     different type. Also, if the data lie in a CPU or another GPU device, the
@@ -82,24 +84,24 @@ void ${name}CudaCudnn<${targs}>::forward_impl(const Variables &inputs,
   // Inputs
 % for i, (vin_name, vin) in enumerate(inputs.items()):
 % if vin.get('optional', false):
-  const ${in_types[i]}* ${vin_name}{nullptr};
+  const ${in_types[i]}cu* ${vin_name}{nullptr};
   if (inputs.size() > ${i}) {
-    ${vin_name} = inputs[${i}]->get_data_pointer<${in_types[i]}>(this->ctx_);
+    ${vin_name} = inputs[${i}]->get_data_pointer<${in_types[i]}cu>(this->ctx_);
   }
 % else:
-  const ${in_types[i]}* ${vin_name} = inputs[${i}]->get_data_pointer<${in_types[i]}>(this->ctx_);
+  const ${in_types[i]}cu* ${vin_name} = inputs[${i}]->get_data_pointer<${in_types[i]}cu>(this->ctx_);
 % endif
 % endfor
 
   // Outputs
 % for i, (vout_name, vout) in enumerate(outputs.items()):
 % if vout.get('optional', false):
-  ${out_types[i]}* ${vout_name}{nullptr};
+  ${out_types[i]}cu* ${vout_name}{nullptr};
   if (outputs.size() > ${i}) {
-    ${vout_name} = outputs[${i}]->cast_data_and_get_pointer<${out_types[i]}>(this->ctx_);
+    ${vout_name} = outputs[${i}]->cast_data_and_get_pointer<${out_types[i]}cu>(this->ctx_);
   }
 % else:
-  ${out_types[i]}* ${vout_name} = outputs[${i}]->cast_data_and_get_pointer<${out_types[i]}>(this->ctx_);
+  ${out_types[i]}cu* ${vout_name} = outputs[${i}]->cast_data_and_get_pointer<${out_types[i]}cu>(this->ctx_);
 % endif
 % endfor
 
@@ -144,12 +146,12 @@ pp = '!(%s)' % ' || '.join(pp)
   // Gradient of outputs
 % for i, (vout_name, vout) in enumerate(outputs.items()):
 % if vout.get('optional', false):
-  const ${out_types[i]}* g_${vout_name}{nullptr};
+  const ${out_types[i]}cu* g_${vout_name}{nullptr};
   if (outputs.size() > ${i}) {
-    g_${vout_name} = outputs[${i}]->get_grad_pointer<${out_types[i]}>(this->ctx_);
+    g_${vout_name} = outputs[${i}]->get_grad_pointer<${out_types[i]}cu>(this->ctx_);
   }
 % else:
-  const ${out_types[i]}* g_${vout_name} = outputs[${i}]->get_grad_pointer<${out_types[i]}>(this->ctx_);
+  const ${out_types[i]}cu* g_${vout_name} = outputs[${i}]->get_grad_pointer<${out_types[i]}cu>(this->ctx_);
 % endif
 % endfor
 
@@ -163,18 +165,18 @@ pp = '!(%s)' % ' || '.join(pp)
   */
   // Gradient of inputs
 % for i, (vin_name, vin) in enumerate(inputs.items()):
-  ${in_types[i]}* g_${vin_name}{nullptr};
+  ${in_types[i]}cu* g_${vin_name}{nullptr};
 % endfor
 
 % for i, (vin_name, vin) in enumerate(inputs.items()):
 % if vin.get('optional', false):
   if (inputs.size() > ${i} && propagate_down[${i}]) {
-    g_${vin_name} = inputs[${i}]->cast_grad_and_get_pointer<${in_types[i]}>(this->ctx_);
+    g_${vin_name} = inputs[${i}]->cast_grad_and_get_pointer<${in_types[i]}cu>(this->ctx_);
     // TODO: Write gradient computation of ${vin_name}
   }
 % else:
   if (propagate_down[${i}]) {
-    g_${vin_name} = inputs[${i}]->cast_grad_and_get_pointer<${in_types[i]}>(this->ctx_);
+    g_${vin_name} = inputs[${i}]->cast_grad_and_get_pointer<${in_types[i]}cu>(this->ctx_);
     // TODO: Write gradient computation of ${vin_name}
   }
 % endif

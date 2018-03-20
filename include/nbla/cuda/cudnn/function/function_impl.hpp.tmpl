@@ -36,6 +36,19 @@ namespace nbla {
 // Edit the source file src/nbla/cuda/cudnn/function/generic/${name}.cu too.
 template <${dec_targs}> class ${name}CudaCudnn : public ${name}<${targs}> {
 public:
+  /* TODO: remove this help message.
+  Typedef of CUDA scalar types used in source file.
+  This template function class might be instanciated for each CPU scalar types
+  (double, float, nbla::Half), however, for Half, CUDA kernel functions
+  must use nbla::HalfCuda in which a bunch of device operator functions are
+  overloaded. nbla::CudaType<T>::type will translate nbla::Half
+  to nbla::HalfCuda. For other types, it will keep it as-is.
+  See nbla/cuda/half.hpp for other template utilities.
+  */
+% for t in ttypes:
+  typedef typename CudaType<${t}>::type ${t}cu;
+% endfor
+
   explicit ${name}CudaCudnn(const Context &ctx${dec_args}) : ${name}<${targs}>(ctx${args}), device_(std::stoi(ctx.device_id)) {
     // Create CUDNN resources in a RAII-way.
 % for iname in inputs.keys():
