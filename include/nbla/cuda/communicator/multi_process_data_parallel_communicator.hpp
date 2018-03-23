@@ -36,6 +36,16 @@ using std::shared_ptr;
 using std::unordered_map;
 using std::pair;
 
+#define NBLA_NCCL_CHECK(EXPRESSION)                                            \
+  do {                                                                         \
+    ncclResult_t ret = EXPRESSION;                                             \
+    if (ret != ncclSuccess) {                                                  \
+      NBLA_ERROR(error_code::target_specific,                                  \
+                 "`" #EXPRESSION "` failed with %s.",                          \
+                 ncclGetErrorString(ret));                                     \
+    }                                                                          \
+  } while (0)
+
 /** \addtogroup NNablaCoreGrp */
 /*@{*/
 
