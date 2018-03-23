@@ -717,7 +717,7 @@ MultiProcessDataParallelCommunicatorNccl<T>::allowed_array_classes() {
 template <typename T>
 void MultiProcessDataParallelCommunicatorNccl<
     T>::wait_by_device_synchronization() {
-  cuda_device_synchronize(device_id_);
+  cuda_device_synchronize(std::to_string(device_id_));
 }
 
 template <typename T>
