@@ -27,7 +27,9 @@ namespace nbla {
 
 template <typename T, typename T1>
 class INQAffineCuda : public INQAffine<T, T1> {
+
 public:
+  typedef typename CudaType<T>::type Tc;
   explicit INQAffineCuda(const Context &ctx, int base_axis, int num_bits,
                          const vector<int> &inq_iterations,
                          const string &selection_algorithm, int seed)

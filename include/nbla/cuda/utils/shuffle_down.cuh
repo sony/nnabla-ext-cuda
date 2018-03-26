@@ -31,15 +31,64 @@ __inline__ __device__ T pre_fermi_shfl_down(T val, int offset, int width = 32) {
   __syncthreads();
   return val;
 }
+#if CUDA_VERSION < 9000
+template <>
+__inline__ __device__ half pre_fermi_shfl_down<half>(half val, int offset,
+                                                     int width) {
+  static __shared__ half shared[MAX_THREADS_PER_BLOCK];
+  int lane = threadIdx.x % 32;
+  shared[threadIdx.x] = val;
+  __syncthreads();
+  val = (lane + offset < width) ? shared[threadIdx.x + offset] : val;
+  __syncthreads();
+  return val;
+}
+#endif
 
 template <typename T>
 __forceinline__ __device__ T shuffle_down(T val, int offset, int width = 32) {
 #if __CUDA_ARCH__ >= 300
-#define SHFL_DOWN __shfl_down
-#else
-#define SHFL_DOWN pre_fermi_shfl_down
+#if CUDA_VERSION >= 9000
+  return __shfl_down_sync(0xfffffff, val, offset, width);
+#else  // !(CUDA_VERSION >= 9000)
+  return __shfl_down(val, offset, width);
+#endif // CUDA_VERSION >= 9000
+#else // !(__CUDA_ARCH__ >= 300)
+  return pre_fermi_shfl_down(val, offset, width);
 #endif
-  return SHFL_DOWN(val, offset, width);
+}
+#if CUDA_VERSION < 8000
+template <>
+__forceinline__ __device__ half shuffle_down<half>(half val, int offset,
+                                                   int width) {
+#if __CUDA_ARCH__ >= 300
+  unsigned int val_ =
+      val.x; // Use uint32 because there is no overload for uint16.
+  return half{(unsigned short)(__shfl_down(val_, offset, width))};
+#else // !(__CUDA_ARCH__ >= 300)
+  return pre_fermi_shfl_down(val, offset, width);
+#endif
+}
+#endif // CUDA_VERSION < 8000
+
+template <>
+__forceinline__ __device__ HalfCuda shuffle_down<HalfCuda>(HalfCuda val,
+                                                           int offset,
+                                                           int width) {
+#if __CUDA_ARCH__ >= 300
+#if CUDA_VERSION >= 9000
+  return __shfl_down_sync(0xfffffff, val.h, offset, width);
+#else // !(CUDA_VERSION >= 9000)
+#if CUDA_VERSION >= 8000
+  return __shfl_down(val.h, offset, width);
+#else // CUDA_VERSION >= 8000
+  unsigned int val_ = val.h.x;
+  return half{(unsigned short)(__shfl_down(val_, offset, width))};
+#endif
+#endif // CUDA_VERSION >= 9000
+#else // !(__CUDA_ARCH__ >= 300)
+  return pre_fermi_shfl_down(val.h, offset, width);
+#endif
 }
 
 template <>

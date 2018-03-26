@@ -21,14 +21,14 @@ namespace nbla {
 
 template <typename T>
 void cublas_gemm(cublasHandle_t handle, cublasOperation_t op_x,
-                 cublasOperation_t op_y, int m, int n, int k, const T *alpha,
-                 const T *x, int lda, const T *y, int ldb, const T *beta, T *z,
+                 cublasOperation_t op_y, int m, int n, int k, float alpha,
+                 const T *x, int lda, const T *y, int ldb, float beta, T *z,
                  int ldc);
 
 template <typename T>
 void cublas_gemv(cublasHandle_t handle, cublasOperation_t trans, int m, int n,
-                 const T *alpha, const T *A, int lda, const T *x, int incx,
-                 const T *beta, T *y, int incy);
+                 float alpha, const T *A, int lda, const T *x, int incx,
+                 float beta, T *y, int incy);
 
 template <typename T>
 void cublas_dot(cublasHandle_t handle, int n, const T *x, int incx, const T *y,
@@ -37,16 +37,14 @@ void cublas_dot(cublasHandle_t handle, int n, const T *x, int incx, const T *y,
 template <typename T>
 void cublas_gemm_batched(cublasHandle_t handle, cublasOperation_t op_x,
                          cublasOperation_t op_y, int m, int n, int k,
-                         const T *alpha, const T **x, int lda, const T **y,
-                         int ldb, const T *beta, T **z, int ldc,
-                         int batchCount);
+                         float alpha, const T **x, int lda, const T **y,
+                         int ldb, float beta, T **z, int ldc, int batchCount);
 
 template <typename T>
 void cublas_gemm_strided_batched(cublasHandle_t handle, cublasOperation_t op_x,
                                  cublasOperation_t op_y, int m, int n, int k,
-                                 const T *alpha, const T *x, int lda,
-                                 int stride_a, const T *y, int ldb,
-                                 int stride_b, const T *beta, T *z, int ldc,
-                                 int stride_c, int batchCount);
+                                 float alpha, const T *x, int lda, int stride_a,
+                                 const T *y, int ldb, int stride_b, float beta,
+                                 T *z, int ldc, int stride_c, int batchCount);
 }
 #endif

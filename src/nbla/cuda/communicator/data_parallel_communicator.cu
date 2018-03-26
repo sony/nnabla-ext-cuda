@@ -297,7 +297,7 @@ vector<string> DataParallelCommunicatorNccl<T>::allowed_array_classes() {
 template <typename T>
 void DataParallelCommunicatorNccl<T>::wait_by_devices_synchronization() {
   for (int i = 0; i < device_ids_.size(); ++i) {
-    cuda_device_synchronize(device_ids_[i]);
+    cuda_device_synchronize(std::to_string(device_ids_[i]));
   }
 }
 

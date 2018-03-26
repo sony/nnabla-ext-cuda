@@ -49,7 +49,7 @@ template <typename T, typename UnaryOp, bool accum>
 __global__ void kernel_transform_unary_grad(int size, const T *dy, const T *x,
                                             const T *y, T *g, UnaryOp op) {
   NBLA_CUDA_KERNEL_LOOP(idx, size) {
-    g[idx] = (accum ? g[idx] : 0) + op.g(dy[idx], x[idx], y[idx]);
+    g[idx] = (accum ? g[idx] : (T)0) + op.g(dy[idx], x[idx], y[idx]);
   }
 }
 
@@ -59,7 +59,7 @@ void forward_impl_transform_unary(const Variables &inputs,
                                   UnaryOp op) {
   cuda_set_device(std::stoi(ctx.device_id));
   const T *x = inputs[0]->get_data_pointer<T>(ctx);
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(ctx);
+  T *y = outputs[0]->cast_data_and_get_pointer<T>(ctx, true);
   int size = inputs[0]->size();
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_transform_unary, size, x, y, op);
 }
@@ -79,7 +79,7 @@ void backward_impl_transform_unary(const Variables &inputs,
   const T *x = inputs[0]->get_data_pointer<T>(ctx);
   const T *y = outputs[0]->get_data_pointer<T>(ctx);
   size_t size = inputs[0]->size();
-  T *g = inputs[0]->cast_grad_and_get_pointer<T>(ctx);
+  T *g = inputs[0]->cast_grad_and_get_pointer<T>(ctx, !accum[0]);
   if (accum[0]) {
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
         (kernel_transform_unary_grad<T, UnaryOp, true>), size, dy, x, y, g, op);
@@ -106,16 +106,16 @@ void backward_impl_transform_unary(const Variables &inputs,
   template <typename T>                                                        \
   void NAME##Cuda<T>::forward_impl(const Variables &inputs,                    \
                                    const Variables &outputs) {                 \
-    forward_impl_transform_unary<T>(inputs, outputs, this->ctx_,               \
-                                    NAME##UnaryOpCuda(this->args_));           \
+    forward_impl_transform_unary<typename CudaType<T>::type>(                  \
+        inputs, outputs, this->ctx_, NAME##UnaryOpCuda(this->args_));          \
   }                                                                            \
   template <typename T>                                                        \
   void NAME##Cuda<T>::backward_impl(                                           \
       const Variables &inputs, const Variables &outputs,                       \
       const vector<bool> &propagate_down, const vector<bool> &accum) {         \
-    backward_impl_transform_unary<T>(inputs, outputs, propagate_down, accum,   \
-                                     this->ctx_,                               \
-                                     NAME##UnaryOpCuda(this->args_));          \
+    backward_impl_transform_unary<typename CudaType<T>::type>(                 \
+        inputs, outputs, propagate_down, accum, this->ctx_,                    \
+        NAME##UnaryOpCuda(this->args_));                                       \
   }
 
 // ----------------------------------------------------------------------------

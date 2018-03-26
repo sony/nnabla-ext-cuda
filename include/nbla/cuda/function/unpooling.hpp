@@ -24,11 +24,13 @@ namespace nbla {
 */
 
 template <typename T> class UnpoolingCuda : public Unpooling<T> {
+
 protected:
   Variable addr_table_;
   int kernel_size_;
 
 public:
+  typedef typename CudaType<T>::type Tc;
   explicit UnpoolingCuda(const Context &ctx, const vector<int> &kernel)
       : Unpooling<T>(ctx, kernel), device_(std::stoi(ctx.device_id)) {}
   virtual ~UnpoolingCuda() {}

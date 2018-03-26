@@ -28,6 +28,8 @@ namespace nbla {
 template <typename T, typename T1>
 class INQConvolutionCuda : public INQConvolution<T, T1> {
 public:
+  typedef typename CudaType<T>::type Tc;
+
   explicit INQConvolutionCuda(const Context &ctx, int base_axis,
                               const vector<int> &pad, const vector<int> &stride,
                               const vector<int> &dilation, int group,

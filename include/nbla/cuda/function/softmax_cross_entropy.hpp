@@ -26,10 +26,12 @@ namespace nbla {
 
 template <typename T, typename Tl = int>
 class SoftmaxCrossEntropyCuda : public SoftmaxCrossEntropy<T> {
+
 protected:
   int device_;
 
 public:
+  typedef typename CudaType<T>::type Tc;
   explicit SoftmaxCrossEntropyCuda(const Context &ctx, int axis)
       : SoftmaxCrossEntropy<T>(ctx, axis), device_(std::stoi(ctx.device_id)) {}
   virtual ~SoftmaxCrossEntropyCuda() {}

@@ -23,6 +23,7 @@ namespace nbla {
 template <typename T>
 class DepthwiseDeconvolutionCuda : public DepthwiseDeconvolution<T> {
 public:
+  typedef typename CudaType<T>::type Tc;
   DepthwiseDeconvolutionCuda(const Context &ctx, int base_axis,
                              const vector<int> &pad, const vector<int> &stride,
                              const vector<int> &dilation, int divisor)

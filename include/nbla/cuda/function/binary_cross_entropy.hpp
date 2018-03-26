@@ -30,6 +30,8 @@ protected:
   int device_;
 
 public:
+  typedef typename CudaType<T>::type Tc;
+
   BinaryCrossEntropyCuda(const Context &ctx)
       : BinaryCrossEntropy<T>(ctx), device_(std::stoi(ctx.device_id)) {}
   virtual ~BinaryCrossEntropyCuda() {}

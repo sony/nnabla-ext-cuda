@@ -26,6 +26,8 @@ namespace nbla {
 
 template <typename T> class BinaryErrorCuda : public BinaryError<T> {
 public:
+  typedef typename CudaType<T>::type Tc;
+
   explicit BinaryErrorCuda(const Context &ctx)
       : BinaryError<T>(ctx), device_(std::stoi(ctx.device_id)) {}
   virtual ~BinaryErrorCuda() {}

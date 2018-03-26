@@ -17,9 +17,16 @@
 
 #include <nppdefs.h>
 
+#include <nbla/cuda/half.hpp>
+
 namespace nbla {
 template <class T> class numeric_limits_cuda;
 
+template <> class numeric_limits_cuda<HalfCuda> {
+public:
+  __device__ static HalfCuda min() { return 6.10352e-5; };
+  __device__ static HalfCuda max() { return 3.2768e+4; };
+};
 template <> class numeric_limits_cuda<float> {
 public:
   __device__ static float min() { return NPP_MINABS_32F; };

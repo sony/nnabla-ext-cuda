@@ -44,10 +44,14 @@ NBLA_CUDA_API void _cuda_set_array_classes(const vector<string> &a);
 
 /** Wrapper of cudaDeviceSynchronize
 */
-NBLA_CUDA_API void cuda_device_synchronize(int device);
+NBLA_CUDA_API void cuda_device_synchronize(const string &device);
 
 /** Wrapper of cudaGetDeviceCount
 */
 NBLA_CUDA_API int cuda_get_device_count();
+
+/** get available devices.
+ */
+NBLA_CUDA_API vector<string> cuda_get_devices();
 }
 #endif

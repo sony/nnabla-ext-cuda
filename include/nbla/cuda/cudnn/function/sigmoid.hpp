@@ -35,6 +35,8 @@ protected:
   cudnnActivationDescriptor_t activation_desc_;
 
 public:
+  typedef typename CudaType<T>::type Tw;
+
   SigmoidCudaCudnn(const Context &ctx)
       : Sigmoid<T>(ctx), device_(std::stoi(ctx.device_id)) {
     NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&input_desc_));

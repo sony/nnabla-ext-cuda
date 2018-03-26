@@ -27,7 +27,9 @@ namespace nbla {
 */
 
 template <typename T> class RandintCuda : public Randint<T> {
+
 public:
+  typedef typename CudaType<T>::type Tc;
   explicit RandintCuda(const Context &ctx, int low, int high,
                        const vector<int> &shape, int seed)
       : Randint<T>(ctx, low, high, shape, seed),

@@ -27,6 +27,8 @@ namespace nbla {
 template <typename T>
 class BinaryConnectConvolutionCuda : public BinaryConnectConvolution<T> {
 public:
+  typedef typename CudaType<T>::type Tc;
+
   explicit BinaryConnectConvolutionCuda(const Context &ctx, int base_axis,
                                         const vector<int> &pad,
                                         const vector<int> &stride,

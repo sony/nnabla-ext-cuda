@@ -25,7 +25,9 @@ namespace nbla {
 */
 
 template <typename T> class MaxCuda : public Max<T> {
+
 public:
+  typedef typename CudaType<T>::type Tc;
   explicit MaxCuda(const Context &ctx, const vector<int> &axes, bool keep_dims)
       : Max<T>(ctx, axes, keep_dims), device_(std::stoi(ctx.device_id)) {}
   virtual ~MaxCuda() {}

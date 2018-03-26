@@ -21,7 +21,9 @@
 namespace nbla {
 
 template <typename T> class Add2Cuda : public Add2<T> {
+
 public:
+  typedef typename CudaType<T>::type Tc;
   explicit Add2Cuda(const Context &ctx, bool inplace) : Add2<T>(ctx, inplace) {}
   virtual ~Add2Cuda() {}
   virtual string name() { return "Add2Cuda"; }

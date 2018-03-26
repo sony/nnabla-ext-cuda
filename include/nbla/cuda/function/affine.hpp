@@ -20,6 +20,8 @@
 namespace nbla {
 template <typename T> class AffineCuda : public Affine<T> {
 public:
+  typedef typename CudaType<T>::type Tc;
+
   explicit AffineCuda(const Context &ctx, int base_axis)
       : Affine<T>(ctx, base_axis), device_(std::stoi(ctx.device_id)) {}
   virtual ~AffineCuda() {}

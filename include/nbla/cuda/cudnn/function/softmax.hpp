@@ -29,6 +29,8 @@ namespace nbla {
 */
 template <typename T> class SoftmaxCudaCudnn : public Softmax<T> {
 public:
+  typedef typename CudaType<T>::type Tw;
+
   explicit SoftmaxCudaCudnn(const Context &ctx, int axis)
       : Softmax<T>(ctx, axis), device_(std::stoi(ctx.device_id)) {
     NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&input_desc_));

@@ -15,22 +15,27 @@
 import os
 import sys
 import nnabla as nn
+from os.path import join, dirname, realpath
+
+root_dir = realpath(join(dirname(__file__), '..', '..'))
 
 
 def list(func_name):
-
-    sys.path.append(os.path.join(os.path.dirname(__file__),
-                                 '..', '..', 'build-tools', 'code_generator'))
-    from load_implements_rst import Implements
+    import yaml
+    function_types = yaml.load(open(
+        join(root_dir, 'build-tools', 'code_generator', 'function_types.yaml'), 'r'))
+    function_types_cudnn = yaml.load(open(join(
+        root_dir, 'build-tools', 'code_generator', 'function_types_cudnn.yaml'), 'r'))
+    solver_types = yaml.load(
+        open(join(root_dir, 'build-tools', 'code_generator', 'solver_types.yaml'), 'r'))
 
     l = [(nn.Context(), func_name)]
 
-    info = Implements().info
-    if func_name in info:
-        if 'cuda' in info[func_name]:
-            import nnabla_ext.cuda
-            l.append((nnabla_ext.cuda.context(), func_name + 'Cuda'))
-        if 'cudnn' in info[func_name]:
-            import nnabla_ext.cuda.cudnn
-            l.append((nnabla_ext.cuda.cudnn.context(), func_name + 'CudaCudnn'))
+    if (func_name in function_types and function_types[func_name]) \
+       or (func_name in solver_types and solver_types[func_name]):
+        import nnabla_ext.cuda
+        l.append((nnabla_ext.cuda.context(), func_name + 'Cuda'))
+    if func_name in function_types_cudnn and function_types_cudnn[func_name]:
+        import nnabla_ext.cudnn
+        l.append((nnabla_ext.cudnn.context(), func_name + 'CudaCudnn'))
     return l

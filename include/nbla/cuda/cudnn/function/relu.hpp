@@ -25,6 +25,8 @@ namespace nbla {
 */
 template <typename T> class ReLUCudaCudnn : public ReLUCuda<T> {
 public:
+  typedef typename CudaType<T>::type Tw;
+
   explicit ReLUCudaCudnn(const Context &ctx, bool inplace)
       : ReLUCuda<T>(ctx, inplace), device_(std::stoi(ctx.device_id)) {
     NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&input_desc_));
@@ -32,6 +34,10 @@ public:
     NBLA_CUDNN_CHECK(cudnnCreateActivationDescriptor(&activation_desc_));
     NBLA_CUDNN_CHECK(cudnnSetActivationDescriptor(
         activation_desc_, CUDNN_ACTIVATION_RELU, CUDNN_PROPAGATE_NAN, T(0)));
+    if (inplace) {
+      this->fall_back_func_ = make_shared<ReLUCuda<T>>(this->ctx_, inplace);
+      return;
+    }
   }
   virtual ~ReLUCudaCudnn() {
     NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(input_desc_));

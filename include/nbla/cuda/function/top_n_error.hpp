@@ -25,7 +25,9 @@ namespace nbla {
 
 template <typename T, typename T1>
 class TopNErrorCuda : public TopNError<T, T1> {
+
 public:
+  typedef typename CudaType<T>::type Tc;
   explicit TopNErrorCuda(const Context &ctx, int axis, int n)
       : TopNError<T, T1>(ctx, axis, n), device_(std::stoi(ctx.device_id)) {}
   virtual ~TopNErrorCuda() {}

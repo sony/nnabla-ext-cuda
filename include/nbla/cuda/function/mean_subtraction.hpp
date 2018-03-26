@@ -25,6 +25,8 @@ namespace nbla {
 
 template <typename T> class MeanSubtractionCuda : public MeanSubtraction<T> {
 public:
+  typedef typename CudaType<T>::type Tc;
+
   explicit MeanSubtractionCuda(const Context &ctx, int base_axis,
                                bool update_running_mean)
       : MeanSubtraction<T>(ctx, base_axis, update_running_mean),

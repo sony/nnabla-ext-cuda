@@ -25,6 +25,8 @@ namespace nbla {
 
 template <typename T> class DropoutCuda : public Dropout<T> {
 public:
+  typedef typename CudaType<T>::type Tc;
+
   explicit DropoutCuda(const Context &ctx, double p, int seed = -1)
       : Dropout<T>(ctx, T(p), seed) {
     cuda_set_device(std::stoi(ctx.device_id));

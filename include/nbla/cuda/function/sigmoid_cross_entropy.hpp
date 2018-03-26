@@ -30,6 +30,8 @@ protected:
   int device_;
 
 public:
+  typedef typename CudaType<T>::type Tc;
+
   explicit SigmoidCrossEntropyCuda(const Context &ctx)
       : SigmoidCrossEntropy<T, Tl>(ctx), device_(std::stoi(ctx.device_id)) {}
   virtual ~SigmoidCrossEntropyCuda() {}

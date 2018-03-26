@@ -218,11 +218,7 @@ string MultiProcessDataParallelCommunicatorNccl<T>::new_group(
   // NCCL Comm Init
   cuda_set_device(device_id_);
   ncclComm_t comm;
-  ncclResult_t ret = ncclCommInitRank(&comm, ranks.size(), comm_id, rank);
-  if (ret != ncclSuccess) {
-    NBLA_ERROR(error_code::target_specific, "ncclCommInitRank failed with %d",
-               ret);
-  }
+  NBLA_NCCL_CHECK(ncclCommInitRank(&comm, ranks.size(), comm_id, rank));
   this->comms_[group_name] = comm;
 
   return group_name;
@@ -334,12 +330,9 @@ void MultiProcessDataParallelCommunicatorNccl<T>::reduce(NdArrayPtr ndarray,
   dtypes dtype = get_dtype<T>();
   const T *dw0 = ndarray->get(dtype, this->ctx_)->const_pointer<T>();
   T *dw1 = ndarray->cast(dtype, this->ctx_)->pointer<T>();
-  ncclResult_t ret = ncclReduce(dw0, dw1, n_param,
-                                ncclFloat, // TODO: address ncclFloat
-                                ncclSum, dst, comms_[group], stream);
-  if (ret != ncclSuccess) {
-    NBLA_ERROR(error_code::target_specific, "ncclReduce fails with %d.", ret);
-  }
+  NBLA_NCCL_CHECK(ncclReduce(dw0, dw1, n_param,
+                             ncclFloat, // TODO: address ncclFloat
+                             ncclSum, dst, comms_[group], stream));
   if (division) {
     NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace, stream, n_param,
                                       this->size_, dw1);
@@ -385,13 +378,10 @@ void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division,
       T *dw1 = vp->cast_grad_and_get_pointer<T>(ctx);
       int stream_id = k % num_streams_;
       // AllReduce
-      ncclResult_t ret =
+
+      NBLA_NCCL_CHECK(
           ncclAllReduce(dw0, dw1, n_param, ncclFloat, // TODO: address ncclFloat
-                        ncclSum, comms_["world"], streams_[stream_id]);
-      if (ret != ncclSuccess) {
-        NBLA_ERROR(error_code::target_specific, "ncclAllReduce fails with %d.",
-                   ret);
-      }
+                        ncclSum, comms_["world"], streams_[stream_id]));
       // Divide
       if (division) {
         NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace,
@@ -423,15 +413,10 @@ void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division,
     }
 
     // 2. all reduce
-    ncclResult_t ret =
-        ncclAllReduce(buff_start, buff_start, this->total_params_,
-                      ncclFloat,                    // TODO: address ncclFloat
-                      ncclSum, comms_["world"], 0); // use default stream
-
-    if (ret != ncclSuccess) {
-      NBLA_ERROR(error_code::target_specific, "ncclAllReduce fails with %d.",
-                 ret);
-    }
+    NBLA_NCCL_CHECK(ncclAllReduce(buff_start, buff_start, this->total_params_,
+                                  ncclFloat, // TODO: address ncclFloat
+                                  ncclSum, comms_["world"],
+                                  0)); // use default stream
 
     // 3. divide
     if (division) {
@@ -513,13 +498,9 @@ void MultiProcessDataParallelCommunicatorNccl<T>::all_reduce(
   dtypes dtype = get_dtype<T>();
   const T *dw0 = ndarray->get(dtype, this->ctx_)->const_pointer<T>();
   T *dw1 = ndarray->cast(dtype, this->ctx_)->pointer<T>();
-  ncclResult_t ret = ncclAllReduce(dw0, dw1, n_param,
-                                   ncclFloat, // TODO: address ncclFloat
-                                   ncclSum, comms_[group], stream);
-  if (ret != ncclSuccess) {
-    NBLA_ERROR(error_code::target_specific, "ncclAllReduce fails with %d.",
-               ret);
-  }
+  NBLA_NCCL_CHECK(ncclAllReduce(dw0, dw1, n_param,
+                                ncclFloat, // TODO: address ncclFloat
+                                ncclSum, comms_[group], stream));
   if (division) {
     NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace, stream, n_param,
                                       this->size_, dw1);
@@ -557,13 +538,10 @@ void MultiProcessDataParallelCommunicatorNccl<T>::reduce_scatter(
   const T *sendbuff = large_ndarray->get(dtype, this->ctx_)->const_pointer<T>();
   T *recvbuff = ndarray->cast(dtype, this->ctx_)->pointer<T>();
   Size_t recvcount = ndarray->size();
-  ncclResult_t ret =
-      ncclReduceScatter(sendbuff, recvbuff, recvcount,
-                        ncclFloat,                  // TODO: address ncclFloat
-                        ncclSum, comms_[group], 0); // use default stream
-  if (ret != ncclSuccess) {
-    NBLA_ERROR(error_code::target_specific, "ncclBcast fails with %d.", ret);
-  }
+  NBLA_NCCL_CHECK(ncclReduceScatter(sendbuff, recvbuff, recvcount,
+                                    ncclFloat, // TODO: address ncclFloat
+                                    ncclSum, comms_[group],
+                                    0)); // use default stream
 
   // divide
   if (division) {
@@ -630,11 +608,8 @@ void MultiProcessDataParallelCommunicatorNccl<T>::bcast(NdArrayPtr ndarray,
   auto n_param = ndarray->size();
   dtypes dtype = get_dtype<T>();
   T *dw0 = ndarray->cast(dtype, this->ctx_)->pointer<T>();
-  ncclResult_t ret =
-      ncclBcast(dw0, n_param, ncclFloat, src, comms_[group], stream);
-  if (ret != ncclSuccess) {
-    NBLA_ERROR(error_code::target_specific, "ncclBcast fails with %d.", ret);
-  }
+  NBLA_NCCL_CHECK(
+      ncclBcast(dw0, n_param, ncclFloat, src, comms_[group], stream));
 }
 
 template <typename T>
@@ -663,13 +638,9 @@ void MultiProcessDataParallelCommunicatorNccl<T>::all_gather(
   const T *sendbuff = ndarray->get(dtype, this->ctx_)->const_pointer<T>();
   T *recvbuff = large_ndarray->cast(dtype, this->ctx_)->pointer<T>();
   Size_t sendcount = ndarray->size();
-  ncclResult_t ret = ncclAllGather(sendbuff, recvbuff, sendcount,
-                                   ncclFloat,         // TODO: address ncclFloat
-                                   comms_[group], 0); // use default stream
-  if (ret != ncclSuccess) {
-    NBLA_ERROR(error_code::target_specific, "ncclAllGather fails with %d.",
-               ret);
-  }
+  NBLA_NCCL_CHECK(ncclAllGather(sendbuff, recvbuff, sendcount,
+                                ncclFloat,          // TODO: address ncclFloat
+                                comms_[group], 0)); // use default stream
   copy_back_inside_device(ndarray_list, large_ndarray);
   // no need to call null kernel since nnabla uses default stream currently.
 }
@@ -717,7 +688,7 @@ MultiProcessDataParallelCommunicatorNccl<T>::allowed_array_classes() {
 template <typename T>
 void MultiProcessDataParallelCommunicatorNccl<
     T>::wait_by_device_synchronization() {
-  cuda_device_synchronize(device_id_);
+  cuda_device_synchronize(std::to_string(device_id_));
 }
 
 template <typename T>
