@@ -25,7 +25,9 @@ namespace nbla {
 */
 
 template <typename T> class BatchMatmulCuda : public BatchMatmul<T> {
+
 public:
+  typedef typename CudaType<T>::type Tc;
   explicit BatchMatmulCuda(const Context &ctx, bool transpose_a,
                            bool transpose_b)
       : BatchMatmul<T>(ctx, transpose_a, transpose_b),

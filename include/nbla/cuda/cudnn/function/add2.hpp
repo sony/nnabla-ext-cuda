@@ -25,6 +25,8 @@ namespace nbla {
 */
 template <typename T> class Add2CudaCudnn : public Add2Cuda<T> {
 public:
+  typedef typename CudaType<T>::type Tw;
+
   explicit Add2CudaCudnn(const Context &ctx, bool inplace)
       : Add2Cuda<T>(ctx, inplace), device_(std::stoi(ctx.device_id)) {
     NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&input_desc_));

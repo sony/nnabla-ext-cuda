@@ -24,7 +24,9 @@ namespace nbla {
 */
 
 template <typename T> class IdentityCuda : public Identity<T> {
+
 public:
+  typedef typename CudaType<T>::type Tc;
   explicit IdentityCuda(const Context &ctx)
       : Identity<T>(ctx), device_(std::stoi(ctx.device_id)) {}
   virtual ~IdentityCuda() {}

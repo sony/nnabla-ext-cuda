@@ -47,6 +47,10 @@ inline void cudnn_set_convolution_nd_descriptor_force_2dim(
     stride.resize(2, 1);
     dilation.resize(2, 1);
   }
+#if CUDNN_VERSION >= 7000
+  NBLA_CUDNN_CHECK(
+      cudnnSetConvolutionMathType(conv_desc, CUDNN_TENSOR_OP_MATH));
+#endif
   NBLA_CUDNN_CHECK(cudnnSetConvolutionNdDescriptor(
       conv_desc, ndim, pad.data(), stride.data(), dilation.data(), mode,
       dtype));
@@ -165,10 +169,14 @@ CudnnConvResource::CudnnConvResource(const CudnnConvDesc &desc) {
                                            bstrides, 4);
 
   // Set Conv desc
-  // TODO: Support compute type config
-  cudnn_set_convolution_nd_descriptor_force_2dim(
-      conv_desc, desc.ndim, desc.pad, desc.stride, desc.dilation, desc.mode,
-      cudnn_data_type<float>::type());
+  // TODO: Support compute type config (but... TRUE_HALF_CONFIG is not supported
+  // in most of algorithms.)
+  // Use FLOAT computation when HALF data type.
+  cudnnDataType_t compute_type =
+      desc.dtype == CUDNN_DATA_HALF ? CUDNN_DATA_FLOAT : desc.dtype;
+  cudnn_set_convolution_nd_descriptor_force_2dim(conv_desc, desc.ndim, desc.pad,
+                                                 desc.stride, desc.dilation,
+                                                 desc.mode, compute_type);
 
   // Find best algorithm
   find_best_algorithms();

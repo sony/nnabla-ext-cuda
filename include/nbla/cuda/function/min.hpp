@@ -25,10 +25,12 @@ namespace nbla {
 */
 
 template <typename T> class MinCuda : public Min<T> {
+
 protected:
   int device_;
 
 public:
+  typedef typename CudaType<T>::type Tc;
   explicit MinCuda(const Context &ctx, const vector<int> &axes, bool keep_dims)
       : Min<T>(ctx, axes, keep_dims), device_(std::stoi(ctx.device_id)) {}
   virtual ~MinCuda() {}

@@ -22,6 +22,8 @@ namespace nbla {
 
 template <typename T> class ReduceMeanCuda : public ReduceMean<T> {
 public:
+  typedef typename CudaType<T>::type Tc;
+
   explicit ReduceMeanCuda(const Context &ctx) : ReduceMean<T>(ctx) {}
   virtual ~ReduceMeanCuda() {}
   virtual shared_ptr<Function> copy() const {

@@ -22,6 +22,8 @@ namespace nbla {
 
 template <typename T> class SoftmaxCuda : public Softmax<T> {
 public:
+  typedef typename CudaType<T>::type Tc;
+
   explicit SoftmaxCuda(const Context &ctx, int axis)
       : Softmax<T>(ctx, axis), device_(std::stoi(ctx.device_id)) {}
   virtual ~SoftmaxCuda() {}

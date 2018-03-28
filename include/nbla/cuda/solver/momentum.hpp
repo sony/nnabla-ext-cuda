@@ -16,7 +16,6 @@
 #define __NBLA_CUDA_SOLVER_MOMENTUM_HPP__
 
 #include <nbla/cuda/cuda.hpp>
-#include <nbla/cuda/solver/weight_decay.hpp>
 #include <nbla/solver/momentum.hpp>
 
 namespace nbla {

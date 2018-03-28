@@ -20,7 +20,8 @@ from .init import (
     clear_memory_cache,
     array_classes,
     device_synchronize,
-    get_device_count)
+    get_device_count,
+    get_devices)
 
 from ._version import (
     __version__,
@@ -31,16 +32,25 @@ from ._version import (
 from nnabla.variable import Context
 
 
-def context(device_id=0, **kw):
+def context(device_id=0, type_config='float', **kw):
     """CUDA context."""
-    return Context('cpu|cuda', array_classes()[0], device_id=str(device_id), compute_backend='default')
+    backends = ['cuda:float', 'cpu:float']
+    if type_config == 'half':
+        backends = ['cuda:half', 'cuda:float', 'cpu:float']
+    elif type_config == 'mixed_half':
+        backends = ['cuda:mixed_half', 'cuda:float', 'cpu:float']
+    elif type_config == 'float':
+        pass
+    else:
+        raise ValueError("Unknown data type config is given %s" % type_config)
+    return Context(backends, array_classes()[0], device_id=str(device_id))
 
 
 def synchronize(device_id=0, **kw):
     """Call ``cudaDeviceSynchronize`` in runtime API`.
 
     Args:
-        device_id (int): Device ID.
+        device_id (str): Device ID. e.g. "0", "1".
 
     """
     return device_synchronize(device_id)

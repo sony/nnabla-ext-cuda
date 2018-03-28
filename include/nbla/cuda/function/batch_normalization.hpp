@@ -50,6 +50,8 @@ protected:
   Variable v_tmp_reduction_space_;
 
 public:
+  typedef typename CudaType<T>::type Tc;
+
   BatchNormalizationCuda(const Context &ctx, const vector<int> axes,
                          float decay_rate, float eps, bool batch_stat)
       : BatchNormalization<T>(ctx, axes, decay_rate, eps, batch_stat),

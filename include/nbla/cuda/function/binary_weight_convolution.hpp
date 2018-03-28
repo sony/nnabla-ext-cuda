@@ -24,7 +24,9 @@ namespace nbla {
 
 template <typename T>
 class BinaryWeightConvolutionCuda : public BinaryWeightConvolution<T> {
+
 public:
+  typedef typename CudaType<T>::type Tc;
   BinaryWeightConvolutionCuda(const Context &ctx, int base_axis,
                               const vector<int> &pad, const vector<int> &stride,
                               const vector<int> &dilation, int group)

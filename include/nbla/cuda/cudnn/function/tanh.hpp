@@ -37,6 +37,8 @@ protected:
   cudnnActivationDescriptor_t activation_desc_;
 
 public:
+  typedef typename CudaType<T>::type Tw;
+
   TanhCudaCudnn(const Context &ctx)
       : Tanh<T>(ctx), device_(std::stoi(ctx.device_id)) {
     NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&input_desc_));

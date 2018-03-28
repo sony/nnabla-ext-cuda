@@ -15,6 +15,8 @@
 #ifndef __NBLA_CUDA_UTILS_REDUCE_OPS_PROD_CUH__
 #define __NBLA_CUDA_UTILS_REDUCE_OPS_PROD_CUH__
 
+#include <nbla/cuda/half.hpp>
+
 #include <nbla/cuda/utils/types.cuh>
 
 namespace nbla {
@@ -26,7 +28,7 @@ template <typename T> class ProdOp {
   const T *x_; // Reduction inputs.
   T *y_;       // Reduction outputs.
 public:
-  typedef T storage_type;
+  typedef typename CudaTypeForceFloat<T>::type storage_type;
 
   ProdOp(const T *x, T *y) : x_(x), y_(y) {}
 

@@ -26,7 +26,9 @@ namespace nbla {
 
 template <typename T>
 class BinaryConnectAffineCuda : public BinaryConnectAffine<T> {
+
 public:
+  typedef typename CudaType<T>::type Tc;
   explicit BinaryConnectAffineCuda(const Context &ctx, int base_axis)
       : BinaryConnectAffine<T>(ctx, base_axis),
         device_(std::stoi(ctx.device_id)) {}

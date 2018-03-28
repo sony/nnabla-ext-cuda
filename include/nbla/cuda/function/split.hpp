@@ -25,6 +25,8 @@ namespace nbla {
 
 template <typename T> class SplitCuda : public Split<T> {
 public:
+  typedef typename CudaType<T>::type Tc;
+
   explicit SplitCuda(const Context &ctx, int axis)
       : Split<T>(ctx, axis), device_(std::stoi(ctx.device_id)) {}
   virtual ~SplitCuda() {}

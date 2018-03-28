@@ -36,9 +36,12 @@ protected:
   cudnnHandle_t cudnn_handle_;
   cudnnTensorDescriptor_t input_desc_, output_desc_;
   cudnnTensorDescriptor_t bn_scale_bias_mean_var_desc_;
+  cudnnDataType_t derived_bn_dtype_;
   double epsilon;
 
 public:
+  typedef typename CudaType<T>::type Tw;
+
   BatchNormalizationCudaCudnn(const Context &ctx, const vector<int> axes,
                               float decay_rate, float eps, bool batch_stat)
       : BatchNormalizationCuda<T>(ctx, axes, decay_rate, eps, batch_stat),

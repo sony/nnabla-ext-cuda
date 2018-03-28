@@ -24,7 +24,9 @@ namespace nbla {
 */
 
 template <typename T, typename T1> class EmbedCuda : public Embed<T, T1> {
+
 public:
+  typedef typename CudaType<T>::type Tc;
   explicit EmbedCuda(const Context &ctx)
       : Embed<T, T1>(ctx), device_(std::stoi(ctx.device_id)) {}
   virtual ~EmbedCuda() {}

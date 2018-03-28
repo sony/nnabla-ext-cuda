@@ -26,6 +26,8 @@ namespace nbla {
 
 template <typename T> class SELUCuda : public SELU<T> {
 public:
+  typedef typename CudaType<T>::type Tc;
+
   explicit SELUCuda(const Context &ctx, double scale, double alpha)
       : SELU<T>(ctx, scale, alpha), device_(std::stoi(ctx.device_id)) {}
   virtual ~SELUCuda() {}

@@ -25,10 +25,12 @@ namespace nbla {
 
 template <typename T>
 class ImageAugmentationCuda : public ImageAugmentation<T> {
+
 protected:
   Variable curand_state_;
 
 public:
+  typedef typename CudaType<T>::type Tc;
   explicit ImageAugmentationCuda(const Context &ctx, const vector<int> &shape,
                                  const vector<int> &pad, float min_scale,
                                  float max_scale, float angle,

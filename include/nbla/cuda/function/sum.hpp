@@ -26,6 +26,8 @@ namespace nbla {
 
 template <typename T> class SumCuda : public Sum<T> {
 public:
+  typedef typename CudaType<T>::type Tc;
+
   explicit SumCuda(const Context &ctx, const vector<int> &axes, bool keep_dims)
       : Sum<T>(ctx, axes, keep_dims), device_(std::stoi(ctx.device_id)) {}
   virtual ~SumCuda() {}

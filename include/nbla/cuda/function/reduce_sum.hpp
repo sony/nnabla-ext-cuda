@@ -22,6 +22,8 @@ namespace nbla {
 
 template <typename T> class ReduceSumCuda : public ReduceSum<T> {
 public:
+  typedef typename CudaType<T>::type Tc;
+
   explicit ReduceSumCuda(const Context &ctx) : ReduceSum<T>(ctx) {}
   virtual ~ReduceSumCuda() {}
   virtual shared_ptr<Function> copy() const {

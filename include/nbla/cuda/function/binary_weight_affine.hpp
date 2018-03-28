@@ -25,6 +25,8 @@ namespace nbla {
 template <typename T>
 class BinaryWeightAffineCuda : public BinaryWeightAffine<T> {
 public:
+  typedef typename CudaType<T>::type Tc;
+
   BinaryWeightAffineCuda(const Context &ctx, int base_axis)
       : BinaryWeightAffine<T>(ctx, base_axis),
         device_(std::stoi(ctx.device_id)) {}

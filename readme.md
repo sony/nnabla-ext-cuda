@@ -4,11 +4,11 @@ This repository provides an official CUDA/cuDNN-accelerated extension of the
 [Neural Network Libraries](https://github.com/sony/nnabla/) deep learning framework.
 
 In order to use it, the default context needs to be changed from `'cpu'` to
-`'cuda.cudnn'`:
+`cudnn'`:
 ```python
-from nnabla.contrib.context import extension_context
+from nnabla.extension_utils import get_extension_context
 
-ctx = extension_context('cuda.cudnn', device_id=args.device_id)
+ctx = get_extension_context('cudnn', device_id='0')
 nn.set_default_context(ctx)
 ```
 

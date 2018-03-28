@@ -24,7 +24,9 @@ namespace nbla {
 */
 
 template <typename T> class DeconvolutionCuda : public Deconvolution<T> {
+
 public:
+  typedef typename CudaType<T>::type Tc;
   explicit DeconvolutionCuda(const Context &ctx, int base_axis,
                              const vector<int> &pad, const vector<int> &stride,
                              const vector<int> &dilation, int group)

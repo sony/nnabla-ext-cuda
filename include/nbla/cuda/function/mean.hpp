@@ -26,6 +26,7 @@ namespace nbla {
 
 template <typename T> class MeanCuda : public Mean<T> {
 public:
+  typedef typename CudaType<T>::type Tc;
   explicit MeanCuda(const Context &ctx, const vector<int> &axes, bool keep_dims)
       : Mean<T>(ctx, axes, keep_dims), device_(std::stoi(ctx.device_id)) {}
   virtual ~MeanCuda() {}

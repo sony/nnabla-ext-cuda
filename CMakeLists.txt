@@ -55,7 +55,11 @@ endif()
 execute_process(
   COMMAND ${PYTHON_COMMAND}
           ${CMAKE_CURRENT_SOURCE_DIR}/build-tools/code_generator/generate.py
-          OUTPUT_VARIABLE TEST)
+          OUTPUT_VARIABLE TEST
+          RESULT_VARIABLE GENERATE_RESULT)
+if (NOT ${GENERATE_RESULT} EQUAL 0)
+  message(FATAL_ERROR "generate.py failed.")
+endif()
 
 if(BUILD_CPP_LIB)
   ###############################################################################

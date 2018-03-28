@@ -31,6 +31,8 @@ protected:
   VariablePtr trp_input_, trp_output_, sum_input_, sum_output_;
 
 public:
+  typedef typename CudaType<T>::type Tc;
+
   explicit BroadcastCuda(const Context &ctx, const vector<int> &shape)
       : Broadcast<T>(ctx, shape), device_(std::stoi(ctx.device_id)) {}
   virtual ~BroadcastCuda() {}

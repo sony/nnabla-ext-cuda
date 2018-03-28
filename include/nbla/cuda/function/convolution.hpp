@@ -22,6 +22,8 @@ namespace nbla {
 
 template <typename T> class ConvolutionCuda : public Convolution<T> {
 public:
+  typedef typename CudaType<T>::type Tc;
+
   explicit ConvolutionCuda(const Context &ctx, int base_axis,
                            const vector<int> &pad, const vector<int> &stride,
                            const vector<int> &dilation, int group)

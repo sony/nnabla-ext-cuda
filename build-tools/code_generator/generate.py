@@ -12,69 +12,95 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Copyright (c) 2017 Sony Corporation. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import io
 import os
+from os.path import abspath, dirname, join
 
-from utils.load_function_rst import Functions
-from load_implements_rst import Implements
-from utils.common import check_update
+# Set path to <NNabla root>/build-tools/code_generator to import the following two
+from utils.common import check_update, get_version
+from utils.type_conv import type_from_proto
+import code_generator_utils as utils
 
-base = os.path.abspath(os.path.dirname(os.path.abspath(__file__)) + '/../..')
-template = os.path.abspath(os.path.dirname(
-    os.path.abspath(__file__)) + '/templates')
-functions = Functions()
-info = functions.info
-info['Implements'] = Implements().info
+import itertools
 
-generation_list = {
-    'cuda': ['src/nbla/cuda/init.cpp',
-             'python/src/nnabla_ext/cuda/_version.py'],
-    'cudnn': ['src/nbla/cuda/cudnn/init.cpp',
-              'python/src/nnabla_ext/cuda/cudnn/_version.py']
-}
+here = abspath(dirname(abspath(__file__)))
+base = abspath(here + '/../..')
 
-function_generation_list = {
-    'cuda': ['include/nbla/cuda/function/{}.hpp', 'src/nbla/cuda/function/{}.cu'],
-    'cudnn': ['include/nbla/cuda/cudnn/function/{}.hpp', 'src/nbla/cuda/cudnn/function/{}.cu']
-}
 
-for implements, filelist in generation_list.items():
-    for fn in filelist:
-        filename = '{}/{}'.format(base, fn)
-        modulename = fn.replace('/', '_').replace('.', '_')
-        temp = '{}/{}_template{}'.format(template,
-                                         modulename, os.path.splitext(fn)[1])
-        exec('import generator.generate_{}'.format(modulename))
-        code_template = None
-        with io.open(temp, 'rt', encoding='utf_8_sig') as f:
-            code_template = f.read()
-        if code_template:
-            code = eval(
-                ('generator.generate_{}.generate' +
-                 '(info, code_template)').format(modulename))
-            if code:
-                check_update(filename, code, force=True)
+def generate():
+    function_info = utils.load_function_info(flatten=True)
+    solver_info = utils.load_solver_info()
+    function_types = utils.load_yaml_ordered(open(
+        join(here, 'function_types.yaml'), 'r'))
+    function_types_cudnn = utils.load_yaml_ordered(open(
+        join(here, 'function_types_cudnn.yaml'), 'r'))
+    solver_types = utils.load_yaml_ordered(open(
+        join(here, 'solver_types.yaml'), 'r'))
+    function_template = join(
+        base, 'src/nbla/cuda/function/function_types.cu.tmpl')
+    function_template_cudnn = join(
+        base, 'src/nbla/cuda/cudnn/function/function_types.cu.tmpl')
+    solver_template = join(
+        base, 'src/nbla/cuda/solver/solver_types.cu.tmpl')
+    init_template = join(
+        base, 'src/nbla/cuda/init.cpp.tmpl')
+    init_template_cudnn = join(
+        base, 'src/nbla/cuda/cudnn/init.cpp.tmpl')
+    utils.generate_init(function_info, function_types,
+                        solver_info, solver_types, ext_info={}, template=init_template)
+    utils.generate_init(function_info, function_types_cudnn,
+                        solver_info, solver_types, ext_info={}, template=init_template_cudnn)
+    utils.generate_function_types(
+        function_info, function_types, ext_info={}, template=function_template, output_format='%s.cu')
+    utils.generate_function_types(
+        function_info, function_types_cudnn, ext_info={}, template=function_template_cudnn, output_format='%s.cu')
+    utils.generate_solver_types(
+        solver_info, solver_types, ext_info={}, template=solver_template, output_format='%s.cu')
+    utils.generate_version(template=join(
+        base, 'python/src/nnabla_ext/cuda/_version.py.tmpl'), rootdir=base)
+    utils.generate_version(template=join(
+        base, 'python/src/nnabla_ext/cudnn/_version.py.tmpl'), rootdir=base)
 
-for category, functions in info['Functions'].items():
-    for function, function_info in functions.items():
-        function_name = info['Names'][function]
-        imp_list = []
-        if function in info['Implements']:
-            imp_list = info['Implements'][function]
-        for implement in imp_list:
-            for fn in function_generation_list[implement]:
-                filename = '{}/{}'.format(base, fn.format(function_name))
-                modulename = fn.replace(
-                    '/', '_').replace('.', '_').replace('_{}', '')
-                temp = '{}/{}_template{}'.format(template,
-                                                 modulename, os.path.splitext(fn)[1])
-                exec('import function_generator.generate_{}'.format(modulename))
-                s = None
-                with io.open(temp, 'rt', encoding='utf_8_sig') as f:
-                    s = f.read()
-                if s:
-                    code = eval(
-                        ("function_generator.generate_{}.generate" +
-                         "(info['Functions'][category][function], function, function_name, s)").format(modulename))
-                if code:
-                    check_update(filename, code)
+    # Generate function skeltons
+    func_src_template = join(
+        base,
+        'src/nbla/cuda/function/generic/function_impl.cu.tmpl')
+    func_src_template_cudnn = join(
+        base,
+        'src/nbla/cuda/cudnn/function/generic/function_impl.cu.tmpl')
+    func_header_template = join(
+        base,
+        'include/nbla/cuda/function/function_impl.hpp.tmpl')
+    func_header_template_cudnn = join(
+        base,
+        'include/nbla/cuda/cudnn/function/function_impl.hpp.tmpl')
+    utils.generate_skelton_function_impl(
+        function_info, function_types, ext_info={},
+        template=func_src_template, output_format='%s.cu')
+    utils.generate_skelton_function_impl(
+        function_info, function_types, ext_info={},
+        template=func_header_template, output_format='%s.hpp')
+    utils.generate_skelton_function_impl(
+        function_info, function_types_cudnn, ext_info={},
+        template=func_src_template_cudnn, output_format='%s.cu')
+    utils.generate_skelton_function_impl(
+        function_info, function_types_cudnn, ext_info={},
+        template=func_header_template_cudnn, output_format='%s.hpp')
+
+
+if __name__ == '__main__':
+    generate()
