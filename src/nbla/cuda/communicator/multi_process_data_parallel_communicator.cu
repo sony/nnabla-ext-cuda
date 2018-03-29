@@ -23,6 +23,8 @@
 #include <stdint.h>
 #include <unistd.h>
 
+#include <typeinfo>
+
 namespace nbla {
 
 using std::make_shared;
@@ -84,6 +86,7 @@ bool MultiProcessDataParallelCommunicatorNccl<T>::mpi_initialized_;
 
 template <typename T> void MultiProcessDataParallelCommunicatorNccl<T>::init() {
   Communicator::init();
+
   try {
     // MPI init
     if (!mpi_initialized_) {
@@ -100,6 +103,7 @@ template <typename T> void MultiProcessDataParallelCommunicatorNccl<T>::init() {
       }
       mpi_initialized_ = true;
     }
+
     // Create comm, set size, and rank
     MPI_Comm_size(MPI_COMM_WORLD, &this->size_);
     MPI_Comm_rank(MPI_COMM_WORLD, &this->rank_);
@@ -234,15 +238,15 @@ MultiProcessDataParallelCommunicatorNccl<T>::copy_inside_device(
     auto n_param = ndarray->size();
     total_params += n_param;
   }
-  dtypes dtype = get_dtype<T>();
+  dtypes dtype = get_dtype<Tc>();
   NdArrayPtr large_ndarray = make_shared<NdArray>(Shape_t{total_params});
-  T *buff = large_ndarray->cast(dtype, this->ctx_)->pointer<T>();
-  Size_t type_size = sizeof(T);
+  Tc *buff = large_ndarray->cast(dtype, this->ctx_)->pointer<Tc>();
+  Size_t type_size = sizeof(Tc);
   int k = 0;
 
   // copy inside device
   for (auto ndarray : ndarray_list) {
-    const T *dw = ndarray->cast(dtype, this->ctx_)->const_pointer<T>();
+    const Tc *dw = ndarray->cast(dtype, this->ctx_)->const_pointer<Tc>();
     auto n_param = ndarray->size();
     int stream_id = k % num_streams_;
     cudaMemcpyAsync(buff, dw, type_size * n_param, cudaMemcpyDeviceToDevice,
@@ -256,12 +260,12 @@ MultiProcessDataParallelCommunicatorNccl<T>::copy_inside_device(
 template <typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::copy_back_inside_device(
     const vector<NdArrayPtr> &ndarray_list, NdArrayPtr large_ndarray) {
-  dtypes dtype = get_dtype<T>();
-  T *buff = large_ndarray->cast(dtype, this->ctx_)->pointer<T>();
-  Size_t type_size = sizeof(T);
+  dtypes dtype = get_dtype<Tc>();
+  Tc *buff = large_ndarray->cast(dtype, this->ctx_)->pointer<Tc>();
+  Size_t type_size = sizeof(Tc);
   int k = 0;
   for (auto ndarray : ndarray_list) {
-    T *dw = ndarray->cast(dtype, this->ctx_)->pointer<T>();
+    Tc *dw = ndarray->cast(dtype, this->ctx_)->pointer<Tc>();
     auto n_param = ndarray->size();
     int stream_id = k % num_streams_;
     cudaMemcpyAsync(dw, buff, type_size * n_param, cudaMemcpyDeviceToDevice,
@@ -294,7 +298,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::reduce(
 
   if (inplace) { // in-place
     int k = 0;
-    dtypes dtype = get_dtype<T>();
+    dtypes dtype = get_dtype<Tc>();
     for (auto ndarray : ndarray_list) { // ndarray loop
       int stream_id = k % num_streams_;
       reduce(ndarray, streams_[stream_id], dst, division, inplace);
@@ -327,12 +331,11 @@ void MultiProcessDataParallelCommunicatorNccl<T>::reduce(NdArrayPtr ndarray,
                                                          bool inplace,
                                                          const string &group) {
   auto n_param = ndarray->size();
-  dtypes dtype = get_dtype<T>();
-  const T *dw0 = ndarray->get(dtype, this->ctx_)->const_pointer<T>();
-  T *dw1 = ndarray->cast(dtype, this->ctx_)->pointer<T>();
-  NBLA_NCCL_CHECK(ncclReduce(dw0, dw1, n_param,
-                             ncclFloat, // TODO: address ncclFloat
-                             ncclSum, dst, comms_[group], stream));
+  dtypes dtype = get_dtype<Tc>();
+  const Tc *dw0 = ndarray->get(dtype, this->ctx_)->const_pointer<Tc>();
+  Tc *dw1 = ndarray->cast(dtype, this->ctx_)->pointer<Tc>();
+  NBLA_NCCL_CHECK(ncclReduce(dw0, dw1, n_param, get_nccl_dtype<Tc>(), ncclSum,
+                             dst, comms_[group], stream));
   if (division) {
     NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace, stream, n_param,
                                       this->size_, dw1);
@@ -374,14 +377,14 @@ void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division,
     for (auto elm : func_named_param) { // function-loop
       VariablePtr vp = elm.second;
       auto n_param = vp->size();
-      const T *dw0 = vp->get_grad_pointer<T>(ctx);
-      T *dw1 = vp->cast_grad_and_get_pointer<T>(ctx);
+      const Tc *dw0 = vp->get_grad_pointer<Tc>(ctx);
+      Tc *dw1 = vp->cast_grad_and_get_pointer<Tc>(ctx);
       int stream_id = k % num_streams_;
       // AllReduce
 
-      NBLA_NCCL_CHECK(
-          ncclAllReduce(dw0, dw1, n_param, ncclFloat, // TODO: address ncclFloat
-                        ncclSum, comms_["world"], streams_[stream_id]));
+      NBLA_NCCL_CHECK(ncclAllReduce(dw0, dw1, n_param, get_nccl_dtype<Tc>(),
+                                    ncclSum, comms_["world"],
+                                    streams_[stream_id]));
       // Divide
       if (division) {
         NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace,
@@ -393,17 +396,17 @@ void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division,
   } else { // out-of-place. use a large array.
     Context ctx = this->contexts_[0];
     shared_ptr<CudaCachedArray> arr_buff = // TODO: address 16 bits also here?
-        make_shared<CudaCachedArray>(this->total_params_, get_dtype<T>(), ctx);
-    T *buff = arr_buff->pointer<T>();
-    T *buff_start = buff;
+        make_shared<CudaCachedArray>(this->total_params_, get_dtype<Tc>(), ctx);
+    Tc *buff = arr_buff->pointer<Tc>();
+    Tc *buff_start = buff;
     auto func_named_param = this->device_func_named_param_[0];
-    Size_t type_size = sizeof(T);
+    Size_t type_size = sizeof(Tc);
     int k = 0;
 
     // 1. copy inside device
     for (auto elm : func_named_param) {
       VariablePtr vp = elm.second;
-      const T *dw = vp->get_grad_pointer<T>(ctx);
+      const Tc *dw = vp->get_grad_pointer<Tc>(ctx);
       auto n_param = vp->size();
       int stream_id = k % num_streams_;
       cudaMemcpyAsync(buff, dw, type_size * n_param, cudaMemcpyDeviceToDevice,
@@ -414,8 +417,8 @@ void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division,
 
     // 2. all reduce
     NBLA_NCCL_CHECK(ncclAllReduce(buff_start, buff_start, this->total_params_,
-                                  ncclFloat, // TODO: address ncclFloat
-                                  ncclSum, comms_["world"],
+                                  get_nccl_dtype<Tc>(), ncclSum,
+                                  comms_["world"],
                                   0)); // use default stream
 
     // 3. divide
@@ -431,7 +434,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division,
     k = 0;
     for (auto elm : func_named_param) {
       VariablePtr vp = elm.second;
-      T *dw = vp->cast_grad_and_get_pointer<T>(ctx);
+      Tc *dw = vp->cast_grad_and_get_pointer<Tc>(ctx);
       auto n_param = vp->size();
       int stream_id = k % num_streams_;
       cudaMemcpyAsync(dw, buff, type_size * n_param, cudaMemcpyDeviceToDevice,
@@ -466,7 +469,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::all_reduce(
 
   if (inplace) { // in-place
     int k = 0;
-    dtypes dtype = get_dtype<T>();
+    dtypes dtype = get_dtype<Tc>();
     for (auto ndarray : ndarray_list) { // ndarray loop
       int stream_id = k % num_streams_;
       all_reduce(ndarray, streams_[stream_id], division, inplace, group);
@@ -495,11 +498,10 @@ void MultiProcessDataParallelCommunicatorNccl<T>::all_reduce(
     NdArrayPtr ndarray, cudaStream_t stream, bool division, bool inplace,
     const string &group) {
   auto n_param = ndarray->size();
-  dtypes dtype = get_dtype<T>();
-  const T *dw0 = ndarray->get(dtype, this->ctx_)->const_pointer<T>();
-  T *dw1 = ndarray->cast(dtype, this->ctx_)->pointer<T>();
-  NBLA_NCCL_CHECK(ncclAllReduce(dw0, dw1, n_param,
-                                ncclFloat, // TODO: address ncclFloat
+  dtypes dtype = get_dtype<Tc>();
+  const Tc *dw0 = ndarray->get(dtype, this->ctx_)->const_pointer<Tc>();
+  Tc *dw1 = ndarray->cast(dtype, this->ctx_)->pointer<Tc>();
+  NBLA_NCCL_CHECK(ncclAllReduce(dw0, dw1, n_param, get_nccl_dtype<Tc>(),
                                 ncclSum, comms_[group], stream));
   if (division) {
     NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace, stream, n_param,
@@ -534,13 +536,14 @@ void MultiProcessDataParallelCommunicatorNccl<T>::reduce_scatter(
   // main thread not to wait for a result of a kernel call.
 
   NdArrayPtr large_ndarray = copy_inside_device(ndarray_list);
-  dtypes dtype = get_dtype<T>();
-  const T *sendbuff = large_ndarray->get(dtype, this->ctx_)->const_pointer<T>();
-  T *recvbuff = ndarray->cast(dtype, this->ctx_)->pointer<T>();
+  dtypes dtype = get_dtype<Tc>();
+  const Tc *sendbuff =
+      large_ndarray->get(dtype, this->ctx_)->const_pointer<Tc>();
+  Tc *recvbuff = ndarray->cast(dtype, this->ctx_)->pointer<Tc>();
   Size_t recvcount = ndarray->size();
   NBLA_NCCL_CHECK(ncclReduceScatter(sendbuff, recvbuff, recvcount,
-                                    ncclFloat, // TODO: address ncclFloat
-                                    ncclSum, comms_[group],
+                                    get_nccl_dtype<Tc>(), ncclSum,
+                                    comms_[group],
                                     0)); // use default stream
 
   // divide
@@ -575,7 +578,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::bcast(
 
   if (inplace) { // in-place
     int k = 0;
-    dtypes dtype = get_dtype<T>();
+    dtypes dtype = get_dtype<Tc>();
     for (auto ndarray : ndarray_list) { // ndarray loop
       int stream_id = k % num_streams_;
       bcast(ndarray, streams_[stream_id], src, inplace, group);
@@ -606,10 +609,10 @@ void MultiProcessDataParallelCommunicatorNccl<T>::bcast(NdArrayPtr ndarray,
                                                         int src, bool inplace,
                                                         const string &group) {
   auto n_param = ndarray->size();
-  dtypes dtype = get_dtype<T>();
-  T *dw0 = ndarray->cast(dtype, this->ctx_)->pointer<T>();
-  NBLA_NCCL_CHECK(
-      ncclBcast(dw0, n_param, ncclFloat, src, comms_[group], stream));
+  dtypes dtype = get_dtype<Tc>();
+  Tc *dw0 = ndarray->cast(dtype, this->ctx_)->pointer<Tc>();
+  NBLA_NCCL_CHECK(ncclBcast(dw0, n_param, get_nccl_dtype<Tc>(), src,
+                            comms_[group], stream));
 }
 
 template <typename T>
@@ -634,13 +637,13 @@ void MultiProcessDataParallelCommunicatorNccl<T>::all_gather(
   // optimal.
 
   NdArrayPtr large_ndarray = copy_inside_device(ndarray_list);
-  dtypes dtype = get_dtype<T>();
-  const T *sendbuff = ndarray->get(dtype, this->ctx_)->const_pointer<T>();
-  T *recvbuff = large_ndarray->cast(dtype, this->ctx_)->pointer<T>();
+  dtypes dtype = get_dtype<Tc>();
+  const Tc *sendbuff = ndarray->get(dtype, this->ctx_)->const_pointer<Tc>();
+  Tc *recvbuff = large_ndarray->cast(dtype, this->ctx_)->pointer<Tc>();
   Size_t sendcount = ndarray->size();
   NBLA_NCCL_CHECK(ncclAllGather(sendbuff, recvbuff, sendcount,
-                                ncclFloat,          // TODO: address ncclFloat
-                                comms_[group], 0)); // use default stream
+                                get_nccl_dtype<Tc>(), comms_[group],
+                                0)); // use default stream
   copy_back_inside_device(ndarray_list, large_ndarray);
   // no need to call null kernel since nnabla uses default stream currently.
 }
@@ -712,9 +715,10 @@ void MultiProcessDataParallelCommunicatorNccl<T>::sync_all_params() {
     this->check_array_class(ctx, vp);
 
     // Sync
-    vp->get_grad_pointer<T>(ctx);
+    vp->get_grad_pointer<Tc>(ctx);
   }
 }
 
 template class MultiProcessDataParallelCommunicatorNccl<float>;
+template class MultiProcessDataParallelCommunicatorNccl<Half>;
 }

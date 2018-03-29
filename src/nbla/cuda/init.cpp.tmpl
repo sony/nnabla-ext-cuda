@@ -122,6 +122,12 @@ void init_cuda() {
   NBLA_REGISTER_COMMUNICATOR_IMPL(DataParallelCommunicator, DataParallelCommunicatorNcclf, "cuda:float");
   typedef MultiProcessDataParallelCommunicatorNccl<float> MultiProcessDataParallelCommunicatorNcclf;
   NBLA_REGISTER_COMMUNICATOR_IMPL(MultiProcessDataParallelCommunicator, MultiProcessDataParallelCommunicatorNcclf, "cuda:float");
+
+  typedef DataParallelCommunicatorNccl<Half> DataParallelCommunicatorNcclh;
+  NBLA_REGISTER_COMMUNICATOR_IMPL(DataParallelCommunicator, DataParallelCommunicatorNcclh, "cuda:half");
+  typedef MultiProcessDataParallelCommunicatorNccl<Half> MultiProcessDataParallelCommunicatorNcclh;
+  NBLA_REGISTER_COMMUNICATOR_IMPL(MultiProcessDataParallelCommunicator, MultiProcessDataParallelCommunicatorNcclh, "cuda:half");
+
 #endif
 
   is_initialized = true;
