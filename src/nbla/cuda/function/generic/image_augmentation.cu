@@ -162,7 +162,7 @@ void ImageAugmentationCuda<T>::forward_impl(const Variables &inputs,
   int *state =
       this->noise_ > 0.0
           ? curand_state_.cast_data_and_get_pointer<int>(this->ctx_, false)
-          : NULL;
+          : nullptr;
   for (int iim = 0; iim < num_image; ++iim) {
     // Define augmentation settings
     // std::cout << "* image " << iim << "\n";
