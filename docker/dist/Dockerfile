@@ -116,11 +116,11 @@ RUN umask 0 \
     ; do echo Setup Python $PY \
     ; conda create -y -n py$PY python=$PY \
     ; source activate py$PY \
-    ; conda install -y -c conda-forge virtualenv onnx protobuf \
-    ; pip install -r /tmp/deps/requirements.txt \
-    ; pip install "pytest-pep8" \
-    ; pip install "pytest-cov" \
     ; pip install "Cython<0.25" \
     ; pip install "numpy<1.11" \
+    ; pip install protobuf virtualenv \
+    ; (pip install onnx || true )\
+    ; pip install -r /tmp/deps/requirements.txt \
+    ; pip install pytest-pep8 pytest-cov \
     ; source deactivate \
     ; done
