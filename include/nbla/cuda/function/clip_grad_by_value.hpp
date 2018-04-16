@@ -26,6 +26,7 @@ namespace nbla {
 
 template <typename T> class ClipGradByValueCuda : public ClipGradByValue<T> {
 public:
+  typedef typename CudaType<T>::type Tc;
   explicit ClipGradByValueCuda(const Context &ctx)
       : ClipGradByValue<T>(ctx), device_(std::stoi(ctx.device_id)) {}
   virtual ~ClipGradByValueCuda() {}

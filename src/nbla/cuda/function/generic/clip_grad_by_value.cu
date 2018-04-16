@@ -33,22 +33,18 @@ __global__ void kernel_clip_grad_by_value_backward(const int num, T *dx,
   NBLA_CUDA_KERNEL_LOOP(idx, num) {
     T min_i = min[idx];
     T max_i = max[idx];
-    if (accum) {
-      if (dy[idx] > max_i) {
-        dx[idx] += max_i;
-      } else if (dy[idx] < min_i) {
-        dx[idx] += min_i;
-      } else {
-        dx[idx] += dy[idx];
-      }
+    T value;
+    if (dy[idx] > max_i) {
+      value = max_i;
+    } else if (dy[idx] < min_i) {
+      value = min_i;
     } else {
-      if (dy[idx] > max_i) {
-        dx[idx] = max_i;
-      } else if (dy[idx] < min_i) {
-        dx[idx] = min_i;
-      } else {
-        dx[idx] = dy[idx];
-      }
+      value = dy[idx];
+    }
+    if (accum) {
+      dx[idx] += value;
+    } else {
+      dx[idx] = value;
     }
   }
 }
@@ -58,8 +54,8 @@ void ClipGradByValueCuda<T>::forward_impl(const Variables &inputs,
                                           const Variables &outputs) {
   cuda_set_device(this->device_);
   Size_t size = inputs[0]->size();
-  const T *x = inputs[0]->get_data_pointer<T>(this->ctx_);
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(this->ctx_);
+  const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_clip_grad_by_value_forward, size, y, x);
 }
 
@@ -74,21 +70,26 @@ void ClipGradByValueCuda<T>::backward_impl(const Variables &inputs,
     return;
   }
 
+  // Zeroing grads of min and max when accum is false.
+  for (int i = 1; i < 3; i++) {
+    if (propagate_down[i] && !accum[i]) {
+      inputs[i]->grad()->zero();
+    }
+  }
+
   Size_t size = inputs[0]->size();
-  T *dx = inputs[0]->cast_grad_and_get_pointer<T>(this->ctx_);
-  const T *dy = outputs[0]->get_grad_pointer<T>(this->ctx_);
-  const T *min = inputs[1]->get_data_pointer<T>(this->ctx_);
-  const T *max = inputs[2]->get_data_pointer<T>(this->ctx_);
+  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_, !accum[0]);
+  const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
+  const Tc *min = inputs[1]->get_data_pointer<Tc>(this->ctx_);
+  const Tc *max = inputs[2]->get_data_pointer<Tc>(this->ctx_);
 
   if (accum[0]) {
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-        (kernel_clip_grad_by_value_backward<T, true>), size, dx, dy, min, max);
+        (kernel_clip_grad_by_value_backward<Tc, true>), size, dx, dy, min, max);
   } else {
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-        (kernel_clip_grad_by_value_backward<T, false>), size, dx, dy, min, max);
+        (kernel_clip_grad_by_value_backward<Tc, false>), size, dx, dy, min,
+        max);
   }
 }
-
-// template instantiation
-template class ClipGradByValueCuda<float>;
 }
