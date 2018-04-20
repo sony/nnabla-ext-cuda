@@ -35,6 +35,11 @@ __global__ void kernel_divide_inplace(const int size, const int n_devices,
   NBLA_CUDA_KERNEL_LOOP(i, size) { dw[i] /= n_devices; }
 }
 
+// TODO: move to cuda/utils?
+__global__ void kernel_null() {}
+
+inline void launch_kernel_null() { kernel_null<<<1, 1>>>(); }
+
 /*
  * Referred from
  * http://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/index.html#onedevprothrd
@@ -296,6 +301,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::reduce(
   // TODO: the usage of multi streams is round-robin fashion, it may not be
   // optimal.
 
+  launch_kernel_null();
   if (inplace) { // in-place
     int k = 0;
     dtypes dtype = get_dtype<Tc>();
@@ -309,7 +315,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::reduce(
     reduce(large_ndarray, nullptr, dst, division, inplace, group);
     copy_back_inside_device(ndarray_list, large_ndarray);
   }
-  // no need to call null kernel since nnabla uses default stream currently.
+  launch_kernel_null();
 }
 
 template <typename T>
@@ -339,14 +345,6 @@ void MultiProcessDataParallelCommunicatorNccl<T>::reduce(NdArrayPtr ndarray,
   if (division) {
     NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace, stream, n_param,
                                       this->size_, dw1);
-    // TODO: strange because of implicit synchronization without inplace and
-    // with division does not occur.
-    // copy(streams) -> all_reduce(default stream) ->
-    // -> division(default stream) -> copy_back(streams) -> xxx(default stream)
-    // Even if launching null kernel, no sync. Thus, call stream synchronize.
-    if (!inplace) {
-      cudaStreamSynchronize(stream);
-    }
   }
 }
 
@@ -369,7 +367,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division,
 
   // Once sync to prevent the hang where the memcpy occurs during the allreduce.
   this->sync_all_params();
-
+  launch_kernel_null();
   if (inplace) { // in-place
     Context ctx = this->contexts_[0];
     auto func_named_param = this->device_func_named_param_[0];
@@ -443,7 +441,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division,
       k++;
     }
   }
-  // no need to call null kernel since nnabla uses default stream currently.
+  launch_kernel_null();
 }
 
 template <typename T>
@@ -467,6 +465,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::all_reduce(
   // TODO: the usage of multi streams is round-robin fashion, it may not be
   // optimal.
 
+  launch_kernel_null();
   if (inplace) { // in-place
     int k = 0;
     dtypes dtype = get_dtype<Tc>();
@@ -480,7 +479,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::all_reduce(
     all_reduce(large_ndarray, nullptr, division, inplace, group);
     copy_back_inside_device(ndarray_list, large_ndarray);
   }
-  // no need to call null kernel since nnabla uses default stream currently.
+  launch_kernel_null();
 }
 
 template <typename T>
@@ -506,14 +505,6 @@ void MultiProcessDataParallelCommunicatorNccl<T>::all_reduce(
   if (division) {
     NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace, stream, n_param,
                                       this->size_, dw1);
-    // TODO: strange because of implicit synchronization without inplace and
-    // with division does not occur.
-    // copy(streams) -> all_reduce(default stream) ->
-    // -> division(default stream) -> copy_back(streams) -> xxx(default stream)
-    // Even if launching null kernel, no sync. Thus, call stream synchronize.
-    if (!inplace) {
-      cudaStreamSynchronize(stream);
-    }
   }
 }
 
@@ -535,6 +526,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::reduce_scatter(
   // technique for
   // main thread not to wait for a result of a kernel call.
 
+  launch_kernel_null();
   NdArrayPtr large_ndarray = copy_inside_device(ndarray_list);
   dtypes dtype = get_dtype<Tc>();
   const Tc *sendbuff =
@@ -552,7 +544,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::reduce_scatter(
     NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace, 0, recvcount,
                                       this->size_, recvbuff);
   }
-  // no need to call null kernel since nnabla uses default stream currently.
+  launch_kernel_null();
 }
 
 template <typename T>
@@ -576,6 +568,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::bcast(
   // TODO: the usage of multi streams is round-robin fashion, it may not be
   // optimal.
 
+  launch_kernel_null();
   if (inplace) { // in-place
     int k = 0;
     dtypes dtype = get_dtype<Tc>();
@@ -589,7 +582,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::bcast(
     bcast(large_ndarray, nullptr, src, inplace, group);
     copy_back_inside_device(ndarray_list, large_ndarray);
   }
-  // no need to call null kernel since nnabla uses default stream currently.
+  launch_kernel_null();
 }
 
 template <typename T>
@@ -635,7 +628,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::all_gather(
 
   // TODO: the usage of multi streams is round-robin fashion, it may not be
   // optimal.
-
+  launch_kernel_null();
   NdArrayPtr large_ndarray = copy_inside_device(ndarray_list);
   dtypes dtype = get_dtype<Tc>();
   const Tc *sendbuff = ndarray->get(dtype, this->ctx_)->const_pointer<Tc>();
@@ -645,7 +638,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::all_gather(
                                 get_nccl_dtype<Tc>(), comms_[group],
                                 0)); // use default stream
   copy_back_inside_device(ndarray_list, large_ndarray);
-  // no need to call null kernel since nnabla uses default stream currently.
+  launch_kernel_null();
 }
 
 template <typename T>

@@ -73,7 +73,9 @@ if(MSVC)
   set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};-Xcompiler /W0")
 else()
   set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};-std=c++11")
-  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS}; --default-stream per-thread")
+  # Do not use `--default-stream per-thread` since some kernel calls are executed strangely in blocking streams other than default stream
+  #set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS}; --default-stream per-thread")
+  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};")
 endif()
 
 file(GLOB CU_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} */*.cu cudnn/*/*.cu)
