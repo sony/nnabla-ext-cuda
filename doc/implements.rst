@@ -339,6 +339,9 @@ Function Implements
    * - ClipGradByValue
      - x
      - 
+   * - ClipGradByNorm
+     - x
+     - 
    * - TopNError
      - x
      - 
