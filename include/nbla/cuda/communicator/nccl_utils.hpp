@@ -44,17 +44,12 @@ using std::pair;
     }                                                                          \
   } while (0)
 
-template <typename Tc> inline ncclDataType_t get_nccl_dtype() {
-  std::type_info const &type = typeid(Tc);
-  if (type == typeid(float)) {
-    return ncclFloat;
-  } else if (type == typeid(CudaType<HalfCuda>::type)) {
-    return ncclHalf;
-  } else {
-    NBLA_ERROR(error_code::not_implemented,
-               "DataType of the communicator for %s is not supported not.",
-               type.name());
-  }
+template <typename Tc> ncclDataType_t get_nccl_dtype();
+
+template <> inline ncclDataType_t get_nccl_dtype<float>() { return ncclFloat; }
+template <> inline ncclDataType_t get_nccl_dtype<Half>() { return ncclHalf; }
+template <> inline ncclDataType_t get_nccl_dtype<HalfCuda>() {
+  return ncclHalf;
 }
 }
 #endif
