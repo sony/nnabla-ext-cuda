@@ -19,6 +19,7 @@
 #include <nbla/array.hpp>
 #include <nbla/communicator/data_parallel_communicator.hpp>
 #include <nbla/context.hpp>
+#include <nbla/cuda/communicator/nccl_utils.hpp>
 #include <nbla/variable.hpp>
 
 #include <memory>
@@ -50,6 +51,7 @@ class NBLA_API DataParallelCommunicatorNccl
     : public DataParallelCommunicator<T> {
 
 protected:
+  typedef typename CudaType<T>::type Tc;
   int n_devices_;
   vector<int> device_ids_;
 
