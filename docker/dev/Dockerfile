@@ -24,11 +24,10 @@ RUN curl -L https://github.com/google/protobuf/releases/download/v3.1.0/protoc-3
     && rm -f /tmp/protoc-3.1.0-linux-x86_64.zip readme.txt
 
 # Conda environment for Python3 versions
-RUN wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh \
+RUN umask 0 && wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh \
      && bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/miniconda3 \
      && rm -rf Miniconda3-latest-Linux-x86_64.sh
 ENV PATH /opt/miniconda3/bin:$PATH
-RUN chmod -R ugo+w /opt/miniconda3
 
 ADD python/requirements.txt /tmp/deps/
 
