@@ -110,7 +110,7 @@ template <typename T> void MultiProcessDataParallelCommunicatorNccl<T>::init() {
     get_host_name(hostname, 1024);
     host_hashs[this->rank_] = get_host_hash(hostname);
 
-    MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_nullptr, host_hashs,
+    MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, host_hashs,
                   sizeof(uint64_t), MPI_BYTE, MPI_COMM_WORLD);
     MPI_Barrier(MPI_COMM_WORLD);
 
