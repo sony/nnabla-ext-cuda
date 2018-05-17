@@ -96,7 +96,7 @@ template <typename T> void MultiProcessDataParallelCommunicatorNccl<T>::init() {
     // MPI init
     if (!mpi_initialized_) {
       int argc = 0;
-      char **argv = NULL;
+      char **argv = nullptr;
       int requiredThreadLevelSupport = MPI_THREAD_SERIALIZED;
       int provided;
       MPI_Init_thread(&argc, &argv, requiredThreadLevelSupport, &provided);
