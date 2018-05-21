@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 #ifndef NBLA_CUDA_FUNCTION_PAD_HPP
 #define NBLA_CUDA_FUNCTION_PAD_HPP
 
@@ -35,7 +33,10 @@ public:
   */
   typedef typename CudaType<T>::type Tcu;
 
-  explicit PadCuda(const Context &ctx, const vector<int> & pad_width, const string & mode, float constant_value) : Pad<T>(ctx, pad_width, mode, constant_value), device_(std::stoi(ctx.device_id)) {}
+  explicit PadCuda(const Context &ctx, const vector<int> &pad_width,
+                   const string &mode, float constant_value)
+      : Pad<T>(ctx, pad_width, mode, constant_value),
+        device_(std::stoi(ctx.device_id)) {}
   virtual ~PadCuda() {}
   virtual string name() { return "PadCuda"; }
   virtual vector<string> allowed_array_classes() {
