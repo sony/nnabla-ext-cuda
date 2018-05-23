@@ -21,5 +21,5 @@
 
 namespace nbla {
 
-NBLA_DEFINE_TRANSFORM_UNARY_CUDA(ATanh, atanh(x), dy / (1 - x*x));
+NBLA_DEFINE_TRANSFORM_UNARY_CUDA(ATanh, atanh(x), dy / (1 - x * x));
 }

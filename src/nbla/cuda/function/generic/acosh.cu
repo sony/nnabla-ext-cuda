@@ -21,5 +21,5 @@
 
 namespace nbla {
 
-NBLA_DEFINE_TRANSFORM_UNARY_CUDA(ACosh, acosh(x), dy / sqrt(x*x - 1));
+NBLA_DEFINE_TRANSFORM_UNARY_CUDA(ACosh, acosh(x), dy / sqrt(x * x - 1));
 }
