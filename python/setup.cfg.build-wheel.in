@@ -8,4 +8,6 @@ cpu_target_file=${CPPLIB_LIBRARY}
 cuda_target_name=${CPPLIB_CUDA_LIBRARY_NAME}
 cuda_target_file_name=${CPPLIB_CUDA_TARGET_FILE_NAME}
 cuda_target_file=${CPPLIB_CUDA_TARGET_FILE}
+
+cuda_version=${NBLA_CUDA_VERSION}
 cudnn_version=${NBLA_CUDNN_VERSION}

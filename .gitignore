@@ -1,9 +1,11 @@
 # .gitignore
 
+/build_*/
+
 .cache
 *.pyc
 
-/build/
+/docker/development/Dockerfile.build.py*
 /python/setup.cfg
 /python/setup.cfg-Debug
 /python/setup.cfg-MinSizeRel
@@ -24,4 +26,3 @@
 /src/nbla/cuda/init.cpp
 /third_party/*.zip
 /third_party/*/
-/build/
