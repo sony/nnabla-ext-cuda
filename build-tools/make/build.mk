@@ -61,6 +61,7 @@ nnabla-ext-cuda-cpplib:
 .PHNOY: nnabla-ext-cuda-wheel
 nnabla-ext-cuda-wheel:
 	$(call with-virtualenv, \
+		$(NNABLA_EXT_CUDA_DIRECTORY), \
 		$(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/env, \
 		-f build-tools/make/build.mk, \
 		nnabla-ext-cuda-wheel-local)
@@ -92,10 +93,17 @@ nnabla-ext-cuda-install:
 
 
 ########################################################################################################################
+# Shell (for rapid development)
+.PHONY: nnabla-ext-cuda-shell
+nnabla-ext-cuda-shell:
+	PS1="nnabla-ext-cuda-build: " bash --norc -i
+
+########################################################################################################################
 # test
 .PHNOY: nnabla-ext-cuda-test
 nnabla-ext-cuda-test:
 	$(call with-virtualenv, \
+		$(NNABLA_EXT_CUDA_DIRECTORY), \
 		$(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/env, \
 		-f build-tools/make/build.mk, \
 		nnabla-ext-cuda-test-local)
