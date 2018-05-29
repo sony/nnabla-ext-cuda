@@ -70,10 +70,17 @@ def generate():
         function_info, function_types_cudnn, ext_info={}, template=function_template_cudnn, output_format='%s.cu')
     utils.generate_solver_types(
         solver_info, solver_types, ext_info={}, template=solver_template, output_format='%s.cu')
+    version_suffix = None
+    if "NNABLA_EXT_CUDA_VERSION_SUFFIX" in os.environ:
+        version_suffix = os.environ["NNABLA_EXT_CUDA_VERSION_SUFFIX"]
     utils.generate_version(template=join(
-        base, 'python/src/nnabla_ext/cuda/_version.py.tmpl'), rootdir=base)
+        base, 'python/src/nnabla_ext/cuda/_version.py.tmpl'),
+        rootdir=base,
+        suffix=version_suffix)
     utils.generate_version(template=join(
-        base, 'python/src/nnabla_ext/cudnn/_version.py.tmpl'), rootdir=base)
+        base, 'python/src/nnabla_ext/cudnn/_version.py.tmpl'),
+        rootdir=base,
+        suffix=version_suffix)
 
     # Generate function skeltons
     func_src_template = join(

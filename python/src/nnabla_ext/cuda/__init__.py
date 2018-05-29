@@ -16,12 +16,17 @@ from __future__ import absolute_import
 
 import nnabla
 
-from .init import (
-    clear_memory_cache,
-    array_classes,
-    device_synchronize,
-    get_device_count,
-    get_devices)
+try:
+    from .init import (
+        clear_memory_cache,
+        array_classes,
+        device_synchronize,
+        get_device_count,
+        get_devices)
+except:
+    print('Please install the correct version of CUDA / CUDNN.')
+    print('Or install correct nnabla_ext_cuda for installed version of CUDA/CUDNN.')
+    raise
 
 from ._version import (
     __version__,

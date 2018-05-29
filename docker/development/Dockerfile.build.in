@@ -1,39 +1,36 @@
-FROM nvidia/cuda:8.0-devel-centos6
-
-ENV CUDNN_VERSION 6.0.21 
-
-RUN CUDNN_DOWNLOAD_SUM=9b09110af48c9a4d7b6344eb4b3e344daa84987ed6177d5c44319732f3bb7f9c && \ 
-    curl -fsSL http://developer.download.nvidia.com/compute/redist/cudnn/v6.0/cudnn-8.0-linux-x64-v6.0.tgz -O && \ 
-    echo "$CUDNN_DOWNLOAD_SUM  cudnn-8.0-linux-x64-v6.0.tgz" | sha256sum -c - && \ 
-    tar -xzf cudnn-8.0-linux-x64-v6.0.tgz -C /usr/local && \ 
-    rm cudnn-8.0-linux-x64-v6.0.tgz && \ 
-    ldconfig 
+FROM nvidia/cuda:{BASETAG}
 
 ENV LC_ALL en_US.UTF-8 
 ENV LANG en_US.UTF-8 
 ENV LANGUAGE en_US.UTF-8 
 
-# get devtoolset-4
-RUN yum install -y yum-utils 
-RUN yum install -y centos-release-scl 
-RUN yum-config-manager --enable rhel-server-rhscl-7-rpms 
-RUN yum install -y devtoolset-4-gcc 
-RUN yum install -y devtoolset-4-gcc-c++ 
-RUN yum install -y devtoolset-4-gcc-gfortran 
-RUN yum install -y devtoolset-4-binutils 
-RUN yum install -y git19
-RUN yum install -y python27
-ENV PATH=/opt/rh/git19/root/usr/bin:/opt/rh/python27/root/usr/bin:/opt/rh/devtoolset-4/root/usr/bin:$PATH 
-ENV LD_LIBRARY_PATH=/opt/rh/gti19/root/usr/lib64:/opt/rh/python27/root/usr/lib64:/opt/rh/devtoolset-4/root/usr/lib64:/opt/rh/devtoolset-4/root/usr/lib:$LD_LIBRARY_PATH 
-ENV PKG_CONFIG_PATH=/opt/rh/git19/root/usr/lib64/pkgconfig:/opt/rh/python27/root/usr/lib64/pkgconfig:${PKG_CONFIG_PATH}
+RUN yum install -y \
+    centos-release-scl \
+    epel-release \
+    yum-utils \
+    && yum-config-manager --enable rhel-server-rhscl-7-rpms \
+    && yum install -y \
+    curl \
+    devtoolset-4-binutils \
+    devtoolset-4-gcc \
+    devtoolset-4-gcc-c++ \
+    devtoolset-4-gcc-gfortran \
+    git19 \
+    hdf5 \
+    hdf5-devel \
+    unzip \
+    wget \
+    zip \
+    zlib-static \
+    && yum clean all
 
-RUN yum install -y wget curl zip unzip
-RUN yum install -y zlib-static
-RUN yum install -y epel-release
-RUN yum install -y hdf5 hdf5-devel
+ENV PATH=/opt/rh/git19/root/usr/bin:/opt/rh/devtoolset-4/root/usr/bin:$PATH
+ENV LD_LIBRARY_PATH=/opt/rh/gti19/root/usr/lib64:/opt/rh/devtoolset-4/root/usr/lib64:/opt/rh/devtoolset-4/root/usr/lib:$LD_LIBRARY_PATH
+ENV PKG_CONFIG_PATH=/opt/rh/git19/root/usr/lib64/pkgconfig:${{PKG_CONFIG_PATH}}
 
 RUN mkdir -p /tmp/deps \
     && yum install -y cmake \
+    && yum clean all \
     && cd /tmp/deps \
     && curl -L https://cmake.org/files/v3.9/cmake-3.9.0.tar.gz -o cmake-3.9.0.tar.gz \
     && tar xf cmake-3.9.0.tar.gz \
@@ -100,27 +97,25 @@ RUN cd /tmp \
     && cd patchelf-0.9 \
     && ./configure \
     && make \
-    && make install
+    && make install \
+    && cd / \
+    && rm -rf /tmp/*
 
 # Conda environment for Python3 versions
-RUN wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh \
-     && bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/miniconda3 \
-     && rm -rf Miniconda3-latest-Linux-x86_64.sh
-ENV PATH /opt/miniconda3/bin:$PATH
-
 ADD python/requirements.txt /tmp/deps/
 RUN umask 0 \
-    ; set -xe \
-    ; conda update -y -n base conda -c defaults \
-    ; for PY in 2.7 3.5 3.6 \
-    ; do echo Setup Python $PY \
-    ; conda create -y -n py$PY python=$PY \
-    ; source activate py$PY \
-    ; pip install "Cython<0.25" \
-    ; pip install "numpy<1.11" \
-    ; pip install protobuf virtualenv \
-    ; (pip install onnx || true )\
-    ; pip install -r /tmp/deps/requirements.txt \
-    ; pip install pytest-pep8 pytest-cov \
-    ; source deactivate \
-    ; done
+     && wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh \
+     && bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/miniconda3 \
+     && rm -rf Miniconda3-latest-Linux-x86_64.sh \
+     && /opt/miniconda3/bin/conda create -y -n {PYENVNAME} python={PYENVVERSION} \
+     && source /opt/miniconda3/bin/activate {PYENVNAME} \
+     && conda install scandir scikit-image \
+     && echo Try to install setuptools few times to avoid conda problem. \
+     && (pip install --no-cache-dir -U setuptools || pip install --no-cache-dir -U setuptools || pip install --no-cache-dir -U setuptools || true) \
+     && pip install --no-cache-dir -U -r /tmp/deps/requirements.txt \
+     && pip install --no-cache-dir -U "pytest-pep8" \
+     && pip install --no-cache-dir -U "pytest-cov" \
+     && pip install --no-cache-dir -U "Cython<0.25" \
+     && pip install --no-cache-dir -U "numpy<1.11"
+
+ENV PATH /opt/miniconda3/envs/{PYENVNAME}/bin:$PATH

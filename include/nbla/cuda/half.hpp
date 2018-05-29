@@ -440,11 +440,23 @@ HALF_CUDA_PREFIX HalfCuda pow(const HalfCuda &a, int &b) {
 #endif
 MATHF_F(abs);
 MATHF_F(fabs);
+MATHF_F(sin);
+MATHF_F(cos);
+MATHF_F(tan);
+MATHF_F(sinh);
+MATHF_F(cosh);
 MATHF_F(tanh);
+MATHF_F(asin);
+MATHF_F(acos);
+MATHF_F(atan);
+MATHF_F(asinh);
+MATHF_F(acosh);
+MATHF_F(atanh);
 MATHF_F(round);
 MATHF(exp);
 MATHF(log);
 MATHF(sqrt);
+MATHF(rsqrt);
 MATHF(floor);
 MATHF(ceil);
 HALF_CUDA_PREFIX nbla::HalfCuda max(const nbla::HalfCuda &a,
