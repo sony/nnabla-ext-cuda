@@ -20,6 +20,7 @@
 #include <nbla/communicator/multi_process_data_parallel_communicator.hpp>
 #include <nbla/context.hpp>
 #include <nbla/cuda/array/cuda_array.hpp>
+#include <nbla/cuda/communicator/nccl_utils.hpp>
 #include <nbla/variable.hpp>
 
 #include <memory>
@@ -35,16 +36,6 @@ using std::vector;
 using std::shared_ptr;
 using std::unordered_map;
 using std::pair;
-
-#define NBLA_NCCL_CHECK(EXPRESSION)                                            \
-  do {                                                                         \
-    ncclResult_t ret = EXPRESSION;                                             \
-    if (ret != ncclSuccess) {                                                  \
-      NBLA_ERROR(error_code::target_specific,                                  \
-                 "`" #EXPRESSION "` failed with %s.",                          \
-                 ncclGetErrorString(ret));                                     \
-    }                                                                          \
-  } while (0)
 
 /** \addtogroup NNablaCoreGrp */
 /*@{*/
@@ -74,6 +65,7 @@ protected:
   unordered_map<string, ncclComm_t> comms_;
 
 public:
+  typedef typename CudaType<T>::type Tc;
   MultiProcessDataParallelCommunicatorNccl(const Context &ctx);
   virtual ~MultiProcessDataParallelCommunicatorNccl();
   virtual string name() { return "MultiProcessDataParallelCommunicatorNccl"; }

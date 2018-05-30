@@ -335,6 +335,12 @@ Function Implements
      - 
    * - MeanSubtraction
      - x
+     -
+   * - ClipGradByValue
+     - x
+     - 
+   * - ClipGradByNorm
+     - x
      - 
    * - TopNError
      - x

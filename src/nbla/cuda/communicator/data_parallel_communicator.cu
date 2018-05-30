@@ -121,14 +121,14 @@ void DataParallelCommunicatorNccl<T>::allreduce(bool division, bool inplace) {
     auto stream = streams_[i];
 
     shared_ptr<CudaCachedArray> arr_buff = // TODO: address 16 bits also here?
-        make_shared<CudaCachedArray>(this->total_params_, get_dtype<T>(), ctx);
+        make_shared<CudaCachedArray>(this->total_params_, get_dtype<Tc>(), ctx);
 
-    T *buff = arr_buff->pointer<T>();
-    Size_t type_size = sizeof(T);
+    Tc *buff = arr_buff->pointer<Tc>();
+    Size_t type_size = sizeof(Tc);
 
     for (auto elm : func_named_param) {
       VariablePtr vp = elm.second;
-      const T *dw = vp->get_grad_pointer<T>(ctx);
+      const Tc *dw = vp->get_grad_pointer<Tc>(ctx);
       auto n_param = vp->size();
       cudaMemcpyAsync(buff, dw, type_size * n_param, cudaMemcpyDeviceToDevice,
                       stream);
@@ -149,12 +149,12 @@ void DataParallelCommunicatorNccl<T>::allreduce(bool division, bool inplace) {
     auto stream = streams_[i];
 
     shared_ptr<CudaCachedArray> arr_buff = // TODO: address 16 bits also here?
-        make_shared<CudaCachedArray>(this->total_params_, get_dtype<T>(), ctx);
+        make_shared<CudaCachedArray>(this->total_params_, get_dtype<Tc>(), ctx);
 
-    T *buff = arr_buff->pointer<T>();
-    ncclResult_t ret = ncclAllReduce(buff, buff, this->total_params_,
-                                     ncclFloat, // TODO: address ncclFloat
-                                     ncclSum, comm, 0); // use default stream
+    Tc *buff = arr_buff->pointer<Tc>();
+    ncclResult_t ret =
+        ncclAllReduce(buff, buff, this->total_params_, get_nccl_dtype<Tc>(),
+                      ncclSum, comm, 0); // use default stream
 
     if (ret != ncclSuccess) {
       NBLA_ERROR(error_code::target_specific, "ncclAllReduce fails with %d.",
@@ -177,10 +177,10 @@ void DataParallelCommunicatorNccl<T>::allreduce(bool division, bool inplace) {
       auto stream = streams_[i];
 
       shared_ptr<CudaCachedArray> arr_buff = // TODO: address 16 bits also here?
-          make_shared<CudaCachedArray>(this->total_params_, get_dtype<T>(),
+          make_shared<CudaCachedArray>(this->total_params_, get_dtype<Tc>(),
                                        ctx);
 
-      T *buff = arr_buff->pointer<T>();
+      Tc *buff = arr_buff->pointer<Tc>();
       NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace, stream,
                                         this->total_params_, n_devices_, buff);
     }
@@ -197,14 +197,14 @@ void DataParallelCommunicatorNccl<T>::allreduce(bool division, bool inplace) {
     auto stream = streams_[i];
 
     shared_ptr<CudaCachedArray> arr_buff = // TODO: address 16 bits also here?
-        make_shared<CudaCachedArray>(this->total_params_, get_dtype<T>(), ctx);
+        make_shared<CudaCachedArray>(this->total_params_, get_dtype<Tc>(), ctx);
 
-    T *buff = arr_buff->pointer<T>();
-    Size_t type_size = sizeof(T);
+    Tc *buff = arr_buff->pointer<Tc>();
+    Size_t type_size = sizeof(Tc);
 
     for (auto elm : func_named_param) {
       VariablePtr vp = elm.second;
-      T *dw = vp->cast_grad_and_get_pointer<T>(ctx);
+      Tc *dw = vp->cast_grad_and_get_pointer<Tc>(ctx);
       auto n_param = vp->size();
       cudaMemcpyAsync(dw, buff, type_size * n_param, cudaMemcpyDeviceToDevice,
                       stream);
@@ -321,7 +321,7 @@ void DataParallelCommunicatorNccl<T>::divide_by_num_divices(bool division) {
       auto stream = streams_[i];
       for (auto elm : func_named_param) {
         VariablePtr vp = elm.second;
-        T *dw = vp->cast_grad_and_get_pointer<T>(ctx);
+        Tc *dw = vp->cast_grad_and_get_pointer<Tc>(ctx);
         auto n_param = vp->size();
         NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace, stream,
                                           n_param, n_devices_, dw);
@@ -345,10 +345,11 @@ template <typename T> void DataParallelCommunicatorNccl<T>::sync_all_params() {
       this->check_array_class(ctx, vp);
 
       // Sync
-      vp->get_grad_pointer<T>(ctx);
+      vp->get_grad_pointer<Tc>(ctx);
     }
   }
 }
 
 template class DataParallelCommunicatorNccl<float>;
+template class DataParallelCommunicatorNccl<Half>;
 }

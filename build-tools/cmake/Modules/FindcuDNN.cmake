@@ -16,6 +16,7 @@ find_path(CUDNN_INCLUDE_DIR cudnn.h
 find_library(CUDNN_LIBRARY cudnn
     PATHS
     $ENV{CUDNN_PATH}/lib64
+    $ENV{CUDNN_PATH}/lib/x64
     $ENV{CUDA_PATH}/lib/x64
     /usr/local/cuda/lib64
     /usr/lib/x86_64-linux-gnu

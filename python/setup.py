@@ -83,8 +83,9 @@ def get_libinfo():
     print("CUDA Library name:", cuda_lib.name)
     print("CUDA Library file name:", cuda_lib.file_name)
     print("CUDA Library file:", cuda_lib.path)
+    cuda_version = cfgp.get("cmake", "cuda_version")
     cudnn_version = cfgp.get("cmake", "cudnn_version")
-    return cpu_lib, cuda_lib, cudnn_version
+    return cpu_lib, cuda_lib, cuda_version, cudnn_version
 
 
 def get_cpu_extopts(lib):
@@ -158,7 +159,7 @@ def cudnn_config(root_dir, cuda_lib, cuda_ext_opts):
 
 
 def get_setup_config(root_dir):
-    cpu_lib, cuda_lib, cudnn_version = get_libinfo()
+    cpu_lib, cuda_lib, cuda_version, cudnn_version = get_libinfo()
 
     packages = ['nnabla_ext']
     package_dir = {'nnabla_ext': join(root_dir, 'src', 'nnabla_ext')}
@@ -177,8 +178,10 @@ def get_setup_config(root_dir):
     package_data.update(cudnn_ext.package_data)
     ext_modules += cudnn_ext.ext_modules
 
+    pkg_name = 'nnabla-ext-cuda'
+
     pkg_info = dict(
-        name="nnabla_ext-cuda",
+        name=pkg_name,
         description='A CUDA and cuDNN extension of NNabla',
         version=__version__,
         author_email=__email__,
