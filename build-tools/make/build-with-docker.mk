@@ -34,7 +34,8 @@ ifndef NNABLA_BUILD_WITH_DOCKER_INCLUDED
   include $(NNABLA_DIRECTORY)/build-tools/make/build-with-docker.mk
 endif
 
-DOCKER_IMAGE_BUILD_CUDA ?= $(DOCKER_IMAGE_NAME_BASE)-build-cuda$(CUDA_VERSION_MAJOR)$(CUDA_VERSION_MINOR)-cudnn$(CUDNN_VERSION)
+DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA ?= $(DOCKER_IMAGE_NAME_BASE)-build-cuda$(CUDA_VERSION_MAJOR)$(CUDA_VERSION_MINOR)-cudnn$(CUDNN_VERSION)
+DOCKER_IMAGE_NNABLA_EXT_CUDA ?= $(DOCKER_IMAGE_NAME_BASE)-nnabla-ext--cuda$(CUDA_VERSION_MAJOR)$(CUDA_VERSION_MINOR)-cudnn$(CUDNN_VERSION)
 
 ########################################################################################################################
 # Docker image
@@ -47,7 +48,7 @@ docker_image_build_cuda:
 	docker pull nvidia/cuda:$(CUDA_VERSION_MAJOR).$(CUDA_VERSION_MINOR)-cudnn$(CUDNN_VERSION)-devel-centos6
 	@cd $(NNABLA_EXT_CUDA_DIRECTORY) \
 	&& python docker/development/generate_dockerfile.py $(DOCKERFILE_NAME_SUFFIX) \
-	&& docker build $(DOCKER_BUILD_ARGS) -t $(DOCKER_IMAGE_BUILD_CUDA) \
+	&& docker build $(DOCKER_BUILD_ARGS) -t $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA) \
 		-f docker/development/Dockerfile.build.$(DOCKERFILE_NAME_SUFFIX) .
 
 ########################################################################################################################
@@ -62,14 +63,35 @@ DOCKER_RUN_OPTS += -v $(NNABLA_EXT_CUDA_DIRECTORY_ABSOLUTE):$(NNABLA_EXT_CUDA_DI
 .PHONY: bwd-nnabla-ext-cuda-cpplib
 bwd-nnabla-ext-cuda-cpplib: docker_image_build_cuda
 	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
-	&& docker run $(DOCKER_RUN_OPTS) $(DOCKER_IMAGE_BUILD_CUDA) make -f build-tools/make/build.mk nnabla-ext-cuda-cpplib
+	&& docker run $(DOCKER_RUN_OPTS) $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA) make -f build-tools/make/build.mk nnabla-ext-cuda-cpplib
 
 .PHONY: bwd-nnabla-ext-cuda-wheel
 bwd-nnabla-ext-cuda-wheel: docker_image_build_cuda
 	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
-	&& docker run $(DOCKER_RUN_OPTS) $(DOCKER_IMAGE_BUILD_CUDA) make -f build-tools/make/build.mk nnabla-ext-cuda-wheel-local
+	&& docker run $(DOCKER_RUN_OPTS) $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA) make -f build-tools/make/build.mk nnabla-ext-cuda-wheel-local
 
 .PHONY: bwd-nnabla-ext-cuda-test
 bwd-nnabla-ext-cuda-test: docker_image_build_cuda
 	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
-	&& nvidia-docker run $(DOCKER_RUN_OPTS) $(DOCKER_IMAGE_BUILD_CUDA) make -f build-tools/make/build.mk nnabla-ext-cuda-test-local
+	&& nvidia-docker run $(DOCKER_RUN_OPTS) $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA) make -f build-tools/make/build.mk nnabla-ext-cuda-test-local
+
+.PHONY: bwd-nnabla-ext-cuda-shell
+bwd-nnabla-ext-cuda-shell: docker_image_build_cuda
+	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
+	&& nvidia-docker run $(DOCKER_RUN_OPTS) -it --rm ${DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA} make nnabla-ext-cuda-shell
+
+########################################################################################################################
+# Docker image with current nnabla
+.PHONY: docker_image_nnabla_ext_cuda
+docker_image_nnabla_ext_cuda: bwd-nnabla-cpplib bwd-nnabla-wheel bwd-nnabla-ext-cuda-cpplib bwd-nnabla-ext-cuda-wheel
+	docker pull ubuntu:16.04
+	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
+	&& cp docker/development/Dockerfile.build.py$(PYTHON_VERSION_MAJOR)$(PYTHON_VERSION_MINOR)-cuda$(CUDA_VERSION_MAJOR)$(CUDA_VERSION_MINOR)-cudnn$(CUDNN_VERSION) Dockerfile \
+	&& cp $(shell echo $(NNABLA_DIRECTORY)/build_wheel_py$(PYTHON_VERSION_MAJOR)$(PYTHON_VERSION_MINOR)/dist/*.whl) . \
+	&& echo ADD $(shell basename $(NNABLA_DIRECTORY)/build_wheel_py$(PYTHON_VERSION_MAJOR)$(PYTHON_VERSION_MINOR)/dist/*.whl) /tmp/ >>Dockerfile \
+	&& echo RUN pip install /tmp/$(shell basename $(NNABLA_DIRECTORY)/build_wheel_py$(PYTHON_VERSION_MAJOR)$(PYTHON_VERSION_MINOR)/dist/*.whl) >>Dockerfile \
+	&& echo ADD $(shell echo build_wheel_py$(PYTHON_VERSION_MAJOR)$(PYTHON_VERSION_MINOR)_$(CUDA_VERSION_MAJOR)$(CUDA_VERSION_MINOR)_$(CUDNN_VERSION)/dist/*.whl) /tmp/ >>Dockerfile \
+	&& echo RUN pip install /tmp/$(shell basename build_wheel_py$(PYTHON_VERSION_MAJOR)$(PYTHON_VERSION_MINOR)_$(CUDA_VERSION_MAJOR)$(CUDA_VERSION_MINOR)_$(CUDNN_VERSION)/dist/*.whl) >>Dockerfile \
+	&& docker build $(DOCKER_BUILD_ARGS) -t $(DOCKER_IMAGE_NNABLA_EXT_CUDA) . \
+	&& rm -f $(shell basename $(NNABLA_DIRECTORY)/build_wheel_py$(PYTHON_VERSION_MAJOR)$(PYTHON_VERSION_MINOR)/dist/*.whl) \
+	&& rm -f Dockerfile
