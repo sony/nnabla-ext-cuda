@@ -6,7 +6,7 @@ This repository provides an official CUDA/cuDNN-accelerated extension of the
 In order to use it, the default context needs to be changed from `'cpu'` to
 `cudnn'`:
 ```python
-from nnabla.extension_utils import get_extension_context
+from nnabla.ext_utils import get_extension_context
 
 ctx = get_extension_context('cudnn', device_id='0')
 nn.set_default_context(ctx)
