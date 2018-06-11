@@ -21,5 +21,5 @@
 
 namespace nbla {
 
-NBLA_DEFINE_TRANSFORM_UNARY_CUDA(Exp, exp(x), dy *exp(x));
+NBLA_DEFINE_TRANSFORM_UNARY_CUDA(Exp, std::exp(x), dy *exp(x));
 }

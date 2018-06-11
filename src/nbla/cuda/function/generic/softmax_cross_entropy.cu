@@ -34,7 +34,7 @@ kernel_softmax_cross_entropy_forward(const int size0x2_, const int size1_,
     const int j = i0 * size2_ + i2;
     Tl label = l[j];
     const int k = i0 * size1_ * size2_ + label * size2_ + i2;
-    y[j] = -log(max(p[k], numeric_limits_cuda<T>::min()));
+    y[j] = -std::log(max(p[k], numeric_limits_cuda<T>::min()));
   }
 }
 

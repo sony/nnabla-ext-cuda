@@ -21,5 +21,5 @@
 
 namespace nbla {
 
-NBLA_DEFINE_TRANSFORM_UNARY_CUDA(Log, log(x), dy / x);
+NBLA_DEFINE_TRANSFORM_UNARY_CUDA(Log, std::log(x), dy / x);
 }

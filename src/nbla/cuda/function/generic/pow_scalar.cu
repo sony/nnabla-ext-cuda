@@ -19,6 +19,7 @@
 
 namespace nbla {
 
-NBLA_DEFINE_TRANSFORM_UNARY_CUDA_1(PowScalar, pow(x, (T)a0),
-                                   dy *(T)a0 *pow(x, (T)a0 - (T)1), double);
+NBLA_DEFINE_TRANSFORM_UNARY_CUDA_1(PowScalar, std::pow(x, (T)a0),
+                                   dy *(T)a0 *std::pow(x, (T)a0 - (T)1),
+                                   double);
 }
