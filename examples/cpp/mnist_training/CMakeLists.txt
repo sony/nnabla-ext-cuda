@@ -1,0 +1,6 @@
+add_executable(mnist_training_cuda main.cpp)
+find_package(ZLIB REQUIRED)
+include_directories(${ZLIB_INCLUDE_DIRS})
+include_directories(${NNABLA_DIR}/examples/cpp/mnist_training)
+target_link_libraries(mnist_training_cuda nnabla nnabla_utils nnabla_cuda ${ZLIB_LIBRARIES})
+set_property(TARGET mnist_training_cuda PROPERTY CXX_STANDARD 11)
