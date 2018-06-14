@@ -32,7 +32,6 @@ cmake -G "%generate_target%" ^
       -DBUILD_CPP_LIB=ON ^
       -DBUILD_PYTHON_PACKAGE=OFF ^
       -DNNABLA_DIR=%nnabla_root% ^
-      -DNBLA_CUDNN_VERSION=%CUDNNVER% ^
       -DCPPLIB_LIBRARY=%nnabla_build_folder%\bin\%build_type%\nnabla.lib ^
       %nnabla_ext_cuda_root% || GOTO :error
 

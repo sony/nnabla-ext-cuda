@@ -50,8 +50,6 @@ cmake -G "%generate_target%" ^
       -DCPPLIB_BUILD_DIR=%nnabla_build_folder% ^
       -DCPPLIB_LIBRARY=%nnabla_build_folder%\bin\%build_type%\nnabla.dll ^
       -DCPPLIB_CUDA_LIBRARY=%nnabla_ext_cuda_build_folder%\bin\%build_type%\nnabla_cuda.dll ^
-      -DNBLA_CUDA_VERSION=%CUDA_VERSION% ^
-      -DNBLA_CUDNN_VERSION=%CUDNNVER% ^
       %nnabla_ext_cuda_root% || GOTO :error
 
 msbuild wheel.vcxproj /p:Configuration=%build_type% /verbosity:minimal || GOTO :error
