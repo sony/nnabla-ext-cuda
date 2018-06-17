@@ -54,12 +54,13 @@ void BroadcastCuda<T>::setup_impl(const Variables &inputs,
 // ----------------------------------------------------------------------------
 // Strided index getter
 // ----------------------------------------------------------------------------
-template <int ND> struct strided_index {
+template <int ND> struct strided_index_cuda {
   static __device__ int get(int y_index, const int *stride_x,
                             const int *shape_y) {
     int stride = 1;
     int x_index = 0;
-    strided_index<ND - 1>::_get(y_index, stride_x, shape_y, stride, x_index);
+    strided_index_cuda<ND - 1>::_get(y_index, stride_x, shape_y, stride,
+                                     x_index);
     return x_index;
   }
   static __device__ void _get(int y_index, const int *stride_x,
@@ -67,10 +68,11 @@ template <int ND> struct strided_index {
     const int dim_index = int(y_index / stride) % shape_y[ND];
     stride *= shape_y[ND];
     x_index += dim_index * stride_x[ND];
-    strided_index<ND - 1>::_get(y_index, stride_x, shape_y, stride, x_index);
+    strided_index_cuda<ND - 1>::_get(y_index, stride_x, shape_y, stride,
+                                     x_index);
   }
 };
-template <> struct strided_index<0> {
+template <> struct strided_index_cuda<0> {
   static __device__ int get(int y_index, const int *stride_x,
                             const int *shape_y) {
     return 0;
@@ -90,7 +92,7 @@ template <int Ndim, typename T>
 __global__ void kernel_broadcast(size_t size, const T *x, const int *stride_x,
                                  const int *shape_y, T *y) {
   NBLA_CUDA_KERNEL_LOOP(idx, size) {
-    int jdx = strided_index<Ndim>::get(idx, stride_x, shape_y);
+    int jdx = strided_index_cuda<Ndim>::get(idx, stride_x, shape_y);
     y[idx] = x[jdx];
   }
 }
@@ -98,7 +100,7 @@ __global__ void kernel_broadcast(size_t size, const T *x, const int *stride_x,
 // ----------------------------------------------------------------------------
 // Unrolled broadcast caller for templated dimension
 // ----------------------------------------------------------------------------
-template <int ND, typename T> struct switch_broadcast {
+template <int ND, typename T> struct switch_broadcast_cuda {
   static void call(int num, size_t size, const T *x, const int *stride_x,
                    const int *shape_y, T *y) {
     if (ND == num) {
@@ -110,11 +112,11 @@ template <int ND, typename T> struct switch_broadcast {
       NBLA_CUDA_KERNEL_CHECK();
       return;
     }
-    switch_broadcast<ND - 1, T>::call(num, size, x, stride_x, shape_y, y);
+    switch_broadcast_cuda<ND - 1, T>::call(num, size, x, stride_x, shape_y, y);
   }
 };
 
-template <typename T> struct switch_broadcast<-1, T> {
+template <typename T> struct switch_broadcast_cuda<-1, T> {
   static void call(int num, size_t size, const T *x, const int *stride_x,
                    const int *shape_y, T *y) {
     NBLA_ERROR(error_code::not_implemented,
@@ -138,8 +140,8 @@ void BroadcastCuda<T>::forward_impl(const Variables &inputs,
   int ndim = inputs[0]->ndim();
   int size = outputs[0]->size();
   cuda_set_device(device_);
-  switch_broadcast<NBLA_BROADCAST_MAX_DIM, Tc>::call(ndim, size, x, stride_x,
-                                                     shape_y, y);
+  switch_broadcast_cuda<NBLA_BROADCAST_MAX_DIM, Tc>::call(ndim, size, x,
+                                                          stride_x, shape_y, y);
 }
 
 template <typename T>
