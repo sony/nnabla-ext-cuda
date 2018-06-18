@@ -182,6 +182,8 @@ def get_setup_config(root_dir):
     elif 'CUDA_VERSION_MAJOR' in os.environ:
         cuda_version = os.environ['CUDA_VERSION_MAJOR'] + \
             os.environ['CUDA_VERSION_MINOR']
+    elif 'CUDAVER' in os.environ:
+        cuda_version = os.environ['CUDAVER']
 
     pkg_name = 'nnabla_ext-cuda{}'.format(cuda_version)
 
