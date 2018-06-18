@@ -35,7 +35,8 @@ mkdir build
 cd build
 ```
 
-Then, build. You can optionally turn off the Python package build by `-DBUILD_PYTHON_PACKAGE=OFF` in `cmake`.
+Then, build. You can optionally turn off the Python package build by `-DBUILD_PYTHON_PACKAGE=OFF`
+and also turn on the C++ utils build by `-DBUILD_CPP_UTILS=ON` in `cmake`.
 
 ```shell
 cmake -DNNABLA_DIR=../../nnabla -DCPPLIB_LIBRARY=../../nnabla/build/lib/libnnabla.so ..
