@@ -18,14 +18,17 @@
 #define __NBLA_NCCL_MULTIPROCESS_DATAPARALLELCOMMUNICATOR_HPP__
 #include <nbla/array.hpp>
 #include <nbla/communicator/multi_process_data_parallel_communicator.hpp>
+#include <nbla/computation_graph/function.hpp>
 #include <nbla/context.hpp>
 #include <nbla/cuda/array/cuda_array.hpp>
 #include <nbla/cuda/communicator/nccl_utils.hpp>
 #include <nbla/variable.hpp>
 
 #include <memory>
+#include <queue>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "nccl.h"
 
@@ -35,6 +38,7 @@ using std::string;
 using std::vector;
 using std::shared_ptr;
 using std::unordered_map;
+using std::unordered_set;
 using std::pair;
 
 /** \addtogroup NNablaCoreGrp */
@@ -50,7 +54,6 @@ Communicator exchanges gradients parameters or parameters itself.
 template <typename T>
 class NBLA_API MultiProcessDataParallelCommunicatorNccl
     : public MultiProcessDataParallelCommunicator<T> {
-
 protected:
   int device_id_;
 
@@ -60,6 +63,14 @@ protected:
   cudaStream_t stream_;
   int num_streams_ = 10; // TODO: hard-codded.
   vector<cudaStream_t> streams_ = vector<cudaStream_t>(num_streams_);
+  /* These streams are used in all_reduce_callback.
+   *   nonblocking_streams_[0]: the stream used to pack data into a large
+   *                            buffer.
+   *   nonblocking_streams_[1]: the stream used to all-reduce data.
+   *   nonblocking_streams_[2]: the stream used to unpack data from a large
+   *                            buffer.
+   */
+  vector<cudaStream_t> nonblocking_streams_ = vector<cudaStream_t>(3);
 
   // Groups
   unordered_map<string, ncclComm_t> comms_;
@@ -114,6 +125,12 @@ public:
   virtual void all_reduce(NdArrayPtr ndarray, cudaStream_t stream,
                           bool division = false, bool inplace = false,
                           const string &group = "world");
+  virtual void all_reduce(Tc *gpu_buffer, size_t n_param, cudaStream_t stream,
+                          bool division = false, bool inplace = false,
+                          const string &group = "world");
+  virtual CommunicatorBackwardCallbackPtr
+  all_reduce_callback(const vector<NdArrayPtr> &ndarray_list, size_t pack_size,
+                      bool division = false, const string &group = "world");
   virtual void reduce_scatter(const vector<NdArrayPtr> &ndarray_list,
                               NdArrayPtr ndarray, bool division = false,
                               const string &group = "world");
@@ -144,6 +161,54 @@ public:
   vector<string> allowed_array_classes();
 
 protected:
+  const static int max_gpu_memory_size =
+      1024 * 1024 * 40; // TODO: magic-number (40MiB)
+
+  class AllReduceCallback : public CommunicatorBackwardCallback {
+  public:
+    AllReduceCallback(MultiProcessDataParallelCommunicatorNccl<T> &parent,
+                      const string &group, size_t n_params_threshold,
+                      bool division, const NdArrayPtr &gpu_memory,
+                      const unordered_set<Tc *> &device_ptrs);
+
+    virtual void on_finish_function_backward(const CgFunctionPtr &ptr) override;
+    virtual void on_finish_backward() override;
+
+  private:
+    /** GPU memory space for packing and unpacking */
+    struct Workspace {
+      Tc *gpu_buffer;
+      shared_ptr<cudaEvent_t> event;
+      size_t n_param_buffered;
+      vector<pair<Tc *, size_t>> variables;
+    };
+    using Buffer = std::pair<Tc *, shared_ptr<cudaEvent_t>>;
+
+    void all_reduce(Workspace &data);
+    void unpack(Workspace &data);
+
+    Workspace allocate_workspace(cudaStream_t stream);
+    void release_workspace(Workspace &workspace, cudaStream_t stream);
+
+    MultiProcessDataParallelCommunicatorNccl<T> &parent_;
+
+    const string group_;
+
+    const size_t n_params_threshold_;
+    const bool division_;
+    const unordered_set<Tc *> device_ptrs_; //< GPU pointers to send.
+
+    const NdArrayPtr gpu_memory_;
+    std::queue<Buffer>
+        buffers_; //< GPU memory spaces that are not used currently.
+
+    Workspace workspace_; //< The workspace used in the packing phase.
+
+    cudaStream_t pack_stream_;
+    cudaStream_t all_reduce_stream_;
+    cudaStream_t unpack_stream_;
+  };
+
   void wait_by_device_synchronization();
   void wait_by_streams_synchronization();
   void divide_by_num_divices(bool division);

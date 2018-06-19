@@ -169,7 +169,6 @@ if(BUILD_CPP_LIB)
     add_executable(clibtest ${NBLA_TEST_SOURCES})
     add_dependencies(clibtest ${NBLA_LIBRARY_NAME} ${NBLA_CUDA_LIBRARY_NAME})
     target_link_libraries(clibtest gtest gtest_main)
-    target_link_libraries(clibtest nnabla)
   
     add_dependencies(clibtest ${NBLA_CUDA_LIBRARY_NAME})
     target_link_libraries(clibtest ${NBLA_CUDA_LIBRARY_NAME})

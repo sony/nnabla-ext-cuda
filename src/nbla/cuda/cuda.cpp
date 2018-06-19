@@ -27,6 +27,13 @@ Cuda::~Cuda() {
   for (auto gen : this->curand_generators_) {
     curand_destroy_generator(gen.second);
   }
+  for (auto &all_events : this->cuda_unused_events_) {
+    for (auto &events : all_events.second) {
+      for (auto &event : events.second) {
+        NBLA_CUDA_CHECK(cudaEventDestroy(event));
+      }
+    }
+  }
 }
 
 cublasHandle_t Cuda::cublas_handle(int device) {
@@ -43,6 +50,67 @@ cublasHandle_t Cuda::cublas_handle(int device) {
     return handle;
   }
   return it->second;
+}
+
+std::shared_ptr<cudaEvent_t> Cuda::cuda_event(unsigned int flags, int device) {
+  if (device < 0) {
+    device = cuda_get_device();
+  }
+
+  /* Find an unused cudaEvent_t with the proper flags and device. */
+  std::lock_guard<decltype(this->mtx_event_)> lock(this->mtx_event_);
+  auto all_events = this->cuda_unused_events_.find(device);
+  if (all_events == this->cuda_unused_events_.end()) {
+    /* Insert an empty set if there is no set corresponding to the device. */
+    this->cuda_unused_events_.insert({device, {}});
+    all_events = this->cuda_unused_events_.find(device);
+  }
+
+  auto it = all_events->second.find(flags);
+  if (it == all_events->second.end()) {
+    /* Insert an empty set if there is no set corresponding to the flags. */
+    all_events->second.insert({flags, {}});
+    it = all_events->second.find(flags);
+  }
+
+  cudaEvent_t event;
+  if (it->second.empty()) {
+    /* Create a new cudaEvent_t */
+    NBLA_CUDA_CHECK(cudaEventCreateWithFlags(&event, flags));
+  } else {
+    /* Re-use the existing unused cudaEvent_t */
+    event = it->second.back();
+    it->second.pop_back();
+  }
+
+  std::default_delete<cudaEvent_t> deleter;
+  return std::shared_ptr<cudaEvent_t>(
+      new cudaEvent_t(event), [this, device, flags, deleter](cudaEvent_t *ptr) {
+        /* This lambda funtion is a custum deleter of the std::shared_ptr.
+         * It is invoked when deleting the managed cudaEvent_t.
+         */
+
+        /* Prepare empty set if there is no corresponding set */
+        std::lock_guard<decltype(this->mtx_event_)> lock(this->mtx_event_);
+        auto all_events = this->cuda_unused_events_.find(device);
+        if (all_events == this->cuda_unused_events_.end()) {
+          this->cuda_unused_events_.insert({device, {}});
+          all_events = this->cuda_unused_events_.find(device);
+        }
+
+        auto it = all_events->second.find(flags);
+        if (it == all_events->second.end()) {
+          all_events->second.insert({flags, {}});
+          it = all_events->second.find(flags);
+        }
+
+        /* Push the managed cudaEvent_t to the unused set because nobody uses
+         * this cudaEvent_t. */
+        it->second.push_back(*ptr);
+
+        /* Delete the raw pointer of the cudaEvent_t. */
+        deleter(ptr);
+      });
 }
 
 curandGenerator_t Cuda::curand_generator() {
