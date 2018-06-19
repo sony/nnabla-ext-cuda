@@ -83,9 +83,7 @@ def get_libinfo():
     print("CUDA Library name:", cuda_lib.name)
     print("CUDA Library file name:", cuda_lib.file_name)
     print("CUDA Library file:", cuda_lib.path)
-    cuda_version = cfgp.get("cmake", "cuda_version")
-    cudnn_version = cfgp.get("cmake", "cudnn_version")
-    return cpu_lib, cuda_lib, cuda_version, cudnn_version
+    return cpu_lib, cuda_lib
 
 
 def get_cpu_extopts(lib):
@@ -159,7 +157,7 @@ def cudnn_config(root_dir, cuda_lib, cuda_ext_opts):
 
 
 def get_setup_config(root_dir):
-    cpu_lib, cuda_lib, cuda_version, cudnn_version = get_libinfo()
+    cpu_lib, cuda_lib = get_libinfo()
 
     packages = ['nnabla_ext']
     package_dir = {'nnabla_ext': join(root_dir, 'src', 'nnabla_ext')}
@@ -178,7 +176,16 @@ def get_setup_config(root_dir):
     package_data.update(cudnn_ext.package_data)
     ext_modules += cudnn_ext.ext_modules
 
-    pkg_name = 'nnabla-ext-cuda'
+    cuda_version = ''
+    if 'WHL_NO_PREFIX' in os.environ and os.environ['WHL_NO_PREFIX'] == 'True':
+        cuda_version = ''
+    elif 'CUDA_VERSION_MAJOR' in os.environ:
+        cuda_version = os.environ['CUDA_VERSION_MAJOR'] + \
+            os.environ['CUDA_VERSION_MINOR']
+    elif 'CUDAVER' in os.environ:
+        cuda_version = os.environ['CUDAVER']
+
+    pkg_name = 'nnabla_ext-cuda{}'.format(cuda_version)
 
     pkg_info = dict(
         name=pkg_name,
