@@ -147,6 +147,13 @@ if(BUILD_CPP_LIB)
   add_subdirectory(src/nbla/cuda)
 
   ###############################################################################
+  # C++ Utilities
+  ###############################################################################
+  if(BUILD_CPP_UTILS)
+    add_subdirectory(examples/cpp)
+  endif()
+
+  ###############################################################################
   # C++ Testing
   ###############################################################################
   if(BUILD_CPP_TEST)
@@ -162,7 +169,6 @@ if(BUILD_CPP_LIB)
     add_executable(clibtest ${NBLA_TEST_SOURCES})
     add_dependencies(clibtest ${NBLA_LIBRARY_NAME} ${NBLA_CUDA_LIBRARY_NAME})
     target_link_libraries(clibtest gtest gtest_main)
-    target_link_libraries(clibtest nnabla)
   
     add_dependencies(clibtest ${NBLA_CUDA_LIBRARY_NAME})
     target_link_libraries(clibtest ${NBLA_CUDA_LIBRARY_NAME})
@@ -229,7 +235,11 @@ if(BUILD_PYTHON_PACKAGE)
     if(NOT EXISTS ${CPPLIB_CUDA_LIBRARY})
       message(FATAL_ERROR "Invalid CPPLIB_LIBRARY :[${CPPLIB_CUDA_LIBRARY}]")
     endif()
-    
+
+    # No one sets the following two vars if !BUILD_CPP_LIB
+    set(NBLA_LIBRARY_NAME ${CPPLIB_LIBRARY})
+    set(NBLA_CUDA_LIBRARY_NAME ${CPPLIB_CUDA_LIBRARY})
+
     set(CPPLIB_LIBRARY_NAME "nnabla")
     set(CPPLIB_TARGET_FILE ${CPPLIB_LIBRARY})
     get_filename_component(CPPLIB_TARGET_FILE_NAME ${CPPLIB_TARGET_FILE} NAME)
@@ -258,6 +268,7 @@ if(BUILD_PYTHON_PACKAGE)
   set(NBLA_PYTHON_SETUP ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py)
   set(NBLA_PYTHON_OUTPUT ${CMAKE_BINARY_DIR}/build)
   set(NBLA_PYTHON_OUTPUT_WHEEL ${NBLA_PYTHON_OUTPUT}/.timestamp.wheel)
+  set(NBLA_WHEEL_DEPENDS ${NBLA_PYTHON_DEPS} ${NBLA_CUDA_LIBRARY_NAME})
   
   # Wheel
   if(UNIX)
@@ -268,28 +279,25 @@ if(BUILD_PYTHON_PACKAGE)
         COMMAND ${NNABLA_DIR}/build-tools/auditwheel-nnabla ${CMAKE_BINARY_DIR}/dist/*-linux_*.whl
         COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_BINARY_DIR}/dist/*-linux*.whl
         COMMAND ${CMAKE_COMMAND} -E touch ${NBLA_PYTHON_OUTPUT_WHEEL}
-        DEPENDS ${NBLA_PYTHON_DEPS} ${NBLA_CUDA_LIBRARY_NAME} ${NBLA_PYTHON_OUTPUT_BUILD})
+        DEPENDS ${NBLA_WHEEL_DEPENDS})
     else()
       add_custom_command(OUTPUT ${NBLA_PYTHON_OUTPUT_WHEEL}
         COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_BINARY_DIR}/dist/*.whl
         COMMAND ${PYTHON_COMMAND} ${NBLA_PYTHON_SETUP} -q bdist_wheel
         COMMAND ${CMAKE_COMMAND} -E touch ${NBLA_PYTHON_OUTPUT_WHEEL}
-        DEPENDS ${NBLA_PYTHON_DEPS} ${NBLA_CUDA_LIBRARY_NAME} ${NBLA_PYTHON_OUTPUT_BUILD})
+        DEPENDS ${NBLA_WHEEL_DEPENDS})
     endif()
   else()
     add_custom_command(OUTPUT ${NBLA_PYTHON_OUTPUT_WHEEL}
       COMMAND ${PYTHON_COMMAND} ${NBLA_PYTHON_SETUP} -q bdist_wheel
       COMMAND ${CMAKE_COMMAND} -E touch ${NBLA_PYTHON_OUTPUT_WHEEL}
-      DEPENDS ${NBLA_PYTHON_DEPS} ${NBLA_CUDA_LIBRARY_NAME} ${NBLA_PYTHON_OUTPUT_BUILD})
+      DEPENDS ${NBLA_WHEEL_DEPENDS})
   endif()
 
   if(BUILD_CPP_LIB)
-    add_custom_target(wheel ALL DEPENDS
-      ${NBLA_PYTHON_OUTPUT_WHEEL} ${NBLA_PYTHON_OUTPUT_BUILD})
-    add_dependencies(wheel ${NBLA_CUDA_LIBRARY_NAME})
+    add_custom_target(wheel ALL DEPENDS ${NBLA_PYTHON_OUTPUT_WHEEL})
   else()
-    add_custom_target(wheel DEPENDS
-      ${NBLA_PYTHON_OUTPUT_WHEEL} ${NBLA_PYTHON_OUTPUT_BUILD} ${CPPLIB_LIBRARY} ${NBLA_CUDA_LIBRARY_NAME})
+    add_custom_target(wheel DEPENDS ${NBLA_PYTHON_OUTPUT_WHEEL})
   endif()
 
 endif() # BUILD_PYTHON_PACKAGE

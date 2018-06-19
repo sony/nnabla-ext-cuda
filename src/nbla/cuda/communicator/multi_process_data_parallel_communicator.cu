@@ -14,6 +14,8 @@
 
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/communicator/multi_process_data_parallel_communicator.hpp>
+#include <nbla/cuda/cuda.hpp>
+#include <nbla/singleton_manager.hpp>
 
 #include <algorithm>
 #include <cstdlib>
@@ -27,7 +29,9 @@
 
 namespace nbla {
 
+using std::vector;
 using std::make_shared;
+using std::unordered_set;
 
 template <typename T>
 __global__ void kernel_divide_inplace(const int size, const int n_devices,
@@ -79,6 +83,9 @@ MultiProcessDataParallelCommunicatorNccl<
     }
     for (auto e : this->comms_) {
       ncclCommDestroy(e.second);
+    }
+    for (auto &stream : this->nonblocking_streams_) {
+      NBLA_CUDA_CHECK(cudaStreamDestroy(stream));
     }
   }
   if (mpi_initialized_) {
@@ -158,6 +165,10 @@ template <typename T> void MultiProcessDataParallelCommunicatorNccl<T>::init() {
       cudaStream_t stream;
       NBLA_CUDA_CHECK(cudaStreamCreate(&stream));
       streams_[i] = stream;
+    }
+    for (auto &stream : this->nonblocking_streams_) {
+      NBLA_CUDA_CHECK(
+          cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
     }
 
     // Create world group
@@ -498,13 +509,20 @@ void MultiProcessDataParallelCommunicatorNccl<T>::all_reduce(
     const string &group) {
   auto n_param = ndarray->size();
   dtypes dtype = get_dtype<Tc>();
-  const Tc *dw0 = ndarray->get(dtype, this->ctx_)->const_pointer<Tc>();
-  Tc *dw1 = ndarray->cast(dtype, this->ctx_)->pointer<Tc>();
-  NBLA_NCCL_CHECK(ncclAllReduce(dw0, dw1, n_param, get_nccl_dtype<Tc>(),
-                                ncclSum, comms_[group], stream));
+  Tc *dw = ndarray->cast(dtype, this->ctx_)->pointer<Tc>();
+  this->all_reduce(dw, n_param, stream, division, inplace, group);
+}
+
+template <typename T>
+void MultiProcessDataParallelCommunicatorNccl<T>::all_reduce(
+    Tc *gpu_buffer, size_t n_param, cudaStream_t stream, bool division,
+    bool inplace, const string &group) {
+  NBLA_NCCL_CHECK(ncclAllReduce(gpu_buffer, gpu_buffer, n_param,
+                                get_nccl_dtype<Tc>(), ncclSum,
+                                this->comms_[group], stream));
   if (division) {
     NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace, stream, n_param,
-                                      this->size_, dw1);
+                                      this->size_, gpu_buffer);
   }
 }
 
@@ -671,6 +689,204 @@ template <typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::allgather_async() {
   NBLA_ERROR(error_code::not_implemented,
              "CUDA GPU allgather_async is not implemented.")
+}
+
+template <typename T>
+CommunicatorBackwardCallbackPtr
+MultiProcessDataParallelCommunicatorNccl<T>::all_reduce_callback(
+    const vector<NdArrayPtr> &ndarray_list, size_t pack_size, bool division,
+    const string &group) {
+  dtypes dtype = get_dtype<Tc>();
+
+  /* Allocate GPU memory(buffers) for packing. */
+  /* Limit the number of buffer in order to limit the memory usage
+   *   If pack_size < max_gpu_memory_size: the memory usage is less than or
+   *                                       equal to max_gpu_memory_size.
+   *   Otherwise                         : the memory usage is equal pack_size.
+   */
+  auto n = (max_gpu_memory_size < pack_size) ? 1 : max_gpu_memory_size /
+                                                       sizeof(Tc) / pack_size;
+  auto gpu_memory =
+      make_shared<NdArray>(Shape_t{static_cast<int>(n * pack_size)});
+
+  /* Create a hash-set that contains all pointers to all-reduce */
+  unordered_set<Tc *> device_ptrs;
+  for (auto &ndarray : ndarray_list) {
+    Tc *device_ptr = ndarray->array()->cast(dtype, this->ctx_)->pointer<Tc>();
+    device_ptrs.insert(device_ptr);
+  }
+
+  return make_shared<AllReduceCallback>(*this, group, pack_size, division,
+                                        gpu_memory, device_ptrs);
+}
+
+template <typename T>
+MultiProcessDataParallelCommunicatorNccl<T>::AllReduceCallback::
+    AllReduceCallback(MultiProcessDataParallelCommunicatorNccl<T> &parent,
+                      const string &group, size_t n_params_threshold,
+                      bool division, const NdArrayPtr &gpu_memory,
+                      const unordered_set<Tc *> &device_ptrs)
+    : parent_(parent), group_(group), n_params_threshold_(n_params_threshold),
+      division_(division), gpu_memory_(gpu_memory), device_ptrs_(device_ptrs),
+      pack_stream_(parent.nonblocking_streams_[0]),
+      all_reduce_stream_(parent.nonblocking_streams_[1]),
+      unpack_stream_(parent.nonblocking_streams_[2]) {
+  dtypes dtype = get_dtype<Tc>();
+
+  /* Split gpu_memory into buffers of size n_params_thoreshold */
+  Tc *buff = this->gpu_memory_->cast(dtype, this->parent_.ctx_)->pointer<Tc>();
+  for (size_t i = 0; i < this->gpu_memory_->size() / this->n_params_threshold_;
+       ++i) {
+    this->buffers_.emplace(
+        buff + i * n_params_threshold,
+        SingletonManager::get<Cuda>()->cuda_event(cudaEventDisableTiming));
+  }
+
+  this->workspace_ = this->allocate_workspace(this->pack_stream_);
+}
+
+template <typename T>
+void MultiProcessDataParallelCommunicatorNccl<T>::AllReduceCallback::
+    on_finish_function_backward(const CgFunctionPtr &ptr) {
+
+  /* Find pointers to send (i.e., find pointers that are contained in
+   * this->device_ptrs_) */
+  vector<std::pair<Tc *, size_t>> device_ptr_list;
+  device_ptr_list.reserve(ptr->function_inputs().size());
+  for (auto &input : ptr->function_inputs()) {
+    Tc *device_ptr = input->cast_grad_and_get_pointer<Tc>(this->parent_.ctx_);
+
+    if (this->device_ptrs_.find(device_ptr) != this->device_ptrs_.end()) {
+      device_ptr_list.push_back(std::make_pair(device_ptr, input->size()));
+    }
+  }
+
+  if (device_ptr_list.empty()) {
+    /* Do nothing because there is no pointers to send */
+    return;
+  }
+
+  /* Wait until backward computation of this function is completed. */
+  auto event =
+      SingletonManager::get<Cuda>()->cuda_event(cudaEventDisableTiming);
+  NBLA_CUDA_CHECK(cudaEventRecord(*event, nullptr));
+  NBLA_CUDA_CHECK(cudaStreamWaitEvent(this->pack_stream_, *event, 0));
+
+  /* Packing phase */
+  for (auto &elem : device_ptr_list) {
+    Tc *device_ptr = elem.first;
+    auto n_param = elem.second;
+
+    while (n_param > 0) {
+      /* Pack device_ptr into this->workspace.
+       *   If the length of device_ptr exceeds the free space of
+       *   this->workspace,
+       *   the remained data in device_ptr will be packed into a next workspace.
+       */
+      auto length =
+          std::min<size_t>(n_param, this->n_params_threshold_ -
+                                        this->workspace_.n_param_buffered);
+      NBLA_CUDA_CHECK(cudaMemcpyAsync(
+          this->workspace_.gpu_buffer + this->workspace_.n_param_buffered,
+          device_ptr, sizeof(Tc) * length, cudaMemcpyDeviceToDevice,
+          this->pack_stream_));
+      this->workspace_.n_param_buffered +=
+          length; //< Update the length of used space.
+      this->workspace_.variables.emplace_back(
+          device_ptr, length); //< Store a pointer and size to unpack.
+
+      /* The device_ptr and n_param should refer to the remained data. */
+      n_param -= length;
+      device_ptr = device_ptr + length;
+
+      if (this->workspace_.n_param_buffered >= this->n_params_threshold_) {
+        /* Finish packing because this->workspace_ is full. */
+        this->all_reduce(this->workspace_);
+        this->unpack(this->workspace_);
+
+        /* Use a next GPU workspace in the packing phase */
+        this->release_workspace(this->workspace_, this->unpack_stream_);
+        this->workspace_ = this->allocate_workspace(this->pack_stream_);
+        /* Notes: workspace_.n_param_buffered is initilaized in the above
+         *        function. */
+      }
+    }
+  }
+}
+template <typename T>
+void MultiProcessDataParallelCommunicatorNccl<
+    T>::AllReduceCallback::on_finish_backward() {
+  if (this->workspace_.n_param_buffered != 0) {
+    /* Do all_reduce and unpack because the data are remained. */
+    this->all_reduce(this->workspace_);
+    this->unpack(this->workspace_);
+  }
+
+  /* Wait in the default stream until all_reduce is completed */
+  auto event =
+      SingletonManager::get<Cuda>()->cuda_event(cudaEventDisableTiming);
+  NBLA_CUDA_CHECK(cudaEventRecord(*event, this->unpack_stream_));
+  NBLA_CUDA_CHECK(cudaStreamWaitEvent(0, *event, 0));
+}
+template <typename T>
+void MultiProcessDataParallelCommunicatorNccl<T>::AllReduceCallback::all_reduce(
+    Workspace &data) {
+  /* All-reduce phase */
+  /* Wait for the packing phase */
+  NBLA_CUDA_CHECK(cudaEventRecord(*data.event, this->pack_stream_));
+  NBLA_CUDA_CHECK(
+      cudaStreamWaitEvent(this->all_reduce_stream_, *data.event, 0));
+
+  /* All-Reduce */
+  this->parent_.all_reduce(data.gpu_buffer, data.n_param_buffered,
+                           this->all_reduce_stream_, this->division_, false,
+                           this->group_);
+}
+
+template <typename T>
+void MultiProcessDataParallelCommunicatorNccl<T>::AllReduceCallback::unpack(
+    Workspace &data) {
+  /* Unpacking phase */
+  /* Wait for the all-reduce phase */
+  NBLA_CUDA_CHECK(cudaEventRecord(*data.event, this->all_reduce_stream_));
+  NBLA_CUDA_CHECK(cudaStreamWaitEvent(this->unpack_stream_, *data.event, 0));
+
+  /* Unpack the packed data into original space */
+  int offset = 0;
+  for (auto &variable : data.variables) {
+    auto device_ptr = variable.first;
+    auto n_param = variable.second;
+
+    NBLA_CUDA_CHECK(cudaMemcpyAsync(
+        device_ptr, data.gpu_buffer + offset, sizeof(Tc) * n_param,
+        cudaMemcpyDeviceToDevice, this->unpack_stream_));
+
+    offset += n_param;
+  }
+}
+
+template <typename T>
+auto MultiProcessDataParallelCommunicatorNccl<
+    T>::AllReduceCallback::allocate_workspace(cudaStream_t stream)
+    -> Workspace {
+  /* Get an unused workspace */
+  auto buffer = this->buffers_.front();
+  this->buffers_.pop();
+  Workspace retval{buffer.first, buffer.second, 0, {}};
+
+  /* Wait until the unpacking phase using this workspace is completed. */
+  NBLA_CUDA_CHECK(cudaStreamWaitEvent(stream, *retval.event, 0));
+  return retval;
+}
+template <typename T>
+void MultiProcessDataParallelCommunicatorNccl<
+    T>::AllReduceCallback::release_workspace(Workspace &workspace,
+                                             cudaStream_t stream) {
+  /* Notify that this workspace is currently not used (i.e., unpacking phase is
+   * completed). */
+  NBLA_CUDA_CHECK(cudaEventRecord(*workspace.event, stream));
+  /* Store GPU memory into unused meomry space set. */
+  this->buffers_.emplace(workspace.gpu_buffer, workspace.event);
 }
 
 template <typename T>
