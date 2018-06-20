@@ -150,6 +150,7 @@ if(BUILD_CPP_LIB)
   # C++ Utilities
   ###############################################################################
   if(BUILD_CPP_UTILS)
+    add_subdirectory(src/nbla_cli)
     add_subdirectory(examples/cpp)
   endif()
 
