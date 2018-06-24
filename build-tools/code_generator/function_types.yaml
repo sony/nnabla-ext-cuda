@@ -42,7 +42,7 @@ LeakyReLU:
   half: [Half]
 Softmax:
   float: [float]
-  half: [Half]
+#  half: [Half]
 ELU:
   float: [float]
   half: [Half]
@@ -302,7 +302,7 @@ BinaryCrossEntropy:
   half: [Half]
 SoftmaxCrossEntropy:
   float: [float, int]
-  half: [Half, int]
+#  half: [Half, int]
 CategoricalCrossEntropy:
   float: [float, int]
   half: [Half, int]
