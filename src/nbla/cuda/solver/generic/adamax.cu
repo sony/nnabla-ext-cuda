@@ -15,6 +15,7 @@
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/solver/adamax.hpp>
 
+#include "./mixed_precision_training.cuh"
 #include "./weight_decay.cuh"
 
 namespace nbla {
@@ -52,4 +53,8 @@ void AdamaxCuda<T>::update_impl(const string &key, VariablePtr param) {
                                  this->eps_);
 }
 NBLA_DEF_WEIGHT_DECAY(AdamaxCuda, weight_decay_cuda);
+NBLA_DEF_CHECK_INF_GRAD(AdamaxCuda, check_inf_grad_cuda);
+NBLA_DEF_CHECK_NAN_GRAD(AdamaxCuda, check_nan_grad_cuda);
+NBLA_DEF_CHECK_INF_OR_NAN_GRAD(AdamaxCuda, check_inf_or_nan_grad_cuda);
+NBLA_DEF_SCALE_GRAD(AdamaxCuda, scale_grad_impl_cuda);
 }
