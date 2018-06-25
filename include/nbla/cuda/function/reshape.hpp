@@ -12,31 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef __NBLA_CUDA_SOLVER_MOMENTUM_HPP__
-#define __NBLA_CUDA_SOLVER_MOMENTUM_HPP__
+#ifndef NBLA_CUDA_FUNCTION_RESHAPE_HPP
+#define NBLA_CUDA_FUNCTION_RESHAPE_HPP
 
 #include <nbla/cuda/cuda.hpp>
-#include <nbla/solver/momentum.hpp>
+#include <nbla/function/reshape.hpp>
 
 namespace nbla {
 
-template <typename T> class MomentumCuda : public Momentum<T> {
+template <typename T> class ReshapeCuda : public Reshape<T> {
 public:
-  explicit MomentumCuda(const Context &ctx, float lr, float momentum)
-      : Momentum<T>(ctx, lr, momentum) {}
-  virtual ~MomentumCuda() {}
-  virtual string name() { return "MomentumCuda"; }
+  typedef typename CudaType<T>::type Tcu;
+
+  explicit ReshapeCuda(const Context &ctx, const vector<int> &shape,
+                       bool inplace)
+      : Reshape<T>(ctx, shape, inplace), device_(std::stoi(ctx.device_id)) {}
+  virtual ~ReshapeCuda() {}
+  virtual string name() { return "ReshapeCuda"; }
   virtual vector<string> allowed_array_classes() {
     return SingletonManager::get<Cuda>()->array_classes();
   }
 
 protected:
-  virtual void update_impl(const string &key, VariablePtr param);
-  NBLA_DECL_WEIGHT_DECAY();
-  NBLA_DECL_CHECK_INF_GRAD();
-  NBLA_DECL_CHECK_NAN_GRAD();
-  NBLA_DECL_CHECK_INF_OR_NAN_GRAD();
-  NBLA_DECL_SCALE_GRAD();
+  int device_;
+  virtual void forward_impl(const Variables &inputs, const Variables &outputs);
+  virtual void backward_impl(const Variables &inputs, const Variables &outputs,
+                             const vector<bool> &propagate_down,
+                             const vector<bool> &accum);
 };
 }
 #endif

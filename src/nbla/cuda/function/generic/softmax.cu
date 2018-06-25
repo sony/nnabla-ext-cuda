@@ -39,7 +39,7 @@ __global__ void kernel_softmax_forward(const int size0x2_, const int size1_,
     T exp_sum = T(0);
     for (int i1 = 0; i1 < size1_; ++i1) {
       const int k = (i0 * size1_ + i1) * size2_ + i2;
-      const T tmp = exp(x[k] - max_x);
+      const T tmp = std::exp(x[k] - max_x);
       y[k] = tmp;
       exp_sum += tmp;
     }

@@ -67,7 +67,7 @@ def array_classes():
 
 
 # Initialize preference according to CPU cache preference.
-tmp = cpu_init._cached_array_prefered()
+tmp = cpu_init._cached_array_preferred()
 if tmp is not None:
     prefer_cached_array(tmp)
 del tmp

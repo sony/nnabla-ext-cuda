@@ -24,7 +24,7 @@ template <typename T>
 void MeanSubtractionCuda<T>::forward_impl(const Variables &inputs,
                                           const Variables &outputs) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  if (this->update_runing_mean_) { // Training mode.
+  if (this->update_running_mean_) { // Training mode.
     forward_impl_batch(inputs, outputs);
   } else { // Testing mode.
     forward_impl_global(inputs, outputs);
@@ -116,7 +116,7 @@ void MeanSubtractionCuda<T>::backward_impl(const Variables &inputs,
                                            const vector<bool> &propagate_down,
                                            const vector<bool> &accum) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  if (this->update_runing_mean_) { // Training mode.
+  if (this->update_running_mean_) { // Training mode.
     backward_impl_batch(inputs, outputs, propagate_down, accum);
   } else { // Testing mode.
     backward_impl_global(inputs, outputs, propagate_down, accum);

@@ -42,7 +42,7 @@ LeakyReLU:
   half: [Half]
 Softmax:
   float: [float]
-  half: [Half]
+#  half: [Half]
 ELU:
   float: [float]
   half: [Half]
@@ -262,9 +262,9 @@ Flip:
 # Shift:
 #   float: [float]
   half: [Half]
-# Reshape:
-#   float: [float]
-#   half: [Half]
+Reshape:
+  float: [float]
+  half: [Half]
 MatrixDiag:
   float: [float]
   half: [Half]
@@ -302,7 +302,7 @@ BinaryCrossEntropy:
   half: [Half]
 SoftmaxCrossEntropy:
   float: [float, int]
-  half: [Half, int]
+#  half: [Half, int]
 CategoricalCrossEntropy:
   float: [float, int]
   half: [Half, int]
@@ -414,3 +414,9 @@ ACosh:
 ATanh:
   float: [float]
   half: [Half]
+FFT:
+  float: [float]
+#  half: [Half]
+IFFT:
+  float: [float]
+#  half: [Half]
