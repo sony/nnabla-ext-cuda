@@ -101,6 +101,10 @@ public:
   */
   virtual void init();
 
+  virtual void barrier();
+
+  virtual void abort();
+
   virtual string new_group(pair<string, vector<int>> name_ranks_pair);
 
   virtual shared_ptr<NdArray>
