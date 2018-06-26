@@ -223,12 +223,51 @@ void cublas_gemm_batched<half>(cublasHandle_t handle, cublasOperation_t op_x,
 // ----------------------------------------------------------------------
 #if CUDA_VERSION >= 8000
 #if CUDA_VERSION >= 9010
+template <typename T, int batch_chunk>
+void cublas_gemm_strided_batched_chunk(cublasHandle_t handle,
+                                       cublasOperation_t op_x,
+                                       cublasOperation_t op_y, int m, int n,
+                                       int k, float alpha, const T *x, int lda,
+                                       int stride_a, const T *y, int ldb,
+                                       int stride_b, float beta, T *z, int ldc,
+                                       int stride_c, int batch_count) {
+  typedef typename CudaTypeForceFloat<T>::type Tf;
+  Tf a = alpha;
+  Tf b = beta;
+  cudaDataType_t dt = cuda_data_type<T>::type();
+  cudaDataType_t ct =
+      cuda_data_type<typename CudaTypeForceFloat<T>::type>::type();
+  int chunks = NBLA_CEIL_INT_DIV(batch_count, batch_chunk);
+  for (int i = 0; i < chunks; i++) {
+    const T *x_i = x + i * batch_chunk * stride_a;
+    const T *y_i = y + i * batch_chunk * stride_b;
+    T *z_i = z + i * batch_chunk * stride_c;
+    int batch_count_chunk =
+        std::min(batch_chunk, batch_count - i * batch_chunk);
+    NBLA_CUBLAS_CHECK(cublasGemmStridedBatchedEx(
+        handle, op_x, op_y, m, n, k, &a, x_i, dt, lda, stride_a, y_i, dt, ldb,
+        stride_b, &b, z_i, dt, ldc, stride_c, batch_count_chunk, ct,
+        infer_gemm_algo_by_type(dt)));
+  }
+}
+
 template <typename T>
 void cublas_gemm_strided_batched(cublasHandle_t handle, cublasOperation_t op_x,
                                  cublasOperation_t op_y, int m, int n, int k,
                                  float alpha, const T *x, int lda, int stride_a,
                                  const T *y, int ldb, int stride_b, float beta,
                                  T *z, int ldc, int stride_c, int batch_count) {
+  constexpr int batch_chunk = 1 << 15;
+  if (batch_count > batch_chunk) {
+    // Seems like cublasGemmStridedBatchedEx does not allow a large batch count.
+    // We confirmed that CUDA 9.1 and 9.2.
+    // If batch_count > 1<<15, we apply batched gemm for each chunk.
+    // TODO: Check a behavior of the newer versions.
+    cublas_gemm_strided_batched_chunk<T, batch_chunk>(
+        handle, op_x, op_y, m, n, k, alpha, x, lda, stride_a, y, ldb, stride_b,
+        beta, z, ldc, stride_c, batch_count);
+    return;
+  }
   typedef typename CudaTypeForceFloat<T>::type Tf;
   Tf a = alpha;
   Tf b = beta;
