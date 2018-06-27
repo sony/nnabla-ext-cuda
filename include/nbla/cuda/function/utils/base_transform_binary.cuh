@@ -130,8 +130,8 @@ void backward_impl_transform_binary(const Variables &inputs,
           y, dx0, op);
     }
     if (f_bc0) {
-      o_bc0->set_need_grad(true);
-      f_bc0->backward(Variables{inputs[0]}, Variables{o_bc0}, {accum[0]});
+      f_bc0->backward(Variables{inputs[0]}, Variables{o_bc0}, {true},
+                      {accum[0]});
     }
   }
   if (propagate_down[1]) {
@@ -147,8 +147,8 @@ void backward_impl_transform_binary(const Variables &inputs,
           y, dx1, op);
     }
     if (f_bc1) {
-      o_bc1->set_need_grad(true);
-      f_bc1->backward(Variables{inputs[1]}, Variables{o_bc1}, {accum[1]});
+      f_bc1->backward(Variables{inputs[1]}, Variables{o_bc1}, {true},
+                      {accum[1]});
     }
   }
 }

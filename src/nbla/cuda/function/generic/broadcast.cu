@@ -45,7 +45,7 @@ void BroadcastCuda<T>::setup_impl(const Variables &inputs,
   }
   if (broadcast_dims.size() == 0)
     return;
-  sum_input_ = make_shared<Variable>(outputs[0]->grad(), false);
+  sum_input_ = make_shared<Variable>(outputs[0]->grad());
   sum_output_ = make_shared<Variable>();
   f_sum_ = create_Sum(this->ctx_, /*axis*/ broadcast_dims, /*keepdims*/ false);
   f_sum_->setup(Variables{sum_input_.get()}, Variables{sum_output_.get()});
