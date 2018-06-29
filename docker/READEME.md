@@ -1,61 +1,43 @@
 # NNabla CUDA extension Dockers
 
 All docker files are based on NVidia docker images
-that are run with nvidia-docker command.
+that run by nvidia-docker command.
 
 ## Image Tags Hosted on DockerHub
 
-### Latest (default): `nnabla/nnabla-ext-cuda`
+The available tags are as following.
 
-This image contains the latest nnabla Python package
-with the CUDA extension working with Python3.
+| Tag    | CUDA runtime | CUDNN | Python | **CUDA driver** | Dockerfile location |
+| ------ |:------------:|:-----:|:------:|:---------------:|:------------------- |
+| latest | 8.0          | 7.1   | 3.5    | >=361           | py3/cuda80/         |
+| 92     | 9.2          | 7.1   | 3.5    | >=396           | py3/cuda92/         |
+| py2    | 8.0          | 7.1   | 2.7    | >=361           | py2/cuda80/         |
+| py2-92 | 9.2          | 7.1   | 2.7    | >=396           | py2/cuda92/         |
 
-```
-nvidia-docker run -it --rm nnabla/nnabla-ext-cuda
-```
-
-### Python2: `nnabla/nnabla:py2`
-
-This image contains the latest nnabla Python package
-with the CUDA extension working with Python2.
+The docker image can be executed as below.
 
 ```
-nvidia-docker run -it --rm nnabla/nnabla-ext-cuda:py2
+nvidia-docker run <options> nnabla/nnabla-ext-cuda:<tag> <command>
 ```
 
-### Tutorial: `nnabla/nnabla:tutorial`
+You can also build docker images from Dockerfiles located in this folder (describe the above table).
 
-This image contains the latest NNabla with the CUDA extension
-and its tutorials on Python3.
-The following command runs a jupyter server listening 8888 on the host OS.
+```
+docker build <options> -t <image name>:<tag> <Dockerfile folder>
+```
+
+## Tutorial image
+
+The image contains nnabla Python with CUDA extension and [nnabla-examples](https://github.com/nnabla-examples/) repository.
+The following command runs a jupyter server listening 8888 port on the host OS.
 
 ```
 nvidia-docker run -it --rm -p 8888:8888 nnabla/nnabla-ext-cuda:tutorial jupyter notebook --ip=* --allow-root --NotebookApp.token=nnabla
 ```
 
-You can connect the server with your browser by accessing
+You can connect the jupyter server with your browser by accessing
 `http://<Host OS address>:8888`. The login password is `nnabla`.
 
-## Dockerfiles for Developers
+After logging in, you see the list of files/folders in nnabla repository and nnabla-examples.
 
-### Dev: `dev/Dockerfile`
-
-Dockerfile used to create an image containing requirements for
-building NNabla C++ libraries and Python package with the CUDA extension.
-
-This must be build at the root directory of nnabla-ext-cuda.
-
-```
-docker build -t local/nnabla-ext-cuda:dev -f dev/Dockerfile ../
-```
-
-### Dist: `dist/Dockerfile`
-
-Dockerfile for creating an image for building Python package wheels
-for many linux distributions.
-
-```
-docker build -t local/nnabla-ext-cuda:dist dist
-```
-
-TODO: Write more details.
+TODO: Write how to run demonstration examples in a jupyter client. 
