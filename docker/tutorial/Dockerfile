@@ -7,10 +7,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN pip3 install nnabla-ext-cuda80
 RUN pip3 install jupyter
 RUN pip3 install sklearn
+RUN pip3 install imageio
 
-RUN git clone https://github.com/sony/nnabla.git
+RUN git clone --depth=1 https://github.com/sony/nnabla && mv nnabla/tutorial . && rm -rf nnabla
+RUN git clone --depth=1 https://github.com/sony/nnabla-examples && rm -rf nnabla-examples/.git  && mv nnabla-examples tutorial
 
-WORKDIR /nnabla/tutorial/
+WORKDIR /tutorial
 
 # The following command doesn't make the container ready to use NVIDIA drivers
 # when jupyter is launched. We are not sure why.
