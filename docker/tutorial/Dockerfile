@@ -1,10 +1,10 @@
-FROM nvidia/cuda:8.0-cudnn6-runtime-ubuntu16.04
+FROM nvidia/cuda:8.0-cudnn7-runtime-ubuntu16.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip python3-setuptools python3-wheel git \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install nnabla-ext-cuda
+RUN pip3 install nnabla-ext-cuda80
 RUN pip3 install jupyter
 RUN pip3 install sklearn
 
