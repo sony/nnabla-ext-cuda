@@ -28,7 +28,7 @@ docker build <options> -t <image name>:<tag> <Dockerfile folder>
 
 ## Tutorial image
 
-The image contains nnabla Python with CUDA extension and [nnabla-examples](https://github.com/nnabla-examples/) repository.
+The image contains nnabla Python (3.5)  with CUDA extension (CUDA8.0 and CUDNN7.1) and [nnabla-examples](https://github.com/nnabla-examples/) repository.
 The following command runs a jupyter server listening 8888 port on the host OS.
 
 ```
@@ -38,6 +38,6 @@ nvidia-docker run -it --rm -p 8888:8888 nnabla/nnabla-ext-cuda:tutorial jupyter 
 You can connect the jupyter server with your browser by accessing
 `http://<Host OS address>:8888`. The login password is `nnabla`.
 
-After logging in, you see the list of files/folders in nnabla repository and nnabla-examples.
-
-TODO: Write how to run demonstration examples in a jupyter client. 
+After logging in, the page lists a directory that contains jupyter `.ipynb` tutorials and the `nnabla-examples/` foler.
+You can open any tutorial by clicking a `.ipynb` file.
+A DCGAN in `nnabla-examples` is demonstrated in `run-nnabla-examples.ipynb`.

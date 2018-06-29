@@ -11,6 +11,7 @@ RUN pip3 install imageio
 
 RUN git clone --depth=1 https://github.com/sony/nnabla && mv nnabla/tutorial . && rm -rf nnabla
 RUN git clone --depth=1 https://github.com/sony/nnabla-examples && rm -rf nnabla-examples/.git  && mv nnabla-examples tutorial
+COPY ./run-nnabla-examples.ipynb tutorial/
 
 WORKDIR /tutorial
 
