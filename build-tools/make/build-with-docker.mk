@@ -46,13 +46,18 @@ DOCKER_IMAGE_NNABLA_EXT_CUDA ?= $(DOCKER_IMAGE_NAME_BASE)-nnabla-ext--cuda$(CUDA
 DOCKERFILE_NAME_SUFFIX := py$(PYTHON_VERSION_MAJOR)$(PYTHON_VERSION_MINOR)
 DOCKERFILE_NAME_SUFFIX := $(DOCKERFILE_NAME_SUFFIX)-cuda$(CUDA_VERSION_MAJOR)$(CUDA_VERSION_MINOR)
 DOCKERFILE_NAME_SUFFIX := $(DOCKERFILE_NAME_SUFFIX)-cudnn$(CUDNN_VERSION)
+
+DOCKER_IMAGE_BUILD_CUDA_BASE ?= nvidia/cuda:$(CUDA_VERSION_MAJOR).$(CUDA_VERSION_MINOR)-cudnn$(CUDNN_VERSION)-devel-centos6
+
 .PHONY: docker_image_build_cuda
 docker_image_build_cuda:
-	docker pull nvidia/cuda:$(CUDA_VERSION_MAJOR).$(CUDA_VERSION_MINOR)-cudnn$(CUDNN_VERSION)-devel-centos6
+	docker pull $(DOCKER_IMAGE_BUILD_CUDA_BASE)
 	@cd $(NNABLA_EXT_CUDA_DIRECTORY) \
-	&& python docker/development/generate_dockerfile.py $(DOCKERFILE_NAME_SUFFIX) \
-	&& docker build $(DOCKER_BUILD_ARGS) -t $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA) \
-		-f docker/development/Dockerfile.build.$(DOCKERFILE_NAME_SUFFIX) .
+	&& docker build $(DOCKER_BUILD_ARGS)\
+		--build-arg BASE=$(DOCKER_IMAGE_BUILD_CUDA_BASE) \
+		-t $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA) \
+		-f docker/development/Dockerfile.build \
+		.
 
 ########################################################################################################################
 # Build and test
