@@ -89,8 +89,7 @@ nnabla-ext-cuda-wheel-local: nnabla-install \
 
 .PHONY: nnabla-ext-cuda-install
 nnabla-ext-cuda-install:
-	-pip uninstall -y nnabla-ext-cuda
-	pip install $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/*-$(INSTALL_WHEEL_ARCH)*.whl
+	pip install --force-reinstall --no-deps $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/*-$(INSTALL_WHEEL_ARCH)*.whl
 
 
 ########################################################################################################################
