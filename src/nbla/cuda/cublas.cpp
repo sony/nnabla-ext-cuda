@@ -31,34 +31,6 @@ inline cublasGemmAlgo_t infer_gemm_algo_by_type(cudaDataType_t dt) {
 // ----------------------------------------------------------------------
 // Gemm
 // ----------------------------------------------------------------------
-#if CUDA_VERSION >= 9000
-template <typename T>
-void cublas_gemm(cublasHandle_t handle, cublasOperation_t op_x,
-                 cublasOperation_t op_y, int m, int n, int k, float alpha,
-                 const T *x, int lda, const T *y, int ldb, float beta, T *z,
-                 int ldc) {
-  typedef typename CudaTypeForceFloat<T>::type Tf;
-  Tf a = alpha;
-  Tf b = beta;
-  // Note: Use CUBLAS_GEMM_DEFAULT to avoid using Tensor Core in fp32 (implicit
-  // downcast occurs, which is not expected by many users.
-  auto dt = cuda_data_type<T>::type();
-  auto ct = cuda_data_type<typename CudaTypeForceFloat<T>::type>::type();
-  NBLA_CUBLAS_CHECK(cublasSetMathMode(handle, CUBLAS_TENSOR_OP_MATH));
-  NBLA_CUBLAS_CHECK(cublasGemmEx(handle, op_x, op_y, m, n, k, &a, x, dt, lda, y,
-                                 dt, ldb, &b, z, dt, ldc, ct,
-                                 infer_gemm_algo_by_type(dt)));
-  NBLA_CUBLAS_CHECK(cublasSetMathMode(handle, CUBLAS_DEFAULT_MATH));
-}
-#define DEF_CUBLAS_GEMM(TYPE)                                                  \
-  template void cublas_gemm<TYPE>(                                             \
-      cublasHandle_t handle, cublasOperation_t op_x, cublasOperation_t op_y,   \
-      int m, int n, int k, float alpha, const TYPE *x, int lda, const TYPE *y, \
-      int ldb, float beta, TYPE *z, int ldc)
-DEF_CUBLAS_GEMM(half);
-DEF_CUBLAS_GEMM(float);
-DEF_CUBLAS_GEMM(double);
-#else // CUDA_VERSION >= 9000
 template <>
 void cublas_gemm<double>(cublasHandle_t handle, cublasOperation_t op_x,
                          cublasOperation_t op_y, int m, int n, int k,
@@ -69,22 +41,47 @@ void cublas_gemm<double>(cublasHandle_t handle, cublasOperation_t op_x,
   NBLA_CUBLAS_CHECK(
       cublasDgemm(handle, op_x, op_y, m, n, k, &a, x, lda, y, ldb, &b, z, ldc));
 }
-#define DEF_CUBLAS_GEMM(TYPE)                                                  \
-  template <>                                                                  \
-  void cublas_gemm<TYPE>(cublasHandle_t handle, cublasOperation_t op_x,        \
-                         cublasOperation_t op_y, int m, int n, int k,          \
-                         float alpha, const TYPE *x, int lda, const TYPE *y,   \
-                         int ldb, float beta, TYPE *z, int ldc) {              \
-    float a = alpha;                                                           \
-    float b = beta;                                                            \
-    auto dt = cuda_data_type<TYPE>::type();                                    \
-    /* NOTE: cublasSgemmEx has been added since CUDA 7.5 */                    \
-    NBLA_CUBLAS_CHECK(cublasSgemmEx(handle, op_x, op_y, m, n, k, &a, x, dt,    \
-                                    lda, y, dt, ldb, &b, z, dt, ldc));         \
+
+template <>
+void cublas_gemm<float>(cublasHandle_t handle, cublasOperation_t op_x,
+                        cublasOperation_t op_y, int m, int n, int k,
+                        float alpha, const float *x, int lda, const float *y,
+                        int ldb, float beta, float *z, int ldc) {
+  float a = alpha;
+  float b = beta;
+  auto dt = cuda_data_type<float>::type();
+  /* NOTE: cublasSgemmEx has been added since CUDA 7.5 */
+  NBLA_CUBLAS_CHECK(cublasSgemmEx(handle, op_x, op_y, m, n, k, &a, x, dt, lda,
+                                  y, dt, ldb, &b, z, dt, ldc));
+}
+
+template <>
+void cublas_gemm<half>(cublasHandle_t handle, cublasOperation_t op_x,
+                       cublasOperation_t op_y, int m, int n, int k, float alpha,
+                       const half *x, int lda, const half *y, int ldb,
+                       float beta, half *z, int ldc) {
+  float a = alpha;
+  float b = beta;
+  auto dt = cuda_data_type<half>::type();
+#if CUDA_VERSION >= 9000
+  // cublasGemmEx can only be used on architectures later than Kepler (>=5).
+  cudaDeviceProp prop = cuda_get_current_device_properties();
+  if (prop.major >= 5) {
+    auto ct = cuda_data_type<typename CudaTypeForceFloat<half>::type>::type();
+    NBLA_CUBLAS_CHECK(cublasSetMathMode(handle, CUBLAS_TENSOR_OP_MATH));
+    NBLA_CUBLAS_CHECK(cublasGemmEx(handle, op_x, op_y, m, n, k, &a, x, dt, lda,
+                                   y, dt, ldb, &b, z, dt, ldc, ct,
+                                   infer_gemm_algo_by_type(dt)));
+    NBLA_CUBLAS_CHECK(cublasSetMathMode(handle, CUBLAS_DEFAULT_MATH));
+  } else {
+    NBLA_CUBLAS_CHECK(cublasSgemmEx(handle, op_x, op_y, m, n, k, &a, x, dt, lda,
+                                    y, dt, ldb, &b, z, dt, ldc));
   }
-DEF_CUBLAS_GEMM(half);
-DEF_CUBLAS_GEMM(float);
+#else // CUDA_VERSION < 9000
+  NBLA_CUBLAS_CHECK(cublasSgemmEx(handle, op_x, op_y, m, n, k, &a, x, dt, lda,
+                                  y, dt, ldb, &b, z, dt, ldc));
 #endif
+}
 
 // ----------------------------------------------------------------------
 // Gemv
@@ -222,6 +219,31 @@ void cublas_gemm_batched<half>(cublasHandle_t handle, cublasOperation_t op_x,
 // Gemm strided batched
 // ----------------------------------------------------------------------
 #if CUDA_VERSION >= 8000
+template <>
+void cublas_gemm_strided_batched<double>(
+    cublasHandle_t handle, cublasOperation_t op_x, cublasOperation_t op_y,
+    int m, int n, int k, float alpha, const double *x, int lda, int stride_a,
+    const double *y, int ldb, int stride_b, float beta, double *z, int ldc,
+    int stride_c, int batch_count) {
+  double a = alpha;
+  double b = beta;
+  NBLA_CUBLAS_CHECK(cublasDgemmStridedBatched(
+      handle, op_x, op_y, m, n, k, &a, x, lda, stride_a, y, ldb, stride_b, &b,
+      z, ldc, stride_c, batch_count));
+}
+template <>
+void cublas_gemm_strided_batched<float>(
+    cublasHandle_t handle, cublasOperation_t op_x, cublasOperation_t op_y,
+    int m, int n, int k, float alpha, const float *x, int lda, int stride_a,
+    const float *y, int ldb, int stride_b, float beta, float *z, int ldc,
+    int stride_c, int batch_count) {
+  float a = alpha;
+  float b = beta;
+  NBLA_CUBLAS_CHECK(cublasSgemmStridedBatched(
+      handle, op_x, op_y, m, n, k, &a, x, lda, stride_a, y, ldb, stride_b, &b,
+      z, ldc, stride_c, batch_count));
+}
+
 #if CUDA_VERSION >= 9010
 template <typename T, int batch_chunk>
 void cublas_gemm_strided_batched_chunk(cublasHandle_t handle,
@@ -250,75 +272,42 @@ void cublas_gemm_strided_batched_chunk(cublasHandle_t handle,
         infer_gemm_algo_by_type(dt)));
   }
 }
+#endif // CUDA_VERSION >= 9010
 
-template <typename T>
-void cublas_gemm_strided_batched(cublasHandle_t handle, cublasOperation_t op_x,
-                                 cublasOperation_t op_y, int m, int n, int k,
-                                 float alpha, const T *x, int lda, int stride_a,
-                                 const T *y, int ldb, int stride_b, float beta,
-                                 T *z, int ldc, int stride_c, int batch_count) {
-  constexpr int batch_chunk = 1 << 15;
-  if (batch_count > batch_chunk) {
-    // Seems like cublasGemmStridedBatchedEx does not allow a large batch count.
-    // We confirmed that CUDA 9.1 and 9.2.
-    // If batch_count > 1<<15, we apply batched gemm for each chunk.
-    // TODO: Check a behavior of the newer versions.
-    cublas_gemm_strided_batched_chunk<T, batch_chunk>(
-        handle, op_x, op_y, m, n, k, alpha, x, lda, stride_a, y, ldb, stride_b,
-        beta, z, ldc, stride_c, batch_count);
-    return;
-  }
-  typedef typename CudaTypeForceFloat<T>::type Tf;
-  Tf a = alpha;
-  Tf b = beta;
-  cudaDataType_t dt = cuda_data_type<T>::type();
-  cudaDataType_t ct =
-      cuda_data_type<typename CudaTypeForceFloat<T>::type>::type();
-  NBLA_CUBLAS_CHECK(cublasGemmStridedBatchedEx(
-      handle, op_x, op_y, m, n, k, &a, x, dt, lda, stride_a, y, dt, ldb,
-      stride_b, &b, z, dt, ldc, stride_c, batch_count, ct,
-      infer_gemm_algo_by_type(dt)));
-}
-#define DEF_CUBLAS_GEMM_STRIDED_BATCHED(TYPE)                                  \
-  template void cublas_gemm_strided_batched<TYPE>(                             \
-      cublasHandle_t handle, cublasOperation_t op_x, cublasOperation_t op_y,   \
-      int m, int n, int k, float alpha, const TYPE *x, int lda, int stride_a,  \
-      const TYPE *y, int ldb, int stride_b, float beta, TYPE *z, int ldc,      \
-      int stride_c, int batch_count)
-DEF_CUBLAS_GEMM_STRIDED_BATCHED(half);
-DEF_CUBLAS_GEMM_STRIDED_BATCHED(float);
-DEF_CUBLAS_GEMM_STRIDED_BATCHED(double);
-#else  // CUDA_VERSION >= 9010
-template <>
-void cublas_gemm_strided_batched<double>(
-    cublasHandle_t handle, cublasOperation_t op_x, cublasOperation_t op_y,
-    int m, int n, int k, float alpha, const double *x, int lda, int stride_a,
-    const double *y, int ldb, int stride_b, float beta, double *z, int ldc,
-    int stride_c, int batch_count) {
-  double a = alpha;
-  double b = beta;
-  NBLA_CUBLAS_CHECK(cublasDgemmStridedBatched(
-      handle, op_x, op_y, m, n, k, &a, x, lda, stride_a, y, ldb, stride_b, &b,
-      z, ldc, stride_c, batch_count));
-}
-template <>
-void cublas_gemm_strided_batched<float>(
-    cublasHandle_t handle, cublasOperation_t op_x, cublasOperation_t op_y,
-    int m, int n, int k, float alpha, const float *x, int lda, int stride_a,
-    const float *y, int ldb, int stride_b, float beta, float *z, int ldc,
-    int stride_c, int batch_count) {
-  float a = alpha;
-  float b = beta;
-  NBLA_CUBLAS_CHECK(cublasSgemmStridedBatched(
-      handle, op_x, op_y, m, n, k, &a, x, lda, stride_a, y, ldb, stride_b, &b,
-      z, ldc, stride_c, batch_count));
-}
 template <>
 void cublas_gemm_strided_batched<half>(
     cublasHandle_t handle, cublasOperation_t op_x, cublasOperation_t op_y,
     int m, int n, int k, float alpha, const half *x, int lda, int stride_a,
     const half *y, int ldb, int stride_b, float beta, half *z, int ldc,
     int stride_c, int batch_count) {
+#if CUDA_VERSION >= 9010
+  cudaDeviceProp prop = cuda_get_current_device_properties();
+  if (prop.major >= 5) {
+    constexpr int batch_chunk = 1 << 15;
+    if (batch_count > batch_chunk) {
+      // Seems like cublasGemmStridedBatchedEx does not allow a large batch
+      // count.
+      // We confirmed that CUDA 9.1 and 9.2.
+      // If batch_count > 1<<15, we apply batched gemm for each chunk.
+      // TODO: Check a behavior of the newer versions.
+      cublas_gemm_strided_batched_chunk<half, batch_chunk>(
+          handle, op_x, op_y, m, n, k, alpha, x, lda, stride_a, y, ldb,
+          stride_b, beta, z, ldc, stride_c, batch_count);
+      return;
+    }
+    float a = alpha;
+    float b = beta;
+    cudaDataType_t dt = cuda_data_type<half>::type();
+    cudaDataType_t ct = cuda_data_type<float>::type();
+    NBLA_CUBLAS_CHECK(cublasSetMathMode(handle, CUBLAS_TENSOR_OP_MATH));
+    NBLA_CUBLAS_CHECK(cublasGemmStridedBatchedEx(
+        handle, op_x, op_y, m, n, k, &a, x, dt, lda, stride_a, y, dt, ldb,
+        stride_b, &b, z, dt, ldc, stride_c, batch_count, ct,
+        infer_gemm_algo_by_type(dt)));
+    NBLA_CUBLAS_CHECK(cublasSetMathMode(handle, CUBLAS_DEFAULT_MATH));
+    return;
+  }
+#endif // CUDA_VERSION >= 9010
   // No HgemmStridedBatched with fp32 computation. Falling back to multiple
   // calls of Gemm.
   for (int b = 0; b < batch_count; b++) {
@@ -329,6 +318,5 @@ void cublas_gemm_strided_batched<half>(
                       beta, z_, ldc);
   }
 }
-#endif // CUDA_VERSION >= 9010
 #endif // CUDA_VERSION >= 8000
 }

@@ -210,5 +210,9 @@ int cuda_set_device(int device);
 @return index of device
 */
 int cuda_get_device();
+
+/** Get device properties of current CUDA device.
+ */
+cudaDeviceProp cuda_get_current_device_properties();
 }
 #endif
