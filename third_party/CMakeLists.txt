@@ -35,4 +35,4 @@ if(BUILD_TEST)
   add_subdirectory(googletest-release-1.7.0)
 endif()
 
-download_and_extract_third_party_library(eigen-eigen-de14376a69f8 https://bitbucket.org/eigen/eigen/get/de14376a69f8.zip)
+download_and_extract_library(eigen-git-mirror-3.3.5 .zip https://github.com/eigenteam/eigen-git-mirror/archive/3.3.5.zip)
