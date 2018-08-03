@@ -365,7 +365,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::reduce(NdArrayPtr ndarray,
                              dst, comms_[group], stream));
   if (division) {
     NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace, stream, n_param,
-                                      this->size_, dw1);
+                                      this->groups_[group].size(), dw1);
   }
 }
 
@@ -532,7 +532,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::all_reduce(
                                 this->comms_[group], stream));
   if (division) {
     NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace, stream, n_param,
-                                      this->size_, gpu_buffer);
+                                      this->groups_[group].size(), gpu_buffer);
   }
 }
 
@@ -570,7 +570,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::reduce_scatter(
   if (division) {
     // use default stream
     NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace, 0, recvcount,
-                                      this->size_, recvbuff);
+                                      this->groups_[group].size(), recvbuff);
   }
   launch_kernel_null();
 }
