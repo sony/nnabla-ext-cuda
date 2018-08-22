@@ -39,8 +39,8 @@ void cudnn_set_tensor_nd_descriptor_force_dim(cudnnTensorDescriptor_t &desc,
  */
 inline void cudnn_set_convolution_nd_descriptor_force_2dim(
     cudnnConvolutionDescriptor_t &conv_desc, int ndim, vector<int> pad,
-    vector<int> stride, vector<int> dilation, cudnnConvolutionMode_t mode,
-    cudnnDataType_t dtype) {
+    vector<int> stride, vector<int> dilation, int group,
+    cudnnConvolutionMode_t mode, cudnnDataType_t dtype) {
   if (ndim == 1) {
     ndim = 2;
     pad.resize(2, 0);
@@ -54,6 +54,9 @@ inline void cudnn_set_convolution_nd_descriptor_force_2dim(
   NBLA_CUDNN_CHECK(cudnnSetConvolutionNdDescriptor(
       conv_desc, ndim, pad.data(), stride.data(), dilation.data(), mode,
       dtype));
+#if CUDNN_VERSION >= 7000
+  NBLA_CUDNN_CHECK(cudnnSetConvolutionGroupCount(conv_desc, group));
+#endif
 }
 
 static size_t get_conv_outsize(int w, int k, int p, int s, int d) {
@@ -95,7 +98,11 @@ inline vector<int> get_conv_dims(int b, int c, int group,
                                  const vector<int> &sample) {
   vector<int> ret(sample.size() + 2);
   ret[0] = b;
+#if CUDNN_VERSION >= 7000
+  ret[1] = c;
+#else
   ret[1] = c / group;
+#endif
   for (int d = 0; d < sample.size(); d++) {
     ret[d + 2] = sample[d];
   }
@@ -143,7 +150,11 @@ CudnnConvResource::CudnnConvResource(const CudnnConvDesc &desc) {
 
   // Set kernel (filter) desc
   vector<int> fdims(desc.ndim + 2);
+#if CUDNN_VERSION >= 7000
+  fdims[0] = desc.o;
+#else
   fdims[0] = desc.o / desc.group;
+#endif
   fdims[1] = desc.c / desc.group;
   for (int d = 0; d < desc.ndim; d++) {
     fdims[d + 2] = desc.kernel[d];
@@ -156,14 +167,22 @@ CudnnConvResource::CudnnConvResource(const CudnnConvDesc &desc) {
 
   // Set bias desc
   vector<int> bdims(desc.ndim + 2, 1);
+#if CUDNN_VERSION >= 7000
+  bdims[1] = desc.o;
+#else
   bdims[1] = desc.o / desc.group;
+#endif
   vector<int> bstrides(desc.ndim + 2, 1);
   bstrides[0] = bdims[1];
   cudnn_set_tensor_nd_descriptor_force_dim(b_desc, desc.dtype, bdims, bstrides,
                                            4);
 
-  // Set bias desc for deconvolution
+// Set bias desc for deconvolution
+#if CUDNN_VERSION >= 7000
+  bdims[1] = desc.c;
+#else
   bdims[1] = desc.c / desc.group;
+#endif
   bstrides[0] = bdims[1];
   cudnn_set_tensor_nd_descriptor_force_dim(b_desc_deconv, desc.dtype, bdims,
                                            bstrides, 4);
@@ -174,9 +193,9 @@ CudnnConvResource::CudnnConvResource(const CudnnConvDesc &desc) {
   // Use FLOAT computation when HALF data type.
   cudnnDataType_t compute_type =
       desc.dtype == CUDNN_DATA_HALF ? CUDNN_DATA_FLOAT : desc.dtype;
-  cudnn_set_convolution_nd_descriptor_force_2dim(conv_desc, desc.ndim, desc.pad,
-                                                 desc.stride, desc.dilation,
-                                                 desc.mode, compute_type);
+  cudnn_set_convolution_nd_descriptor_force_2dim(
+      conv_desc, desc.ndim, desc.pad, desc.stride, desc.dilation, desc.group,
+      desc.mode, compute_type);
 
   // Find best algorithm
   find_best_algorithms();

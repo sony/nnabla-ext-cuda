@@ -80,6 +80,16 @@ void ConvolutionCudaCudnn<T>::forward_impl(const Variables &inputs,
   }
   void *workspace = SingletonManager::get<Cuda>()->get_workspace(
       rsc_->workspace_size(), this->device_);
+#if CUDNN_VERSION >= 7000
+  NBLA_CUDNN_CHECK(cudnnConvolutionForward(
+      cudnn_handle_, &alpha, rsc_->x_desc, x, rsc_->w_desc, w, rsc_->conv_desc,
+      rsc_->fwd_algo, workspace, rsc_->fwd_workspace_size, &beta, rsc_->y_desc,
+      y));
+  if (inputs.size() == 3) {
+    NBLA_CUDNN_CHECK(cudnnAddTensor(cudnn_handle_, &alpha, rsc_->b_desc, b,
+                                    &alpha, rsc_->y_desc, y));
+  }
+#else
   for (int g = 0; g < this->group_; ++g) {
     NBLA_CUDNN_CHECK(cudnnConvolutionForward(
         cudnn_handle_, &alpha, rsc_->x_desc, x + x_offset_ * g, rsc_->w_desc,
@@ -93,6 +103,7 @@ void ConvolutionCudaCudnn<T>::forward_impl(const Variables &inputs,
                                       y + y_offset_ * g));
     }
   }
+#endif
 }
 
 template <class T>
@@ -124,6 +135,27 @@ void ConvolutionCudaCudnn<T>::backward_impl(const Variables &inputs,
   auto alpha = get_cudnn_scalar_arg<T>(1);
   void *workspace = SingletonManager::get<Cuda>()->get_workspace(
       rsc_->workspace_size(), this->device_);
+#if CUDNN_VERSION >= 7000
+  if (propagate_down[0]) {
+    auto beta = get_cudnn_scalar_arg<T>(accum[0] ? 1 : 0);
+    NBLA_CUDNN_CHECK(cudnnConvolutionBackwardData(
+        cudnn_handle_, &alpha, rsc_->w_desc, w, rsc_->y_desc, dy,
+        rsc_->conv_desc, rsc_->bwd_data_algo, workspace,
+        rsc_->bwd_data_workspace_size, &beta, rsc_->x_desc, dx));
+  }
+  if (propagate_down[1]) {
+    auto beta = get_cudnn_scalar_arg<T>(accum[1] ? 1 : 0);
+    NBLA_CUDNN_CHECK(cudnnConvolutionBackwardFilter(
+        cudnn_handle_, &alpha, rsc_->x_desc, x, rsc_->y_desc, dy,
+        rsc_->conv_desc, rsc_->bwd_filter_algo, workspace,
+        rsc_->bwd_filter_workspace_size, &beta, rsc_->w_desc, dw));
+  }
+  if (inputs.size() == 3 && propagate_down[2]) {
+    auto beta = get_cudnn_scalar_arg<T>(accum[2] ? 1 : 0);
+    NBLA_CUDNN_CHECK(cudnnConvolutionBackwardBias(
+        cudnn_handle_, &alpha, rsc_->y_desc, dy, &beta, rsc_->b_desc, db));
+  }
+#else
   for (int g = 0; g < this->group_; ++g) {
     if (propagate_down[0]) {
       auto beta = get_cudnn_scalar_arg<T>(accum[0] ? 1 : 0);
@@ -148,6 +180,7 @@ void ConvolutionCudaCudnn<T>::backward_impl(const Variables &inputs,
           rsc_->b_desc, db + b_offset_ * g));
     }
   }
+#endif
 }
 
 // Manually selecting algorithms is not supported for now.
