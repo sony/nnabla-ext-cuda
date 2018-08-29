@@ -74,7 +74,7 @@ bwd-nnabla-ext-cuda-cpplib: docker_image_build_cuda
 .PHONY: bwd-nnabla-ext-cuda-wheel
 bwd-nnabla-ext-cuda-wheel: docker_image_build_cuda
 	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
-	&& docker run $(DOCKER_RUN_OPTS) $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA) make -f build-tools/make/build.mk nnabla-ext-cuda-wheel-local
+	&& docker run $(DOCKER_RUN_OPTS) $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA) make -f build-tools/make/build.mk MAKE_MANYLINUX_WHEEL=ON nnabla-ext-cuda-wheel-local
 
 .PHONY: bwd-nnabla-ext-cuda-test
 bwd-nnabla-ext-cuda-test: docker_image_build_cuda
