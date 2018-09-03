@@ -43,7 +43,7 @@ assert(__short_version__ is not None)
 assert(__email__ is not None)
 
 setup_requires = [
-    'numpy>=1.10',
+    'numpy>=1.12',
     'Cython>=0.24,<0.26',  # Requires python-dev.
 ]
 
