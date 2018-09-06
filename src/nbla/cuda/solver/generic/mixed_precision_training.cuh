@@ -48,11 +48,9 @@ bool check_inf_grad_cuda(const Context &ctx, const shared_ptr<Variable> param) {
   Size_t size = param->size();
   T *grad = param->cast_grad_and_get_pointer<T>(ctx);
   bool flag = false;
-  printf("flag(before)=%d\n", flag);
   thrust::device_ptr<T> dev_ptr = thrust::device_pointer_cast(grad);
   flag = thrust::transform_reduce(dev_ptr, dev_ptr + size, check_inf<T>(), 0,
                                   thrust::plus<bool>());
-  printf("flag(after)=%d\n", flag);
   return flag;
 }
 
