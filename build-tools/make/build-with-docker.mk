@@ -105,7 +105,7 @@ bwd-nnabla-ext-cuda-test: docker_image_build_cuda
 .PHONY: bwd-nnabla-ext-cuda-multi-gpu-test
 bwd-nnabla-ext-cuda-multi-gpu-test: docker_image_build_cuda_multi_gpu
 	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
-	&& nvidia-docker run $(DOCKER_RUN_OPTS) -u 0 $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA_MULTI_GPU) make -f build-tools/make/build.mk nnabla-ext-cuda-multi-gpu-test-local
+	&& nvidia-docker run $(DOCKER_RUN_OPTS) $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA_MULTI_GPU) make -f build-tools/make/build.mk nnabla-ext-cuda-multi-gpu-test-local
 
 .PHONY: bwd-nnabla-ext-cuda-shell
 bwd-nnabla-ext-cuda-shell: docker_image_build_cuda
