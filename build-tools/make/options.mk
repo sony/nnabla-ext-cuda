@@ -29,6 +29,9 @@ DOCKER_RUN_OPTS += -e CUDNN_VERSION=$(CUDNN_VERSION)
 export WHL_NO_PREFIX ?= False
 DOCKER_RUN_OPTS += -e WHL_NO_PREFIX=$(WHL_NO_PREFIX)
 
+export MULTI_GPU ?= False
+DOCKER_RUN_OPTS += -e MULTI_GPU=$(MULTI_GPU)
+
 ifndef NNABLA_OPTIONS_INCLUDED
   include $(NNABLA_DIRECTORY)/build-tools/make/options.mk
 endif
