@@ -94,6 +94,7 @@ bwd-nnabla-ext-cuda-wheel: docker_image_build_cuda
 
 .PHONY: bwd-nnabla-ext-cuda-wheel-multi-gpu
 bwd-nnabla-ext-cuda-wheel-multi-gpu: docker_image_build_cuda_multi_gpu
+	mkdir -p ~/.ccache
 	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
 	&& docker run $(DOCKER_RUN_OPTS) $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA_MULTI_GPU) make MULTI_GPU=True -f build-tools/make/build.mk nnabla-ext-cuda-wheel-multi-gpu
 
