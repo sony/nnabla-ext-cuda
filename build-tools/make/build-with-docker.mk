@@ -125,6 +125,8 @@ bwd-nnabla-ext-cuda-shell: docker_image_build_cuda
 # Docker image with current nnabla
 .PHONY: docker_image_nnabla_ext_cuda
 docker_image_nnabla_ext_cuda:
+	rm -rf $(NNABLA_EXT_CUDA_DIRECTORY)/build_sdeepconsole
+	cp -rf output/build_sdeepconsole $(NNABLA_EXT_CUDA_DIRECTORY)
 	BASE=nvidia/cuda:$(CUDA_VERSION_MAJOR).$(CUDA_VERSION_MINOR)-cudnn$(CUDNN_VERSION)-runtime-ubuntu16.04 \
 	&& docker pull $${BASE} \
 	&& cd $(NNABLA_EXT_CUDA_DIRECTORY) \
