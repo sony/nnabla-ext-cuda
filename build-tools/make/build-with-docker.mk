@@ -94,9 +94,8 @@ bwd-nnabla-ext-cuda-wheel: docker_image_build_cuda
 
 .PHONY: bwd-nnabla-ext-cuda-wheel-multi-gpu
 bwd-nnabla-ext-cuda-wheel-multi-gpu: docker_image_build_cuda_multi_gpu
-	mkdir -p ~/.ccache
 	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
-	&& docker run $(DOCKER_RUN_OPTS) $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA_MULTI_GPU) make MULTI_GPU=True -f build-tools/make/build.mk nnabla-ext-cuda-wheel-multi-gpu
+	&& docker run $(DOCKER_RUN_OPTS) $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA_MULTI_GPU) make -f build-tools/make/build.mk nnabla-ext-cuda-wheel-multi-gpu
 
 .PHONY: bwd-nnabla-ext-cuda-test
 bwd-nnabla-ext-cuda-test: docker_image_build_cuda
@@ -115,18 +114,25 @@ bwd-nnabla-ext-cuda-shell: docker_image_build_cuda
 
 ########################################################################################################################
 # Docker image with current nnabla
+
+
 .PHONY: docker_image_nnabla_ext_cuda
-docker_image_nnabla_ext_cuda: bwd-nnabla-cpplib bwd-nnabla-wheel bwd-nnabla-ext-cuda-cpplib bwd-nnabla-ext-cuda-wheel
-	docker pull ubuntu:16.04
+docker_image_nnabla_ext_cuda:
+	rm -rf $(NNABLA_EXT_CUDA_DIRECTORY)/build_sdeepconsole
+	cp -rf output/build_sdeepconsole $(NNABLA_EXT_CUDA_DIRECTORY)
+	docker pull nvidia/cuda:8.0-cudnn7-runtime-ubuntu16.04
 	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
-	&& cp docker/development/Dockerfile.build.py$(PYTHON_VERSION_MAJOR)$(PYTHON_VERSION_MINOR)-cuda$(CUDA_VERSION_MAJOR)$(CUDA_VERSION_MINOR)-cudnn$(CUDNN_VERSION) Dockerfile \
-	&& cp $(shell echo $(NNABLA_DIRECTORY)/build_wheel_py$(PYTHON_VERSION_MAJOR)$(PYTHON_VERSION_MINOR)/dist/*.whl) . \
-	&& echo ADD $(shell basename $(NNABLA_DIRECTORY)/build_wheel_py$(PYTHON_VERSION_MAJOR)$(PYTHON_VERSION_MINOR)/dist/*.whl) /tmp/ >>Dockerfile \
-	&& echo RUN pip install /tmp/$(shell basename $(NNABLA_DIRECTORY)/build_wheel_py$(PYTHON_VERSION_MAJOR)$(PYTHON_VERSION_MINOR)/dist/*.whl) >>Dockerfile \
-	&& echo ADD $(shell echo build_wheel_py$(PYTHON_VERSION_MAJOR)$(PYTHON_VERSION_MINOR)_$(CUDA_VERSION_MAJOR)$(CUDA_VERSION_MINOR)_$(CUDNN_VERSION)/dist/*.whl) /tmp/ >>Dockerfile \
-	&& echo RUN pip install /tmp/$(shell basename build_wheel_py$(PYTHON_VERSION_MAJOR)$(PYTHON_VERSION_MINOR)_$(CUDA_VERSION_MAJOR)$(CUDA_VERSION_MINOR)_$(CUDNN_VERSION)/dist/*.whl) >>Dockerfile \
+	&& cat docker/py3/cuda80/Dockerfile |grep -v '^RUN pip3' >Dockerfile \
+	&& cp $(shell echo $(NNABLA_DIRECTORY)/build_wheel_py35/dist/*.whl) . \
+	&& echo ADD $(shell basename $(NNABLA_DIRECTORY)/build_wheel_py35/dist/*.whl) /tmp/ >>Dockerfile \
+	&& echo RUN pip3 install /tmp/$(shell basename $(NNABLA_DIRECTORY)/build_wheel_py35/dist/*.whl) >>Dockerfile \
+	&& echo ADD $(shell echo build_wheel_py35_80_7/dist/*.whl) /tmp/ >>Dockerfile \
+	&& echo RUN pip3 install /tmp/$(shell basename build_wheel_py35_80_7/dist/*.whl) >>Dockerfile \
+	&& echo ADD build_sdeepconsole/settings /usr/local/bin/settings/ >>Dockerfile \
+	&& echo ADD build_sdeepconsole/sdeep_console_cli_util /usr/local/bin >>Dockerfile \
+	&& echo RUN chmod a+x /usr/local/bin/sdeep_console_cli_util >>Dockerfile \
 	&& docker build $(DOCKER_BUILD_ARGS) -t $(DOCKER_IMAGE_NNABLA_EXT_CUDA) . \
-	&& rm -f $(shell basename $(NNABLA_DIRECTORY)/build_wheel_py$(PYTHON_VERSION_MAJOR)$(PYTHON_VERSION_MINOR)/dist/*.whl) \
+	&& rm -f $(shell basename $(NNABLA_DIRECTORY)/build_wheel_py35/dist/*.whl) \
 	&& rm -f Dockerfile
 
 .PHONY: docker_image_nnabla_ext_cuda_multi_gpu

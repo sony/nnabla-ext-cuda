@@ -179,10 +179,6 @@ def get_setup_config(root_dir):
     cuda_version = ''
     if 'WHL_NO_PREFIX' in os.environ and os.environ['WHL_NO_PREFIX'] == 'True':
         cuda_version = ''
-    elif 'MULTI_GPU' in os.environ and os.environ['MULTI_GPU'] == 'True':
-        cuda_version = os.environ['CUDA_VERSION_MAJOR'] + \
-            os.environ['CUDA_VERSION_MINOR'] + \
-            '_nccl2_ubuntu16'
     elif 'CUDA_VERSION_MAJOR' in os.environ:
         cuda_version = os.environ['CUDA_VERSION_MAJOR'] + \
             os.environ['CUDA_VERSION_MINOR']
