@@ -47,9 +47,13 @@ setup_requires = [
     'Cython>=0.24,<0.26',  # Requires python-dev.
 ]
 
+whl_suffix = ''
+if 'WHEEL_SUFFIX' in os.environ:
+    whl_suffix += os.environ['WHEEL_SUFFIX']
+
 install_requires = [
     'setuptools',
-    'nnabla>={}'.format(__short_version__),
+    'nnabla{}>={}'.format(whl_suffix, __short_version__),
 ]
 
 LibInfo = namedtuple('LibInfo', ['file_name', 'path', 'name'])
@@ -179,17 +183,19 @@ def get_setup_config(root_dir):
     cuda_version = ''
     if 'WHL_NO_PREFIX' in os.environ and os.environ['WHL_NO_PREFIX'] == 'True':
         cuda_version = ''
-    elif 'MULTI_GPU' in os.environ and os.environ['MULTI_GPU'] == 'True':
-        cuda_version = os.environ['CUDA_VERSION_MAJOR'] + \
-            os.environ['CUDA_VERSION_MINOR'] + \
-            '_nccl2_ubuntu16'
     elif 'CUDA_VERSION_MAJOR' in os.environ:
         cuda_version = os.environ['CUDA_VERSION_MAJOR'] + \
             os.environ['CUDA_VERSION_MINOR']
     elif 'CUDAVER' in os.environ:
         cuda_version = os.environ['CUDAVER']
 
+    if 'MULTI_GPU_SUFFIX' in os.environ:
+        cuda_version += os.environ['MULTI_GPU_SUFFIX']
+
     pkg_name = 'nnabla_ext-cuda{}'.format(cuda_version)
+
+    if 'WHEEL_SUFFIX' in os.environ:
+        pkg_name += os.environ['WHEEL_SUFFIX']
 
     pkg_info = dict(
         name=pkg_name,

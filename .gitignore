@@ -1,6 +1,7 @@
 # .gitignore
 
 /build_*/
+/build-multi-gpu_*/
 
 .cache
 *.pyc
