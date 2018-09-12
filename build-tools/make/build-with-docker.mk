@@ -137,14 +137,19 @@ docker_image_nnabla_ext_cuda:
 	&& cp $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/*.whl . \
 	&& echo ADD $(shell basename $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/*.whl) /tmp/ >>Dockerfile \
 	&& echo RUN pip install /tmp/$(shell basename $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/*.whl) >>Dockerfile \
+	&& echo ADD build_sdeepconsole/settings /usr/local/bin/settings/ >>Dockerfile \
+	&& echo ADD build_sdeepconsole/sdeep_console_cli_util /usr/local/bin >>Dockerfile \
+	&& echo RUN chmod a+x /usr/local/bin/sdeep_console_cli_util >>Dockerfile \
 	&& docker build --build-arg BASE=$${BASE} $(DOCKER_BUILD_ARGS) -t $(DOCKER_IMAGE_NNABLA_EXT_CUDA) . \
 	&& rm -f $(shell basename $(BUILD_DIRECTORY_WHEEL)/dist/*.whl) \
 	&& rm -f $(shell basename $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_MULTI_GPU)/dist/*.whl) \
 	&& rm -f Dockerfile
 
 .PHONY: docker_image_nnabla_ext_cuda_multi_gpu
-docker_image_nnabla_ext_cuda_multi_gpu: bwd-nnabla-ext-cuda-wheel-multi-gpu
+docker_image_nnabla_ext_cuda_multi_gpu:
 	mkdir -p ~/.ccache
+	rm -rf $(NNABLA_EXT_CUDA_DIRECTORY)/build_sdeepconsole
+	cp -rf output/build_sdeepconsole $(NNABLA_EXT_CUDA_DIRECTORY)
 	BASE=nvidia/cuda:$(CUDA_VERSION_MAJOR).$(CUDA_VERSION_MINOR)-cudnn$(CUDNN_VERSION)-runtime-ubuntu16.04 \
 	&& docker pull $${BASE} \
 	&& cd $(NNABLA_EXT_CUDA_DIRECTORY) \
@@ -155,6 +160,9 @@ docker_image_nnabla_ext_cuda_multi_gpu: bwd-nnabla-ext-cuda-wheel-multi-gpu
 	&& cp $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_MULTI_GPU)/dist/*.whl . \
 	&& echo ADD $(shell basename $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_MULTI_GPU)/dist/*.whl) /tmp/ >>Dockerfile \
 	&& echo RUN pip install /tmp/$(shell basename $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_MULTI_GPU)/dist/*.whl) >>Dockerfile \
+	&& echo ADD build_sdeepconsole/settings /usr/local/bin/settings/ >>Dockerfile \
+	&& echo ADD build_sdeepconsole/sdeep_console_cli_util /usr/local/bin >>Dockerfile \
+	&& echo RUN chmod a+x /usr/local/bin/sdeep_console_cli_util >>Dockerfile \
 	&& docker build --build-arg BASE=$${BASE} $(DOCKER_BUILD_ARGS) -t $(DOCKER_IMAGE_NNABLA_EXT_CUDA_MULTI_GPU) . \
 	&& rm -f $(shell basename $(BUILD_DIRECTORY_WHEEL)/dist/*.whl) \
 	&& rm -f $(shell basename $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_MULTI_GPU)/dist/*.whl) \
