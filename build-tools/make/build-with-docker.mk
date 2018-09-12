@@ -120,33 +120,42 @@ bwd-nnabla-ext-cuda-shell: docker_image_build_cuda
 docker_image_nnabla_ext_cuda:
 	rm -rf $(NNABLA_EXT_CUDA_DIRECTORY)/build_sdeepconsole
 	cp -rf output/build_sdeepconsole $(NNABLA_EXT_CUDA_DIRECTORY)
-	docker pull nvidia/cuda:8.0-cudnn7-runtime-ubuntu16.04
-	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
-	&& cat docker/py3/cuda80/Dockerfile |grep -v '^RUN pip3' >Dockerfile \
-	&& cp $(shell echo $(NNABLA_DIRECTORY)/build_wheel_py35/dist/*.whl) . \
-	&& echo ADD $(shell basename $(NNABLA_DIRECTORY)/build_wheel_py35/dist/*.whl) /tmp/ >>Dockerfile \
-	&& echo RUN pip3 install /tmp/$(shell basename $(NNABLA_DIRECTORY)/build_wheel_py35/dist/*.whl) >>Dockerfile \
-	&& echo ADD $(shell echo build_wheel_py35_80_7/dist/*.whl) /tmp/ >>Dockerfile \
-	&& echo RUN pip3 install /tmp/$(shell basename build_wheel_py35_80_7/dist/*.whl) >>Dockerfile \
+	BASE=nvidia/cuda:$(CUDA_VERSION_MAJOR).$(CUDA_VERSION_MINOR)-cudnn$(CUDNN_VERSION)-runtime-ubuntu16.04 \
+	&& docker pull $${BASE} \
+	&& cd $(NNABLA_EXT_CUDA_DIRECTORY) \
+	&& cp docker/Dockerfile.runtime Dockerfile \
+	&& cp $(BUILD_DIRECTORY_WHEEL)/dist/*.whl . \
+	&& echo ADD $(shell basename $(BUILD_DIRECTORY_WHEEL)/dist/*.whl) /tmp/ >>Dockerfile \
+	&& echo RUN pip install /tmp/$(shell basename $(BUILD_DIRECTORY_WHEEL)/dist/*.whl) >>Dockerfile \
+	&& cp $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/*.whl . \
+	&& echo ADD $(shell basename $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/*.whl) /tmp/ >>Dockerfile \
+	&& echo RUN pip install /tmp/$(shell basename $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/*.whl) >>Dockerfile \
 	&& echo ADD build_sdeepconsole/settings /usr/local/bin/settings/ >>Dockerfile \
 	&& echo ADD build_sdeepconsole/sdeep_console_cli_util /usr/local/bin >>Dockerfile \
 	&& echo RUN chmod a+x /usr/local/bin/sdeep_console_cli_util >>Dockerfile \
-	&& docker build $(DOCKER_BUILD_ARGS) -t $(DOCKER_IMAGE_NNABLA_EXT_CUDA) . \
-	&& rm -f $(shell basename $(NNABLA_DIRECTORY)/build_wheel_py35/dist/*.whl) \
+	&& docker build --build-arg BASE=$${BASE} $(DOCKER_BUILD_ARGS) -t $(DOCKER_IMAGE_NNABLA_EXT_CUDA) . \
+	&& rm -f $(shell basename $(BUILD_DIRECTORY_WHEEL)/dist/*.whl) \
+	&& rm -f $(shell basename $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_MULTI_GPU)/dist/*.whl) \
 	&& rm -f Dockerfile
 
 .PHONY: docker_image_nnabla_ext_cuda_multi_gpu
-docker_image_nnabla_ext_cuda_multi_gpu: bwd-nnabla-ext-cuda-wheel-multi-gpu
-	docker pull nvidia/cuda:$(CUDA_VERSION_MAJOR).$(CUDA_VERSION_MINOR)-cudnn$(CUDNN_VERSION)-runtime-ubuntu16.04
-	@cd $(NNABLA_EXT_CUDA_DIRECTORY) \
-	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
-	&& cp docker/development/Dockerfile.runtime-multi-gpu.py$(PYTHON_VERSION_MAJOR)$(PYTHON_VERSION_MINOR)-cuda$(CUDA_VERSION_MAJOR)$(CUDA_VERSION_MINOR)-cudnn$(CUDNN_VERSION) Dockerfile \
+docker_image_nnabla_ext_cuda_multi_gpu:
+	rm -rf $(NNABLA_EXT_CUDA_DIRECTORY)/build_sdeepconsole
+	cp -rf output/build_sdeepconsole $(NNABLA_EXT_CUDA_DIRECTORY)
+	BASE=nvidia/cuda:$(CUDA_VERSION_MAJOR).$(CUDA_VERSION_MINOR)-cudnn$(CUDNN_VERSION)-runtime-ubuntu16.04 \
+	&& docker pull $${BASE} \
+	&& cd $(NNABLA_EXT_CUDA_DIRECTORY) \
+	&& cp docker/Dockerfile.runtime-multi-gpu Dockerfile \
 	&& cp $(BUILD_DIRECTORY_WHEEL)/dist/*.whl . \
 	&& echo ADD $(shell basename $(BUILD_DIRECTORY_WHEEL)/dist/*.whl) /tmp/ >>Dockerfile \
 	&& echo RUN pip install /tmp/$(shell basename $(BUILD_DIRECTORY_WHEEL)/dist/*.whl) >>Dockerfile \
 	&& cp $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_MULTI_GPU)/dist/*.whl . \
 	&& echo ADD $(shell basename $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_MULTI_GPU)/dist/*.whl) /tmp/ >>Dockerfile \
 	&& echo RUN pip install /tmp/$(shell basename $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_MULTI_GPU)/dist/*.whl) >>Dockerfile \
-	&& docker build $(DOCKER_BUILD_ARGS) -t $(DOCKER_IMAGE_NNABLA_EXT_CUDA) . \
+	&& echo ADD build_sdeepconsole/settings /usr/local/bin/settings/ >>Dockerfile \
+	&& echo ADD build_sdeepconsole/sdeep_console_cli_util /usr/local/bin >>Dockerfile \
+	&& echo RUN chmod a+x /usr/local/bin/sdeep_console_cli_util >>Dockerfile \
+	&& docker build --build-arg BASE=$${BASE} $(DOCKER_BUILD_ARGS) -t $(DOCKER_IMAGE_NNABLA_EXT_CUDA_MULTI_GPU) . \
 	&& rm -f $(shell basename $(BUILD_DIRECTORY_WHEEL)/dist/*.whl) \
 	&& rm -f $(shell basename $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_MULTI_GPU)/dist/*.whl) \
+	&& rm -f Dockerfile
