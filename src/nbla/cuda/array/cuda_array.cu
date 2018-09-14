@@ -68,7 +68,7 @@ void cuda_array_copy(const Array *src, Array *dst) {
     thrust_copy<Ta, Tb>(src, dst);
     return;
   }
-  // Inter-devcie copy.
+  // Inter-device copy.
   std::unique_ptr<Array> src_tmp;
 
   // At first convert dtype on source device if necessary.

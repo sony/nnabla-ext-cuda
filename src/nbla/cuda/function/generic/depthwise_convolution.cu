@@ -412,7 +412,7 @@ void DepthwiseConvolutionCuda<T>::setup_impl(const Variables &inputs,
 
   cudaDeviceProp prop;
   cudaGetDeviceProperties(&prop, std::stoi(this->ctx_.device_id));
-  // TODO: See the funcion definition of `max_threads_per_block_for_half`
+  // TODO: See the function definition of `max_threads_per_block_for_half`
   // found above.
   max_threads_per_block_ =
       max_threads_per_block_for_half<T>::reduce(prop.maxThreadsPerBlock);

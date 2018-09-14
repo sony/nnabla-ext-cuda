@@ -24,7 +24,7 @@ namespace nbla {
 
 /** @copydoc Softmax
 
-@note The default algrithm is set as ACCURATE. TODO: Set an algorithm by
+@note The default algorithm is set as ACCURATE. TODO: Set an algorithm by
       context.
 */
 template <typename T> class SoftmaxCudaCudnn : public Softmax<T> {

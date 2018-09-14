@@ -72,7 +72,7 @@ Context CudaArray::filter_context(const Context &ctx) {
 /////////////////////////////////////
 void synchronizer_cuda_array_cpu_array(Array *src, Array *dst) {
   if (src->dtype() != dst->dtype()) {
-    // if dtype mismatces, transfer gpu-cpu first, then convert dtype.
+    // if dtype mismatches, transfer gpu-cpu first, then convert dtype.
     Context ctx = dst->context();
     unique_ptr<Array> tmp(new CpuCachedArray(src->size(), src->dtype(), ctx));
     synchronizer_cuda_array_cpu_array(src, tmp.get());

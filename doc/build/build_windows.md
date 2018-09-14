@@ -2,10 +2,10 @@
 
 ## Prerequisites
 
-In addition to NNabla's requirements, CUDA extension requires CUDA setup has done on your system. If you don't have CUDA on your system, follow the procedure desribed below.
+In addition to NNabla's requirements, CUDA extension requires CUDA setup has done on your system. If you don't have CUDA on your system, follow the procedure described below.
 
 
-Download and install CUDA and cuDNN library (both runtime library and developement library). Please follow the instruction in the document provided by NVIDIA. Do NOT see any instruction provided by any third party. They are often incorrect or based on old instructions, that could destroy your system.
+Download and install CUDA and cuDNN library (both runtime library and development library). Please follow the instruction in the document provided by NVIDIA. Do NOT see any instruction provided by any third party. They are often incorrect or based on old instructions, that could destroy your system.
 
 * [CUDA toolkit](https://developer.nvidia.com/cuda-downloads)
 * [cuDNN library](https://developer.nvidia.com/rdp/cudnn-download) (Registration required)

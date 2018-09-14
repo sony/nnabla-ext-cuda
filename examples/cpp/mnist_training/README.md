@@ -17,7 +17,7 @@ If you tried the CPU version of this script, you must have downloaded MNIST data
 
 Please copy them to this directory.
 
-## Create NNP file of an initialized model for MNIST classifcation.
+## Create NNP file of an initialized model for MNIST classification.
 You might also have an NNP file of the initialized model in `nnabla/examples/cpp/mnist_training`.
 Please copy it to this directory.
 
@@ -31,9 +31,9 @@ export NNABLA_DIR='path to your nnabla directory'
 make
 ```
 
-The above command generates an executable `mnist_training_cuda` at the current directry.
+The above command generates an executable `mnist_training_cuda` at the current directory.
 
-The build file `GNUMakefile` is simple.
+The build file `GNUmakefile` is simple.
 It links `libnnabla.so`, `libnnabla_utils.so`, `libnnabla_utils.so` and `libz.so` with the executable generated from `main.cpp`, and compiles with C++11 option `-std=c++11`.
 It also needs to include path to `mnist_training.hpp` which is located in `nnabla/examples/cpp/mnist_training` directory.
 

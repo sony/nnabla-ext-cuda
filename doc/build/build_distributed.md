@@ -15,7 +15,7 @@ In addition to [requirements of NNabla without distributed execution](build.md),
 In order to use the distributed training, the only difference, when building, is
 the procedure described here.
 
-Download `nccl <https://developer.nvidia.com/nccl/nccl-download>`_ according to your environemnt,
+Download `nccl <https://developer.nvidia.com/nccl/nccl-download>`_ according to your environment,
 then install it manually in case of ubuntu16.04,
 
 ```shell
@@ -25,13 +25,13 @@ sudo apt-get install libnccl2 libnccl-dev
 ```
 
 For developer, if you want to use another nccl not publicly distributed,
-specify **NCCL_HOME** environment variable as the folloing.
+specify **NCCL_HOME** environment variable as the following.
 
 ```shell
 export NCCL_HOME=${path}/build
 ```
 
-Here, we assume the directry structure,
+Here, we assume the directory structure,
 
 * ${path}/build/include
 * ${path}/build/lib
@@ -66,7 +66,7 @@ CUDA includes: /usr/local/cuda-8.0/include;/usr/lib/openmpi/include/openmpi/opal
 ## Unit test
 
 
-Follow the unit test section in [Build CUDA extension](build.md). Now you could see the communicater
+Follow the unit test section in [Build CUDA extension](build.md). Now you could see the communicator
 test passed.
 
 ```

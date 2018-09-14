@@ -215,7 +215,7 @@ protected:
 
   void wait_by_device_synchronization();
   void wait_by_streams_synchronization();
-  void divide_by_num_divices(bool division);
+  void divide_by_num_devices(bool division);
 
   DISABLE_COPY_AND_ASSIGN(MultiProcessDataParallelCommunicatorNccl);
 };

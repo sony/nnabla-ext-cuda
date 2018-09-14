@@ -32,7 +32,7 @@ template <${dec_targs}> class ${name}Cuda : public ${name}<${targs}> {
 public:
   /* TODO: remove this help message.
   Typedef of CUDA scalar types used in source file.
-  This template function class might be instanciated for each CPU scalar types
+  This template function class might be instantiated for each CPU scalar types
   (double, float, nbla::Half), however, for Half, CUDA kernel functions
   must use nbla::HalfCuda in which a bunch of device operator functions are
   overloaded. nbla::CudaType<T>::type will translate nbla::Half

@@ -168,7 +168,7 @@ void BatchNormalizationCudaCudnn<T>::backward_impl_batch(
                                                    propagate_down, accum);
     return;
   }
-  // Commont inputs wrt. gradient.
+  // Common inputs wrt. gradient.
   const Tw *dy = outputs[0]->get_grad_pointer<Tw>(this->ctx_);
   const void *m =
       batch_mean->data()->get(DRV_BN_T(), this->ctx_)->const_pointer();

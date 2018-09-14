@@ -65,7 +65,7 @@ void ClipGradByValueCuda<T>::backward_impl(const Variables &inputs,
                                            const vector<bool> &propagate_down,
                                            const vector<bool> &accum) {
   cuda_set_device(this->device_);
-  // No backward to min and max varialbes.
+  // No backward to min and max variables.
   if (!propagate_down[0]) {
     return;
   }

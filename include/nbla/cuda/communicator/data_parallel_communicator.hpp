@@ -127,7 +127,7 @@ public:
 protected:
   void wait_by_devices_synchronization();
   void wait_by_streams_synchronization();
-  void divide_by_num_divices(bool division);
+  void divide_by_num_devices(bool division);
 
   DISABLE_COPY_AND_ASSIGN(DataParallelCommunicatorNccl);
 };

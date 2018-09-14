@@ -5,4 +5,4 @@ CUDA extension follows [the instruction found in NNabla](https://github.com/sony
 ## Development Guide
 
 * [Adding a new function (layer implementation)](doc/contributing/add_function.md).
-* [Adding a new solver (gradient descent algorighm implemenation)](doc/contributing/add_solver.md).
+* [Adding a new solver (gradient descent algorithm implementation)](doc/contributing/add_solver.md).

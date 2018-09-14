@@ -21,10 +21,10 @@
 
 namespace nbla {
 
-/** Geric block-wise reduction kernel.
+/** Generic block-wise reduction kernel.
 
 @param[in] N Number of valid input items.
-@param[in,out] op Reduciton operator class. TODO: doc.
+@param[in,out] op Reduction operator class. TODO: doc.
  */
 template <class ReduceOp>
 __global__ void kernel_reduce_per_block(const int N, ReduceOp op,

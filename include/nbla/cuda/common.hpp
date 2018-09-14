@@ -162,7 +162,7 @@ CUBLAS_TYPE_T(HalfCuda, HALF);
 /** Block size */
 #define NBLA_CUDA_GET_BLOCKS(num) NBLA_CEIL_INT_DIV(num, NBLA_CUDA_NUM_THREADS)
 
-/** Get an appropreate block size given a size of elements.
+/** Get an appropriate block size given a size of elements.
 
     The kernel is assumed to contain a grid-strided loop.
  */
