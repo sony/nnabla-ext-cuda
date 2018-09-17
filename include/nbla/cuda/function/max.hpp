@@ -28,8 +28,10 @@ template <typename T> class MaxCuda : public Max<T> {
 
 public:
   typedef typename CudaType<T>::type Tc;
-  explicit MaxCuda(const Context &ctx, const vector<int> &axes, bool keep_dims)
-      : Max<T>(ctx, axes, keep_dims), device_(std::stoi(ctx.device_id)) {}
+  explicit MaxCuda(const Context &ctx, const vector<int> &axes, bool keep_dims,
+                   bool with_index, bool only_index)
+      : Max<T>(ctx, axes, keep_dims, with_index, only_index),
+        device_(std::stoi(ctx.device_id)) {}
   virtual ~MaxCuda() {}
   virtual string name() { return "MaxCuda"; }
   virtual vector<string> allowed_array_classes() {
@@ -38,6 +40,7 @@ public:
 
 protected:
   int device_;
+  virtual void forward_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl_reduce(const T *x, T *y, int outer_size,
                                    int reduction_size);
   virtual void backward_impl_reduce(const T *dy, T *dx, int outer_size,
