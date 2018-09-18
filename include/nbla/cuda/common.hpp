@@ -156,6 +156,12 @@ CUBLAS_TYPE_T(HalfCuda, HALF);
 #undef CUBLAS_TYPE_T
 #endif
 
+enum {
+  CUDA_WARP_SIZE = 32,
+  CUDA_WARP_MASK = 0x1f,
+  CUDA_WARP_BITS = 5,
+};
+
 /** ceil(N/D) where N and D are integers */
 #define NBLA_CEIL_INT_DIV(N, D)                                                \
   ((static_cast<int>(N) + static_cast<int>(D) - 1) / static_cast<int>(D))
