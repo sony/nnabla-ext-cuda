@@ -47,7 +47,7 @@ Install CUDA8.0, CUDA9.0, CUDA9.1 from following site.
  - https://developer.nvidia.com/cuda-toolkit-archive
 
 
-Get several versions of cuDNN from following site. (Registration requried)
+Get several versions of cuDNN from following site. (Registration required)
 - cuDNN
  - https://developer.nvidia.com/rdp/cudnn-download
 

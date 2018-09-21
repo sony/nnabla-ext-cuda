@@ -40,7 +40,7 @@ nnabla-ext-cuda-clean-all:
 
 ########################################################################################################################
 # cpplib
-.PHNOY: nnabla-ext-cuda-cpplib
+.PHONY: nnabla-ext-cuda-cpplib
 nnabla-ext-cuda-cpplib:
 	mkdir -p $(BUILD_EXT_CUDA_DIRECTORY_CPPLIB)
 	cd $(BUILD_EXT_CUDA_DIRECTORY_CPPLIB) \
@@ -57,7 +57,7 @@ nnabla-ext-cuda-cpplib:
 		$(NNABLA_EXT_CUDA_DIRECTORY)
 	$(MAKE) -C $(BUILD_EXT_CUDA_DIRECTORY_CPPLIB) -j$(PARALLEL_BUILD_NUM)
 
-.PHNOY: nnabla-ext-cuda-cpplib-multi-gpu
+.PHONY: nnabla-ext-cuda-cpplib-multi-gpu
 nnabla-ext-cuda-cpplib-multi-gpu:
 	mkdir -p $(BUILD_EXT_CUDA_DIRECTORY_CPPLIB_MULTI_GPU)
 	cd $(BUILD_EXT_CUDA_DIRECTORY_CPPLIB_MULTI_GPU) \
@@ -77,7 +77,7 @@ nnabla-ext-cuda-cpplib-multi-gpu:
 
 ########################################################################################################################
 # wheel
-.PHNOY: nnabla-ext-cuda-wheel
+.PHONY: nnabla-ext-cuda-wheel
 nnabla-ext-cuda-wheel:
 	$(call with-virtualenv, \
 		$(NNABLA_EXT_CUDA_DIRECTORY), \
@@ -85,7 +85,7 @@ nnabla-ext-cuda-wheel:
 		-f build-tools/make/build.mk, \
 		nnabla-ext-cuda-wheel-local)
 
-.PHNOY: nnabla-ext-cuda-wheel-local
+.PHONY: nnabla-ext-cuda-wheel-local
 nnabla-ext-cuda-wheel-local: nnabla-install \
 		$(BUILD_DIRECTORY_CPPLIB)/lib/libnnabla.so \
 		$(BUILD_EXT_CUDA_DIRECTORY_CPPLIB)/lib/libnnabla_cuda.so
@@ -105,7 +105,7 @@ nnabla-ext-cuda-wheel-local: nnabla-install \
 		$(NNABLA_EXT_CUDA_DIRECTORY) \
 	&& $(MAKE) -C $(BUILD_EXT_CUDA_DIRECTORY_WHEEL) wheel
 
-.PHNOY: nnabla-ext-cuda-wheel-multi-gpu
+.PHONY: nnabla-ext-cuda-wheel-multi-gpu
 nnabla-ext-cuda-wheel-multi-gpu: \
 			nnabla-cpplib \
 			nnabla-wheel \
@@ -161,7 +161,7 @@ nnabla-ext-cuda-test-local: nnabla-install nnabla-ext-cuda-install
 	&& PYTHONPATH=$(NNABLA_EXT_CUDA_DIRECTORY)/python/test \
 		python -m pytest $(NNABLA_DIRECTORY)/python/test
 
-.PHNOY: nnabla-ext-cuda-multi-gpu-test-local
+.PHONY: nnabla-ext-cuda-multi-gpu-test-local
 nnabla-ext-cuda-multi-gpu-test-local: nnabla-ext-cuda-multi-gpu-install
 	cd $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_MULTI_GPU) \
 	&& PYTHONPATH=$(NNABLA_EXT_CUDA_DIRECTORY)/python/test:$(NNABLA_DIRECTORY)/python/test \

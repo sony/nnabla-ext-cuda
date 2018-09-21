@@ -62,7 +62,7 @@ public:
   static cudnnDataType_t type() { return CUDNN_DATA_HALF; }
 };
 
-/** Convret cuDNN enum dtype to NNabla enum dtype.
+/** Convert cuDNN enum dtype to NNabla enum dtype.
  */
 inline dtypes get_dtype_by_cudnn_data_type(cudnnDataType_t dtype) {
   switch (dtype) {
@@ -135,7 +135,7 @@ inline string cudnn_status_to_string(cudnnStatus_t status) {
 
 http://docs.nvidia.com/deeplearning/sdk/cudnn-developer-guide/index.html#cudnnSetTensorNdDescriptor
 
-According to the doc above, cudnnSetTensorNdDescriptor does not suport a tensor
+According to the doc above, cudnnSetTensorNdDescriptor does not support a tensor
 less than 4 dimensions. This wrapper function adds unused dimensions with a
 value of 1 at last.
 
@@ -203,7 +203,7 @@ struct NBLA_CUDA_API CudnnConvResource {
   cudnnTensorDescriptor_t y_desc;         ///< Output desc.
   cudnnTensorDescriptor_t b_desc;         ///< Bias desc.
   cudnnTensorDescriptor_t b_desc_deconv;  ///< Bias desc for deconvolution.
-  cudnnFilterDescriptor_t w_desc;         ///< Wegiht desc.
+  cudnnFilterDescriptor_t w_desc;         ///< Weight desc.
   cudnnConvolutionDescriptor_t conv_desc; ///< Conv desc.
   cudnnConvolutionFwdAlgo_t fwd_algo;     ///< Best forward algorithm found.
   cudnnConvolutionBwdFilterAlgo_t
@@ -236,7 +236,7 @@ public:
   ~CudnnHandleManager();
 
   /**
-     Get cuDNN handle for devive.
+     Get cuDNN handle for device.
    */
   cudnnHandle_t handle(int device = -1);
 

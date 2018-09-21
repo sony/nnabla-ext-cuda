@@ -186,7 +186,7 @@ void ConvolutionCudaCudnn<T>::backward_impl(const Variables &inputs,
 // Manually selecting algorithms is not supported for now.
 /*
 // Basically this functions is not invoked,
-// because it is choosen by cudnnGetConvolutionForwardAlgorithm()
+// because it is chosen by cudnnGetConvolutionForwardAlgorithm()
 template <class T>
 void ConvolutionCudaCudnn<T>::set_cudnn_convolution_forward_algorithm(
     std::string algorithm) {
@@ -215,7 +215,7 @@ void ConvolutionCudaCudnn<T>::set_cudnn_convolution_forward_algorithm(
 }
 
 // Basically this functions is not invoked,
-// because it is choosen by cudnnGetConvolutionBackwardFilterAlgorithm()
+// because it is chosen by cudnnGetConvolutionBackwardFilterAlgorithm()
 template <class T>
 void ConvolutionCudaCudnn<T>::set_cudnn_convolution_backward_filter_algorithm(
     std::string algorithm) {
@@ -240,7 +240,7 @@ void ConvolutionCudaCudnn<T>::set_cudnn_convolution_backward_filter_algorithm(
 }
 
 // Basically this functions is not invoked,
-// because it is choosen by cudnnGetConvolutionBackwardDataAlgorithm()
+// because it is chosen by cudnnGetConvolutionBackwardDataAlgorithm()
 template <class T>
 void ConvolutionCudaCudnn<T>::set_cudnn_convolution_backward_data_algorithm(
     std::string algorithm) {

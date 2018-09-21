@@ -38,6 +38,6 @@ nvidia-docker run -it --rm -p 8888:8888 nnabla/nnabla-ext-cuda:tutorial jupyter 
 You can connect the jupyter server with your browser by accessing
 `http://<Host OS address>:8888`. The login password is `nnabla`.
 
-After logging in, the page lists a directory that contains jupyter `.ipynb` tutorials and the `nnabla-examples/` foler.
+After logging in, the page lists a directory that contains jupyter `.ipynb` tutorials and the `nnabla-examples/` folder.
 You can open any tutorial by clicking a `.ipynb` file.
 A DCGAN in `nnabla-examples` is demonstrated in `run-nnabla-examples.ipynb`.

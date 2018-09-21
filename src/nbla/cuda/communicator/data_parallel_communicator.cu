@@ -310,7 +310,7 @@ void DataParallelCommunicatorNccl<T>::wait_by_streams_synchronization() {
 }
 
 template <typename T>
-void DataParallelCommunicatorNccl<T>::divide_by_num_divices(bool division) {
+void DataParallelCommunicatorNccl<T>::divide_by_num_devices(bool division) {
   if (division) {
     for (int i = 0; i < device_ids_.size(); ++i) {
       auto device_id = device_ids_[i];

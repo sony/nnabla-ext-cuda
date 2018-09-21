@@ -39,7 +39,7 @@ public:
     // NOTE: dilation > 1 is not supported by cudnn. (2016.10.19)
     for (int i = 0; i < dilation.size(); ++i) {
       if (dilation[i] > 1) {
-        // Fall back to origianl CUDA implementation if dilation > 1.
+        // Fall back to original CUDA implementation if dilation > 1.
         // Setting fall_back_func_ overwrites behaviors of setup, forward and
         // backward functions by the specified function class instance.
         std::cout << "Falling back to ConvolutionCuda since dilation > 1 is "

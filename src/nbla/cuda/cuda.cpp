@@ -86,7 +86,7 @@ std::shared_ptr<cudaEvent_t> Cuda::cuda_event(unsigned int flags, int device) {
   std::default_delete<cudaEvent_t> deleter;
   return std::shared_ptr<cudaEvent_t>(
       new cudaEvent_t(event), [this, device, flags, deleter](cudaEvent_t *ptr) {
-        /* This lambda funtion is a custum deleter of the std::shared_ptr.
+        /* This lambda function is a custom deleter of the std::shared_ptr.
          * It is invoked when deleting the managed cudaEvent_t.
          */
 

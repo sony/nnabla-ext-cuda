@@ -44,7 +44,7 @@ def clear_memory_cache():
 
 
 ###############################################################################
-# Array pereference API
+# Array preference API
 # TODO: Move these to C++
 ###############################################################################
 _original_array_classes = cuda_array_classes()
@@ -94,7 +94,7 @@ def device_synchronize(str device):
 def get_device_count():
     """Call ``cudaGetDeviceCount`` in runtime API`.
 
-    Retuns:
+    Returns:
         int: Number of devices available.
 
     """

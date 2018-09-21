@@ -31,7 +31,7 @@ using std::shared_ptr;
 class CudaArray : public Array {
 protected:
   int device_;
-  /* Holding CudaMemory until the instance is destoryed to prevent freeing.
+  /* Holding CudaMemory until the instance is destroyed to prevent freeing.
    */
   shared_ptr<CudaMemory> inuse_memory_;
 
@@ -54,7 +54,7 @@ NBLA_CUDA_API void synchronizer_cpu_array_cuda_array(Array *src, Array *dst);
 
 /** Array allocated on CUDA device with Memory Pool
 
-This is a necessary ingredient for imperative programing interface of
+This is a necessary ingredient for imperative programming interface of
 neural networks (aka define-by-run or dynamic). Memory allocation of
 CUDA is not asynchronous. Hence, allocating memory region between each
 function will lead thread synchronization that will block executions of

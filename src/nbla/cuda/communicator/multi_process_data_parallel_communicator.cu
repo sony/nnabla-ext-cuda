@@ -743,7 +743,7 @@ MultiProcessDataParallelCommunicatorNccl<T>::AllReduceCallback::
       unpack_stream_(parent.nonblocking_streams_[2]) {
   dtypes dtype = get_dtype<Tc>();
 
-  /* Split gpu_memory into buffers of size n_params_thoreshold */
+  /* Split gpu_memory into buffers of size n_params_threshold */
   Tc *buff = this->gpu_memory_->cast(dtype, this->parent_.ctx_)->pointer<Tc>();
   for (size_t i = 0; i < this->gpu_memory_->size() / this->n_params_threshold_;
        ++i) {
@@ -817,7 +817,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::AllReduceCallback::
         /* Use a next GPU workspace in the packing phase */
         this->release_workspace(this->workspace_, this->unpack_stream_);
         this->workspace_ = this->allocate_workspace(this->pack_stream_);
-        /* Notes: workspace_.n_param_buffered is initilaized in the above
+        /* Notes: workspace_.n_param_buffered is initialized in the above
          *        function. */
       }
     }
@@ -895,7 +895,7 @@ void MultiProcessDataParallelCommunicatorNccl<
   /* Notify that this workspace is currently not used (i.e., unpacking phase is
    * completed). */
   NBLA_CUDA_CHECK(cudaEventRecord(*workspace.event, stream));
-  /* Store GPU memory into unused meomry space set. */
+  /* Store GPU memory into unused memory space set. */
   this->buffers_.emplace(workspace.gpu_buffer, workspace.event);
 }
 

@@ -16,16 +16,16 @@
 
 namespace nbla {
 
-__global__ void cuda_incerement_vector(float *a) {
+__global__ void cuda_increment_vector(float *a) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   a[i] = a[i] + 1;
 }
 
 void increment_vector(cudaStream_t stream, float *vec, size_t size) {
   if (size <= 512) {
-    cuda_incerement_vector<<<1, size, 0, stream>>>(vec);
+    cuda_increment_vector<<<1, size, 0, stream>>>(vec);
   } else {
-    cuda_incerement_vector<<<size / 512, 512, 0, stream>>>(vec);
+    cuda_increment_vector<<<size / 512, 512, 0, stream>>>(vec);
   }
 }
 }

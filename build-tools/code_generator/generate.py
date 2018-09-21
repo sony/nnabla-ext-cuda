@@ -78,7 +78,7 @@ def generate():
         base, 'python/src/nnabla_ext/cudnn/_version.py.tmpl'),
         rootdir=base)
 
-    # Generate function skeltons
+    # Generate function skeletons
     func_src_template = join(
         base,
         'src/nbla/cuda/function/generic/function_impl.cu.tmpl')
@@ -91,16 +91,16 @@ def generate():
     func_header_template_cudnn = join(
         base,
         'include/nbla/cuda/cudnn/function/function_impl.hpp.tmpl')
-    utils.generate_skelton_function_impl(
+    utils.generate_skeleton_function_impl(
         function_info, function_types, ext_info={},
         template=func_src_template, output_format='%s.cu')
-    utils.generate_skelton_function_impl(
+    utils.generate_skeleton_function_impl(
         function_info, function_types, ext_info={},
         template=func_header_template, output_format='%s.hpp')
-    utils.generate_skelton_function_impl(
+    utils.generate_skeleton_function_impl(
         function_info, function_types_cudnn, ext_info={},
         template=func_src_template_cudnn, output_format='%s.cu')
-    utils.generate_skelton_function_impl(
+    utils.generate_skeleton_function_impl(
         function_info, function_types_cudnn, ext_info={},
         template=func_header_template_cudnn, output_format='%s.hpp')
 

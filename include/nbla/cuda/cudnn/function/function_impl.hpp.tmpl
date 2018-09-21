@@ -38,7 +38,7 @@ template <${dec_targs}> class ${name}CudaCudnn : public ${name}<${targs}> {
 public:
   /* TODO: remove this help message.
   Typedef of CUDA scalar types used in source file.
-  This template function class might be instanciated for each CPU scalar types
+  This template function class might be instantiated for each CPU scalar types
   (double, float, nbla::Half), however, for Half, CUDA kernel functions
   must use nbla::HalfCuda in which a bunch of device operator functions are
   overloaded. nbla::CudaType<T>::type will translate nbla::Half
@@ -67,7 +67,7 @@ public:
 % for oname in outputs.keys():
     NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(${oname}_desc_));
 % endfor
-    // TODO: Destoy other descriptors
+    // TODO: Destroy other descriptors
   }
   virtual string name() { return "${name}CudaCudnn"; }
   virtual vector<string> allowed_array_classes() {
