@@ -15,7 +15,7 @@ In addition to [requirements of NNabla without distributed execution](build.md),
 In order to use the distributed training, the only difference, when building, is
 the procedure described here.
 
-Download `nccl <https://developer.nvidia.com/nccl/nccl-download>`_ according to your environment,
+Download [NCCL](https://developer.nvidia.com/nccl) according to your environment,
 then install it manually in case of ubuntu16.04,
 
 ```shell
