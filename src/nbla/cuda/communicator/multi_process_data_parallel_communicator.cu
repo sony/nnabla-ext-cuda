@@ -99,88 +99,82 @@ bool MultiProcessDataParallelCommunicatorNccl<T>::mpi_initialized_;
 template <typename T> void MultiProcessDataParallelCommunicatorNccl<T>::init() {
   Communicator::init();
 
-  try {
-    // MPI init
-    if (!mpi_initialized_) {
-      int argc = 0;
-      char **argv = nullptr;
-      int requiredThreadLevelSupport = MPI_THREAD_SERIALIZED;
-      int provided;
-      MPI_Init_thread(&argc, &argv, requiredThreadLevelSupport, &provided);
-      if (provided != requiredThreadLevelSupport) {
-        NBLA_ERROR(error_code::target_specific,
-                   "MPI_Init_thread failed since provided (%d) is not equal to "
-                   "requiredThreadLevelSupport (%d)",
-                   provided, requiredThreadLevelSupport);
-      }
-      mpi_initialized_ = true;
+  // MPI init
+  if (!mpi_initialized_) {
+    int argc = 0;
+    char **argv = nullptr;
+    int requiredThreadLevelSupport = MPI_THREAD_SERIALIZED;
+    int provided;
+    MPI_Init_thread(&argc, &argv, requiredThreadLevelSupport, &provided);
+    if (provided != requiredThreadLevelSupport) {
+      NBLA_ERROR(error_code::target_specific,
+                 "MPI_Init_thread failed since provided (%d) is not equal to "
+                 "requiredThreadLevelSupport (%d)",
+                 provided, requiredThreadLevelSupport);
     }
-
-    // Create comm, set size, and rank
-    MPI_Comm_size(MPI_COMM_WORLD, &this->size_);
-    MPI_Comm_rank(MPI_COMM_WORLD, &this->rank_);
-
-    // Set local rank and device id
-    uint64_t host_hashs[this->size_];
-    char hostname[1024];
-    get_host_name(hostname, 1024);
-    host_hashs[this->rank_] = get_host_hash(hostname);
-
-    MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, host_hashs,
-                  sizeof(uint64_t), MPI_BYTE, MPI_COMM_WORLD);
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    int local_rank = 0;
-    for (int i = 0; i < this->size_; ++i) {
-      if (i == this->rank_) {
-        break;
-      }
-      if (host_hashs[i] == host_hashs[this->rank_]) {
-        local_rank++;
-      }
-    }
-    this->device_id_ = local_rank;
-    this->local_rank_ = local_rank;
-    this->ctx_.device_id = std::to_string(local_rank);
-
-    // Exchange comm_id among processes
-    ncclUniqueId comm_id;
-    if (this->rank_ == 0) {
-      ncclGetUniqueId(&comm_id);
-    }
-    MPI_Bcast(&comm_id, sizeof(comm_id), MPI_BYTE, 0, MPI_COMM_WORLD);
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    // NCCL Init
-    cuda_set_device(device_id_);
-    ncclComm_t comm;
-    ncclResult_t ret =
-        ncclCommInitRank(&comm, this->size_, comm_id, this->rank_);
-    if (ret != ncclSuccess) {
-      NBLA_ERROR(error_code::target_specific, "ncclCommInitRank failed.");
-    }
-
-    // Create streams
-    for (int i = 0; i < streams_.size(); ++i) {
-      cudaStream_t stream;
-      NBLA_CUDA_CHECK(cudaStreamCreate(&stream));
-      streams_[i] = stream;
-    }
-    for (auto &stream : this->nonblocking_streams_) {
-      NBLA_CUDA_CHECK(
-          cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
-    }
-
-    // Create world group
-    this->comms_["world"] = comm;
-    vector<int> ranks(this->size_);
-    std::iota(ranks.begin(), ranks.end(), 0);
-    this->groups_["world"] = ranks;
-
-    this->initialized_ = true;
-  } catch (...) {
-    NBLA_ERROR(error_code::unclassified, "Communicator init failed.");
+    mpi_initialized_ = true;
   }
+
+  // Create comm, set size, and rank
+  MPI_Comm_size(MPI_COMM_WORLD, &this->size_);
+  MPI_Comm_rank(MPI_COMM_WORLD, &this->rank_);
+
+  // Set local rank and device id
+  uint64_t host_hashs[this->size_];
+  char hostname[1024];
+  get_host_name(hostname, 1024);
+  host_hashs[this->rank_] = get_host_hash(hostname);
+
+  MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, host_hashs,
+                sizeof(uint64_t), MPI_BYTE, MPI_COMM_WORLD);
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  int local_rank = 0;
+  for (int i = 0; i < this->size_; ++i) {
+    if (i == this->rank_) {
+      break;
+    }
+    if (host_hashs[i] == host_hashs[this->rank_]) {
+      local_rank++;
+    }
+  }
+  this->device_id_ = local_rank;
+  this->local_rank_ = local_rank;
+  this->ctx_.device_id = std::to_string(local_rank);
+
+  // Exchange comm_id among processes
+  ncclUniqueId comm_id;
+  if (this->rank_ == 0) {
+    ncclGetUniqueId(&comm_id);
+  }
+  MPI_Bcast(&comm_id, sizeof(comm_id), MPI_BYTE, 0, MPI_COMM_WORLD);
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  // NCCL Init
+  cuda_set_device(device_id_);
+  ncclComm_t comm;
+  ncclResult_t ret = ncclCommInitRank(&comm, this->size_, comm_id, this->rank_);
+  if (ret != ncclSuccess) {
+    NBLA_ERROR(error_code::target_specific, "ncclCommInitRank failed.");
+  }
+
+  // Create streams
+  for (int i = 0; i < streams_.size(); ++i) {
+    cudaStream_t stream;
+    NBLA_CUDA_CHECK(cudaStreamCreate(&stream));
+    streams_[i] = stream;
+  }
+  for (auto &stream : this->nonblocking_streams_) {
+    NBLA_CUDA_CHECK(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
+  }
+
+  // Create world group
+  this->comms_["world"] = comm;
+  vector<int> ranks(this->size_);
+  std::iota(ranks.begin(), ranks.end(), 0);
+  this->groups_["world"] = ranks;
+
+  this->initialized_ = true;
 }
 
 template <typename T>
