@@ -36,10 +36,17 @@ if '__version__' in a:
     __version__ = a['__version__']
 if '__short_version__' in a:
     __short_version__ = a['__short_version__']
+if '__cuda_version__' in a:
+    __cuda_version__ = a['__cuda_version__']
+if '__cudnn_version__' in a:
+    __cudnn_version__ = a['__cudnn_version__']
+if '__author__' in a:
+    __author__ = a['__author__']
 if '__email__' in a:
     __email__ = a['__email__']
 assert(__version__ is not None)
 assert(__short_version__ is not None)
+assert(__author__ is not None)
 assert(__email__ is not None)
 
 setup_requires = [
@@ -53,7 +60,7 @@ if 'WHEEL_SUFFIX' in os.environ:
 
 install_requires = [
     'setuptools',
-    'nnabla{}>={}'.format(whl_suffix, __short_version__),
+    'nnabla{}=={}'.format(whl_suffix, __short_version__),
 ]
 
 LibInfo = namedtuple('LibInfo', ['file_name', 'path', 'name'])
@@ -199,32 +206,36 @@ def get_setup_config(root_dir):
 
     pkg_info = dict(
         name=pkg_name,
-        description='A CUDA and cuDNN extension of NNabla',
+        description='A CUDA({}) and cuDNN({}) extension of NNabla'.format(
+            __cuda_version__, __cudnn_version__),
         version=__version__,
+        author=__author__,
         author_email=__email__,
         url="https://github.com/sony/nnabla-ext-cuda",
         license='Apache License 2.0',
         classifiers=[
-                'Development Status :: 4 - Beta',
-                'Intended Audience :: Developers',
-                'Intended Audience :: Education',
-                'Intended Audience :: Science/Research',
-                'Topic :: Scientific/Engineering',
-                'Topic :: Scientific/Engineering :: Artificial Intelligence',
-                'License :: OSI Approved :: Apache Software License',
-                'Programming Language :: C++',
-                'Programming Language :: Python :: 2',
-                'Programming Language :: Python :: 2.7',
-                'Programming Language :: Python :: 3',
-                'Programming Language :: Python :: 3.4',
-                'Programming Language :: Python :: 3.5',
-                'Programming Language :: Python :: 3.6',
-                'Programming Language :: Python :: Implementation :: CPython',
-                'Operating System :: Microsoft :: Windows',
-                'Operating System :: POSIX :: Linux',
+            'Development Status :: 5 - Production/Stable',
+            'Intended Audience :: Developers',
+            'Intended Audience :: Education',
+            'Intended Audience :: Science/Research',
+            'Topic :: Scientific/Engineering',
+            'Topic :: Scientific/Engineering :: Artificial Intelligence',
+            'License :: OSI Approved :: Apache Software License',
+            'Programming Language :: C++',
+            'Programming Language :: Python :: 2',
+            'Programming Language :: Python :: 2.7',
+            'Programming Language :: Python :: 3',
+            'Programming Language :: Python :: 3.5',
+            'Programming Language :: Python :: 3.6',
+            'Programming Language :: Python :: Implementation :: CPython',
+            'Operating System :: Microsoft :: Windows',
+            'Operating System :: POSIX :: Linux',
+            'Operating System :: MacOS :: MacOS X'
         ],
+        platforms=['CUDA {}'.format(__cuda_version__),
+                   'cuDNN {}'.format(__cudnn_version__)],
         keywords="deep learning artificial intelligence machine learning neural network cuda",
-        python_requires='>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*',
+        python_requires='>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*',
     )
     return pkg_info, ExtConfig(package_dir, packages, package_data, ext_modules, {})
 
