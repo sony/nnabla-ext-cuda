@@ -55,6 +55,9 @@ Softmax:
 #   float: [float]
 # PReLU:
 #   float: [float]
+SyncBatchNormalization:
+  float: [float]
+  half: [Half]
 BatchNormalization:
   float: [float]
   half: [Half]
