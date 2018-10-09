@@ -25,9 +25,11 @@
 
 #include <nbla/cuda/half.hpp>
 
+#include <algorithm>
 #include <iostream>
 #include <map>
 #include <memory>
+#include <numeric>
 #include <unordered_map>
 
 namespace nbla {
@@ -146,6 +148,27 @@ void cudnn_set_tensor_nd_descriptor_force_dim(cudnnTensorDescriptor_t &desc,
                                               vector<int> dims,
                                               vector<int> strides,
                                               int force_ndim = 4);
+
+template <typename T>
+inline void cudnn_set_tensor_descriptor(cudnnTensorDescriptor_t desc,
+                                        std::vector<int> shape) {
+  if (shape.size() <= 4) {
+    shape.insert(shape.end(), 4 - shape.size(), 1);
+    NBLA_CUDNN_CHECK(cudnnSetTensor4dDescriptor(
+        desc, CUDNN_TENSOR_NCHW, cudnn_data_type<T>::type(), shape.at(0),
+        shape.at(1), shape.at(2), shape.at(3)));
+  } else {
+    // Note: Can use ndi::strides from <nbla/utils/nd_index.hpp> when
+    // branch feature/pad_with_reflection is merged to master.
+    std::vector<int> strides(shape.size(), 1);
+    std::copy(shape.begin() + 1, shape.end(), strides.begin());
+    std::partial_sum(strides.rbegin(), strides.rend(), strides.rbegin(),
+                     std::multiplies<int>());
+    NBLA_CUDNN_CHECK(cudnnSetTensorNdDescriptor(
+        desc, cudnn_data_type<T>::type(), static_cast<int>(shape.size()),
+        shape.data(), strides.data()));
+  }
+}
 
 /** cuDNN Convolution Descriptor used as a key to find previously used
  * (cached) config.
