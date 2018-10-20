@@ -37,6 +37,15 @@ nnabla-ext-cuda-clean:
 .PHONY: nnabla-ext-cuda-clean-all
 nnabla-ext-cuda-clean-all:
 	@git clean -fdx
+##############################################################################
+# Auto Format
+.PHONY: nnabla-auto-format
+nnabla-ext-cuda-auto-format:
+	cd $(NNABLA_EXT_CUDA_DIRECTORY) && \
+	python $(NNABLA_DIRECTORY)/build-tools/auto_format . --exclude \
+		'\./src/nbla/cuda(/cudnn)?/(function|solver)/\w+\.cu' \
+		'\./src/nbla/cuda(/cudnn)?/init.cpp' \
+		'\./python/src/nnabla_ext/(cuda|cudnn)/.*.(cpp|hpp|h|c)'
 
 ########################################################################################################################
 # cpplib
