@@ -73,6 +73,14 @@ docker_image_build_cuda_multi_gpu:
                -f docker/development/Dockerfile.build-multi-gpu \
                .
 
+##############################################################################
+# Auto Format
+
+.PHONY: bwd-nnabla-ext-cuda-auto-format
+bwd-nnabla-ext-cuda-auto-format: docker_image_auto_format
+	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
+	&& docker run $(DOCKER_RUN_OPTS) $(DOCKER_IMAGE_AUTO_FORMAT) make -f build-tools/make/build.mk nnabla-ext-cuda-auto-format
+
 ########################################################################################################################
 # Build and test
 
