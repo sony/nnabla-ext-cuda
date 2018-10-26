@@ -47,7 +47,8 @@ To install the Python package:
 
 ```shell
 cd dist
-pip install -U nnabla_ext_cuda-{{version}}-{{arch}}.whl
+pip uninstall -y nnabla-ext-cuda
+pip install nnabla_ext_cuda-{{version}}-{{arch}}.whl
 ```
 
 (Optional for C++ standalone application with [C++ utility](https://github.com/sony/nnabla/tree/master/doc/build/build_cpp_utils.md) To install C++ library on your system:

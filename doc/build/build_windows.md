@@ -45,7 +45,8 @@ To install a Python package:
 
 ```bat
 (nnabla) > cd dist
-(nnabla) > pip install -U nnabla_ext_cuda-<package version>-<package-arch>.whl
+(nnabla) > pip uninstall -y nnabla-ext-cuda
+(nnabla) > pip install nnabla_ext_cuda-<package version>-<package-arch>.whl
 ```
 
 You can use C++ library (`nnabla_cuda.dll`) in your C++ application by combining with nnabla [C++ utility library](https://github.com/sony/nnabla/tree/master/doc/build/build_cpp_utils_windows.md), by passing include path (`include/`) and the library to your build system.
