@@ -17,6 +17,8 @@
 #include <nbla/cuda/function/sort.hpp>
 #include <nbla/variable.hpp>
 
+#include <thrust/device_ptr.h>
+#include <thrust/device_vector.h>
 #include <thrust/sequence.h>
 #include <thrust/sort.h>
 
