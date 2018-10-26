@@ -31,8 +31,10 @@ protected:
 
 public:
   typedef typename CudaType<T>::type Tc;
-  explicit MinCuda(const Context &ctx, const vector<int> &axes, bool keep_dims)
-      : Min<T>(ctx, axes, keep_dims), device_(std::stoi(ctx.device_id)) {}
+  explicit MinCuda(const Context &ctx, const vector<int> &axes, bool keep_dims,
+                   bool with_index, bool only_index)
+      : Min<T>(ctx, axes, keep_dims, with_index, only_index),
+        device_(std::stoi(ctx.device_id)) {}
   virtual ~MinCuda() {}
   virtual string name() { return "MinCuda"; }
   virtual vector<string> allowed_array_classes() {
