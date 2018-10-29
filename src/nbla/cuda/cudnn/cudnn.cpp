@@ -211,108 +211,250 @@ CudnnConvResource::~CudnnConvResource() {
   NBLA_CUDNN_CHECK(cudnnDestroyConvolutionDescriptor(conv_desc));
 }
 
-void CudnnConvResource::find_best_algorithms_no_limit() {
-#if CUDNN_VERSION >= 3000
-  cudnnHandle_t cudnn_handle =
-      SingletonManager::get<CudnnHandleManager>()->handle(device);
-  // Get forward algorithm
-  int fwd_algo_count = 0;
-  cudnnConvolutionFwdAlgoPerf_t fwd_data_perf_results[1];
-  NBLA_CUDNN_CHECK(cudnnFindConvolutionForwardAlgorithm(
-      cudnn_handle, x_desc, w_desc, conv_desc, y_desc, 1, &fwd_algo_count,
-      fwd_data_perf_results));
-  fwd_algo = fwd_data_perf_results[0].algo;
-  // Get forward workspace size
-  NBLA_CUDNN_CHECK(cudnnGetConvolutionForwardWorkspaceSize(
-      cudnn_handle, x_desc, w_desc, conv_desc, y_desc, fwd_algo,
-      &fwd_workspace_size));
-  // Choose data backward algorithm
-  int bwd_data_algo_count = 0;
-  cudnnConvolutionBwdDataAlgoPerf_t bwd_data_perf_results[1];
-  NBLA_CUDNN_CHECK(cudnnFindConvolutionBackwardDataAlgorithm(
-      cudnn_handle, w_desc, y_desc, conv_desc, x_desc, 1, &bwd_data_algo_count,
-      bwd_data_perf_results));
-  bwd_data_algo = bwd_data_perf_results[0].algo;
-  // Get data backward workspace size
-  NBLA_CUDNN_CHECK(cudnnGetConvolutionBackwardDataWorkspaceSize(
-      cudnn_handle, w_desc, y_desc, conv_desc, x_desc, bwd_data_algo,
-      &bwd_data_workspace_size));
-  // Choose filter backward algorithm
-  int bwd_filter_algo_count = 0;
-  cudnnConvolutionBwdFilterAlgoPerf_t bwd_filter_perf_results[1];
-  NBLA_CUDNN_CHECK(cudnnFindConvolutionBackwardFilterAlgorithm(
-      cudnn_handle, x_desc, y_desc, conv_desc, w_desc, 1,
-      &bwd_filter_algo_count, bwd_filter_perf_results));
-  bwd_filter_algo = bwd_filter_perf_results[0].algo;
-  // Get filter backward workspace size
-  NBLA_CUDNN_CHECK(cudnnGetConvolutionBackwardFilterWorkspaceSize(
-      cudnn_handle, x_desc, y_desc, conv_desc, w_desc, bwd_filter_algo,
-      &bwd_filter_workspace_size));
-#else
-  // TODO: Logger?
-  std::cout << "CUDNN version less than 3000 doesn't have "
-               "cudnnFindConvolution*Algorithm. Fallen back to no-workspace "
-               "mode. If you want a more faster convolution, you should set "
-               "NNABLA_CUDNN_WORKSPACE_LIMIT greater than 0 as an environment "
-               "variable."
-            << std::endl;
-  find_best_algorithms_no_workspace();
+inline bool check_workspace_limit(int workspace_limit, size_t used_memory) {
+  return (workspace_limit < 0) || (workspace_limit >= used_memory);
+}
+
+inline bool check_determinism(bool required, cudnnDeterminism_t determinism) {
+  return (!required) || (determinism == CUDNN_DETERMINISTIC);
+}
+
+void CudnnConvResource::find_forward_algorithm(int workspace_limit,
+                                               bool deterministic) {
+  auto cudnn_handle_manager = SingletonManager::get<CudnnHandleManager>();
+  auto cudnn_handle = cudnn_handle_manager->handle(device);
+  auto get_max_count = cudnnGetConvolutionForwardAlgorithmMaxCount;
+  auto find_algorithm = cudnnFindConvolutionForwardAlgorithm;
+  int max_results, num_results;
+
+  NBLA_CUDNN_CHECK(get_max_count(cudnn_handle, &max_results));
+
+  std::unique_ptr<cudnnConvolutionFwdAlgoPerf_t[]> perf_results{
+      new cudnnConvolutionFwdAlgoPerf_t[max_results]};
+
+  NBLA_CUDNN_CHECK(find_algorithm(cudnn_handle, this->x_desc, this->w_desc,
+                                  this->conv_desc, this->y_desc, max_results,
+                                  &num_results, perf_results.get()));
+#if 0
+  for (int i = 0; i < num_results; i++) {
+    auto &perf_result = perf_results[i];
+    if (perf_result.status == 0) {
+      printf("fwd_algo %d took %f ms using %10lu bytes and is %s\n",
+             perf_result.algo, perf_result.time, perf_result.memory,
+             (perf_result.determinism ? "deterministic" : "not deterministic"));
+    }
+  }
 #endif
+  for (int i = 0; i < num_results; i++) {
+    auto &perf_result = perf_results[i];
+    if (CUDNN_STATUS_SUCCESS == perf_result.status) {
+      if (check_workspace_limit(workspace_limit, perf_result.memory)) {
+        if (check_determinism(deterministic, perf_result.determinism)) {
+          this->fwd_algo = perf_result.algo;
+          this->fwd_workspace_size = perf_result.memory;
+          return;
+        }
+      }
+    }
+  }
+  NBLA_ERROR(error_code::target_specific,
+             "Could not find any CUDNN Convolution Forward Algorithm for "
+             "the combination of NNBLA_CUDNN_WORKSPACE_LIMIT=%d and "
+             "NNABLA_CUDNN_DETERMINISTIC=%d",
+             workspace_limit, deterministic);
 }
 
-void CudnnConvResource::find_best_algorithms_limit(int limit) {
-  cudnnHandle_t cudnn_handle =
-      SingletonManager::get<CudnnHandleManager>()->handle(device);
-  // Get forward algorithm
-  NBLA_CUDNN_CHECK(cudnnGetConvolutionForwardAlgorithm(
-      cudnn_handle, x_desc, w_desc, conv_desc, y_desc,
-      CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT, limit, &fwd_algo));
-  // Get data backward workspace
-  NBLA_CUDNN_CHECK(cudnnGetConvolutionBackwardDataAlgorithm(
-      cudnn_handle, w_desc, y_desc, conv_desc, x_desc,
-      CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT, limit,
-      &bwd_data_algo));
-  // Get filter backward workspace
-  NBLA_CUDNN_CHECK(cudnnGetConvolutionBackwardFilterAlgorithm(
-      cudnn_handle, x_desc, y_desc, conv_desc, w_desc,
-      CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT, limit,
-      &bwd_filter_algo));
-  // Set workspace
-  fwd_workspace_size = limit;
-  bwd_data_workspace_size = limit;
-  bwd_filter_workspace_size = limit;
+void CudnnConvResource::find_backward_data_algorithm(int workspace_limit,
+                                                     bool deterministic) {
+  auto cudnn_handle_manager = SingletonManager::get<CudnnHandleManager>();
+  auto cudnn_handle = cudnn_handle_manager->handle(device);
+  auto get_max_count = cudnnGetConvolutionBackwardDataAlgorithmMaxCount;
+  auto find_algorithm = cudnnFindConvolutionBackwardDataAlgorithm;
+  int max_results, num_results;
+
+  NBLA_CUDNN_CHECK(get_max_count(cudnn_handle, &max_results));
+
+  std::unique_ptr<cudnnConvolutionBwdDataAlgoPerf_t[]> perf_results{
+      new cudnnConvolutionBwdDataAlgoPerf_t[max_results]};
+
+  NBLA_CUDNN_CHECK(find_algorithm(cudnn_handle, this->w_desc, this->y_desc,
+                                  this->conv_desc, this->x_desc, max_results,
+                                  &num_results, perf_results.get()));
+#if 0
+  for (int i = 0; i < num_results; i++) {
+    auto &perf_result = perf_results[i];
+    if (perf_result.status == 0) {
+      printf("bwd_data_algo %d took %f ms using %10lu bytes and is %s\n",
+             perf_result.algo, perf_result.time, perf_result.memory,
+             (perf_result.determinism ? "deterministic" : "not deterministic"));
+    }
+  }
+#endif
+  for (int i = 0; i < num_results; i++) {
+    auto &perf_result = perf_results[i];
+    if (CUDNN_STATUS_SUCCESS == perf_result.status) {
+      if (check_workspace_limit(workspace_limit, perf_result.memory)) {
+        if (check_determinism(deterministic, perf_result.determinism)) {
+          this->bwd_data_algo = perf_result.algo;
+          this->bwd_data_workspace_size = perf_result.memory;
+          return;
+        }
+      }
+    }
+  }
+  NBLA_ERROR(error_code::target_specific,
+             "Could not find any CUDNN Convolution Backward Data Algorithm "
+             "for the combination of NNBLA_CUDNN_WORKSPACE_LIMIT=%d and "
+             "NNABLA_CUDNN_DETERMINISTIC=%d",
+             workspace_limit, deterministic);
 }
 
-void CudnnConvResource::find_best_algorithms_no_workspace() {
-  cudnnHandle_t cudnn_handle =
-      SingletonManager::get<CudnnHandleManager>()->handle(device);
-  // Get forward algorithm
-  NBLA_CUDNN_CHECK(cudnnGetConvolutionForwardAlgorithm(
-      cudnn_handle, x_desc, w_desc, conv_desc, y_desc,
-      CUDNN_CONVOLUTION_FWD_NO_WORKSPACE, 0, &fwd_algo));
-  // Get data backward workspace
-  NBLA_CUDNN_CHECK(cudnnGetConvolutionBackwardDataAlgorithm(
-      cudnn_handle, w_desc, y_desc, conv_desc, x_desc,
-      CUDNN_CONVOLUTION_BWD_DATA_NO_WORKSPACE, 0, &bwd_data_algo));
-  // Get filter backward workspace
-  NBLA_CUDNN_CHECK(cudnnGetConvolutionBackwardFilterAlgorithm(
-      cudnn_handle, x_desc, y_desc, conv_desc, w_desc,
-      CUDNN_CONVOLUTION_BWD_FILTER_NO_WORKSPACE, 0, &bwd_filter_algo));
-  fwd_workspace_size = 0;
-  bwd_data_workspace_size = 0;
-  bwd_filter_workspace_size = 0;
+void CudnnConvResource::find_backward_filter_algorithm(int workspace_limit,
+                                                       bool deterministic) {
+  auto cudnn_handle_manager = SingletonManager::get<CudnnHandleManager>();
+  auto cudnn_handle = cudnn_handle_manager->handle(device);
+  auto get_max_count = cudnnGetConvolutionBackwardFilterAlgorithmMaxCount;
+  auto find_algorithm = cudnnFindConvolutionBackwardFilterAlgorithm;
+  int max_results, num_results;
+
+  NBLA_CUDNN_CHECK(get_max_count(cudnn_handle, &max_results));
+
+  std::unique_ptr<cudnnConvolutionBwdFilterAlgoPerf_t[]> perf_results{
+      new cudnnConvolutionBwdFilterAlgoPerf_t[max_results]};
+
+  NBLA_CUDNN_CHECK(find_algorithm(cudnn_handle, this->x_desc, this->y_desc,
+                                  this->conv_desc, this->w_desc, max_results,
+                                  &num_results, perf_results.get()));
+#if 0
+  for (int i = 0; i < num_results; i++) {
+    auto &perf_result = perf_results[i];
+    if (perf_result.status == 0) {
+      printf("bwd_filter_algo %d took %f ms using %10lu bytes and is %s\n",
+             perf_result.algo, perf_result.time, perf_result.memory,
+             (perf_result.determinism ? "deterministic" : "not deterministic"));
+    }
+  }
+#endif
+  for (int i = 0; i < num_results; i++) {
+    auto &perf_result = perf_results[i];
+    if (CUDNN_STATUS_SUCCESS == perf_result.status) {
+      if (check_workspace_limit(workspace_limit, perf_result.memory)) {
+        if (check_determinism(deterministic, perf_result.determinism)) {
+          this->bwd_filter_algo = perf_result.algo;
+          this->bwd_filter_workspace_size = perf_result.memory;
+          return;
+        }
+      }
+    }
+  }
+  NBLA_ERROR(error_code::target_specific,
+             "Could not find any CUDNN Convolution Backward Filter Algorithm "
+             "for the combination of NNBLA_CUDNN_WORKSPACE_LIMIT=%d and "
+             "NNABLA_CUDNN_DETERMINISTIC=%d",
+             workspace_limit, deterministic);
+}
+
+void CudnnConvResource::get_forward_algorithm(int workspace_limit) {
+  auto cudnn_handle_manager = SingletonManager::get<CudnnHandleManager>();
+  auto cudnn_handle = cudnn_handle_manager->handle(device);
+  auto get_algorithm = cudnnGetConvolutionForwardAlgorithm;
+  auto get_workspace = cudnnGetConvolutionForwardWorkspaceSize;
+
+  auto preference = CUDNN_CONVOLUTION_FWD_NO_WORKSPACE;
+  if (workspace_limit < 0)
+    preference = CUDNN_CONVOLUTION_FWD_PREFER_FASTEST;
+  else if (workspace_limit > 0)
+    preference = CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT;
+
+  NBLA_CUDNN_CHECK(get_algorithm(cudnn_handle, this->x_desc, this->w_desc,
+                                 this->conv_desc, this->y_desc, preference,
+                                 workspace_limit, &this->fwd_algo));
+  if (workspace_limit != 0) {
+    NBLA_CUDNN_CHECK(get_workspace(cudnn_handle, this->x_desc, this->w_desc,
+                                   this->conv_desc, this->y_desc,
+                                   this->fwd_algo, &this->fwd_workspace_size));
+  } else {
+    this->fwd_workspace_size = 0;
+  }
+}
+
+void CudnnConvResource::get_backward_data_algorithm(int workspace_limit) {
+  auto cudnn_handle_manager = SingletonManager::get<CudnnHandleManager>();
+  auto cudnn_handle = cudnn_handle_manager->handle(device);
+  auto get_algorithm = cudnnGetConvolutionBackwardDataAlgorithm;
+  auto get_workspace = cudnnGetConvolutionBackwardDataWorkspaceSize;
+
+  auto preference = CUDNN_CONVOLUTION_BWD_DATA_NO_WORKSPACE;
+  if (workspace_limit < 0)
+    preference = CUDNN_CONVOLUTION_BWD_DATA_PREFER_FASTEST;
+  else if (workspace_limit > 0)
+    preference = CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT;
+
+  NBLA_CUDNN_CHECK(get_algorithm(cudnn_handle, this->w_desc, this->y_desc,
+                                 this->conv_desc, this->x_desc, preference,
+                                 workspace_limit, &this->bwd_data_algo));
+  if (workspace_limit != 0) {
+    NBLA_CUDNN_CHECK(get_workspace(
+        cudnn_handle, this->w_desc, this->y_desc, this->conv_desc, this->x_desc,
+        this->bwd_data_algo, &this->bwd_data_workspace_size));
+  } else {
+    this->bwd_data_workspace_size = 0;
+  }
+}
+
+void CudnnConvResource::get_backward_filter_algorithm(int workspace_limit) {
+  auto cudnn_handle_manager = SingletonManager::get<CudnnHandleManager>();
+  auto cudnn_handle = cudnn_handle_manager->handle(device);
+  auto get_algorithm = cudnnGetConvolutionBackwardFilterAlgorithm;
+  auto get_workspace = cudnnGetConvolutionBackwardFilterWorkspaceSize;
+
+  auto preference = CUDNN_CONVOLUTION_BWD_FILTER_NO_WORKSPACE;
+  if (workspace_limit < 0)
+    preference = CUDNN_CONVOLUTION_BWD_FILTER_PREFER_FASTEST;
+  else if (workspace_limit > 0)
+    preference = CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT;
+
+  NBLA_CUDNN_CHECK(get_algorithm(cudnn_handle, this->x_desc, this->y_desc,
+                                 this->conv_desc, this->w_desc, preference,
+                                 workspace_limit, &this->bwd_filter_algo));
+  if (workspace_limit != 0) {
+    NBLA_CUDNN_CHECK(get_workspace(
+        cudnn_handle, this->x_desc, this->y_desc, this->conv_desc, this->w_desc,
+        this->bwd_filter_algo, &this->bwd_filter_workspace_size));
+  } else {
+    this->bwd_filter_workspace_size = 0;
+  }
 }
 
 void CudnnConvResource::find_best_algorithms() {
-  int workspace_limit = SingletonManager::get<CudnnHandleManager>()
-                            ->get_workspace_limit_in_bytes();
-  if (workspace_limit < 0) {
-    find_best_algorithms_no_limit();
-  } else if (workspace_limit == 0) {
-    find_best_algorithms_no_workspace();
-  } else {
-    find_best_algorithms_limit(workspace_limit);
+  auto cudnn_handle_manager = SingletonManager::get<CudnnHandleManager>();
+  auto workspace_limit = cudnn_handle_manager->get_workspace_limit_in_bytes();
+  bool deterministic = cudnn_handle_manager->get_deterministic_option();
+
+#if CUDNN_VERSION >= 3000
+  this->find_forward_algorithm(workspace_limit, deterministic);
+  this->find_backward_data_algorithm(workspace_limit, deterministic);
+  this->find_backward_filter_algorithm(workspace_limit, deterministic);
+#else
+  if (deterministic) {
+    std::cout << "Note that cuDNN version 2 and earlier do not provide means "
+                 "to select convolution algorithms based on deterministic "
+                 "behaviour as requested by the NNABLA_CUDNN_DETERMINISTIC "
+                 "environment variable."
+              << std::endl;
   }
+  this->get_forward_algorithm(workspace_limit);
+  this->get_backward_data_algorithm(workspace_limit);
+  this->get_backward_filter_algorithm(workspace_limit);
+#endif
+#if 0
+  printf("fwd_algo %d uses %10lu bytes\n"
+         "bwd_data_algo %d uses %10lu bytes\n"
+         "bwd_filter_algo %d uses %10lu bytes\n",
+         this->fwd_algo, this->fwd_workspace_size,
+         this->bwd_data_algo, this->bwd_data_workspace_size,
+         this->bwd_filter_algo, this->bwd_filter_workspace_size);
+#endif
 }
 
 size_t CudnnConvResource::workspace_size() const {
@@ -358,13 +500,41 @@ int CudnnHandleManager::get_workspace_limit_in_bytes() {
       } catch (std::exception &exc) {
         NBLA_ERROR(
             error_code::value,
-            "Invalid value: NNBLA_CUDNN_WORKSPACE_LIMIT=%s. Integer required.",
+            "Invalid value: NNABLA_CUDNN_WORKSPACE_LIMIT=%s. Integer required.",
             e);
       }
     }
     called = true;
   }
   return workspace_limit_;
+}
+
+bool CudnnHandleManager::get_deterministic_option() {
+  static bool called = false;
+  static std::mutex mtx;
+  std::lock_guard<std::mutex> lock(mtx);
+  if (!called) {
+    // Read NNABLA_CUDNN_DETERMINISTIC preference from
+    // environment. Default is `false` if the environment variable is
+    // not present. If present, then any value other than `0`
+    // (including an empty string) implies `true`.
+    const char *e = std::getenv("NNABLA_CUDNN_DETERMINISTIC");
+    if (!e) {
+      this->deterministic_option_ = false;
+    } else {
+      try {
+        this->deterministic_option_ = bool(std::stoi(e) != 0);
+      } catch (std::exception &exc) {
+        this->deterministic_option_ = true;
+      }
+    }
+    called = true;
+  }
+  return deterministic_option_;
+}
+
+void CudnnHandleManager::set_deterministic_option(bool value) {
+  this->deterministic_option_ = value;
 }
 
 void CudnnHandleManager::set_workspace_limit_in_bytes(int bytes) {

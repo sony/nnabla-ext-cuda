@@ -33,6 +33,7 @@ If CUDNN is enabled, the extension library automatically finds the fastest Convo
 
 However, it often consumes much memory due to a big workspace memory required by automatically found algorithms, and sometimes doesn't work on a GPU with small memory. To avoid this, you can specify the limit of the workspace size by setting an environment variable `NNABLA_CUDNN_WORKSPACE_LIMIT` (in bytes) read at runtime (not compilation time). For example, `NNABLA_CUDNN_WORKSPACE_LIMIT=134217728` limits the workspace size up to 128 MB. The default value is `-1` which means there is no limit of the workspace size.
 
+In some cases it may be desired to restrict the automatic search for CUDNN Convolution algorithms to those that give deterministic (reproducable) results. This can be achived by setting an environment variable `NNABLA_CUDNN_DETERMINISTIC` to some value other than `0`.
 
 ## FAQ
 

@@ -222,10 +222,13 @@ struct NBLA_CUDA_API CudnnConvResource {
   size_t workspace_size() const;
 
 private:
+  void find_forward_algorithm(int workspace_limit, bool deterministic);
+  void find_backward_data_algorithm(int workspace_limit, bool deterministic);
+  void find_backward_filter_algorithm(int workspace_limit, bool deterministic);
+  void get_forward_algorithm(int workspace_limit);
+  void get_backward_data_algorithm(int workspace_limit);
+  void get_backward_filter_algorithm(int workspace_limit);
   void find_best_algorithms();
-  void find_best_algorithms_no_limit();
-  void find_best_algorithms_no_workspace();
-  void find_best_algorithms_limit(int limit);
 };
 
 /**
@@ -263,9 +266,27 @@ public:
    */
   void set_workspace_limit_in_bytes(int bytes);
 
+  /* Get option for choosing deterministic algorithms.
+
+     True requests the use of deterministic algorithms.
+
+     @note The default value is false. The default value is overwritten if an
+           environment variable NNABLA_CUDNN_DETERMINISTIC is specified.
+   */
+  bool get_deterministic_option();
+
+  /* Set option for choosing deterministic algorithms.
+
+     True requests the use of deterministic algorithms.
+
+     @param[in] Option value.
+   */
+  void set_deterministic_option(bool value);
+
 protected:
   map<int, cudnnHandle_t> handles_;
-  int workspace_limit_{0}; ///< Workspace limit in bytes.
+  int workspace_limit_{0};           ///< Workspace limit in bytes.
+  bool deterministic_option_{false}; ///< Choose deterministic algorithms
 
 private:
   friend SingletonManager;
