@@ -29,6 +29,7 @@
 import io
 import os
 from os.path import abspath, dirname, join
+import sys
 
 # Set path to <NNabla root>/build-tools/code_generator to import the following two
 from utils.common import check_update, get_version
@@ -41,7 +42,7 @@ here = abspath(dirname(abspath(__file__)))
 base = abspath(here + '/../..')
 
 
-def generate():
+def generate(argv):
     function_info = utils.load_function_info(flatten=True)
     solver_info = utils.load_solver_info()
     function_types = utils.load_yaml_ordered(open(
@@ -70,13 +71,23 @@ def generate():
         function_info, function_types_cudnn, ext_info={}, template=function_template_cudnn, output_format='%s.cu')
     utils.generate_solver_types(
         solver_info, solver_types, ext_info={}, template=solver_template, output_format='%s.cu')
-    version_suffix = None
+
+    if len(argv) == 3:
+        cuda_version = argv[1]
+        cudnn_version = argv[2]
+    else:
+        cuda_version = 'unknown'
+        cudnn_version = 'unknown'
+        
     utils.generate_version(template=join(
         base, 'python/src/nnabla_ext/cuda/_version.py.tmpl'),
-        rootdir=base)
+        rootdir=base, cuda_version=cuda_version, cudnn_version=cudnn_version)
     utils.generate_version(template=join(
         base, 'python/src/nnabla_ext/cudnn/_version.py.tmpl'),
-        rootdir=base)
+        rootdir=base, cuda_version=cuda_version, cudnn_version=cudnn_version)
+    utils.generate_version(template=join(
+        base, 'src/nbla/cuda/version.cpp.tmpl'),
+        rootdir=base, cuda_version=cuda_version, cudnn_version=cudnn_version)
 
     # Generate function skeletons
     func_src_template = join(
@@ -104,6 +115,5 @@ def generate():
         function_info, function_types_cudnn, ext_info={},
         template=func_header_template_cudnn, output_format='%s.hpp')
 
-
 if __name__ == '__main__':
-    generate()
+    generate(sys.argv)

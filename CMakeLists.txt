@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required (VERSION 3.1)
+cmake_minimum_required (VERSION 3.5)
 
 # NNabla project
 project (nbla C CXX)
@@ -78,11 +78,14 @@ else()
   set(ENV{PYTHONPATH} ${NNABLA_DIR}/build-tools/code_generator:$ENV{PYTHONPATH})
 endif()
 
+include(${PROJECT_SOURCE_DIR}/build-tools/cmake/get_cuda_version.cmake)
+
 execute_process(
   COMMAND ${PYTHON_COMMAND}
-          ${CMAKE_CURRENT_SOURCE_DIR}/build-tools/code_generator/generate.py
+          ${CMAKE_CURRENT_SOURCE_DIR}/build-tools/code_generator/generate.py ${CUDA_VERSION} ${CUDNN_VERSION}
           OUTPUT_VARIABLE TEST
           RESULT_VARIABLE GENERATE_RESULT)
+  message("${TEST}")
 if (NOT ${GENERATE_RESULT} EQUAL 0)
   message(FATAL_ERROR "generate.py failed.")
 endif()

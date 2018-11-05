@@ -16,6 +16,14 @@ from __future__ import absolute_import
 
 import nnabla
 
+from ._version import (
+    __version__,
+    __cuda_version__,
+    __cudnn_version__,
+    __author__,
+    __email__
+)
+
 try:
     from .init import (
         clear_memory_cache,
@@ -24,15 +32,10 @@ try:
         get_device_count,
         get_devices)
 except:
-    print('Please install the correct version of CUDA / CUDNN.')
+    print('Please install CUDA version {}.'.format(__cuda_version__))
+    print('          and CUDNN version {}.'.format(__cudnn_version__))
     print('Or install correct nnabla_ext_cuda for installed version of CUDA/CUDNN.')
     raise
-
-from ._version import (
-    __version__,
-    __author__,
-    __email__
-)
 
 from nnabla.variable import Context
 

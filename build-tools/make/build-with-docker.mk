@@ -143,10 +143,10 @@ docker_image_nnabla_ext_cuda:
 .PHONY: docker_image_nnabla_ext_cuda_multi_gpu
 docker_image_nnabla_ext_cuda_multi_gpu: bwd-nnabla-ext-cuda-wheel-multi-gpu
 	mkdir -p ~/.ccache
-	docker pull nvidia/cuda:$(CUDA_VERSION_MAJOR).$(CUDA_VERSION_MINOR)-cudnn$(CUDNN_VERSION)-runtime-ubuntu16.04
-	@cd $(NNABLA_EXT_CUDA_DIRECTORY) \
-	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
-	&& cp docker/development/Dockerfile.runtime-multi-gpu.py$(PYTHON_VERSION_MAJOR)$(PYTHON_VERSION_MINOR)-cuda$(CUDA_VERSION_MAJOR)$(CUDA_VERSION_MINOR)-cudnn$(CUDNN_VERSION) Dockerfile \
+	BASE=nvidia/cuda:$(CUDA_VERSION_MAJOR).$(CUDA_VERSION_MINOR)-cudnn$(CUDNN_VERSION)-runtime-ubuntu16.04 \
+	&& docker pull $${BASE} \
+	&& cd $(NNABLA_EXT_CUDA_DIRECTORY) \
+	&& cp docker/development/Dockerfile.runtime-multi-gpu Dockerfile \
 	&& cp $(BUILD_DIRECTORY_WHEEL)/dist/*.whl . \
 	&& echo ADD $(shell basename $(BUILD_DIRECTORY_WHEEL)/dist/*.whl) /tmp/ >>Dockerfile \
 	&& echo RUN pip install /tmp/$(shell basename $(BUILD_DIRECTORY_WHEEL)/dist/*.whl) >>Dockerfile \
