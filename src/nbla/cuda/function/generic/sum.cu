@@ -36,26 +36,35 @@ void SumCuda<T>::forward_impl_reduce(const T *x_, T *y_, int outer_size,
   const Tc *x = reinterpret_cast<const Tc *>(x_);
   Tc *y = reinterpret_cast<Tc *>(y_);
   cuda_set_device(this->device_);
-  if (outer_size == 1) {
-    if (reduction_size >= 1024) {
-      int blocks =
-          min(NBLA_CUDA_GET_BLOCKS(reduction_size), /*max blocks*/ 1024);
-      shared_ptr<CudaCachedArray> arr_buff =
-          make_shared<CudaCachedArray>(blocks, get_dtype<Tc>(), this->ctx_);
-      Tc *buff = arr_buff->pointer<Tc>();
-      kernel_reduce_per_block<<<blocks, NBLA_CUDA_NUM_THREADS>>>(reduction_size,
-                                                                 x, buff);
+
+  if (reduction_size / outer_size < 2048) {
+    const Tc *ones =
+        static_cast<const Tc *>(SingletonManager::get<NNabla>()->ones(
+            reduction_size, get_dtype<Tc>(), this->ctx_));
+    cuda_gemv<Tc>(this->device_, y, x, reduction_size, outer_size, true, ones,
+                  reduction_size, 1, 0);
+  } else if (reduction_size >= 1024) {
+    const int threads = NBLA_CUDA_NUM_THREADS;
+    const int blocks = min(NBLA_CUDA_GET_BLOCKS(reduction_size), 1024);
+    shared_ptr<CudaCachedArray> arr_buff =
+        make_shared<CudaCachedArray>(blocks, get_dtype<Tc>(), this->ctx_);
+    Tc *buff = arr_buff->pointer<Tc>();
+    while (outer_size--) {
+      kernel_reduce_per_block<<<blocks, threads>>>(reduction_size, x, buff);
+      NBLA_CUDA_KERNEL_CHECK();
       kernel_reduce_per_block<<<1, 1024>>>(blocks, buff, y);
-    } else {
-      kernel_reduce_per_block<<<1, 1024>>>(reduction_size, x, y);
+      NBLA_CUDA_KERNEL_CHECK();
+      x += reduction_size;
+      y += 1;
     }
-    return;
+  } else {
+    while (outer_size--) {
+      kernel_reduce_per_block<<<1, 1024>>>(reduction_size, x, y);
+      NBLA_CUDA_KERNEL_CHECK();
+      x += reduction_size;
+      y += 1;
+    }
   }
-  const Tc *ones =
-      static_cast<const Tc *>(SingletonManager::get<NNabla>()->ones(
-          reduction_size, get_dtype<Tc>(), this->ctx_));
-  cuda_gemv<Tc>(this->device_, y, x, reduction_size, outer_size, true, ones,
-                reduction_size, 1, 0);
 }
 
 template <typename T, bool accum>
