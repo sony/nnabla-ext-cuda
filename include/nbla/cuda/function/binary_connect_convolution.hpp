@@ -32,9 +32,10 @@ public:
   explicit BinaryConnectConvolutionCuda(const Context &ctx, int base_axis,
                                         const vector<int> &pad,
                                         const vector<int> &stride,
-                                        const vector<int> &dilation, int group)
+                                        const vector<int> &dilation, int group,
+                                        float quantize_zero_to)
       : BinaryConnectConvolution<T>(ctx, base_axis, pad, stride, dilation,
-                                    group),
+                                    group, quantize_zero_to),
         device_(std::stoi(ctx.device_id)) {}
   virtual ~BinaryConnectConvolutionCuda() {}
   virtual string name() { return "BinaryConnectConvolutionCuda"; }

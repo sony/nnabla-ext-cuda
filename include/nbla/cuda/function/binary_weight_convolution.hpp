@@ -29,9 +29,10 @@ public:
   typedef typename CudaType<T>::type Tc;
   BinaryWeightConvolutionCuda(const Context &ctx, int base_axis,
                               const vector<int> &pad, const vector<int> &stride,
-                              const vector<int> &dilation, int group)
-      : BinaryWeightConvolution<T>(ctx, base_axis, pad, stride, dilation,
-                                   group),
+                              const vector<int> &dilation, int group,
+                              float quantize_zero_to)
+      : BinaryWeightConvolution<T>(ctx, base_axis, pad, stride, dilation, group,
+                                   quantize_zero_to),
         device_(std::stoi(ctx.device_id)) {}
 
   virtual ~BinaryWeightConvolutionCuda() {}

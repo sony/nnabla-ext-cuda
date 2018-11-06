@@ -29,8 +29,9 @@ class BinaryConnectAffineCuda : public BinaryConnectAffine<T> {
 
 public:
   typedef typename CudaType<T>::type Tc;
-  explicit BinaryConnectAffineCuda(const Context &ctx, int base_axis)
-      : BinaryConnectAffine<T>(ctx, base_axis),
+  explicit BinaryConnectAffineCuda(const Context &ctx, int base_axis,
+                                   float quantize_zero_to)
+      : BinaryConnectAffine<T>(ctx, base_axis, quantize_zero_to),
         device_(std::stoi(ctx.device_id)) {}
   virtual ~BinaryConnectAffineCuda() {}
   virtual string name() { return "BinaryConnectAffineCuda"; }
