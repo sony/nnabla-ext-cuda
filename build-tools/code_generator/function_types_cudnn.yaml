@@ -51,16 +51,19 @@ BatchNormalization:
   half: [Half]
 # MeanSubtraction:
 #   float: [float]
-# Sum:
-#   float: [float]
-# Mean:
-#   float: [float]
+Sum:
+  float: [float]
+  half: [Half]
+Mean:
+  float: [float]
+  half: [Half]
 # Max:
 #   float: [float]
 # Min:
 #   float: [float]
-# Prod:
-#   float: [float]
+Prod:
+  float: [float]
+  half: [Half]
 # ReduceSum:
 #   float: [float]
 # ReduceMean:
