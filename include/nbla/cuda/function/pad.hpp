@@ -15,6 +15,7 @@
 #ifndef NBLA_CUDA_FUNCTION_PAD_HPP
 #define NBLA_CUDA_FUNCTION_PAD_HPP
 
+#include <nbla/cuda/array/cuda_array.hpp>
 #include <nbla/cuda/cuda.hpp>
 #include <nbla/function/pad.hpp>
 
@@ -22,15 +23,6 @@ namespace nbla {
 
 template <typename T> class PadCuda : public Pad<T> {
 public:
-  /* TODO: remove this help message.
-  Typedef of CUDA scalar types used in source file.
-  This template function class might be instantiated for each CPU scalar types
-  (double, float, nbla::Half), however, for Half, CUDA kernel functions
-  must use nbla::HalfCuda in which a bunch of device operator functions are
-  overloaded. nbla::CudaType<T>::type will translate nbla::Half
-  to nbla::HalfCuda. For other types, it will keep it as-is.
-  See nbla/cuda/half.hpp for other template utilities.
-  */
   typedef typename CudaType<T>::type Tcu;
 
   explicit PadCuda(const Context &ctx, const vector<int> &pad_width,
@@ -45,6 +37,8 @@ public:
 
 protected:
   int device_;
+  std::unique_ptr<CudaCachedArray> parameter_memory_;
+
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,

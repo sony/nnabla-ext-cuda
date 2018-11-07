@@ -36,6 +36,10 @@
 
 namespace nbla {
 
+namespace cuda {
+typedef int Index_t;
+}
+
 using std::map;
 
 /** Check Kernel Execution*/
