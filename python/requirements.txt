@@ -5,10 +5,10 @@ mako
 PyYAML
 
 # Runtime
-Cython>=0.24,<0.26
+Cython
 boto3
 h5py
-numpy>=1.12
+numpy
 onnx
 protobuf
 requests
