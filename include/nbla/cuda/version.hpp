@@ -16,7 +16,6 @@
 #define _NBLA_EXT_CUDA_VERSION_HPP_
 
 const string nbla_ext_cuda_version(void);
-const string nbla_ext_cuda_short_version(void);
 
 const string nbla_ext_cuda_cuda_version(void);
 const string nbla_ext_cuda_cudnn_version(void);

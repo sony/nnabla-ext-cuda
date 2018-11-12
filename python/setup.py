@@ -28,14 +28,11 @@ root_dir = realpath(dirname(__file__))
 a = dict()
 
 __version__ = None
-__short_version__ = None
 __email__ = None
 exec(open(os.path.join(root_dir, 'src', 'nnabla_ext',
                        'cuda', '_version.py')).read(), globals(), a)
 if '__version__' in a:
     __version__ = a['__version__']
-if '__short_version__' in a:
-    __short_version__ = a['__short_version__']
 if '__cuda_version__' in a:
     __cuda_version__ = a['__cuda_version__']
 if '__cudnn_version__' in a:
@@ -45,7 +42,6 @@ if '__author__' in a:
 if '__email__' in a:
     __email__ = a['__email__']
 assert(__version__ is not None)
-assert(__short_version__ is not None)
 assert(__author__ is not None)
 assert(__email__ is not None)
 
@@ -60,7 +56,7 @@ if 'WHEEL_SUFFIX' in os.environ:
 
 install_requires = [
     'setuptools',
-    'nnabla{}=={}'.format(whl_suffix, __short_version__),
+    'nnabla{}=={}'.format(whl_suffix, __version__),
 ]
 
 LibInfo = namedtuple('LibInfo', ['file_name', 'path', 'name'])
