@@ -1,7 +1,7 @@
-FROM nvidia/cuda:9.2-cudnn7-runtime-ubuntu16.04
+FROM nvidia/cuda:10.0-cudnn7-runtime-ubuntu16.04
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl bzip2 libopenmpi-dev openmpi-bin \
+    && apt-get install -y --no-install-recommends ca-certificates curl bzip2 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN umask 0 \
@@ -11,7 +11,7 @@ RUN umask 0 \
     && bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/miniconda3 \
     && rm -rf Miniconda3-latest-Linux-x86_64.sh \
     && PATH=/opt/miniconda3/bin:$PATH \
-    && conda install python=3.6 \
+    && conda install python=3.7 \
     && conda update -y --all \
     && conda install pip wheel opencv \
     && conda clean -y --all \
@@ -20,4 +20,4 @@ RUN umask 0 \
 
 ENV PATH /opt/miniconda3/bin:$PATH
 
-RUN pip install nnabla-ext-cuda92-nccl2-ubuntu16
+RUN pip install nnabla-ext-cuda100

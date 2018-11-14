@@ -3,7 +3,7 @@ FROM ${BASE}
 
 RUN cd /tmp \
 	&& apt-get update \
-	&& apt-get install -y wget bzip2 libopenmpi-dev \
+	&& apt-get install -y wget bzip2 libopenmpi-dev openmpi-bin \
         && rm -rf /var/lib/apt/lists/* \
         && cd / \
         && rm -rf /tmp/*
