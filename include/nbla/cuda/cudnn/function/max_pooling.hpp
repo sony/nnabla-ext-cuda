@@ -49,20 +49,34 @@ public:
     NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&output_desc_));
     NBLA_CUDNN_CHECK(cudnnCreatePoolingDescriptor(&pooling_desc_));
     mode_ = CUDNN_POOLING_MAX;
-    int h = this->kernel_[0];
-    int w = this->kernel_[1];
-    int pad_h = this->pad_[0];
-    int pad_w = this->pad_[1];
-    int stride_h = this->stride_[0];
-    int stride_w = this->stride_[1];
+    if (this->kernel_.size() == 2) {
+      int h = this->kernel_[0];
+      int w = this->kernel_[1];
+      int pad_h = this->pad_[0];
+      int pad_w = this->pad_[1];
+      int stride_h = this->stride_[0];
+      int stride_w = this->stride_[1];
 #if CUDNN_VERSION >= 5000
-    NBLA_CUDNN_CHECK(
-        cudnnSetPooling2dDescriptor(pooling_desc_, mode_, CUDNN_PROPAGATE_NAN,
-                                    h, w, pad_h, pad_w, stride_h, stride_w));
+      NBLA_CUDNN_CHECK(
+          cudnnSetPooling2dDescriptor(pooling_desc_, mode_, CUDNN_PROPAGATE_NAN,
+                                      h, w, pad_h, pad_w, stride_h, stride_w));
 #else
-    NBLA_CUDNN_CHECK(cudnnSetPooling2dDescriptor(
-        pooling_desc_, mode_, h, w, pad_h, pad_w, stride_h, stride_w));
+      NBLA_CUDNN_CHECK(cudnnSetPooling2dDescriptor(
+          pooling_desc_, mode_, h, w, pad_h, pad_w, stride_h, stride_w));
 #endif
+    } else if (this->kernel_.size() == 3) {
+      int window[3] = {this->kernel_[0], this->kernel_[1], this->kernel_[2]};
+      int stride[3] = {this->stride_[0], this->stride_[1], this->stride_[2]};
+      int padding[3] = {this->pad_[0], this->pad_[1], this->pad_[2]};
+#if CUDNN_VERSION >= 5000
+      NBLA_CUDNN_CHECK(cudnnSetPoolingNdDescriptor(pooling_desc_, mode_,
+                                                   CUDNN_PROPAGATE_NAN, 3,
+                                                   window, padding, stride));
+#else
+      NBLA_CUDNN_CHECK(cudnnSetPoolingNdDescriptor(pooling_desc_, mode_, 3,
+                                                   window, padding, stride));
+#endif
+    }
   }
 
   virtual ~MaxPoolingCudaCudnn() {
