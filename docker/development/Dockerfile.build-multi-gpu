@@ -50,7 +50,7 @@ RUN set -xe \
                         scikit-image \
                         opencv \
 		&& pip install \
-                        Cython==0.25 \
+                        Cython \
                         autopep8 \
                         pytest \
                         requests"

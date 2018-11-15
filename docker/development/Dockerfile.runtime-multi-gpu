@@ -24,21 +24,21 @@ RUN set -xe \
 	&& conda create -y -n ${PYENVNAME} python=${PYVERNAME} \
 	&& bash -c "source activate ${PYENVNAME} \
 		&& conda install \
-                	pip \
-                  wheel \
-									boto3 \
-									h5py \
-									mako \
-									numpy \
-									protobuf \
-									tqdm \
-									ipython \
-									pytest \
-									pyyaml \
-									scipy \
-									scikit-image \
-									opencv \
+                       pip \
+                       wheel \
+                       boto3 \
+                       h5py \
+                       mako \
+                       numpy \
+                       protobuf \
+                       tqdm \
+                       ipython \
+                       pytest \
+                       pyyaml \
+                       scipy \
+                       scikit-image \
+                       opencv \
 		&& rm -rf /opt/miniconda3/pkgs \
-		&& pip install Cython==0.25 autopep8 requests"
+		&& pip install Cython autopep8 requests"
 
 ENV PATH /opt/miniconda3/envs/${PYENVNAME}/bin:$PATH
