@@ -1,7 +1,7 @@
 FROM nvidia/cuda:9.2-cudnn7-runtime-ubuntu16.04
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl bzip2 libopenmpi-dev \
+    && apt-get install -y --no-install-recommends ca-certificates curl bzip2 libopenmpi-dev openmpi-bin \
     && rm -rf /var/lib/apt/lists/*
 
 RUN umask 0 \

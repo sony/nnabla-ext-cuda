@@ -128,7 +128,7 @@ docker_image_nnabla_ext_cuda:
 	BASE=nvidia/cuda:$(CUDA_VERSION_MAJOR).$(CUDA_VERSION_MINOR)-cudnn$(CUDNN_VERSION)-runtime-ubuntu16.04 \
 	&& docker pull $${BASE} \
 	&& cd $(NNABLA_EXT_CUDA_DIRECTORY) \
-	&& cp docker/Dockerfile.runtime Dockerfile \
+	&& cp docker/runtime/Dockerfile.runtime Dockerfile \
 	&& cp $(BUILD_DIRECTORY_WHEEL)/dist/*.whl . \
 	&& echo ADD $(shell basename $(BUILD_DIRECTORY_WHEEL)/dist/*.whl) /tmp/ >>Dockerfile \
 	&& echo RUN pip install /tmp/$(shell basename $(BUILD_DIRECTORY_WHEEL)/dist/*.whl) >>Dockerfile \
@@ -146,7 +146,7 @@ docker_image_nnabla_ext_cuda_multi_gpu: bwd-nnabla-ext-cuda-wheel-multi-gpu
 	BASE=nvidia/cuda:$(CUDA_VERSION_MAJOR).$(CUDA_VERSION_MINOR)-cudnn$(CUDNN_VERSION)-runtime-ubuntu16.04 \
 	&& docker pull $${BASE} \
 	&& cd $(NNABLA_EXT_CUDA_DIRECTORY) \
-	&& cp docker/development/Dockerfile.runtime-multi-gpu Dockerfile \
+	&& cp docker/runtime/Dockerfile.runtime-multi-gpu Dockerfile \
 	&& cp $(BUILD_DIRECTORY_WHEEL)/dist/*.whl . \
 	&& echo ADD $(shell basename $(BUILD_DIRECTORY_WHEEL)/dist/*.whl) /tmp/ >>Dockerfile \
 	&& echo RUN pip install /tmp/$(shell basename $(BUILD_DIRECTORY_WHEEL)/dist/*.whl) >>Dockerfile \
@@ -157,3 +157,79 @@ docker_image_nnabla_ext_cuda_multi_gpu: bwd-nnabla-ext-cuda-wheel-multi-gpu
 	&& rm -f $(shell basename $(BUILD_DIRECTORY_WHEEL)/dist/*.whl) \
 	&& rm -f $(shell basename $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_MULTI_GPU)/dist/*.whl) \
 	&& rm -f Dockerfile
+
+
+.PHONY: docker_image_nnabla_ext_cuda_multi_gpu_py35_cuda90
+docker_image_nnabla_ext_cuda_multi_gpu_py35_cuda90:
+	docker pull nvidia/cuda:9.0-cudnn7-runtime-ubuntu16.04
+	docker build --build-arg http_proxy=${http_proxy} --build-arg https_proxy=${https_proxy} \
+		-t $(DOCKER_IMAGE_NAME_BASE)-multi-gpu-py35-cuda90 \
+		-f nnabla-ext-cuda/docker/py35/cuda90-multi-gpu/Dockerfile .
+
+.PHONY: docker_image_nnabla_ext_cuda_multi_gpu_py35_cuda92
+docker_image_nnabla_ext_cuda_multi_gpu_py35_cuda92:
+	docker pull nvidia/cuda:9.2-cudnn7-runtime-ubuntu16.04
+	docker build --build-arg http_proxy=${http_proxy} --build-arg https_proxy=${https_proxy} \
+		-t $(DOCKER_IMAGE_NAME_BASE)-multi-gpu-py35-cuda92 \
+		-f nnabla-ext-cuda/docker/py35/cuda92-multi-gpu/Dockerfile .
+
+.PHONY: docker_image_nnabla_ext_cuda_multi_gpu_py35_cuda100
+docker_image_nnabla_ext_cuda_multi_gpu_py35_cuda100:
+	docker pull nvidia/cuda:10.0-cudnn7-runtime-ubuntu16.04
+	docker build --build-arg http_proxy=${http_proxy} --build-arg https_proxy=${https_proxy} \
+		-t $(DOCKER_IMAGE_NAME_BASE)-multi-gpu-py35-cuda100 \
+		-f nnabla-ext-cuda/docker/py35/cuda100-multi-gpu/Dockerfile .
+
+.PHONY: docker_image_nnabla_ext_cuda_multi_gpu_py36_cuda90
+docker_image_nnabla_ext_cuda_multi_gpu_py36_cuda90:
+	docker pull nvidia/cuda:9.0-cudnn7-runtime-ubuntu16.04
+	docker build --build-arg http_proxy=${http_proxy} --build-arg https_proxy=${https_proxy} \
+		-t $(DOCKER_IMAGE_NAME_BASE)-multi-gpu-py36-cuda90 \
+		-f nnabla-ext-cuda/docker/py36/cuda90-multi-gpu/Dockerfile .
+
+.PHONY: docker_image_nnabla_ext_cuda_multi_gpu_py36_cuda92
+docker_image_nnabla_ext_cuda_multi_gpu_py36_cuda92:
+	docker pull nvidia/cuda:9.2-cudnn7-runtime-ubuntu16.04
+	docker build --build-arg http_proxy=${http_proxy} --build-arg https_proxy=${https_proxy} \
+		-t $(DOCKER_IMAGE_NAME_BASE)-multi-gpu-py36-cuda92 \
+		-f nnabla-ext-cuda/docker/py36/cuda92-multi-gpu/Dockerfile .
+
+.PHONY: docker_image_nnabla_ext_cuda_multi_gpu_py36_cuda100
+docker_image_nnabla_ext_cuda_multi_gpu_py36_cuda100:
+	docker pull nvidia/cuda:10.0-cudnn7-runtime-ubuntu16.04
+	docker build --build-arg http_proxy=${http_proxy} --build-arg https_proxy=${https_proxy} \
+		-t $(DOCKER_IMAGE_NAME_BASE)-multi-gpu-py36-cuda100 \
+		-f nnabla-ext-cuda/docker/py36/cuda100-multi-gpu/Dockerfile .
+
+.PHONY: docker_image_nnabla_ext_cuda_multi_gpu_py37_cuda90
+docker_image_nnabla_ext_cuda_multi_gpu_py37_cuda90:
+	docker pull nvidia/cuda:9.0-cudnn7-runtime-ubuntu16.04
+	docker build --build-arg http_proxy=${http_proxy} --build-arg https_proxy=${https_proxy} \
+		-t $(DOCKER_IMAGE_NAME_BASE)-multi-gpu-py37-cuda90 \
+		-f nnabla-ext-cuda/docker/py37/cuda90-multi-gpu/Dockerfile .
+
+.PHONY: docker_image_nnabla_ext_cuda_multi_gpu_py37_cuda92
+docker_image_nnabla_ext_cuda_multi_gpu_py37_cuda92:
+	docker pull nvidia/cuda:9.2-cudnn7-runtime-ubuntu16.04
+	docker build --build-arg http_proxy=${http_proxy} --build-arg https_proxy=${https_proxy} \
+		-t $(DOCKER_IMAGE_NAME_BASE)-multi-gpu-py37-cuda92 \
+		-f nnabla-ext-cuda/docker/py37/cuda92-multi-gpu/Dockerfile .
+
+.PHONY: docker_image_nnabla_ext_cuda_multi_gpu_py37_cuda100
+docker_image_nnabla_ext_cuda_multi_gpu_py37_cuda100:
+	docker pull nvidia/cuda:10.0-cudnn7-runtime-ubuntu16.04
+	docker build --build-arg http_proxy=${http_proxy} --build-arg https_proxy=${https_proxy} \
+		-t $(DOCKER_IMAGE_NAME_BASE)-multi-gpu-py37-cuda100 \
+		-f nnabla-ext-cuda/docker/py37/cuda100-multi-gpu/Dockerfile .
+
+.PHONY: docker_image_nnabla_ext_cuda_multi_gpu_all
+docker_image_nnabla_ext_cuda_multi_gpu_all: \
+	docker_image_nnabla_ext_cuda_multi_gpu_py35_cuda90 \
+	docker_image_nnabla_ext_cuda_multi_gpu_py35_cuda92 \
+	docker_image_nnabla_ext_cuda_multi_gpu_py35_cuda100 \
+	docker_image_nnabla_ext_cuda_multi_gpu_py36_cuda90 \
+	docker_image_nnabla_ext_cuda_multi_gpu_py36_cuda92 \
+	docker_image_nnabla_ext_cuda_multi_gpu_py36_cuda100 \
+	docker_image_nnabla_ext_cuda_multi_gpu_py37_cuda90 \
+	docker_image_nnabla_ext_cuda_multi_gpu_py37_cuda92 \
+	docker_image_nnabla_ext_cuda_multi_gpu_py37_cuda100

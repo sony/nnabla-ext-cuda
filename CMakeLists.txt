@@ -33,6 +33,12 @@ if(NOT IS_ABSOLUTE ${NNABLA_DIR})
   get_filename_component(NNABLA_DIR ${CMAKE_CURRENT_BINARY_DIR}/${NNABLA_DIR} ABSOLUTE)
 endif()
 
+file(STRINGS ${NNABLA_DIR}/VERSION.txt versions NEWLINE_CONSUME)
+string(REGEX REPLACE [[^([A-z0-9.\-_]+).*$]] [[\1]] version ${versions})
+string(REGEX REPLACE [[^([0-9]+)\.([0-9]+)\.(.*)$]] [[\1]] version_major ${version})
+string(REGEX REPLACE [[^([0-9]+)\.([0-9]+)\.(.*)$]] [[\2]] version_minor ${version})
+string(REGEX REPLACE [[^([0-9]+)\.([0-9]+)\.(.*)$]] [[\3]] version_patch ${version})
+
 if(NOT EXISTS ${CPPLIB_LIBRARY})
   message(FATAL_ERROR "Invalid CPPLIB_LIBRARY :[${CPPLIB_LIBRARY}]")
 endif()
@@ -82,7 +88,7 @@ include(${PROJECT_SOURCE_DIR}/build-tools/cmake/get_cuda_version.cmake)
 
 execute_process(
   COMMAND ${PYTHON_COMMAND}
-          ${CMAKE_CURRENT_SOURCE_DIR}/build-tools/code_generator/generate.py ${CUDA_VERSION} ${CUDNN_VERSION}
+          ${CMAKE_CURRENT_SOURCE_DIR}/build-tools/code_generator/generate.py ${version} ${CUDA_VERSION} ${CUDNN_VERSION}
           OUTPUT_VARIABLE TEST
           RESULT_VARIABLE GENERATE_RESULT)
   message("${TEST}")
