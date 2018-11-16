@@ -72,22 +72,24 @@ def generate(argv):
     utils.generate_solver_types(
         solver_info, solver_types, ext_info={}, template=solver_template, output_format='%s.cu')
 
-    if len(argv) == 3:
-        cuda_version = argv[1]
-        cudnn_version = argv[2]
+    if len(argv) == 4:
+        version = argv[1]
+        cuda_version = argv[2]
+        cudnn_version = argv[3]
     else:
+        version = 'unknown'
         cuda_version = 'unknown'
         cudnn_version = 'unknown'
         
     utils.generate_version(template=join(
         base, 'python/src/nnabla_ext/cuda/_version.py.tmpl'),
-        rootdir=base, cuda_version=cuda_version, cudnn_version=cudnn_version)
+        rootdir=base, version=version, cuda_version=cuda_version, cudnn_version=cudnn_version)
     utils.generate_version(template=join(
         base, 'python/src/nnabla_ext/cudnn/_version.py.tmpl'),
-        rootdir=base, cuda_version=cuda_version, cudnn_version=cudnn_version)
+        rootdir=base, version=version, cuda_version=cuda_version, cudnn_version=cudnn_version)
     utils.generate_version(template=join(
         base, 'src/nbla/cuda/version.cpp.tmpl'),
-        rootdir=base, cuda_version=cuda_version, cudnn_version=cudnn_version)
+        rootdir=base, version=version, cuda_version=cuda_version, cudnn_version=cudnn_version)
 
     # Generate function skeletons
     func_src_template = join(
