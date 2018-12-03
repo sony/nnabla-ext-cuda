@@ -42,14 +42,18 @@ void MeanCudaCudnn<T>::setup_impl(const Variables &inputs,
   for (auto axis : this->axes_)
     y_shape.at(axis) = 1;
 
-  cudnn_set_tensor_descriptor<T>(this->x_desc_, x_shape);
-  cudnn_set_tensor_descriptor<T>(this->y_desc_, y_shape);
+  this->same_in_out_shape_ = (y_shape == x_shape) ? true : false;
 
-  auto cudnn_handle_manager = SingletonManager::get<CudnnHandleManager>();
-  auto cudnn_handle = cudnn_handle_manager->handle(this->device_);
-  NBLA_CUDNN_CHECK(cudnnGetReductionWorkspaceSize(
-      cudnn_handle, this->reduce_desc_, this->x_desc_, this->y_desc_,
-      &this->workspace_size_));
+  if (!this->same_in_out_shape_) {
+    cudnn_set_tensor_descriptor<T>(this->x_desc_, x_shape);
+    cudnn_set_tensor_descriptor<T>(this->y_desc_, y_shape);
+
+    auto cudnn_handle_manager = SingletonManager::get<CudnnHandleManager>();
+    auto cudnn_handle = cudnn_handle_manager->handle(this->device_);
+    NBLA_CUDNN_CHECK(cudnnGetReductionWorkspaceSize(
+        cudnn_handle, this->reduce_desc_, this->x_desc_, this->y_desc_,
+        &this->workspace_size_));
+  }
 }
 
 template <typename T>
@@ -57,6 +61,12 @@ void MeanCudaCudnn<T>::forward_impl(const Variables &inputs,
                                     const Variables &outputs) {
   if ((!this->f_transpose_) || (inputs[0]->shape().size() > CUDNN_DIM_MAX)) {
     MeanCuda<T>::forward_impl(inputs, outputs);
+    return;
+  }
+  if (this->same_in_out_shape_) {
+    const Array *x = inputs[0]->data()->get(get_dtype<Tcu>(), this->ctx_);
+    Array *y = outputs[0]->data()->cast(get_dtype<Tcu>(), this->ctx_, true);
+    y->copy_from(x);
     return;
   }
   cuda_set_device(this->device_);

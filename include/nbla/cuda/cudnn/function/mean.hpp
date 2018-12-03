@@ -54,6 +54,7 @@ protected:
   cudnnTensorDescriptor_t x_desc_;
   cudnnTensorDescriptor_t y_desc_;
   size_t workspace_size_;
+  bool same_in_out_shape_;
 
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
