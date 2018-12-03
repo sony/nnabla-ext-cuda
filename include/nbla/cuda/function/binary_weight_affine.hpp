@@ -27,8 +27,9 @@ class BinaryWeightAffineCuda : public BinaryWeightAffine<T> {
 public:
   typedef typename CudaType<T>::type Tc;
 
-  BinaryWeightAffineCuda(const Context &ctx, int base_axis)
-      : BinaryWeightAffine<T>(ctx, base_axis),
+  BinaryWeightAffineCuda(const Context &ctx, int base_axis,
+                         float quantize_zero_to)
+      : BinaryWeightAffine<T>(ctx, base_axis, quantize_zero_to),
         device_(std::stoi(ctx.device_id)) {}
 
   virtual ~BinaryWeightAffineCuda() {}
