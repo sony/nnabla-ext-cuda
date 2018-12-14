@@ -34,12 +34,15 @@ template <typename T>
 void MomentumCuda<T>::update_impl(const string &key, VariablePtr param) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
   Size_t size = param->size();
-  VariablePtr r_ = this->state_.at(key);
+  auto &state = this->states_.at(key);
+  VariablePtr r_ = state.pstate["m"];
   const T *grad = param->get_grad_pointer<T>(this->ctx_);
   T *v = r_->cast_data_and_get_pointer<T>(this->ctx_);
   T *data = param->cast_data_and_get_pointer<T>(this->ctx_);
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_momentum_update, size, data, grad, v,
                                  this->lr_, this->momentum_);
+  auto &t = state.t;
+  t = std::min(t + 1, std::numeric_limits<uint32_t>::max() - 1);
 }
 
 NBLA_DEF_WEIGHT_DECAY(MomentumCuda, weight_decay_cuda);

@@ -37,15 +37,15 @@ __global__ void kernel_adamax_update(const int num, T *theta, T *m, T *u,
 template <typename T>
 void AdamaxCuda<T>::update_impl(const string &key, VariablePtr param) {
   Size_t size = param->size();
-  auto &state = this->state_.at(key);
-  int &t = state.t;
-  VariablePtr s1 = state.mean;
-  VariablePtr s2 = state.u;
+  auto &state = this->states_.at(key);
+  uint32_t &t = state.t;
+  VariablePtr s1 = state.pstate["m"];
+  VariablePtr s2 = state.pstate["u"];
   const T *g = param->get_grad_pointer<T>(this->ctx_);
   T *m = s1->cast_data_and_get_pointer<T>(this->ctx_);
   T *u = s2->cast_data_and_get_pointer<T>(this->ctx_);
   T *theta = param->cast_data_and_get_pointer<T>(this->ctx_);
-  t = std::min(t + 1, std::numeric_limits<int>::max());
+  t = std::min(t + 1, std::numeric_limits<uint32_t>::max() - 1);
   const T bias_correction = 1 / (1 - std::pow(this->beta1_, t));
   const T alpha_t = this->alpha_ * bias_correction;
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_adamax_update, size, theta, m, u, g,

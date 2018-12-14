@@ -38,15 +38,16 @@ template <typename T>
 void AdamCuda<T>::update_impl(const string &key, VariablePtr param) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
   Size_t size = param->size();
-  auto &state = this->state_.at(key);
-  int &t = state.t;
+  auto &state = this->states_.at(key);
+  uint32_t &t = state.t;
   const T *g = param->get_grad_pointer<T>(this->ctx_);
-  shared_ptr<Variable> mean_ = state.mean; // To prevent compile error.
-  shared_ptr<Variable> var_ = state.var;   // To prevent compile error.
+  shared_ptr<Variable> mean_ =
+      state.pstate["mean"];                        // To prevent compile error.
+  shared_ptr<Variable> var_ = state.pstate["var"]; // To prevent compile error.
   T *m = mean_->cast_data_and_get_pointer<T>(this->ctx_);
   T *v = var_->cast_data_and_get_pointer<T>(this->ctx_);
   T *theta = param->cast_data_and_get_pointer<T>(this->ctx_);
-  t = std::min(t + 1, std::numeric_limits<int>::max());
+  t = std::min(t + 1, std::numeric_limits<uint32_t>::max() - 1);
   const T bias_correction = std::sqrt(1 - std::pow(this->beta2_, t)) /
                             (1 - std::pow(this->beta1_, t));
   const T alpha_t = this->alpha_ * bias_correction;
