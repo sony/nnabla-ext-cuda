@@ -32,10 +32,13 @@ __global__ void kernel_adagrad_update(const int num, T *data, const T *grad,
 template <typename T>
 void AdagradCuda<T>::update_impl(const string &key, VariablePtr param) {
   Size_t size = param->size();
-  VariablePtr g_ = this->state_.at(key);
+  auto &state = this->states_.at(key);
+  VariablePtr g_ = state.pstate["v"];
   T *g = g_->cast_data_and_get_pointer<T>(this->ctx_);
+  auto &t = state.t;
   const T *grad = param->get_grad_pointer<T>(this->ctx_);
   T *data = param->cast_data_and_get_pointer<T>(this->ctx_);
+  t = std::min(t + 1, std::numeric_limits<uint32_t>::max() - 1);
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_adagrad_update, size, data, grad, g,
                                  this->lr_, this->eps_);
 }

@@ -34,12 +34,15 @@ __global__ void kernel_nesterov_update(const int num, T *data, const T *grad,
 template <typename T>
 void NesterovCuda<T>::update_impl(const string &key, VariablePtr param) {
   Size_t size = param->size();
-  VariablePtr v_ = this->state_.at(key);
+  auto &state = this->states_.at(key);
+  VariablePtr v_ = state.pstate["m"];
   T *v = v_->cast_data_and_get_pointer<T>(this->ctx_);
   const T *grad = param->get_grad_pointer<T>(this->ctx_);
   T *data = param->cast_data_and_get_pointer<T>(this->ctx_);
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_nesterov_update, size, data, grad, v,
                                  this->lr_, this->momentum_);
+  auto &t = state.t;
+  t = std::min(t + 1, std::numeric_limits<uint32_t>::max() - 1);
 }
 
 NBLA_DEF_WEIGHT_DECAY(NesterovCuda, weight_decay_cuda);

@@ -33,6 +33,9 @@ void SgdCuda<T>::update_impl(const string &key, VariablePtr param) {
   const T *grad = param->get_grad_pointer<T>(this->ctx_);
   T *data = param->cast_data_and_get_pointer<T>(this->ctx_);
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_update, size, data, grad, this->lr_);
+  auto &state = this->states_.at(key);
+  auto &t = state.t;
+  t = std::min(t + 1, std::numeric_limits<uint32_t>::max() - 1);
 }
 
 NBLA_DEF_WEIGHT_DECAY(SgdCuda, weight_decay_cuda);
