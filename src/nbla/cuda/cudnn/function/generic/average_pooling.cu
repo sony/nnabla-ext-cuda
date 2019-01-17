@@ -32,17 +32,34 @@ void AveragePoolingCudaCudnn<T>::setup_impl(const Variables &inputs,
   Shape_t inshape = inputs[0]->shape();
   Shape_t outshape = outputs[0]->shape();
   const int kernel_base = inshape.size() - this->kernel_.size();
-  const int hx = inshape[kernel_base + 0];
-  const int wx = inshape[kernel_base + 1];
-  const int hy = outshape[kernel_base + 0];
-  const int wy = outshape[kernel_base + 1];
-  const int n_map = inputs[0]->size() / inputs[0]->size(kernel_base);
-  NBLA_CUDNN_CHECK(cudnnSetTensor4dDescriptor(input_desc_, CUDNN_TENSOR_NCHW,
-                                              cudnn_data_type<T>::type(), n_map,
-                                              1, hx, wx));
-  NBLA_CUDNN_CHECK(cudnnSetTensor4dDescriptor(output_desc_, CUDNN_TENSOR_NCHW,
-                                              cudnn_data_type<T>::type(), n_map,
-                                              1, hy, wy));
+  const int n = inputs[0]->size() / inputs[0]->size(kernel_base);
+  auto dtype = cudnn_data_type<T>::type();
+
+  if (this->kernel_.size() == 2) {
+    const int xh = inshape[kernel_base + 0];
+    const int xw = inshape[kernel_base + 1];
+    const int yh = outshape[kernel_base + 0];
+    const int yw = outshape[kernel_base + 1];
+    NBLA_CUDNN_CHECK(cudnnSetTensor4dDescriptor(input_desc_, CUDNN_TENSOR_NCHW,
+                                                dtype, n, 1, xh, xw));
+    NBLA_CUDNN_CHECK(cudnnSetTensor4dDescriptor(output_desc_, CUDNN_TENSOR_NCHW,
+                                                dtype, n, 1, yh, yw));
+  } else if (this->kernel_.size() == 3) {
+    const int xd = inshape[kernel_base + 0];
+    const int xh = inshape[kernel_base + 1];
+    const int xw = inshape[kernel_base + 2];
+    const int yd = outshape[kernel_base + 0];
+    const int yh = outshape[kernel_base + 1];
+    const int yw = outshape[kernel_base + 2];
+    const int xshape[5] = {1, n, xd, xh, xw};
+    const int yshape[5] = {1, n, yd, yh, yw};
+    const int xstrides[5] = {n * xd * xh * xw, xd * xh * xw, xh * xw, xw, 1};
+    const int ystrides[5] = {n * yd * yh * yw, yd * yh * yw, yh * yw, yw, 1};
+    NBLA_CUDNN_CHECK(
+        cudnnSetTensorNdDescriptor(input_desc_, dtype, 5, xshape, xstrides));
+    NBLA_CUDNN_CHECK(
+        cudnnSetTensorNdDescriptor(output_desc_, dtype, 5, yshape, ystrides));
+  }
 }
 
 template <class T>
