@@ -23,14 +23,17 @@ RUN yum install -y \
     epel-release \
     yum-utils \
     && yum install -y \
-    curl \
-    hdf5 \
-    hdf5-devel \
-    unzip \
-    wget \
-    zip \
-    zlib-static \
-    && yum clean all
+        cmake3 \
+        curl \
+        hdf5 \
+        hdf5-devel \
+        unzip \
+        wget \
+        zip \
+        zlib-static \
+    && yum clean all \
+    && ln -s /usr/bin/cmake3 /usr/local/bin/cmake \
+    && ln -s /usr/bin/ctest3 /usr/local/bin/ctest
 
 # ----------------------------------------------------------------------------
 # TODO: More sustainable way of installing gcc 5.x.
@@ -68,25 +71,7 @@ RUN REPO_BASE=http://mirror.centos.org/centos/6/sclo/x86_64/rh/git19 \
 
 ENV PATH=/opt/rh/git19/root/usr/bin:/opt/rh/devtoolset-4/root/usr/bin:$PATH
 ENV LD_LIBRARY_PATH=/opt/rh/gti19/root/usr/lib64:/opt/rh/devtoolset-4/root/usr/lib64:/opt/rh/devtoolset-4/root/usr/lib:$LD_LIBRARY_PATH
-ENV PKG_CONFIG_PATH=/opt/rh/git19/root/usr/lib64/pkgconfig:$PKG_CONFIG_PATH
-
-################################################## cmake
-RUN mkdir /tmp/deps \
-    && cd /tmp/deps \
-    && yum install -y cmake3 \
-    && curl -L https://cmake.org/files/v3.12/cmake-3.12.2.tar.gz -o cmake-3.12.2.tar.gz \
-    && tar xf cmake-3.12.2.tar.gz \
-    && cd cmake-3.12.2 \
-    && mkdir build \
-    && cd build \
-    && cmake3 -DBUILD_TESTING=FALSE .. \
-    && make \
-    && make install \
-    && yum remove -y cmake libarchive \
-    && yum clean all \
-    && rm -rf /var/cache/yum/* \
-    && cd / \
-    && rm -rf /tmp/*
+ENV PKG_CONFIG_PATH=/opt/rh/git19/root/usr/lib64/pkgconfig:${PKG_CONFIG_PATH}
 
 ################################################## protobuf
 RUN mkdir /tmp/deps \
@@ -151,9 +136,19 @@ RUN umask 0 \
     && bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/miniconda3 \
     && rm -rf Miniconda3-latest-Linux-x86_64.sh \
     && PATH=/opt/miniconda3/bin:$PATH \
-    && conda install python=${PYVERNAME} \
-    && conda update -y --all \
-    && if test ${PYTHON_VERSION_MAJOR} -eq 3 -a ${PYTHON_VERSION_MINOR} -eq 7; then echo conda install scandir; else conda install scandir; fi \
+    && if test ${PYTHON_VERSION_MAJOR} -eq 3 -a ${PYTHON_VERSION_MINOR} -eq 5;\
+       then \
+            conda install conda=4.5.11 python=${PYVERNAME}; \
+       else \
+            conda install python=${PYVERNAME}; \
+            conda update -y --all; \
+       fi \
+    && if test ${PYTHON_VERSION_MAJOR} -eq 3 -a ${PYTHON_VERSION_MINOR} -eq 7; \
+       then \
+           echo conda install scandir; \
+       else \
+           conda install scandir; \
+       fi \
     && echo Try to install setuptools few times to avoid conda problem. \
     && (pip install --no-cache-dir -U setuptools || pip install --no-cache-dir -U setuptools || pip install --no-cache-dir -U setuptools || true) \
     && pip install --no-cache-dir -U -r /tmp/deps/requirements.txt \
