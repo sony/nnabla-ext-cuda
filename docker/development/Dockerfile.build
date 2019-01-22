@@ -129,25 +129,19 @@ ENV PYVERNAME=${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}
 
 ADD python/requirements.txt /tmp/deps/
 
+ENV PATH /opt/miniconda3/bin:$PATH
 RUN umask 0 \
     && mkdir -p /tmp/deps \
     && cd /tmp/deps \
     && wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh \
     && bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/miniconda3 \
     && rm -rf Miniconda3-latest-Linux-x86_64.sh \
-    && PATH=/opt/miniconda3/bin:$PATH \
     && if test ${PYTHON_VERSION_MAJOR} -eq 3 -a ${PYTHON_VERSION_MINOR} -eq 5;\
        then \
-            conda install conda=4.5.11 python=${PYVERNAME}; \
+            conda install -y conda=4.5.11 python=${PYVERNAME}; \
        else \
-            conda install python=${PYVERNAME}; \
+            conda install -y python=${PYVERNAME}; \
             conda update -y --all; \
-       fi \
-    && if test ${PYTHON_VERSION_MAJOR} -eq 3 -a ${PYTHON_VERSION_MINOR} -eq 7; \
-       then \
-           echo conda install scandir; \
-       else \
-           conda install scandir; \
        fi \
     && echo Try to install setuptools few times to avoid conda problem. \
     && (pip install --no-cache-dir -U setuptools || pip install --no-cache-dir -U setuptools || pip install --no-cache-dir -U setuptools || true) \
@@ -158,4 +152,3 @@ RUN umask 0 \
     && cd / \
     && rm -rf /tmp/*
 
-ENV PATH /opt/miniconda3/bin:$PATH
