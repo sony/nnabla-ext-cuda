@@ -225,7 +225,9 @@ void CudnnConvResource::find_forward_algorithm(int workspace_limit,
   auto cudnn_handle = cudnn_handle_manager->handle(device);
   auto get_max_count = cudnnGetConvolutionForwardAlgorithmMaxCount;
   auto find_algorithm = cudnnFindConvolutionForwardAlgorithm;
+  auto get_workspace = cudnnGetConvolutionForwardWorkspaceSize;
   int max_results, num_results;
+  size_t workspace_size;
 
   NBLA_CUDNN_CHECK(get_max_count(cudnn_handle, &max_results));
 
@@ -248,10 +250,13 @@ void CudnnConvResource::find_forward_algorithm(int workspace_limit,
   for (int i = 0; i < num_results; i++) {
     auto &perf_result = perf_results[i];
     if (CUDNN_STATUS_SUCCESS == perf_result.status) {
-      if (check_workspace_limit(workspace_limit, perf_result.memory)) {
+      NBLA_CUDNN_CHECK(get_workspace(cudnn_handle, this->x_desc, this->w_desc,
+                                     this->conv_desc, this->y_desc,
+                                     perf_result.algo, &workspace_size));
+      if (check_workspace_limit(workspace_limit, workspace_size)) {
         if (check_determinism(deterministic, perf_result.determinism)) {
           this->fwd_algo = perf_result.algo;
-          this->fwd_workspace_size = perf_result.memory;
+          this->fwd_workspace_size = workspace_size;
           return;
         }
       }
@@ -270,7 +275,9 @@ void CudnnConvResource::find_backward_data_algorithm(int workspace_limit,
   auto cudnn_handle = cudnn_handle_manager->handle(device);
   auto get_max_count = cudnnGetConvolutionBackwardDataAlgorithmMaxCount;
   auto find_algorithm = cudnnFindConvolutionBackwardDataAlgorithm;
+  auto get_workspace = cudnnGetConvolutionBackwardDataWorkspaceSize;
   int max_results, num_results;
+  size_t workspace_size;
 
   NBLA_CUDNN_CHECK(get_max_count(cudnn_handle, &max_results));
 
@@ -293,10 +300,13 @@ void CudnnConvResource::find_backward_data_algorithm(int workspace_limit,
   for (int i = 0; i < num_results; i++) {
     auto &perf_result = perf_results[i];
     if (CUDNN_STATUS_SUCCESS == perf_result.status) {
-      if (check_workspace_limit(workspace_limit, perf_result.memory)) {
+      NBLA_CUDNN_CHECK(get_workspace(cudnn_handle, this->w_desc, this->y_desc,
+                                     this->conv_desc, this->x_desc,
+                                     perf_result.algo, &workspace_size));
+      if (check_workspace_limit(workspace_limit, workspace_size)) {
         if (check_determinism(deterministic, perf_result.determinism)) {
           this->bwd_data_algo = perf_result.algo;
-          this->bwd_data_workspace_size = perf_result.memory;
+          this->bwd_data_workspace_size = workspace_size;
           return;
         }
       }
@@ -315,7 +325,9 @@ void CudnnConvResource::find_backward_filter_algorithm(int workspace_limit,
   auto cudnn_handle = cudnn_handle_manager->handle(device);
   auto get_max_count = cudnnGetConvolutionBackwardFilterAlgorithmMaxCount;
   auto find_algorithm = cudnnFindConvolutionBackwardFilterAlgorithm;
+  auto get_workspace = cudnnGetConvolutionBackwardFilterWorkspaceSize;
   int max_results, num_results;
+  size_t workspace_size;
 
   NBLA_CUDNN_CHECK(get_max_count(cudnn_handle, &max_results));
 
@@ -338,10 +350,13 @@ void CudnnConvResource::find_backward_filter_algorithm(int workspace_limit,
   for (int i = 0; i < num_results; i++) {
     auto &perf_result = perf_results[i];
     if (CUDNN_STATUS_SUCCESS == perf_result.status) {
-      if (check_workspace_limit(workspace_limit, perf_result.memory)) {
+      NBLA_CUDNN_CHECK(get_workspace(cudnn_handle, this->x_desc, this->y_desc,
+                                     this->conv_desc, this->w_desc,
+                                     perf_result.algo, &workspace_size));
+      if (check_workspace_limit(workspace_limit, workspace_size)) {
         if (check_determinism(deterministic, perf_result.determinism)) {
           this->bwd_filter_algo = perf_result.algo;
-          this->bwd_filter_workspace_size = perf_result.memory;
+          this->bwd_filter_workspace_size = workspace_size;
           return;
         }
       }
