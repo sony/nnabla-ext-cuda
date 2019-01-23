@@ -20,4 +20,4 @@ RUN umask 0 \
 
 ENV PATH /opt/miniconda3/bin:$PATH
 
-RUN pip install onnx nnabla-ext-cuda80
+RUN pip install onnx==1.3.0 nnabla-ext-cuda80
