@@ -22,13 +22,12 @@ RUN umask 0 \
     && conda install python=${PYVERNAME} \
     && conda update -y --all \
     && conda install \
-             scandir \
              pip \
              wheel \
 	     boto3 \
 	     h5py \
 	     mako \
-	     numpy \
+	     'numpy<1.16' \
 	     protobuf \
 	     tqdm \
 	     ipython \
