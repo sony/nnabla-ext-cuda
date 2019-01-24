@@ -46,16 +46,19 @@ void MeanCuda<T>::forward_impl_reduce(const T *x_, T *y_, int outer_size,
     cuda_gemv<Tc>(this->device_, y, x, reduction_size, outer_size, true, ones,
                   reduction_size, scale, 0);
   } else if (reduction_size > 1024) {
+    const int threads = NBLA_CUDA_NUM_THREADS;
+    const int blocks = min(NBLA_CUDA_GET_BLOCKS(reduction_size), 1024);
+    shared_ptr<CudaCachedArray> arr_buff =
+        make_shared<CudaCachedArray>(blocks, get_dtype<Tc>(), this->ctx_);
+    Tc *buff = arr_buff->pointer<Tc>();
     while (outer_size--) {
-      const int threads = NBLA_CUDA_NUM_THREADS;
-      const int blocks = min(NBLA_CUDA_GET_BLOCKS(reduction_size), 1024);
-      shared_ptr<CudaCachedArray> arr_buff =
-          make_shared<CudaCachedArray>(blocks, get_dtype<Tc>(), this->ctx_);
-      Tc *buff = arr_buff->pointer<Tc>();
-      kernel_reduce_per_block<<<blocks, threads>>>(reduction_size, x, buff);
+      kernel_reduce_per_block<Tc><<<blocks, threads>>>(reduction_size, x, buff,
+                                                       scale);
       NBLA_CUDA_KERNEL_CHECK();
-      kernel_reduce_per_block<Tc><<<1, 1024>>>(blocks, buff, y, scale);
+      kernel_reduce_per_block<Tc><<<1, 1024>>>(blocks, buff, y);
       NBLA_CUDA_KERNEL_CHECK();
+      x += reduction_size;
+      y += 1;
     }
   } else {
     while (outer_size--) {
