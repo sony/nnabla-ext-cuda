@@ -74,6 +74,13 @@ struct NBLA_ALIGN(2) HalfCuda {
     return *this;
   }
 #if NBLA_CUDA_HALF
+  HALF_CUDA_PREFIX const unsigned short &as_bits() const {
+#if CUDA_VERSION >= 9000
+    return ((__half_raw)h).x;
+#else
+    return h.x;
+#endif
+  }
 #if CUDA_VERSION >= 9000
 #define STORE_FLOAT2HALF_RN(F) h = __float2half_rn(F)
 #else // CUDA_VERSION >= 9000
@@ -474,6 +481,12 @@ HALF_CUDA_PREFIX nbla::HalfCuda pow(const nbla::HalfCuda &a,
 }
 HALF_CUDA_PREFIX nbla::HalfCuda pow(const nbla::HalfCuda &a, int &b) {
   return pow((float)a, b);
+}
+HALF_CUDA_PREFIX int isnan(const nbla::HalfCuda &x) {
+  return (x.as_bits() & 0x7FFF) > 0x7C00;
+}
+HALF_CUDA_PREFIX int isinf(const nbla::HalfCuda &x) {
+  return (x.as_bits() & 0x7FFF) == 0x7C00;
 }
 #endif // NBLA_CUDA_HALF
 
