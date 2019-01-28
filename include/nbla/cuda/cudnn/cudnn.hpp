@@ -18,6 +18,9 @@
 #define __NBLA_CUDA_CUDNN_HPP__
 
 #include <cudnn.h>
+#if CUDNN_VERSION < 7000
+#error cuDNN 6.x is no longer supported. Contributions to make cuDNN 6.x compatible are welcome.
+#endif
 
 #include <nbla/common.hpp>
 #include <nbla/cuda/defs.hpp>
