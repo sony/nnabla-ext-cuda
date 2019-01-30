@@ -34,7 +34,7 @@ if(NOT IS_ABSOLUTE ${NNABLA_DIR})
 endif()
 
 file(STRINGS ${NNABLA_DIR}/VERSION.txt versions NEWLINE_CONSUME)
-string(REGEX REPLACE [[^([A-z0-9.\-_]+).*$]] [[\1]] version ${versions})
+string(REGEX REPLACE [[^([A-z0-9.\+\-_]+).*$]] [[\1]] version ${versions})
 string(REGEX REPLACE [[^([0-9]+)\.([0-9]+)\.(.*)$]] [[\1]] version_major ${version})
 string(REGEX REPLACE [[^([0-9]+)\.([0-9]+)\.(.*)$]] [[\2]] version_minor ${version})
 string(REGEX REPLACE [[^([0-9]+)\.([0-9]+)\.(.*)$]] [[\3]] version_patch ${version})
