@@ -19,6 +19,28 @@
 
 namespace nbla {
 
+namespace min_cuda {
+
+template <typename T>
+__global__ void adjust_index(const int size, T *data,
+                             const int reduction_size) {
+  NBLA_CUDA_KERNEL_LOOP(i, size) { data[i] -= i * reduction_size; }
+}
+
+} // namespace min_cuda
+
+template <typename T>
+void MinCuda<T>::forward_impl(const Variables &inputs,
+                              const Variables &outputs) {
+  Min<T>::forward_impl(inputs, outputs);
+  if (this->with_index_ || this->only_index_) {
+    Variable *idx_var = this->only_index_ ? outputs[0] : outputs[1];
+    auto idx_ptr = idx_var->cast_data_and_get_pointer<size_t>(this->ctx_);
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(min_cuda::adjust_index, idx_var->size(),
+                                   idx_ptr, this->reduction_size_);
+  }
+}
+
 template <typename T>
 void MinCuda<T>::forward_impl_reduce(const T *x_, T *y_, int outer_size,
                                      int reduction_size) {
