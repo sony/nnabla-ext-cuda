@@ -18,11 +18,11 @@
 #define __NBLA_CUDA_CUDA_HPP__
 
 #include <nbla/cuda/common.hpp>
-#include <nbla/cuda/cuda_memory.hpp>
 #include <nbla/cuda/defs.hpp>
 #include <nbla/cuda/init.hpp>
+#include <nbla/cuda/memory/cuda_memory.hpp>
 #include <nbla/exception.hpp>
-#include <nbla/memory.hpp>
+#include <nbla/memory/allocator.hpp>
 #include <nbla/singleton_manager.hpp>
 
 #include <mutex>
@@ -68,11 +68,11 @@ public:
 
   /** Get a caching allocator.
    */
-  CachingAllocator *caching_allocator();
+  shared_ptr<Allocator> caching_allocator();
 
   /** Get a no-cache allocator.
    */
-  CachingAllocator *no_cache_allocator();
+  shared_ptr<Allocator> naive_allocator();
 
 protected:
   std::mutex mtx_cublas_;
@@ -84,8 +84,14 @@ protected:
   unordered_map<int, unordered_map<unsigned int, vector<cudaEvent_t>>>
       cuda_unused_events_;
   vector<string> array_classes_; ///< Available array classes
-  unique_ptr<CachingAllocator> no_cache_allocator_;
-  unique_ptr<CachingAllocator> caching_allocator_;
+
+  /*
+    NOTE: Allocators must be retained as shared_ptr in order to be passed to a
+    CachedMemory instance to prevernt destroying allocators before destroying
+    memory.
+   */
+  shared_ptr<Allocator> naive_allocator_;
+  shared_ptr<Allocator> caching_allocator_;
 
 private:
   friend SingletonManager;

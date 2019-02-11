@@ -22,23 +22,32 @@
 #include <nbla/array.hpp>
 #include <nbla/common.hpp>
 #include <nbla/cuda/defs.hpp>
-#include <nbla/memory.hpp>
+#include <nbla/memory/memory.hpp>
 
 namespace nbla {
 
-using std::vector;
-using std::shared_ptr;
+/** CUDA memory implementation.
 
-/** CUDA Memory
- */
+    A CUDA device memory block allocated by cudaMalloc function is managed by
+    this.
+
+    The device passed to constructor is a device id as as string such as "0" and
+    "1".
+
+    \ingroup MemoryImplGrp
+*/
 class NBLA_CUDA_API CudaMemory : public Memory {
-protected:
+private:
+  CudaMemory(size_t bytes, const string &device, void *ptr);
   int device_num_;
 
 public:
-  CudaMemory(Size_t bytes, const string &device);
-  virtual bool allocate();
-  virtual ~CudaMemory();
+  CudaMemory(size_t bytes, const string &device);
+  ~CudaMemory();
+  bool alloc_impl() override;
+  shared_ptr<Memory> divide_impl(size_t second_start) override;
+  void merge_next_impl(Memory *from) override;
+  void merge_prev_impl(Memory *from) override;
 };
 }
 #endif

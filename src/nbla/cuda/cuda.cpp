@@ -16,9 +16,17 @@
 #include <nbla/cuda/utils/random.hpp>
 #include <nbla/singleton_manager-internal.hpp>
 
+#include <nbla/cuda/memory/cuda_memory.hpp>
+
+#include <nbla/memory/caching_allocator_with_buckets.hpp>
+#include <nbla/memory/naive_allocator.hpp>
+
 namespace nbla {
 
-Cuda::Cuda() {}
+Cuda::Cuda()
+    : naive_allocator_(make_shared<NaiveAllocator<CudaMemory>>()),
+      caching_allocator_(
+          make_shared<CachingAllocatorWithBuckets<CudaMemory>>()) {}
 
 Cuda::~Cuda() {
   for (auto handle : this->cublas_handles_) {
@@ -144,10 +152,8 @@ void Cuda::register_array_class(const string &name) {
   array_classes_.push_back(name);
 }
 
-CachingAllocator *Cuda::caching_allocator() { return caching_allocator_.get(); }
-CachingAllocator *Cuda::no_cache_allocator() {
-  return no_cache_allocator_.get();
-}
+shared_ptr<Allocator> Cuda::caching_allocator() { return caching_allocator_; }
+shared_ptr<Allocator> Cuda::naive_allocator() { return naive_allocator_; }
 
 NBLA_INSTANTIATE_SINGLETON(NBLA_CUDA_API, Cuda);
 }
