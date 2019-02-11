@@ -430,8 +430,9 @@ HALF_CUDA_PREFIX HalfCuda pow(const HalfCuda &a, const HalfCuda &b) {
 HALF_CUDA_PREFIX HalfCuda pow(const HalfCuda &a, int &b) {
   return std::pow((float)a, b);
 }
-HALF_CUDA_PREFIX nbla::HalfCuda atan2(const nbla::HalfCuda &a, const nbla::HalfCuda &b) {
-  return std::atan2((float)a,(float)b);
+HALF_CUDA_PREFIX nbla::HalfCuda atan2(const nbla::HalfCuda &a,
+                                      const nbla::HalfCuda &b) {
+  return std::atan2((float)a, (float)b);
 }
 #undef MATHF
 #undef MATHF_F
@@ -491,8 +492,9 @@ HALF_CUDA_PREFIX int isnan(const nbla::HalfCuda &x) {
 HALF_CUDA_PREFIX int isinf(const nbla::HalfCuda &x) {
   return (x.as_bits() & 0x7FFF) == 0x7C00;
 }
-HALF_CUDA_PREFIX nbla::HalfCuda atan2(const nbla::HalfCuda &a, const nbla::HalfCuda &b) {
-  return atan2((float)a,(float)b);
+HALF_CUDA_PREFIX nbla::HalfCuda atan2(const nbla::HalfCuda &a,
+                                      const nbla::HalfCuda &b) {
+  return atan2((float)a, (float)b);
 }
 #endif // NBLA_CUDA_HALF
 
