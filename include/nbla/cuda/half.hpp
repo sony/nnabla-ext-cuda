@@ -74,7 +74,7 @@ struct NBLA_ALIGN(2) HalfCuda {
     return *this;
   }
 #if NBLA_CUDA_HALF
-  HALF_CUDA_PREFIX const unsigned short &as_bits() const {
+  HALF_CUDA_PREFIX unsigned short as_bits() const {
 #if CUDA_VERSION >= 9000
     return ((__half_raw)h).x;
 #else
