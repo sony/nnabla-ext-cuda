@@ -144,24 +144,9 @@ void Cuda::register_array_class(const string &name) {
   array_classes_.push_back(name);
 }
 
-MemoryCache<CudaMemory> &Cuda::memcache() { return memcache_; }
-
-void *Cuda::get_workspace(Size_t size_in_bytes, int device) {
-  if (size_in_bytes == 0) {
-    return nullptr;
-  }
-  std::lock_guard<decltype(mtx_workspace_)> lock(mtx_workspace_);
-  auto it = workspace_.find(device);
-  if (it == workspace_.end()) {
-    workspace_[device] =
-        make_shared<CudaMemory>(size_in_bytes, std::to_string(device));
-  } else if (it->second->size() < size_in_bytes) {
-    workspace_.erase(it);
-    workspace_[device] =
-        make_shared<CudaMemory>(size_in_bytes, std::to_string(device));
-  }
-  it = workspace_.find(device);
-  return it->second->ptr();
+CachingAllocator *Cuda::caching_allocator() { return caching_allocator_.get(); }
+CachingAllocator *Cuda::no_cache_allocator() {
+  return no_cache_allocator_.get();
 }
 
 NBLA_INSTANTIATE_SINGLETON(NBLA_CUDA_API, Cuda);

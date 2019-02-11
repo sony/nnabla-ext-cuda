@@ -66,38 +66,26 @@ public:
    */
   void register_array_class(const string &name);
 
-  /** Get a CudaMemoryCache instance.
+  /** Get a caching allocator.
    */
-  MemoryCache<CudaMemory> &memcache();
+  CachingAllocator *caching_allocator();
 
-  /** Get workspace memory.
-
-      It returns nullptr if size_in_bytes is 0.
-
-      @param[in] size_in_bytes Size of CUDA device memory requested.
-      @param[in] device GPU ID.
-
-      @note It internally holds workspace memory with maximum size over
-            sizes previously requested. Every time the requested size exceeds
-            the maximum size, it will reallocate a new memory region, which
-            will cause memory allocation overhead and device synchronization.
-
+  /** Get a no-cache allocator.
    */
-  void *get_workspace(Size_t size_in_bytes, int device);
+  CachingAllocator *no_cache_allocator();
 
 protected:
   std::mutex mtx_cublas_;
   std::mutex mtx_curand_;
-  std::mutex mtx_workspace_;
   std::mutex mtx_event_;
   unordered_map<int, cublasHandle_t>
       cublas_handles_; ///< cuBLAS handles for each device.
   unordered_map<int, curandGenerator_t> curand_generators_;
   unordered_map<int, unordered_map<unsigned int, vector<cudaEvent_t>>>
       cuda_unused_events_;
-  vector<string> array_classes_;     ///< Available array classes
-  MemoryCache<CudaMemory> memcache_; ///< CUDA memory cache.
-  unordered_map<int, shared_ptr<CudaMemory>> workspace_; ///< Workspace memory.
+  vector<string> array_classes_; ///< Available array classes
+  unique_ptr<CachingAllocator> no_cache_allocator_;
+  unique_ptr<CachingAllocator> caching_allocator_;
 
 private:
   friend SingletonManager;
