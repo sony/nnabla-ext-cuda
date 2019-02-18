@@ -58,6 +58,9 @@ CELU:
 PReLU:
   float: [float]
   half: [Half]
+GELU:
+  float: [float]
+  half: [Half]
 BatchNormalization:
   float: [float]
   half: [Half]
