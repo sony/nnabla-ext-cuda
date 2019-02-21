@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 #ifndef NBLA_CUDA_FUNCTION_GELU_HPP
 #define NBLA_CUDA_FUNCTION_GELU_HPP
 
