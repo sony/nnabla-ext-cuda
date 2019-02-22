@@ -145,7 +145,7 @@ void cuda_gemm_strided_batched(int device, T *z, bool transpose_z, const T *x,
 #endif
 
 template <typename T>
-void cuda_getrf_batched(int device, int n, T *x, int *pivot, int *info,
+void cuda_getrf_batched(int device, int n, const T **x, int *pivot, int *info,
                         int batchSize) {
   _TD();
   cublasHandle_t handle = SingletonManager::get<Cuda>()->cublas_handle(device);
@@ -154,12 +154,12 @@ void cuda_getrf_batched(int device, int n, T *x, int *pivot, int *info,
 }
 
 template <typename T>
-void cuda_getri_batched(int device, int n, T *x, int *pivot, T *y, int *info,
-                        int batchSize) {
+void cuda_getri_batched(int device, int n, const T **x, int *pivot, T **y,
+                        int *info, int batchSize) {
   _TD();
   cublasHandle_t handle = SingletonManager::get<Cuda>()->cublas_handle(device);
   // optimizing lda and ldc leaves for future improvement
-  cublas_getrf_batched<Tc>(handle, n, x, n, pivot, y, n, info, batchSize);
+  cublas_getri_batched<Tc>(handle, n, x, n, pivot, y, n, info, batchSize);
 }
 }
 #endif
