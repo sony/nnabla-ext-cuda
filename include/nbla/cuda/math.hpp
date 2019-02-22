@@ -145,12 +145,15 @@ void cuda_gemm_strided_batched(int device, T *z, bool transpose_z, const T *x,
 #endif
 
 template <typename T>
-void cuda_getrf_batched(int device, int n, const T **x, int *pivot, int *info,
+void cuda_getrf_batched(int device, int n, T **x, int *pivot, int *info,
                         int batchSize) {
   _TD();
   cublasHandle_t handle = SingletonManager::get<Cuda>()->cublas_handle(device);
   // optimizing lda leaves for future improvement
-  cublas_getrf_batched<Tc>(handle, n, x, n, pivot, info, batchSize);
+  cublas_getrf_batched<Tc>(handle, n, reinterpret_cast<Tc **>(x), n,
+                           reinterpret_cast<CudaNativeType<int>::type*>(pivot),
+                           reinterpret_cast<CudaNativeType<int>::type*>(info),
+                           batchSize);
 }
 
 template <typename T>
@@ -159,7 +162,11 @@ void cuda_getri_batched(int device, int n, const T **x, int *pivot, T **y,
   _TD();
   cublasHandle_t handle = SingletonManager::get<Cuda>()->cublas_handle(device);
   // optimizing lda and ldc leaves for future improvement
-  cublas_getri_batched<Tc>(handle, n, x, n, pivot, y, n, info, batchSize);
+  cublas_getri_batched<Tc>(handle, n, reinterpret_cast<const Tc **>(x), n,
+                           reinterpret_cast<CudaNativeType<int>::type*>(pivot),
+                           reinterpret_cast<Tc **>(y), n,
+                           reinterpret_cast<CudaNativeType<int>::type*>(info),
+                           batchSize);
 }
 }
 #endif

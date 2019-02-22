@@ -48,7 +48,7 @@ void cublas_gemm_strided_batched(cublasHandle_t handle, cublasOperation_t op_x,
                                  T *z, int ldc, int stride_c, int batchCount);
 
 template <typename T>
-void cublas_getrf_batched(cublasHandle_t handle, int n, const T **x, int lda,
+void cublas_getrf_batched(cublasHandle_t handle, int n, T **x, int lda,
                           int *pivot, int *info, int batchSize);
 
 template <typename T>
