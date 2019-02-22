@@ -47,13 +47,16 @@ using std::map;
 
 /**
 Check CUDA error for synchronous call
+cudaGetLastError is used to clear previous error happening at "condition".
 */
 #define NBLA_CUDA_CHECK(condition)                                             \
   {                                                                            \
     cudaError_t error = condition;                                             \
     if (error != cudaSuccess) {                                                \
-      NBLA_ERROR(error_code::target_specific, "(%s) failed with \"%s\".",      \
-                 #condition, cudaGetErrorString(error));                       \
+      cudaGetLastError();                                                      \
+      NBLA_ERROR(error_code::target_specific, "(%s) failed with \"%s\" (%s).", \
+                 #condition, cudaGetErrorString(error),                        \
+                 cudaGetErrorName(error));                                     \
     }                                                                          \
   }
 
