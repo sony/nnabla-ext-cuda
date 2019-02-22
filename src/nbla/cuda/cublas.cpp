@@ -325,17 +325,17 @@ void cublas_gemm_strided_batched<half>(
 // ----------------------------------------------------------------------
 template <>
 void cublas_getrf_batched<double>(
-    cublasHandle_t handle, int n, double **x, int lda, int *pivot, int *info,
-    int batchSize) {
-  NBLA_CUBLAS_CHECK(cublasDgetrfBatched(handle, n, x, lda, pivot, info,
-                                        batchSize);
+    cublasHandle_t handle, int n, const double **x, int lda, int *pivot,
+    int *info, int batchSize) {
+  NBLA_CUBLAS_CHECK(cublasDgetrfBatched(handle, n, (double* const*) x, lda,
+                                        pivot, info, batchSize));
 }
 template <>
 void cublas_getrf_batched<float>(
-    cublasHandle_t handle, int n, float **x, int lda, int *pivot, int *info,
-    int batchSize) {
-  NBLA_CUBLAS_CHECK(cublasSgetrfBatched(handle, n, x, lda, pivot, info,
-                                        batchSize);
+    cublasHandle_t handle, int n, const float **x, int lda, int *pivot,
+    int *info, int batchSize) {
+  NBLA_CUBLAS_CHECK(cublasSgetrfBatched(handle, n,(float* const*) x, lda,
+                                        pivot, info, batchSize));
 }
 
 // ----------------------------------------------------------------------
@@ -343,16 +343,16 @@ void cublas_getrf_batched<float>(
 // ----------------------------------------------------------------------
 template <>
 void cublas_getri_batched<double>(
-    cublasHandle_t handle, int n, double **x, int lda, int *pivot, double **y,
-    int ldc, int *info, int batchSize) {
+    cublasHandle_t handle, int n, const double **x, int lda, int *pivot,
+    double **y, int ldc, int *info, int batchSize) {
   NBLA_CUBLAS_CHECK(cublasDgetriBatched(handle, n, x, lda, pivot, y, ldc, info,
-                                        batchSize);
+                                        batchSize));
 }
 template <>
 void cublas_getri_batched<float>(
-    cublasHandle_t handle, int n, float **x, int lda, int *pivot, float **y,
-    int ldc, int *info, int batchSize) {
+    cublasHandle_t handle, int n, const float **x, int lda, int *pivot,
+    float **y, int ldc, int *info, int batchSize) {
   NBLA_CUBLAS_CHECK(cublasSgetriBatched(handle, n, x, lda, pivot, y, ldc, info,
-                                        batchSize);
+                                        batchSize));
 }
 }
