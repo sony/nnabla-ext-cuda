@@ -288,7 +288,7 @@ Reshape:
   half: [Half]
 Inverse:
   float: [float]
-  half: [Half]
+#  half: [Half]
 MatrixDiag:
   float: [float]
   half: [Half]
