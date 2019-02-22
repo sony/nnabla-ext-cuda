@@ -42,7 +42,7 @@ protected:
   int dim_;
   // for backward
   shared_ptr<Function> f_batch_matmul1_, f_batch_matmul2_;
-  VariablePtr inv_x_, matmul1_out_;
+  VariablePtr inv_x_, matmul1_out_, gx_, gy_;
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,

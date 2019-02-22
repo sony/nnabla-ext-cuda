@@ -16,6 +16,7 @@
 #include <nbla/cuda/array/cuda_array.hpp>
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/function/inverse.hpp>
+#include <nbla/function/batch_matmul.hpp>
 #include <nbla/cuda/math.hpp>
 #include <nbla/variable.hpp>
 
@@ -32,11 +33,10 @@ __global__ void kernel_set_batch_pointers(int batchSize, int n, const T **ptr,
 #define NBLA_GET_BATCH_POINTERS(PTR, NAME, BATCH, CONST)                       \
   CudaCachedArray list_##PTR(sizeof(Tc *) * BATCH, dtypes::BYTE,               \
                              this->ctx_);                                      \
-  CONST Tc **dev_list_##PTR =                                                  \
+  CONST Tc **dev_list_##NAME =                                                 \
       reinterpret_cast<CONST Tc **>(list_##PTR.pointer<void>());               \
-  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_set_batch_pointers, BATCH,             \
-                                 _dim,                                         \
-                                 (const T **)dev_list_##PTR, (const T *)PTR)   \
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_set_batch_pointers, BATCH, dim_,       \
+                                 (const T **)dev_list_##NAME, (const T *)PTR)
 
 // ----------------------------------------------------------------------
 // With cublas<t>getrfBatched and cublas<t>getriBatched
@@ -44,14 +44,18 @@ __global__ void kernel_set_batch_pointers(int batchSize, int n, const T **ptr,
 template <typename T>
 void InverseCuda<T>::setup_impl(const Variables &inputs,
                                       const Variables &outputs) {
-  Inverse<T>::setup_imple(inputs, outputs);
+  Inverse<T>::setup_impl(inputs, outputs);
   // for backward
   inv_x_ = make_shared<Variable>();
   matmul1_out_ = make_shared<Variable>();
+  gy_ = make_shared<Variable>(outputs[0]->grad());
+  gx_ = make_shared<Variable>(inputs[0]->grad());
   f_batch_matmul1_ = create_BatchMatmul(this->ctx_, true, false);
-  f_batch_matmul1_->setup(Variables{inv_x_, make_shared<Variable>(outputs[0]->grad())}, Variables{matmul1_out});
+  f_batch_matmul1_->setup(Variables{inv_x_.get(), gy_.get()},
+                          Variables{matmul1_out_.get()});
   f_batch_matmul2_ = create_BatchMatmul(this->ctx_, false, true);
-  f_batch_matmul2_->setup(Variables{matmul1_out_, inv_x_}, Variables{make_shared<Variable>(inputs[0]->grad())});
+  f_batch_matmul2_->setup(Variables{matmul1_out_.get(), inv_x_.get()},
+                          Variables{gx_.get()});
 }
 
 template <typename T>
@@ -62,9 +66,9 @@ void InverseCuda<T>::forward_impl(const Variables &inputs,
   Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
 
   int batchSize = inputs[0]->shape()[0];
-  CudaCachedArray pivot(sizeof(int) * batchSize, dtypes::BYTE, this->ctx);
+  CudaCachedArray pivot(sizeof(int) * batchSize, dtypes::BYTE, this->ctx_);
   CudaCachedArray info(sizeof(int) * dim_ * batchSize, dtypes::BYTE,
-                       this->ctx);
+                       this->ctx_);
 
   NBLA_GET_BATCH_POINTERS(x, x, batchSize, const);      // dev_list_x
   NBLA_GET_BATCH_POINTERS(y, y, batchSize, );           // dev_list_y
@@ -85,29 +89,29 @@ void InverseCuda<T>::backward_impl(const Variables &inputs,
   if (!propagate_down[0]) {
     return;
   }
-  const T* dy = outputs[0]->get_grad_pointer<T>(this->ctx_);
-  const T* x = inputs[0]->get_data_pointer<T>(this->ctx_);
-  T* dx = inputs[0]->cast_grad_and_get_pointer<T>(this->ctx_, !accum[0]);
+  const Tc* dy = outputs[0]->get_grad_pointer<T>(this->ctx_);
+  const Tc* x = inputs[0]->get_data_pointer<T>(this->ctx_);
+  Tc* dx = inputs[0]->cast_grad_and_get_pointer<T>(this->ctx_, !accum[0]);
 
   int batchSize = inputs[0]->shape()[0];
-  CudaCachedArray pivot(sizeof(int) * batchSize, dtypes::BYTE, this->ctx);
+  CudaCachedArray pivot(sizeof(int) * batchSize, dtypes::BYTE, this->ctx_);
   CudaCachedArray info(sizeof(int) * dim_ * batchSize, dtypes::BYTE,
-                       this->ctx);
-  CudaCachedArray inv_x(sizeof(Tc) * dim_ * dim_ * batchSize, dtypes::BYTE,
-                        this->ctx);
-  CudaCachedArray inv_x(sizeof(Tc) * dim_ * dim_ * batchSize, dtypes::BYTE,
+                       this->ctx_);
 
-  NBLA_GET_BATCH_POINTERS(x, x, batchSize, const);      // dev_list_x
-  NBLA_GET_BATCH_POINTERS(inv_x.get().pointer<Tc>(), batchSize, inv_x, );   // dev_list_inv_x
+  Tc* inv_x_ptr = inv_x_.get()->cast_data_and_get_pointer<Tc>(this->ctx_, true);
+  NBLA_GET_BATCH_POINTERS(x, x, batchSize, const);          // dev_list_x
+  NBLA_GET_BATCH_POINTERS(inv_x_ptr, inv_x, batchSize, );   // dev_list_inv_x
 
   // LU factorization
-  cuda_getrf_batched<Tc>(this->device_, dim_, dev_list_x, pivot, info,
-                         batchSize);
+  cuda_getrf_batched<Tc>(this->device_, dim_, dev_list_x, pivot.pointer<int>(),
+                         info.pointer<int>(), batchSize);
   // matrix inversion
-  cuda_getri_batched<Tc>(this->device_, dim_, dev_list_x, pivot, dev_list_inv_x,
-                         info, batchSize);
+  cuda_getri_batched<Tc>(this->device_, dim_, dev_list_x, pivot.pointer<int>(),
+                         dev_list_inv_x, info.pointer<int>(), batchSize);
 
-  f_matmul1_->forward(Variables{inv_x_, make_shared<Variable>(outputs[0]->grad())}, Variables{matmul1_out});
-  f_matmul2_->forward(Variables{matmul1_out_, inv_x_}, Variables{make_shared<Variable>(inputs[0]->grad())});
+  f_batch_matmul1_->forward(Variables{inv_x_.get(), gy_.get()},
+                            Variables{matmul1_out_.get()});
+  f_batch_matmul2_->forward(Variables{matmul1_out_.get(), inv_x_.get()},
+                            Variables{gx_.get()});
 }
 }
