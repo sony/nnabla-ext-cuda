@@ -15,7 +15,7 @@
 #include <nbla/array.hpp>
 #include <nbla/cuda/array/cuda_array.hpp>
 #include <nbla/cuda/common.hpp>
-#include <nbla/cuda/function/inverse.hpp>
+#include <nbla/cuda/function/batch_inv.hpp>
 #include <nbla/function/batch_matmul.hpp>
 #include <nbla/cuda/math.hpp>
 #include <nbla/variable.hpp>
@@ -43,15 +43,15 @@ __global__ void kernel_set_batch_pointers(int batchSize, int n, const T **ptr,
 // With cublas<t>getrfBatched and cublas<t>getriBatched
 // ----------------------------------------------------------------------
 template <typename T>
-void InverseCuda<T>::setup_impl(const Variables &inputs,
+void BatchInvCuda<T>::setup_impl(const Variables &inputs,
                                       const Variables &outputs) {
-  Inverse<T>::setup_impl(inputs, outputs);
+  BatchInv<T>::setup_impl(inputs, outputs);
   batch_size_ = inputs[0]->shape()[0];
   dim_ = inputs[0]->shape()[1];
 }
 
 template <typename T>
-void InverseCuda<T>::forward_impl(const Variables &inputs,
+void BatchInvCuda<T>::forward_impl(const Variables &inputs,
                                       const Variables &outputs) {
   cuda_set_device(this->device_);
   const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
@@ -86,11 +86,11 @@ void InverseCuda<T>::forward_impl(const Variables &inputs,
 }
 
 template <typename T>
-void InverseCuda<T>::backward_impl(const Variables &inputs,
+void BatchInvCuda<T>::backward_impl(const Variables &inputs,
                                        const Variables &outputs,
                                        const vector<bool> &propagate_down,
                                        const vector<bool> &accum) {
   cuda_set_device(this->device_);
-  Inverse<T>::backward_impl(inputs, outputs, propagate_down, accum);
+  BatchInv<T>::backward_impl(inputs, outputs, propagate_down, accum);
 }
 }

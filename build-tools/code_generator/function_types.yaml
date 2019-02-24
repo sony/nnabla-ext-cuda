@@ -286,7 +286,7 @@ Sort:
 Reshape:
   float: [float]
   half: [Half]
-Inverse:
+BatchInv:
   float: [float]
 #  half: [Half]
 MatrixDiag:

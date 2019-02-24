@@ -19,23 +19,24 @@
 
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/cuda.hpp>
-#include <nbla/function/inverse.hpp>
+#include <nbla/function/batch_inv.hpp>
 namespace nbla {
-/** @copydoc Inverse
+/** @copydoc BatchInv
 */
 
-template <typename T> class InverseCuda : public Inverse<T> {
+template <typename T> class BatchInvCuda : public BatchInv<T> {
 
 public:
   typedef typename CudaType<T>::type Tc;
-  explicit InverseCuda(const Context &ctx)
-      : Inverse<T>(ctx),
+  explicit BatchInvCuda(const Context &ctx)
+      : BatchInv<T>(ctx),
         device_(std::stoi(ctx.device_id)) {}
-  virtual ~InverseCuda() {}
-  virtual string name() { return "InverseCuda"; }
+  virtual ~BatchInvCuda() {}
+  virtual string name() { return "BatchInvCuda"; }
   virtual vector<string> allowed_array_classes() {
     return SingletonManager::get<Cuda>()->array_classes();
   }
+  virtual bool grad_depends_output_data(int i, int o) const { return true; }
 
 protected:
   int device_;
