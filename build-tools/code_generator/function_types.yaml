@@ -288,6 +288,8 @@ Reshape:
   half: [Half]
 BatchInv:
   float: [float]
+BatchDet:
+  float: [float]
 #  half: [Half]
 MatrixDiag:
   float: [float]
