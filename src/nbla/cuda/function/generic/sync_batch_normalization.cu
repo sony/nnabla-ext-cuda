@@ -26,6 +26,8 @@ namespace nbla {
 template <typename T>
 void SyncBatchNormalizationCuda<T>::setup_impl(const Variables &inputs,
                                            const Variables &outputs) {
+  this->batch_norm_.setup(inputs, outputs);
+
   SyncBatchNormalization<T>::setup_impl(inputs, outputs);
   
   v_dmean_.reshape(Shape_t{this->size1_}, true);
@@ -86,6 +88,12 @@ void SyncBatchNormalizationCuda<T>::forward_impl_batch(const Variables &inputs,
                                  x, m, v, rm, rv, gamma, beta,
                                  /* Output */
                                  y);
+}
+
+template <class T>
+void SyncBatchNormalizationCuda<T>::forward_impl_global(
+  const Variables &inputs, const Variables &outputs) {
+  this->batch_norm_.forward(inputs, outputs);
 }
 
 template <class T>

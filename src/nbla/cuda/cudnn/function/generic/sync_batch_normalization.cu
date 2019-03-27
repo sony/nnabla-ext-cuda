@@ -30,6 +30,8 @@ namespace nbla {
 template <typename T>
 void SyncBatchNormalizationCudaCudnn<T>::setup_impl(const Variables &inputs,
                                                 const Variables &outputs) {
+  this->batch_norm_cudnn_.setup(inputs, outputs);
+
   SyncBatchNormalizationCuda<T>::setup_impl(inputs, outputs);
 
   cudnn_handle_ = SingletonManager::get<CudnnHandleManager>()->handle(device_);
@@ -131,4 +133,9 @@ void SyncBatchNormalizationCudaCudnn<T>::forward_impl_batch(
       bn_scale_bias_mean_var_desc_, gamma, beta, m_cudnn, v_cudnn, epsilon));
 }
 
+template <class T>
+void SyncBatchNormalizationCudaCudnn<T>::forward_impl_global(
+    const Variables &inputs, const Variables &outputs) {
+  this->batch_norm_cudnn_.forward(inputs, outputs);
+}
 }

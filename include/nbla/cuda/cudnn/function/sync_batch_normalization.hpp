@@ -40,15 +40,18 @@ protected:
   cudnnDataType_t derived_bn_dtype_;
   double epsilon;
 
+  BatchNormalizationCudaCudnn<T> batch_norm_cudnn_;
+
 public:
   typedef typename CudaType<T>::type Tw;
 
   SyncBatchNormalizationCudaCudnn(const Context &ctx, 
                               const std::shared_ptr<Communicator> &comm, const std::string &group,
                               const vector<int> axes,
-                              float decay_rate, float eps)
-      : SyncBatchNormalizationCuda<T>(ctx, comm, group, axes, decay_rate, eps),
-        device_(std::stoi(ctx.device_id)) {
+                              float decay_rate, float eps, bool batch_stat)
+      : SyncBatchNormalizationCuda<T>(ctx, comm, group, axes, decay_rate, eps, batch_stat),
+        device_(std::stoi(ctx.device_id)),
+        batch_norm_cudnn_(ctx, axes, decay_rate, eps, batch_stat) {
 #if CUDNN_VERSION < 5000
     std::cout << "Falling back to BatchNormalizationCuda since BN does not "
                  "exist in CUDNN_VERSION < 5000."
@@ -81,6 +84,8 @@ public:
 protected:
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl_batch(const Variables &inputs,
+                                  const Variables &outputs) override;
+  virtual void forward_impl_global(const Variables &inputs,
                                   const Variables &outputs) override;
 };
 }

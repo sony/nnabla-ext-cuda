@@ -50,15 +50,18 @@ protected:
   Variable v_mean_reduction_space_;
   Variable v_variance_reduction_space_;
   Variable v_tmp_reduction_space_;
+
+  BatchNormalizationCuda<T> batch_norm_;
 public:
   typedef typename CudaType<T>::type Tc;
 
   SyncBatchNormalizationCuda(const Context &ctx,
                          const std::shared_ptr<Communicator> &comm, const std::string &group,
                          const vector<int> axes,
-                         float decay_rate, float eps)
-      : SyncBatchNormalization<T>(ctx, comm, group, axes, decay_rate, eps),
-        device_(std::stoi(ctx.device_id)) {}
+                         float decay_rate, float eps, bool batch_stat)
+      : SyncBatchNormalization<T>(ctx, comm, group, axes, decay_rate, eps, batch_stat),
+        device_(std::stoi(ctx.device_id)),
+        batch_norm_(ctx, axes, decay_rate, eps, batch_stat) {}
   virtual ~SyncBatchNormalizationCuda() {}
   virtual string name() override { return "SyncBatchNormalizationCuda"; }
   virtual vector<string> allowed_array_classes() override {
@@ -68,6 +71,8 @@ public:
 protected:
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl_batch(const Variables &inputs,
+                                  const Variables &outputs) override;
+  virtual void forward_impl_global(const Variables &inputs,
                                   const Variables &outputs) override;
   virtual void backward_impl_batch(const Variables &inputs, const Variables &outputs,
                                    const vector<bool> &propagate_down,
