@@ -50,9 +50,9 @@ template <typename T>
 void SliceCuda<T>::setup_impl(const Variables &inputs,
                               const Variables &outputs) {
   Slice<T>::setup_impl(inputs, outputs);
-  // TODO: see nnabla's setup_impl
-  //  if (this->skip_check(outputs))
-  //    return;
+
+  if (outputs[0]->size() == 0)
+    return;
 
   // Prepare address table
   const Shape_t shape_y = outputs[0]->shape();
@@ -97,10 +97,9 @@ __global__ void kernel_slice_forward(const int num, T *y, const T *x,
 template <typename T>
 void SliceCuda<T>::forward_impl(const Variables &inputs,
                                 const Variables &outputs) {
-  // if any shape of outputs
-  // TODO: see nnabla's setup_impl
-  //  if (this->skip_check(outputs))
-  //    return;
+  if (outputs[0]->size() == 0)
+    return;
+
   cuda_set_device(std::stoi(this->ctx_.device_id));
 
   const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
@@ -123,12 +122,11 @@ void SliceCuda<T>::backward_impl(const Variables &inputs,
                                  const Variables &outputs,
                                  const vector<bool> &propagate_down,
                                  const vector<bool> &accum) {
-  if (!propagate_down[0]) {
+  if (!propagate_down[0])
     return;
-  }
-  // TODO: see nnabla's setup_impl
-  //  if (this->skip_check(outputs))
-  //    return;
+
+  if (outputs[0]->size() == 0)
+    return;
 
   cuda_set_device(std::stoi(this->ctx_.device_id));
   if (!accum[0])

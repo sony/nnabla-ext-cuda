@@ -492,3 +492,6 @@ IFFT:
 Prune:
   float: [float]
 #  half: [Half]
+GatherNd:
+  float: [float]
+  half: [Half]
