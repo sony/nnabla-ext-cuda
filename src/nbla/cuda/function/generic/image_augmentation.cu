@@ -109,9 +109,13 @@ void ImageAugmentationCuda<T>::setup_impl(const Variables &inputs,
   const int num_ch = shape_in.size() >= 3 ? shape_in[shape_in.size() - 3] : 1;
   const int num_image = inputs[0]->size() / (w_in * h_in * num_ch);
 
+  Shape_t shape_out = outputs[0]->shape();
+  const int w_out = shape_out[shape_out.size() - 1];
+  const int h_out = shape_out[shape_out.size() - 2];
+
   int curand_state_len = 0;
   if (this->noise_ > 0.0) {
-    const int data_size = w_in * h_in;
+    const int data_size = w_out * h_out;
 
     if (data_size > curand_state_len) {
       curand_state_len = data_size;
