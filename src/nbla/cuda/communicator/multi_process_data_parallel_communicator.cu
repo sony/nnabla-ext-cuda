@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <memory>
+#include <numeric>
 
 #include "mpi.h"
 #include <stdint.h>
