@@ -30,6 +30,7 @@ void DeconvolutionCudaCudnn<T>::setup_impl(const Variables &inputs,
   Deconvolution<T>::setup_impl(inputs, outputs);
   cudnn_handle_ = SingletonManager::get<CudnnHandleManager>()->handle(device_);
 
+#if CUDNN_VERSION < 7000
   // Group stride of output
   x_offset_ = this->inner_size_i_ / this->group_;
   // Group stride of input
@@ -39,6 +40,7 @@ void DeconvolutionCudaCudnn<T>::setup_impl(const Variables &inputs,
   if (inputs.size() == 3) {
     b_offset_ = this->channels_i_ / this->group_;
   }
+#endif
 
   // Create or query a resource.
   CudnnConvDesc desc{(int)this->kernel_.size(),
@@ -49,6 +51,7 @@ void DeconvolutionCudaCudnn<T>::setup_impl(const Variables &inputs,
                      this->channels_i_,
                      this->channels_o_,
                      this->group_,
+                     false, // TODO: Add channel_last option to deconv
                      this->spatial_shape_i_,
                      this->kernel_,
                      this->pad_,

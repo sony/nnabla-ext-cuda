@@ -149,7 +149,6 @@ value of 1 at last.
 void cudnn_set_tensor_nd_descriptor_force_dim(cudnnTensorDescriptor_t &desc,
                                               cudnnDataType_t dtype,
                                               vector<int> dims,
-                                              vector<int> strides,
                                               int force_ndim = 4);
 
 template <typename T>
@@ -186,6 +185,7 @@ struct NBLA_CUDA_API CudnnConvDesc {
   int c;                ///< Channels of input.
   int o;                ///< Channels of output.
   int group;            ///< Number of groups.
+  bool channel_last;    ///< Channels at last dimension (NHWC).
   vector<int> sample;   ///< Sample size of each dimension.
   vector<int> kernel;   ///< Kernel size of each dimension.
   vector<int> pad;      ///< Padding size of each dimension.
@@ -206,6 +206,8 @@ struct NBLA_CUDA_API CudnnConvDesc {
       hash_combine(h, x.n);
       hash_combine(h, x.c);
       hash_combine(h, x.o);
+      hash_combine(h, x.group);
+      hash_combine(h, x.channel_last);
       for (int d = 0; d < x.ndim; d++) {
         hash_combine(h, x.sample[d]);
         hash_combine(h, x.kernel[d]);
@@ -213,7 +215,6 @@ struct NBLA_CUDA_API CudnnConvDesc {
         hash_combine(h, x.stride[d]);
         hash_combine(h, x.dilation[d]);
       }
-      hash_combine(h, x.group);
       return h;
     }
   };

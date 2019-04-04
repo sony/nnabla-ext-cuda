@@ -24,14 +24,26 @@ namespace nbla {
 void cudnn_set_tensor_nd_descriptor_force_dim(cudnnTensorDescriptor_t &desc,
                                               cudnnDataType_t dtype,
                                               vector<int> dims,
-                                              vector<int> strides,
-                                              int force_ndim) {
+                                              size_t force_ndim,
+                                              bool channel_last) {
   if (dims.size() < force_ndim) {
-    dims.resize(force_ndim, 1);
-    strides.resize(force_ndim, 1);
+    size_t insert_offset = dims.size() + (channel_last ? -1 : 0);
+    size_t insert_ndim = force_ndim - dims.size();
+    dims.insert(dims.begin() + insert_offset, insert_ndim, 1);
   }
-  NBLA_CUDNN_CHECK(cudnnSetTensorNdDescriptor(desc, dtype, dims.size(),
-                                              dims.data(), strides.data()));
+  if (!channel_last) {
+    auto strides = ndi::strides(dims);
+    NBLA_CUDNN_CHECK(cudnnSetTensorNdDescriptor(desc, dtype, dims.size(),
+                                                dims.data(), strides.data()));
+    return;
+  }
+#if CUDNN_VERSION >= 7100
+  NBLA_CUDNN_CHECK(cudnnSetTensorNdDescriptorEx(desc, CUDNN_TENSOR_NHWC, dtype,
+                                                dims.size(), dims.data()));
+#else
+  NBLA_ERROR(error_code::value,
+             "channel_last=true is not supported with CUDNN VERSION < 7.1");
+#endif
 }
 
 /* Wrapper function of cudnnSetConvolutionNdDescriptor with ensuring filter
@@ -66,7 +78,8 @@ static size_t get_conv_outsize(int w, int k, int p, int s, int d) {
 
 bool CudnnConvDesc::operator==(const CudnnConvDesc &x) const {
   if (ndim != x.ndim || device != x.device || dtype != x.dtype ||
-      mode != x.mode || n != x.n || c != x.c || o != x.o || group != x.group)
+      mode != x.mode || n != x.n || c != x.c || o != x.o || group != x.group ||
+      channel_last != x.channel_last)
     return false;
   for (int d = 0; d < ndim; d++) {
     if (sample[d] != x.sample[d] || kernel[d] != x.kernel[d] ||
@@ -95,33 +108,24 @@ std::ostream &operator<<(std::ostream &os, const CudnnConvDesc &desc) {
 }
 
 inline vector<int> get_conv_dims(int b, int c, int group,
-                                 const vector<int> &sample) {
+                                 const vector<int> &sample, bool channel_last) {
+  size_t channel_axis = channel_last ? 1 + sample.size() : 1;
+  size_t first_spatial_axis = channel_last ? 1 : 2;
   vector<int> ret(sample.size() + 2);
   ret[0] = b;
 #if CUDNN_VERSION >= 7000
-  ret[1] = c;
+  ret[channel_axis] = c;
 #else
-  ret[1] = c / group;
+  ret[channel_axis] = c / group;
 #endif
   for (int d = 0; d < sample.size(); d++) {
-    ret[d + 2] = sample[d];
+    ret[d + first_spatial_axis] = sample[d];
   }
-  return ret;
-}
-
-inline vector<int> get_conv_strides(int c, const vector<int> &sample) {
-  vector<int> ret(sample.size() + 2);
-  int stride = 1;
-  for (int d = sample.size() - 1; d >= 0; d--) {
-    ret[d + 2] = stride;
-    stride *= sample[d];
-  }
-  ret[1] = stride;
-  ret[0] = stride * c;
   return ret;
 }
 
 CudnnConvResource::CudnnConvResource(const CudnnConvDesc &desc) {
+  const bool &channel_last = desc.channel_last;
   // std::cout << "Creating resource for: " << desc << std::endl;
   device = desc.device;
   // Allocate memory for descriptors
@@ -132,10 +136,10 @@ CudnnConvResource::CudnnConvResource(const CudnnConvDesc &desc) {
   NBLA_CUDNN_CHECK(cudnnCreateFilterDescriptor(&w_desc));
   NBLA_CUDNN_CHECK(cudnnCreateConvolutionDescriptor(&conv_desc));
   // Set input desc
-  auto dims = get_conv_dims(desc.n, desc.c, desc.group, desc.sample);
-  auto strides = get_conv_strides(desc.c, desc.sample);
-  cudnn_set_tensor_nd_descriptor_force_dim(x_desc, desc.dtype, dims, strides,
-                                           4);
+  auto dims =
+      get_conv_dims(desc.n, desc.c, desc.group, desc.sample, channel_last);
+  cudnn_set_tensor_nd_descriptor_force_dim(x_desc, desc.dtype, dims, 4,
+                                           channel_last);
 
   // Set output desc
   vector<int> osample(desc.ndim);
@@ -143,12 +147,14 @@ CudnnConvResource::CudnnConvResource(const CudnnConvDesc &desc) {
     osample[d] = get_conv_outsize(desc.sample[d], desc.kernel[d], desc.pad[d],
                                   desc.stride[d], desc.dilation[d]);
   }
-  auto odims = get_conv_dims(desc.n, desc.o, desc.group, osample);
-  auto ostrides = get_conv_strides(desc.o, osample);
-  cudnn_set_tensor_nd_descriptor_force_dim(y_desc, desc.dtype, odims, ostrides,
-                                           4);
+  auto odims = get_conv_dims(desc.n, desc.o, desc.group, osample, channel_last);
+  cudnn_set_tensor_nd_descriptor_force_dim(y_desc, desc.dtype, odims, 4,
+                                           channel_last);
 
   // Set kernel (filter) desc
+  size_t channel_axis = channel_last ? 1 + desc.ndim : 1;
+  cudnnTensorFormat_t format =
+      channel_last ? CUDNN_TENSOR_NHWC : CUDNN_TENSOR_NCHW;
   vector<int> fdims(desc.ndim + 2);
 #if CUDNN_VERSION >= 7000
   fdims[0] = desc.o;
@@ -159,33 +165,31 @@ CudnnConvResource::CudnnConvResource(const CudnnConvDesc &desc) {
   for (int d = 0; d < desc.ndim; d++) {
     fdims[d + 2] = desc.kernel[d];
   }
+  // Ensure more than 2D filters
   if (desc.ndim == 1) {
-    fdims.resize(4, 1);
+    fdims.push_back(1);
   }
-  NBLA_CUDNN_CHECK(cudnnSetFilterNdDescriptor(
-      w_desc, desc.dtype, CUDNN_TENSOR_NCHW, fdims.size(), fdims.data()));
+  NBLA_CUDNN_CHECK(cudnnSetFilterNdDescriptor(w_desc, desc.dtype, format,
+                                              fdims.size(), fdims.data()));
 
   // Set bias desc
   vector<int> bdims(desc.ndim + 2, 1);
 #if CUDNN_VERSION >= 7000
-  bdims[1] = desc.o;
+  bdims[channel_axis] = desc.o;
 #else
-  bdims[1] = desc.o / desc.group;
+  bdims[channel_axis] = desc.o / desc.group;
 #endif
-  vector<int> bstrides(desc.ndim + 2, 1);
-  bstrides[0] = bdims[1];
-  cudnn_set_tensor_nd_descriptor_force_dim(b_desc, desc.dtype, bdims, bstrides,
-                                           4);
+  cudnn_set_tensor_nd_descriptor_force_dim(b_desc, desc.dtype, bdims, 4,
+                                           channel_last);
 
 // Set bias desc for deconvolution
 #if CUDNN_VERSION >= 7000
-  bdims[1] = desc.c;
+  bdims[channel_axis] = desc.c;
 #else
-  bdims[1] = desc.c / desc.group;
+  bdims[channel_axis] = desc.c / desc.group;
 #endif
-  bstrides[0] = bdims[1];
-  cudnn_set_tensor_nd_descriptor_force_dim(b_desc_deconv, desc.dtype, bdims,
-                                           bstrides, 4);
+  cudnn_set_tensor_nd_descriptor_force_dim(b_desc_deconv, desc.dtype, bdims, 4,
+                                           channel_last);
 
   // Set Conv desc
   // TODO: Support compute type config (but... TRUE_HALF_CONFIG is not supported

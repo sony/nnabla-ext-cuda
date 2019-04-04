@@ -26,16 +26,25 @@ namespace nbla {
 template <typename T>
 void ConvolutionCudaCudnn<T>::setup_impl(const Variables &inputs,
                                          const Variables &outputs) {
+#if CUDNN_VERSION < 7100
+  NBLA_CHECK(!this->channel_last_, error_code::value,
+             "The passed argument channel_last_=true is not supported in this "
+             "CUDNN version (%d).",
+             (int)CUDNN_VERSION);
+#endif
   cuda_set_device(device_);
   Convolution<T>::setup_impl(inputs, outputs);
   cudnn_handle_ = SingletonManager::get<CudnnHandleManager>()->handle(device_);
 
+#if CUDNN_VERSION < 7000
   x_offset_ = this->inner_size_i_ / this->group_;
   y_offset_ = this->inner_size_o_ / this->group_;
   w_offset_ = this->channels_o_ * this->inner_size_k_ / this->group_;
   if (inputs.size() == 3) {
     b_offset_ = this->channels_o_ / this->group_;
   }
+#endif
+
   // Create or query a resource.
   CudnnConvDesc desc{(int)this->kernel_.size(),
                      device_,
@@ -45,6 +54,7 @@ void ConvolutionCudaCudnn<T>::setup_impl(const Variables &inputs,
                      this->channels_i_,
                      this->channels_o_,
                      this->group_,
+                     this->channel_last_,
                      this->spatial_shape_i_,
                      this->kernel_,
                      this->pad_,

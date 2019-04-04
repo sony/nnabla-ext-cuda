@@ -26,8 +26,10 @@ public:
 
   explicit ConvolutionCuda(const Context &ctx, int base_axis,
                            const vector<int> &pad, const vector<int> &stride,
-                           const vector<int> &dilation, int group)
-      : Convolution<T>(ctx, base_axis, pad, stride, dilation, group),
+                           const vector<int> &dilation, int group,
+                           bool channel_last)
+      : Convolution<T>(ctx, base_axis, pad, stride, dilation, group,
+                       channel_last),
         device_(std::stoi(ctx.device_id)) {}
   virtual ~ConvolutionCuda() {}
 
