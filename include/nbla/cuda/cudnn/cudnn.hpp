@@ -149,7 +149,8 @@ value of 1 at last.
 void cudnn_set_tensor_nd_descriptor_force_dim(cudnnTensorDescriptor_t &desc,
                                               cudnnDataType_t dtype,
                                               vector<int> dims,
-                                              int force_ndim = 4);
+                                              size_t force_ndim = 4,
+                                              bool channel_last = false);
 
 template <typename T>
 inline void cudnn_set_tensor_descriptor(cudnnTensorDescriptor_t desc,
@@ -221,6 +222,51 @@ struct NBLA_CUDA_API CudnnConvDesc {
 };
 
 std::ostream &operator<<(std::ostream &os, const CudnnConvDesc &desc);
+
+/**
+  CUDNN Pooling descriptor wrapper.
+ */
+struct CudnnPoolingDescriptor {
+  cudnnPoolingDescriptor_t desc;
+  CudnnPoolingDescriptor();
+  ~CudnnPoolingDescriptor();
+};
+
+/**
+ * CUDNN tensor descriptor wrapper.
+ */
+struct CudnnTensorDescriptor {
+  cudnnTensorDescriptor_t desc;
+  CudnnTensorDescriptor();
+  ~CudnnTensorDescriptor();
+};
+
+/**
+   Common CUDNN pooling function wrapper.
+ */
+class CudnnPooling {
+  CudnnTensorDescriptor input_desc_;
+  CudnnTensorDescriptor output_desc_;
+  CudnnPoolingDescriptor pooling_desc_;
+  int device_;
+
+public:
+  typedef shared_ptr<CudnnPooling> Ptr;
+  static Ptr create(const vector<int> &inshape, const vector<int> &kernel,
+                    const vector<int> &stride, bool ignore_border,
+                    const vector<int> &pad, bool channel_last,
+                    cudnnPoolingMode_t mode, cudnnDataType_t dtype, int device);
+
+  CudnnPooling(const vector<int> &inshape, const vector<int> &kernel,
+               const vector<int> &stride, bool ignore_border,
+               const vector<int> &pad, bool channel_last,
+               cudnnPoolingMode_t mode, cudnnDataType_t dtype, int device);
+  void forward(const void *alpha, const void *x, const void *beta,
+               void *y) const;
+
+  void backward(const void *alpha, const void *y, const void *dy, const void *x,
+                const void *beta, void *dx) const;
+};
 
 /** cuDNN Convolution resource cache.
  */

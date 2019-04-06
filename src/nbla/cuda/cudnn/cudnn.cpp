@@ -14,7 +14,9 @@
 
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/cudnn/cudnn.hpp>
+#include <nbla/function/utils/base_pooling.hpp>
 #include <nbla/singleton_manager-internal.hpp>
+#include <nbla/utils/nd_index.hpp>
 
 #include <cstdlib>
 #include <string>
@@ -38,8 +40,12 @@ void cudnn_set_tensor_nd_descriptor_force_dim(cudnnTensorDescriptor_t &desc,
     return;
   }
 #if CUDNN_VERSION >= 7100
+  vector<int> nhwc_dims;
+  nhwc_dims.push_back(dims[0]);
+  nhwc_dims.push_back(dims.back());
+  nhwc_dims.insert(nhwc_dims.end(), dims.begin() + 1, dims.end() - 1);
   NBLA_CUDNN_CHECK(cudnnSetTensorNdDescriptorEx(desc, CUDNN_TENSOR_NHWC, dtype,
-                                                dims.size(), dims.data()));
+                                                dims.size(), nhwc_dims.data()));
 #else
   NBLA_ERROR(error_code::value,
              "channel_last=true is not supported with CUDNN VERSION < 7.1");
@@ -479,6 +485,83 @@ void CudnnConvResource::find_best_algorithms() {
 size_t CudnnConvResource::workspace_size() const {
   return std::max(fwd_workspace_size,
                   std::max(bwd_filter_workspace_size, bwd_data_workspace_size));
+}
+
+////////////////////////////////////////
+// Cudnn Pooling Wrapper
+////////////////////////////////////////
+CudnnTensorDescriptor::CudnnTensorDescriptor() {
+  NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&desc));
+}
+CudnnTensorDescriptor::~CudnnTensorDescriptor() {
+  NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(desc));
+}
+CudnnPoolingDescriptor::CudnnPoolingDescriptor() {
+  NBLA_CUDNN_CHECK(cudnnCreatePoolingDescriptor(&desc));
+}
+CudnnPoolingDescriptor::~CudnnPoolingDescriptor() {
+  NBLA_CUDNN_CHECK(cudnnDestroyPoolingDescriptor(desc));
+}
+
+CudnnPooling::Ptr
+CudnnPooling::create(const vector<int> &inshape, const vector<int> &kernel,
+                     const vector<int> &stride, bool ignore_border,
+                     const vector<int> &pad, bool channel_last,
+                     cudnnPoolingMode_t mode, cudnnDataType_t dtype,
+                     int device) {
+  return std::make_shared<CudnnPooling>(inshape, kernel, stride, ignore_border,
+                                        pad, channel_last, mode, dtype, device);
+}
+
+CudnnPooling::CudnnPooling(const vector<int> &inshape,
+                           const vector<int> &kernel, const vector<int> &stride,
+                           bool ignore_border, const vector<int> &pad,
+                           bool channel_last, cudnnPoolingMode_t mode,
+                           cudnnDataType_t dtype, int device)
+    : device_(device) {
+  PoolingConfiguration cfg(inshape, kernel, stride, pad, ignore_border,
+                           channel_last);
+
+  cuda_set_device(device_);
+
+// TODO: Force pooling descriptor > 2 dim to support 1d pooling.
+
+// Create pooling descriptor.
+#if CUDNN_VERSION >= 5000
+  NBLA_CUDNN_CHECK(cudnnSetPoolingNdDescriptor(
+      pooling_desc_.desc, mode, CUDNN_PROPAGATE_NAN, cfg.kernel.size(),
+      cfg.kernel.data(), cfg.pad.data(), cfg.stride.data()));
+#else
+  NBLA_CUDNN_CHECK(cudnnSetPoolingNdDescriptor(
+      pooling_desc_.desc, mode, cfg.kernel.size(), cfg.kernel.data(),
+      cfg.pad.data(), cfg.stride.data()));
+#endif
+
+  // Create input and output descriptor.
+  cudnn_set_tensor_nd_descriptor_force_dim(
+      input_desc_.desc, dtype,
+      ndi::batch_reduced_shape(cfg.inshape, cfg.base_axis), 4, channel_last);
+  cudnn_set_tensor_nd_descriptor_force_dim(
+      output_desc_.desc, dtype,
+      ndi::batch_reduced_shape(cfg.outshape, cfg.base_axis), 4, channel_last);
+}
+
+void CudnnPooling::forward(const void *alpha, const void *x, const void *beta,
+                           void *y) const {
+  cuda_set_device(device_);
+  auto handle = SingletonManager::get<CudnnHandleManager>()->handle(device_);
+  NBLA_CUDNN_CHECK(cudnnPoolingForward(handle, pooling_desc_.desc, alpha,
+                                       input_desc_.desc, x, beta,
+                                       output_desc_.desc, y));
+}
+
+void CudnnPooling::backward(const void *alpha, const void *y, const void *dy,
+                            const void *x, const void *beta, void *dx) const {
+  cuda_set_device(device_);
+  auto handle = SingletonManager::get<CudnnHandleManager>()->handle(device_);
+  NBLA_CUDNN_CHECK(cudnnPoolingBackward(
+      handle, pooling_desc_.desc, alpha, output_desc_.desc, y,
+      output_desc_.desc, dy, input_desc_.desc, x, beta, input_desc_.desc, dx));
 }
 
 //////////////////////////////
