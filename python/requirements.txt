@@ -8,7 +8,7 @@ PyYAML
 Cython
 boto3
 h5py
-numpy<1.16
+numpy>1.13
 onnx==1.3.0
 protobuf
 requests
