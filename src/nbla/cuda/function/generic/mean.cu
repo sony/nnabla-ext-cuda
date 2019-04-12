@@ -21,7 +21,7 @@ namespace nbla {
 
 template <typename T>
 __global__ void kernel_reduce_per_block(const int N, const T *x, T *buff,
-                                        T scale = 1) {
+                                        const float scale = 1.0f) {
   typedef typename CudaTypeForceFloat<T>::type AccT;
   AccT thread_data = 0;
   NBLA_CUDA_KERNEL_LOOP(i, N) { thread_data += (AccT)x[i]; }
@@ -37,7 +37,7 @@ void MeanCuda<T>::forward_impl_reduce(const T *x_, T *y_, int outer_size,
   const Tc *x = reinterpret_cast<const Tc *>(x_);
   Tc *y = reinterpret_cast<Tc *>(y_);
   cuda_set_device(this->device_);
-  const T scale = 1.0f / reduction_size;
+  const float scale = 1.0f / reduction_size;
 
   if (reduction_size / outer_size < 2048) {
     const Tc *ones =
