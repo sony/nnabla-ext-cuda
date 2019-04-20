@@ -12,33 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef __NBLA_CUDA_MEMORY_HPP__
-#define __NBLA_CUDA_MEMORY_HPP__
+#ifndef NBLA_CUDA_FUNCTION_GELU_HPP
+#define NBLA_CUDA_FUNCTION_GELU_HPP
 
-#include <memory>
-#include <unordered_map>
-#include <vector>
-
-#include <nbla/array.hpp>
-#include <nbla/common.hpp>
-#include <nbla/cuda/defs.hpp>
-#include <nbla/memory.hpp>
+#include <nbla/cuda/function/utils/base_transform_unary.hpp>
+#include <nbla/function/gelu.hpp>
 
 namespace nbla {
 
-using std::vector;
-using std::shared_ptr;
-
-/** CUDA Memory
- */
-class NBLA_CUDA_API CudaMemory : public Memory {
-protected:
-  int device_num_;
-
-public:
-  CudaMemory(Size_t bytes, const string &device);
-  virtual bool allocate();
-  virtual ~CudaMemory();
-};
+/** @copydoc GELU
+*/
+NBLA_DECLARE_TRANSFORM_UNARY_CUDA(GELU);
 }
 #endif

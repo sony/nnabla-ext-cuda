@@ -81,7 +81,12 @@ set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};${ARCH_FLAGS}")
 # To prevent user confusion, library filename will change that cudnn in included or not.
 set(NBLA_CUDA_LIBRARY_NAME nnabla_cuda)
 
-file(GLOB CPP_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} ./*.cpp array/*.cpp cudnn/*.cpp utils/*.cpp)
+file(GLOB CPP_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+  ./*.cpp
+  memory/*.cpp
+  array/*.cpp
+  cudnn/*.cpp
+  utils/*.cpp)
 
 if(MSVC)
   set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};-Xcompiler /W0")

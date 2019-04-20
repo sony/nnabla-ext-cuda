@@ -32,13 +32,13 @@ CD %nnabla_ext_cuda_build_wheel_folder%
 
 for /f %%i in ('dir /b /s %nnabla_build_wheel_folder%\dist\*.whl') do set WHL=%%~fi
 IF NOT DEFINED WHL (
-   ECHO NNabla wheel does not found.
+   ECHO NNabla wheel is not found.
    exit /b 255
 )
 
 for /f %%i in ('dir /b /s %nnabla_ext_cuda_build_wheel_folder%\dist\*.whl') do set WHLCUDA=%%~fi
 IF NOT DEFINED WHLCUDA (
-   ECHO NNabla CUDA Extension wheel does not found.
+   ECHO NNabla CUDA Extension wheel is not found.
    exit /b 255
 )
 

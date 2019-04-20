@@ -1,1 +1,2 @@
 add_subdirectory(mnist_training)
+add_subdirectory(mnist_collection)

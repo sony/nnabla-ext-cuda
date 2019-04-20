@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <nbla/array.hpp>
+#include <nbla/cuda/array/cuda_array.hpp>
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/cudnn/cudnn.hpp>
 #include <nbla/cuda/cudnn/function/mean.hpp>
@@ -73,8 +74,13 @@ void MeanCudaCudnn<T>::forward_impl(const Variables &inputs,
   auto cudnn_handle_manager = SingletonManager::get<CudnnHandleManager>();
   auto cudnn_handle = cudnn_handle_manager->handle(this->device_);
 
-  void *workspace = SingletonManager::get<Cuda>()->get_workspace(
-      this->workspace_size_, this->device_);
+  unique_ptr<CudaCachedArray> workspace_arr;
+  void *workspace{nullptr};
+  if (this->workspace_size_) {
+    workspace_arr.reset(
+        new CudaCachedArray(this->workspace_size_, dtypes::BYTE, this->ctx_));
+    workspace = workspace_arr->pointer<void>();
+  }
 
   auto x_data = inputs[0]->get_data_pointer<Tcu>(this->ctx_);
   auto y_data = outputs[0]->cast_data_and_get_pointer<Tcu>(this->ctx_, true);
