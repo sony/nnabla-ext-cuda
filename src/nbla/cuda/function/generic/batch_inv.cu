@@ -57,40 +57,24 @@ void BatchInvCuda<T>::forward_impl(const Variables &inputs,
   const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
   Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
 
-  shared_ptr<CudaCachedArray> pivot =
-    make_shared<CudaCachedArray>(dim_ * batch_size_, dtypes::INT, this->ctx_);
-  pivot->zero();
+  CudaCachedArray pivot(dim_ * batch_size_, dtypes::INT, this->ctx_);
+  CudaCachedArray info(batch_size_, dtypes::INT, this->ctx_);
+  CudaCachedArray lu(inputs[0]->size(), get_dtype<Tc>(), this->ctx_);
 
-  shared_ptr<CudaCachedArray> info =
-    make_shared<CudaCachedArray>(batch_size_, dtypes::INT, this->ctx_);
-  info->zero();
+  lu.copy_from(inputs[0]->data()->cast(get_dtype<Tc>(), this->ctx_, false));
 
-  shared_ptr<CudaCachedArray> lu =
-    make_shared<CudaCachedArray>(inputs[0]->size(), get_dtype<Tc>(),
-                                 this->ctx_);
-  lu->copy_from(inputs[0]->data()->cast(get_dtype<Tc>(), this->ctx_, false));
-
-  Tc* lu_ptr = lu->pointer<Tc>();
+  Tc* lu_ptr = lu.pointer<Tc>();
   NBLA_GET_BATCH_POINTERS(lu_ptr, lu, batch_size_, )     // dev_list_lu
   NBLA_GET_BATCH_POINTERS(y, y, batch_size_, );          // dev_list_y
 
   // LU factorization
   cuda_getrf_batched<Tc>(this->device_, dim_, dev_list_lu,
-                         pivot->pointer<int>(), info->pointer<int>(),
+                         pivot.pointer<int>(), info.pointer<int>(),
                          batch_size_);
 
   // matrix inversion
   cuda_getri_batched<Tc>(this->device_, dim_, (const Tc**) dev_list_lu,
-                         pivot->pointer<int>(), dev_list_y,
-                         info->pointer<int>(), batch_size_);
-}
-
-template <typename T>
-void BatchInvCuda<T>::backward_impl(const Variables &inputs,
-                                       const Variables &outputs,
-                                       const vector<bool> &propagate_down,
-                                       const vector<bool> &accum) {
-  cuda_set_device(this->device_);
-  BatchInv<T>::backward_impl(inputs, outputs, propagate_down, accum);
+                         pivot.pointer<int>(), dev_list_y,
+                         info.pointer<int>(), batch_size_);
 }
 }
