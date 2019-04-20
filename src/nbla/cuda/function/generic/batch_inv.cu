@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <iostream>
 #include <nbla/array.hpp>
 #include <nbla/cuda/array/cuda_array.hpp>
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/function/batch_inv.hpp>
-#include <nbla/function/batch_matmul.hpp>
 #include <nbla/cuda/math.hpp>
+#include <nbla/function/batch_matmul.hpp>
 #include <nbla/variable.hpp>
-#include <iostream>
 
 namespace nbla {
 
@@ -32,8 +32,7 @@ __global__ void kernel_set_batch_pointers(int batchSize, int n, const T **ptr,
 
 // A macro that creates an array of pointers of matrices.
 #define NBLA_GET_BATCH_POINTERS(PTR, NAME, BATCH, CONST)                       \
-  CudaCachedArray list_##PTR(sizeof(Tc *) * BATCH, dtypes::BYTE,               \
-                             this->ctx_);                                      \
+  CudaCachedArray list_##PTR(sizeof(Tc *) * BATCH, dtypes::BYTE, this->ctx_);  \
   CONST Tc **dev_list_##NAME =                                                 \
       reinterpret_cast<CONST Tc **>(list_##PTR.pointer<void>());               \
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_set_batch_pointers, BATCH, dim_,       \
@@ -44,7 +43,7 @@ __global__ void kernel_set_batch_pointers(int batchSize, int n, const T **ptr,
 // ----------------------------------------------------------------------
 template <typename T>
 void BatchInvCuda<T>::setup_impl(const Variables &inputs,
-                                      const Variables &outputs) {
+                                 const Variables &outputs) {
   BatchInv<T>::setup_impl(inputs, outputs);
   batch_size_ = inputs[0]->shape()[0];
   dim_ = inputs[0]->shape()[1];
@@ -52,7 +51,7 @@ void BatchInvCuda<T>::setup_impl(const Variables &inputs,
 
 template <typename T>
 void BatchInvCuda<T>::forward_impl(const Variables &inputs,
-                                      const Variables &outputs) {
+                                   const Variables &outputs) {
   cuda_set_device(this->device_);
   const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
   Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
@@ -63,18 +62,17 @@ void BatchInvCuda<T>::forward_impl(const Variables &inputs,
 
   lu.copy_from(inputs[0]->data()->cast(get_dtype<Tc>(), this->ctx_, false));
 
-  Tc* lu_ptr = lu.pointer<Tc>();
-  NBLA_GET_BATCH_POINTERS(lu_ptr, lu, batch_size_, )     // dev_list_lu
-  NBLA_GET_BATCH_POINTERS(y, y, batch_size_, );          // dev_list_y
+  Tc *lu_ptr = lu.pointer<Tc>();
+  NBLA_GET_BATCH_POINTERS(lu_ptr, lu, batch_size_, ) // dev_list_lu
+  NBLA_GET_BATCH_POINTERS(y, y, batch_size_, );      // dev_list_y
 
   // LU factorization
-  cuda_getrf_batched<Tc>(this->device_, dim_, dev_list_lu,
-                         pivot.pointer<int>(), info.pointer<int>(),
-                         batch_size_);
+  cuda_getrf_batched<Tc>(this->device_, dim_, dev_list_lu, pivot.pointer<int>(),
+                         info.pointer<int>(), batch_size_);
 
   // matrix inversion
-  cuda_getri_batched<Tc>(this->device_, dim_, (const Tc**) dev_list_lu,
-                         pivot.pointer<int>(), dev_list_y,
-                         info.pointer<int>(), batch_size_);
+  cuda_getri_batched<Tc>(this->device_, dim_, (const Tc **)dev_list_lu,
+                         pivot.pointer<int>(), dev_list_y, info.pointer<int>(),
+                         batch_size_);
 }
 }

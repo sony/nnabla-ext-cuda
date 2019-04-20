@@ -29,8 +29,7 @@ template <typename T> class BatchInvCuda : public BatchInv<T> {
 public:
   typedef typename CudaType<T>::type Tc;
   explicit BatchInvCuda(const Context &ctx)
-      : BatchInv<T>(ctx),
-        device_(std::stoi(ctx.device_id)) {}
+      : BatchInv<T>(ctx), device_(std::stoi(ctx.device_id)) {}
   virtual ~BatchInvCuda() {}
   virtual string name() { return "BatchInvCuda"; }
   virtual vector<string> allowed_array_classes() {
