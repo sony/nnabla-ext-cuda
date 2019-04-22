@@ -133,7 +133,7 @@ void TopKGradCuda<T>::backward_impl(const Variables &inputs,
     // he expected use case. The code could be splitting the input
     // into a smaller partition of the k-th largest values before
     // sorting.
-    auto buffer_raw = this->buffer_->pointer<unsigned int>();
+    auto buffer_raw = this->buffer_->template pointer<unsigned int>();
     auto buffer_ptr = thrust::device_pointer_cast(buffer_raw);
 
     for (int s = 0; s < outer_size; s++) {
@@ -161,7 +161,7 @@ void TopKGradCuda<T>::backward_impl(const Variables &inputs,
       x_grad += inner_size;
     }
   } else {
-    auto buffer = this->buffer_->pointer<Buffer<Tcu>>();
+    auto buffer = this->buffer_->template pointer<Buffer<Tcu>>();
 
     for (int s = 0; s < outer_size; s++) {
       if (this->abs_) {
