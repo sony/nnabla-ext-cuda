@@ -25,19 +25,19 @@ namespace nbla {
 
 template <typename T>
 void SyncBatchNormalizationCuda<T>::setup_impl(const Variables &inputs,
-                                           const Variables &outputs) {
+                                               const Variables &outputs) {
   this->batch_norm_.setup(inputs, outputs);
 
   SyncBatchNormalization<T>::setup_impl(inputs, outputs);
-  
+
   v_dmean_.reshape(Shape_t{this->size1_}, true);
   v_dvar_.reshape(Shape_t{this->size1_}, true);
   v_sync_.reshape(Shape_t{this->size1_ * 2}, true);
 }
 
 template <class T>
-void SyncBatchNormalizationCuda<T>::forward_impl_batch(const Variables &inputs,
-                                                   const Variables &outputs) {
+void SyncBatchNormalizationCuda<T>::forward_impl_batch(
+    const Variables &inputs, const Variables &outputs) {
   // Check whether it outputs batch mean and var.
   Variable *batch_mean = &this->mean_;
   Variable *batch_var = &this->var_;
@@ -62,37 +62,39 @@ void SyncBatchNormalizationCuda<T>::forward_impl_batch(const Variables &inputs,
   // Calculate mean and squared-mean
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(forward_batch_mean_sqmean_kernel,
                                  /* Input */
-                                 this->size1_, this->size2_, this->size0_ * this->size2_, this->size1_ * this->size2_,
-                                 x,
+                                 this->size1_, this->size2_,
+                                 this->size0_ * this->size2_,
+                                 this->size1_ * this->size2_, x,
                                  /* Output */
                                  m, v);
 
   // Sync between other processes
-  this->comm_->all_reduce({batch_mean->data(), batch_var->data()}, false, false, this->group_);
+  this->comm_->all_reduce({batch_mean->data(), batch_var->data()}, false, false,
+                          this->group_);
 
   m = batch_mean->cast_data_and_get_pointer<Tc>(this->ctx_); // batch mean
-  v = batch_var->cast_data_and_get_pointer<Tc>(this->ctx_); // batch varf
+  v = batch_var->cast_data_and_get_pointer<Tc>(this->ctx_);  // batch varf
   // Calculate running mean and var
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(forward_batch_running_mean_var_kernel,
                                  /* Input */
-                                 this->size1_, this->size0_ * this->size2_, this->num_processes_,
-                                 this->decay_rate_, m, v,
+                                 this->size1_, this->size0_ * this->size2_,
+                                 this->num_processes_, this->decay_rate_, m, v,
                                  /* Output */
                                  rm, rv);
 
-  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(forward_batch_gamma_beta_kernel,
-                                 /* Input */
-                                 this->size1_ * this->size0_ * this->size2_, this->size0_, this->size2_,
-                                 this->size0_ * this->size2_, this->size1_ * this->size2_, this->decay_rate_,
-                                 this->eps_,
-                                 x, m, v, rm, rv, gamma, beta,
-                                 /* Output */
-                                 y);
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
+      forward_batch_gamma_beta_kernel,
+      /* Input */
+      this->size1_ * this->size0_ * this->size2_, this->size0_, this->size2_,
+      this->size0_ * this->size2_, this->size1_ * this->size2_,
+      this->decay_rate_, this->eps_, x, m, v, rm, rv, gamma, beta,
+      /* Output */
+      y);
 }
 
 template <class T>
 void SyncBatchNormalizationCuda<T>::forward_impl_global(
-  const Variables &inputs, const Variables &outputs) {
+    const Variables &inputs, const Variables &outputs) {
   this->batch_norm_.forward(inputs, outputs);
 }
 
@@ -132,9 +134,10 @@ void SyncBatchNormalizationCuda<T>::backward_impl_batch(
   Tc *sum_xdy_ptr = buff + this->size1_;
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(backward_batch_data_pre_sync_kernel,
                                  /* Input */
-                                 this->size1_, this->size2_, this->size0_ * this->size2_, this->size1_ * this->size2_,
-                                 this->decay_rate_, this->eps_,
-                                 dy, m, v, x, g, dm, dv,
+                                 this->size1_, this->size2_,
+                                 this->size0_ * this->size2_,
+                                 this->size1_ * this->size2_, this->decay_rate_,
+                                 this->eps_, dy, m, v, x, g, dm, dv,
                                  /* Output */
                                  sum_dy_ptr, sum_xdy_ptr);
   // Sync between other processes
@@ -150,24 +153,22 @@ void SyncBatchNormalizationCuda<T>::backward_impl_batch(
     Tc *dmean = get_data_ptr_(this->v_dmean_);
     Tc *dvar = get_data_ptr_(this->v_dvar_);
 
-    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(backward_batch_data_mean_variance_post_sync_kernel,
-                                   /* Input */
-                                   this->size1_, this->size0_ * this->size2_,
-                                   this->eps_,
-                                   m, v, g, dm, dv,
-                                   sum_dy_ptr, sum_xdy_ptr,
-                                   /* Output */
-                                   dmean, dvar);
-    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(backward_batch_data_dx_post_sync_kernel,
-                                 /* Input */
-                                 this->size1_ * this->size0_ * this->size2_,
-                                 this->size0_, this->size1_, this->size2_,
-                                 this->size0_ * this->size2_, this->size1_ * this->size2_,
-                                 this->num_processes_ * this->size02_,
-                                 this->decay_rate_, this->eps_,
-                                 dy, m, v, x, g, dm, dv, dmean, dvar,
-                                 /* Output */
-                                 dx);
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
+        backward_batch_data_mean_variance_post_sync_kernel,
+        /* Input */
+        this->size1_, this->size0_ * this->size2_, this->eps_, m, v, g, dm, dv,
+        sum_dy_ptr, sum_xdy_ptr,
+        /* Output */
+        dmean, dvar);
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
+        backward_batch_data_dx_post_sync_kernel,
+        /* Input */
+        this->size1_ * this->size0_ * this->size2_, this->size0_, this->size1_,
+        this->size2_, this->size0_ * this->size2_, this->size1_ * this->size2_,
+        this->num_processes_ * this->size02_, this->decay_rate_, this->eps_, dy,
+        m, v, x, g, dm, dv, dmean, dvar,
+        /* Output */
+        dx);
   }
   if (propagate_down[1] || propagate_down[2]) { // beta and gamma
     NBLA_CHECK(propagate_down[1] && propagate_down[2], error_code::value,
@@ -178,10 +179,10 @@ void SyncBatchNormalizationCuda<T>::backward_impl_batch(
       inputs[2]->grad()->zero(); // TODO: optimize this out if possible
     Tc *db = inputs[1]->cast_grad_and_get_pointer<Tc>(this->ctx_, false);
     Tc *dg = inputs[2]->cast_grad_and_get_pointer<Tc>(this->ctx_, false);
-    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-        backward_batch_gamma_beta_post_sync_kernel, this->size1_, this->size2_,
-        this->size02_, this->size12_, this->eps_, dy, m, v, x, sum_dy_ptr, sum_xdy_ptr, db, dg);
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(backward_batch_gamma_beta_post_sync_kernel,
+                                   this->size1_, this->size2_, this->size02_,
+                                   this->size12_, this->eps_, dy, m, v, x,
+                                   sum_dy_ptr, sum_xdy_ptr, db, dg);
   }
 }
-
 }

@@ -20,8 +20,8 @@
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/cuda.hpp>
 #include <nbla/cuda/cudnn/cudnn.hpp>
-#include <nbla/cuda/function/sync_batch_normalization.hpp>
 #include <nbla/cuda/cudnn/function/batch_normalization.hpp>
+#include <nbla/cuda/function/sync_batch_normalization.hpp>
 
 #include <vector>
 
@@ -45,11 +45,13 @@ protected:
 public:
   typedef typename CudaType<T>::type Tw;
 
-  SyncBatchNormalizationCudaCudnn(const Context &ctx, 
-                              const std::shared_ptr<Communicator> &comm, const std::string &group,
-                              const vector<int> axes,
-                              float decay_rate, float eps, bool batch_stat)
-      : SyncBatchNormalizationCuda<T>(ctx, comm, group, axes, decay_rate, eps, batch_stat),
+  SyncBatchNormalizationCudaCudnn(const Context &ctx,
+                                  const std::shared_ptr<Communicator> &comm,
+                                  const std::string &group,
+                                  const vector<int> axes, float decay_rate,
+                                  float eps, bool batch_stat)
+      : SyncBatchNormalizationCuda<T>(ctx, comm, group, axes, decay_rate, eps,
+                                      batch_stat),
         device_(std::stoi(ctx.device_id)),
         batch_norm_cudnn_(ctx, axes, decay_rate, eps, batch_stat) {
 #if CUDNN_VERSION < 5000
@@ -86,7 +88,7 @@ protected:
   virtual void forward_impl_batch(const Variables &inputs,
                                   const Variables &outputs) override;
   virtual void forward_impl_global(const Variables &inputs,
-                                  const Variables &outputs) override;
+                                   const Variables &outputs) override;
 };
 }
 #endif

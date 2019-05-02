@@ -18,8 +18,8 @@
 #define __NBLA_CUDA_FUNCTION_SYNC_BATCHNORM_HPP__
 
 #include <nbla/cuda/cuda.hpp>
-#include <nbla/function/sync_batch_normalization.hpp>
 #include <nbla/cuda/function/batch_normalization.hpp>
+#include <nbla/function/sync_batch_normalization.hpp>
 
 #include <vector>
 
@@ -52,14 +52,16 @@ protected:
   Variable v_tmp_reduction_space_;
 
   BatchNormalizationCuda<T> batch_norm_;
+
 public:
   typedef typename CudaType<T>::type Tc;
 
   SyncBatchNormalizationCuda(const Context &ctx,
-                         const std::shared_ptr<Communicator> &comm, const std::string &group,
-                         const vector<int> axes,
-                         float decay_rate, float eps, bool batch_stat)
-      : SyncBatchNormalization<T>(ctx, comm, group, axes, decay_rate, eps, batch_stat),
+                             const std::shared_ptr<Communicator> &comm,
+                             const std::string &group, const vector<int> axes,
+                             float decay_rate, float eps, bool batch_stat)
+      : SyncBatchNormalization<T>(ctx, comm, group, axes, decay_rate, eps,
+                                  batch_stat),
         device_(std::stoi(ctx.device_id)),
         batch_norm_(ctx, axes, decay_rate, eps, batch_stat) {}
   virtual ~SyncBatchNormalizationCuda() {}
@@ -73,10 +75,11 @@ protected:
   virtual void forward_impl_batch(const Variables &inputs,
                                   const Variables &outputs) override;
   virtual void forward_impl_global(const Variables &inputs,
-                                  const Variables &outputs) override;
-  virtual void backward_impl_batch(const Variables &inputs, const Variables &outputs,
+                                   const Variables &outputs) override;
+  virtual void backward_impl_batch(const Variables &inputs,
+                                   const Variables &outputs,
                                    const vector<bool> &propagate_down,
-  				                         const vector<bool> &accum) override;
+                                   const vector<bool> &accum) override;
 };
 }
 #endif
