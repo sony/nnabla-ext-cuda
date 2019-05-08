@@ -44,7 +44,7 @@ ReLU:
 #   float: [float]
 Softmax:
   float: [float]
-  half: [Half]
+#   half: [Half]
 # ELU:
 #   float: [float]
 # SELU:
