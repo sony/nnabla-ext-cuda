@@ -2,7 +2,7 @@
 
 /build_*/
 /build-multi-gpu_*/
-build
+/build
 
 .cache
 *.pyc
