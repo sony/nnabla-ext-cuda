@@ -12,27 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef __NBLA_CUDA_CUDNN_FUNCTION_SOFTMAX_HPP__
-#define __NBLA_CUDA_CUDNN_FUNCTION_SOFTMAX_HPP__
+#ifndef __NBLA_CUDA_CUDNN_FUNCTION_LOG_SOFTMAX_HPP__
+#define __NBLA_CUDA_CUDNN_FUNCTION_LOG_SOFTMAX_HPP__
 
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/cuda.hpp>
 #include <nbla/cuda/cudnn/cudnn.hpp>
-#include <nbla/function/softmax.hpp>
+#include <nbla/function/log_softmax.hpp>
 
 namespace nbla {
 
-/** @copydoc Softmax
+/** @copydoc LogSoftmax
 
-@note The default algorithm is set as ACCURATE.
+@note The default algorithm is set as ACCURATE. TODO: Set an algorithm by
+      context.
 */
-template <typename T> class SoftmaxCudaCudnn : public Softmax<T> {
+template <typename T> class LogSoftmaxCudaCudnn : public LogSoftmax<T> {
 public:
   typedef typename CudaType<T>::type Tw;
 
-  explicit SoftmaxCudaCudnn(const Context &ctx, int axis)
-      : Softmax<T>(ctx, axis), device_(std::stoi(ctx.device_id)) {}
-  virtual string name() { return "SoftmaxCudaCudnn"; }
+  explicit LogSoftmaxCudaCudnn(const Context &ctx, int axis)
+      : LogSoftmax<T>(ctx, axis), device_(std::stoi(ctx.device_id)) {}
+  virtual string name() { return "LogSoftmaxCudaCudnn"; }
   virtual vector<string> allowed_array_classes() {
     return SingletonManager::get<Cuda>()->array_classes();
   }
@@ -40,7 +41,6 @@ public:
 protected:
   int device_;
   CudnnSoftmax::Ptr cudnn_softmax_;
-
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,

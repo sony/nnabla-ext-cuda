@@ -12,30 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// softmax.cu
+// log_softmax.cu
 
 #include <algorithm>
 #include <nbla/array.hpp>
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/cudnn/cudnn.hpp>
-#include <nbla/cuda/cudnn/function/softmax.hpp>
+#include <nbla/cuda/cudnn/function/log_softmax.hpp>
 #include <nbla/variable.hpp>
 
 namespace nbla {
 
 template <typename T>
-void SoftmaxCudaCudnn<T>::setup_impl(const Variables &inputs,
-                                     const Variables &outputs) {
-  Softmax<T>::setup_impl(inputs, outputs);
+void LogSoftmaxCudaCudnn<T>::setup_impl(const Variables &inputs,
+                                        const Variables &outputs) {
+  LogSoftmax<T>::setup_impl(inputs, outputs);
   auto dtype = cudnn_data_type<T>::type();
-  cudnn_softmax_ =
-      CudnnSoftmax::create(inputs[0]->shape(), this->axis_,
-                           CUDNN_SOFTMAX_ACCURATE, dtype, this->device_);
+  cudnn_softmax_ = CudnnSoftmax::create(
+      inputs[0]->shape(), this->axis_, CUDNN_SOFTMAX_LOG, dtype, this->device_);
 }
 
 template <class T>
-void SoftmaxCudaCudnn<T>::forward_impl(const Variables &inputs,
-                                       const Variables &outputs) {
+void LogSoftmaxCudaCudnn<T>::forward_impl(const Variables &inputs,
+                                          const Variables &outputs) {
   NBLA_CHECK(cudnn_softmax_, error_code::value, "setup not called.");
   auto x = inputs[0]->get_data_pointer<Tw>(this->ctx_);
   auto y = outputs[0]->cast_data_and_get_pointer<Tw>(this->ctx_, true);
@@ -45,10 +44,10 @@ void SoftmaxCudaCudnn<T>::forward_impl(const Variables &inputs,
 }
 
 template <class T>
-void SoftmaxCudaCudnn<T>::backward_impl(const Variables &inputs,
-                                        const Variables &outputs,
-                                        const vector<bool> &propagate_down,
-                                        const vector<bool> &accum) {
+void LogSoftmaxCudaCudnn<T>::backward_impl(const Variables &inputs,
+                                           const Variables &outputs,
+                                           const vector<bool> &propagate_down,
+                                           const vector<bool> &accum) {
   if (!propagate_down[0]) {
     return;
   }

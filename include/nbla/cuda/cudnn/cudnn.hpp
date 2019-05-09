@@ -277,6 +277,28 @@ public:
                 const void *beta, void *dx) const;
 };
 
+/**
+   CUDNN softmax function wrapper
+ */
+class CudnnSoftmax {
+  CudnnTensorDescriptor input_desc_;
+  CudnnTensorDescriptor output_desc_;
+  cudnnSoftmaxAlgorithm_t algo_;
+  int device_;
+
+public:
+  typedef shared_ptr<CudnnSoftmax> Ptr;
+  CudnnSoftmax(const Shape_t &inshape, int axis, cudnnSoftmaxAlgorithm_t algo,
+               cudnnDataType_t dtype, int device);
+  static Ptr create(const Shape_t &inshape, int axis,
+                    cudnnSoftmaxAlgorithm_t algo, cudnnDataType_t dtype,
+                    int device);
+  void forward(const void *alpha, const void *x, const void *beta,
+               void *y) const;
+  void backward(const void *alpha, const void *y, const void *dy,
+                const void *beta, void *dx) const;
+};
+
 /** cuDNN Convolution resource cache.
  */
 struct NBLA_CUDA_API CudnnConvResource {
