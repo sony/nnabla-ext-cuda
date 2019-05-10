@@ -8,36 +8,24 @@ RUN cd /tmp \
         && cd / \
         && rm -rf /tmp/*
 
+################################################## miniconda3
 ARG PYTHON_VERSION_MAJOR
 ARG PYTHON_VERSION_MINOR
 ENV PYVERNAME=${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}
 
+ADD python/requirements.txt /tmp/deps/
+
 RUN umask 0 \
-    && mkdir -p /tmp/deps \
     && cd /tmp/deps \
     && wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh \
     && bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/miniconda3 \
     && rm -rf Miniconda3-latest-Linux-x86_64.sh \
-    && PATH=/opt/miniconda3/bin:$PATH \
-    && conda install python=${PYVERNAME} \
-    && conda update -y --all \
-    && conda install \
-             pip \
-             wheel \
-	     boto3 \
-	     h5py \
-	     mako \
-	     'numpy<1.16' \
-	     protobuf \
-	     tqdm \
-	     ipython \
-	     pytest \
-	     pyyaml \
-	     scipy \
-	     scikit-image \
-	     opencv \
+    && . /opt/miniconda3/bin/activate \
+    && conda create -n nnabla-build python=${PYVERNAME} \
+    && conda activate nnabla-build \
+    && pip install --only-binary -U -r /tmp/deps/requirements.txt \
     && conda clean -y --all \
     && cd / \
     && rm -rf /tmp/*
 
-ENV PATH /opt/miniconda3/bin:$PATH
+ENV PATH /opt/miniconda3/envs/nnabla-build/bin:$PATH

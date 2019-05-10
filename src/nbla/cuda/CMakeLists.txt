@@ -37,11 +37,11 @@ if(WITH_NCCL)
 	find_package(MPI REQUIRED)
 	list(APPEND NBLA_CUDA_INCLUDE_DIRS 
 		${NCCL_INCLUDE_DIR}
-	  ${MPI_INCLUDE_PATH}
+	        ${MPI_INCLUDE_PATH}
 	  )
 	list(APPEND NBLA_CUDA_LINKER_LIBS
 		${NCCL_LIBRARIES}
-	  ${MPI_LIBRARIES}
+	        ${MPI_LIBRARIES}
 	  )
 endif()
 
@@ -122,6 +122,7 @@ if (NOT WIN32)
   install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/nbla
     DESTINATION include
     )
+  include(CPack)
 endif()
 
 set(NBLA_CUDA_INCLUDE_DIRS ${NBLA_CUDA_INCLUDE_DIRS} PARENT_SCOPE)
