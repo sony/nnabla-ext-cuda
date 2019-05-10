@@ -20,6 +20,7 @@
 #include <nbla/variable.hpp>
 
 #include <array>
+#include <random>
 
 namespace nbla {
 
@@ -348,13 +349,17 @@ void LSTMCudaCudnn<T>::setup_impl(const Variables &inputs,
   // one.
 
   // Set dropout descriptor
-  void *state_ptr;
   size_t dropout_stateSize;
   NBLA_CUDNN_CHECK(cudnnDropoutGetStatesSize(cudnn_handle, &dropout_stateSize));
-  cudaMalloc(&state_ptr, dropout_stateSize);
+  state_array_ =
+      make_shared<CudaCachedArray>(dropout_stateSize, dtypes::BYTE, this->ctx_);
+  void *state_ptr = state_array_->pointer<void>();
+  std::random_device seed_gen;
+  std::default_random_engine engine(seed_gen());
+  std::uniform_int_distribution<> dist(0, 999);
   NBLA_CUDNN_CHECK(cudnnSetDropoutDescriptor(dropout_desc_.desc, cudnn_handle,
                                              this->dropout_, state_ptr,
-                                             dropout_stateSize, 0));
+                                             dropout_stateSize, dist(engine)));
 
 // Set RNN descriptor.
 #if CUDNN_VERSION >= 7000
