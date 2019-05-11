@@ -86,6 +86,26 @@ endif()
 
 include(${PROJECT_SOURCE_DIR}/build-tools/cmake/get_cuda_version.cmake)
 
+set(CPACK_PACKAGE_NAME "nnabla-cpplib-cuda${CUDA_VERSION}-cudnn${CUDNN_VERSION}")
+find_program(LSB_RELEASE lsb_release)
+message("LSB_RELEASE" ${LSB_RELEASE})
+if(EXISTS ${LSB_RELEASE})
+
+  execute_process(COMMAND ${LSB_RELEASE} -si
+    OUTPUT_VARIABLE LSB_RELEASE_ID
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+  execute_process(COMMAND ${LSB_RELEASE} -sr
+    OUTPUT_VARIABLE LSB_RELEASE_RELEASE
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+  set(CPACK_SYSTEM_NAME ${LSB_RELEASE_ID}${LSB_RELEASE_RELEASE})
+endif()
+set(CPACK_PACKAGE_VERSION_MAJOR ${version_major})
+set(CPACK_PACKAGE_VERSION_MINOR ${version_minor})
+set(CPACK_PACKAGE_VERSION_PATCH ${version_patch})
+set(CPACK_PACKAGE_CONTACT "nnabla@googlegroups.com")
+
 execute_process(
   COMMAND ${PYTHON_COMMAND}
           ${CMAKE_CURRENT_SOURCE_DIR}/build-tools/code_generator/generate.py ${version} ${CUDA_VERSION} ${CUDNN_VERSION}
