@@ -17,7 +17,7 @@
 #include <nbla/context.hpp>
 #include <nbla/cuda/cudnn/init.hpp>
 #include <nbla/cuda/init.hpp>
-#include <nbla_train.hpp>
+#include <nbla_cli/nbla_train.hpp>
 
 static void print_usage_and_exit(const char *name) {
   std::cerr << "Usage: " << name << " (train)" << std::endl;
