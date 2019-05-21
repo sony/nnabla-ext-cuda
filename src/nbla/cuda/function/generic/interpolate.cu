@@ -194,6 +194,92 @@ __global__ void kernel_linear_interpolate_3d_backward(
 }
 
 template <typename T>
+__global__ void kernel_nearest_interpolate_2d(const int dst_inner_size, T *dst,
+                                              const int src_inner_size,
+                                              const T *src, int outer_size,
+                                              const int iw, const int ih,
+                                              const int ow, const int oh,
+                                              const float sx, const float sy) {
+
+  NBLA_CUDA_KERNEL_LOOP(index, dst_inner_size) {
+    const int oy = index / ow;
+    const int ox = index % ow;
+
+    const auto iy = min(static_cast<int>(sy * (oy + 0.5f)), ih - 1);
+    const auto ix = min(static_cast<int>(sx * (ox + 0.5f)), iw - 1);
+
+    for (; outer_size--; src += src_inner_size, dst += dst_inner_size) {
+      dst[oy * ow + ox] = src[iy * iw + ix];
+    }
+  }
+}
+
+template <typename T>
+__global__ void kernel_nearest_interpolate_3d(
+    const int dst_inner_size, T *dst, const int src_inner_size, const T *src,
+    int outer_size, const int iw, const int ih, const int id, const int ow,
+    const int oh, const int od, const float sx, const float sy,
+    const float sz) {
+
+  NBLA_CUDA_KERNEL_LOOP(index, dst_inner_size) {
+    const int oz = index / (ow * oh);
+    const int oy = (index - oz * ow * oh) / ow;
+    const int ox = (index - oz * ow * oh) % ow;
+
+    const auto iz = min(static_cast<int>(sz * (oz + 0.5f)), id - 1);
+    const auto iy = min(static_cast<int>(sy * (oy + 0.5f)), ih - 1);
+    const auto ix = min(static_cast<int>(sx * (ox + 0.5f)), iw - 1);
+
+    for (; outer_size--; src += src_inner_size, dst += dst_inner_size) {
+      dst[oz * oh * ow + oy * ow + ox] = src[iz * ih * iw + iy * iw + ix];
+    }
+  }
+}
+
+template <typename T>
+__global__ void kernel_nearest_interpolate_2d_backward(
+    const int g_y_inner_size, const T *g_y, const int g_x_inner_size, T *g_x,
+    int outer_size, const int iw, const int ih, const int ow, const int oh,
+    const float sx, const float sy) {
+
+  NBLA_CUDA_KERNEL_LOOP(index, g_y_inner_size) {
+    const int oy = index / ow;
+    const int ox = index % ow;
+
+    const auto iy = min(static_cast<int>(sy * (oy + 0.5f)), ih - 1);
+    const auto ix = min(static_cast<int>(sx * (ox + 0.5f)), iw - 1);
+
+    for (; outer_size--; g_x += g_x_inner_size, g_y += g_y_inner_size) {
+      const T grad = g_y[oy * ow + ox];
+      atomic_add(g_x + iy * iw + ix, grad);
+    }
+  }
+}
+
+template <typename T>
+__global__ void kernel_nearest_interpolate_3d_backward(
+    const int g_y_inner_size, const T *g_y, const int g_x_inner_size, T *g_x,
+    int outer_size, const int iw, const int ih, const int id, const int ow,
+    const int oh, const int od, const float sx, const float sy,
+    const float sz) {
+
+  NBLA_CUDA_KERNEL_LOOP(index, g_y_inner_size) {
+    const int oz = index / (ow * oh);
+    const int oy = (index - oz * ow * oh) / ow;
+    const int ox = (index - oz * ow * oh) % ow;
+
+    const auto iz = min(static_cast<int>(sz * (oz + 0.5f)), id - 1);
+    const auto iy = min(static_cast<int>(sy * (oy + 0.5f)), ih - 1);
+    const auto ix = min(static_cast<int>(sx * (ox + 0.5f)), iw - 1);
+
+    for (; outer_size--; g_x += g_x_inner_size, g_y += g_y_inner_size) {
+      const T grad = g_y[oz * oh * ow + oy * ow + ox];
+      atomic_add(g_x + iz * ih * iw + iy * iw + ix, grad);
+    }
+  }
+}
+
+template <typename T>
 void InterpolateCuda<T>::forward_impl(const Variables &inputs,
                                       const Variables &outputs) {
   cuda_set_device(this->device_);
@@ -206,32 +292,47 @@ void InterpolateCuda<T>::forward_impl(const Variables &inputs,
   const int ih = inputs[0]->shape()[ndim - 2];
   const int ow = outputs[0]->shape()[ndim - 1];
   const int oh = outputs[0]->shape()[ndim - 2];
-  const auto sx = compute_scale(iw, ow, this->align_corners_);
-  const auto sy = compute_scale(ih, oh, this->align_corners_);
 
   if (this->output_size_.size() == 2) {
     const int src_inner_size = iw * ih;
     const int dst_inner_size = ow * oh;
     const int outer_size = inputs[0]->size() / src_inner_size;
     if (this->mode_ == "linear") {
+      const float sx = compute_scale(iw, ow, this->align_corners_);
+      const float sy = compute_scale(ih, oh, this->align_corners_);
       NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
           kernel_linear_interpolate_2d, dst_inner_size, dst, src_inner_size,
           src, outer_size, iw, ih, ow, oh, sx, sy, this->align_corners_);
+    } else if (this->mode_ == "nearest") {
+      const float sx = iw / static_cast<float>(ow);
+      const float sy = ih / static_cast<float>(oh);
+      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_nearest_interpolate_2d,
+                                     dst_inner_size, dst, src_inner_size, src,
+                                     outer_size, iw, ih, ow, oh, sx, sy);
     }
   }
 
-  if (this->output_size_.size() == 3) {
+  else if (this->output_size_.size() == 3) {
     const int id = inputs[0]->shape()[ndim - 3];
     const int od = outputs[0]->shape()[ndim - 3];
-    const float sz = compute_scale(id, od, this->align_corners_);
     const int src_inner_size = iw * ih * id;
     const int dst_inner_size = ow * oh * od;
     const int outer_size = inputs[0]->size() / src_inner_size;
     if (this->mode_ == "linear") {
+      const float sx = compute_scale(iw, ow, this->align_corners_);
+      const float sy = compute_scale(ih, oh, this->align_corners_);
+      const float sz = compute_scale(id, od, this->align_corners_);
       NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_linear_interpolate_3d,
                                      dst_inner_size, dst, src_inner_size, src,
                                      outer_size, iw, ih, id, ow, oh, od, sx, sy,
                                      sz, this->align_corners_);
+    } else if (this->mode_ == "nearest") {
+      const float sx = iw / static_cast<float>(ow);
+      const float sy = ih / static_cast<float>(oh);
+      const float sz = id / static_cast<float>(od);
+      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
+          kernel_nearest_interpolate_3d, dst_inner_size, dst, src_inner_size,
+          src, outer_size, iw, ih, id, ow, oh, od, sx, sy, sz);
     }
   }
 }
@@ -254,33 +355,48 @@ void InterpolateCuda<T>::backward_impl(const Variables &inputs,
   const int ih = inputs[0]->shape()[ndim - 2];
   const int ow = outputs[0]->shape()[ndim - 1];
   const int oh = outputs[0]->shape()[ndim - 2];
-  const auto sx = compute_scale(iw, ow, this->align_corners_);
-  const auto sy = compute_scale(ih, oh, this->align_corners_);
 
   if (this->output_size_.size() == 2) {
     const int g_x_inner_size = iw * ih;
     const int g_y_inner_size = ow * oh;
     const int outer_size = inputs[0]->size() / g_x_inner_size;
     if (this->mode_ == "linear") {
+      const float sx = compute_scale(iw, ow, this->align_corners_);
+      const float sy = compute_scale(ih, oh, this->align_corners_);
       NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_linear_interpolate_2d_backward,
                                      g_y_inner_size, g_y, g_x_inner_size, g_x,
                                      outer_size, iw, ih, ow, oh, sx, sy,
                                      this->align_corners_);
+    } else if (this->mode_ == "nearest") {
+      const float sx = iw / static_cast<float>(ow);
+      const float sy = ih / static_cast<float>(oh);
+      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_nearest_interpolate_2d_backward,
+                                     g_y_inner_size, g_y, g_x_inner_size, g_x,
+                                     outer_size, iw, ih, ow, oh, sx, sy);
     }
   }
 
-  if (this->output_size_.size() == 3) {
+  else if (this->output_size_.size() == 3) {
     const int id = inputs[0]->shape()[ndim - 3];
     const int od = outputs[0]->shape()[ndim - 3];
-    const float sz = compute_scale(id, od, this->align_corners_);
     const int g_x_inner_size = iw * ih * id;
     const int g_y_inner_size = ow * oh * od;
     const int outer_size = inputs[0]->size() / g_x_inner_size;
     if (this->mode_ == "linear") {
+      const float sx = compute_scale(iw, ow, this->align_corners_);
+      const float sy = compute_scale(ih, oh, this->align_corners_);
+      const float sz = compute_scale(id, od, this->align_corners_);
       NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_linear_interpolate_3d_backward,
                                      g_y_inner_size, g_y, g_x_inner_size, g_x,
                                      outer_size, iw, ih, id, ow, oh, od, sx, sy,
                                      sz, this->align_corners_);
+    } else if (this->mode_ == "nearest") {
+      const float sx = iw / static_cast<float>(ow);
+      const float sy = ih / static_cast<float>(oh);
+      const float sz = id / static_cast<float>(od);
+      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
+          kernel_nearest_interpolate_3d_backward, g_y_inner_size, g_y,
+          g_x_inner_size, g_x, outer_size, iw, ih, id, ow, oh, od, sx, sy, sz);
     }
   }
 }
