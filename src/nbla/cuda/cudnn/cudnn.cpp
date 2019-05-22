@@ -488,6 +488,16 @@ size_t CudnnConvResource::workspace_size() const {
 }
 
 ////////////////////////////////////////
+// Cudnn activation descriptor Wrapper
+////////////////////////////////////////
+CudnnActivationDescriptor::CudnnActivationDescriptor() {
+  NBLA_CUDNN_CHECK(cudnnCreateActivationDescriptor(&desc));
+}
+CudnnActivationDescriptor::~CudnnActivationDescriptor() {
+  NBLA_CUDNN_CHECK(cudnnDestroyActivationDescriptor(desc));
+}
+
+////////////////////////////////////////
 // Cudnn Pooling Wrapper
 ////////////////////////////////////////
 CudnnTensorDescriptor::CudnnTensorDescriptor() {

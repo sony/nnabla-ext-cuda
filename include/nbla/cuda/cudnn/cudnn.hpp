@@ -242,6 +242,15 @@ struct CudnnTensorDescriptor {
 };
 
 /**
+   CUDNN activation descriptor wrapper.
+ */
+struct CudnnActivationDescriptor {
+  cudnnActivationDescriptor_t desc;
+  CudnnActivationDescriptor();
+  ~CudnnActivationDescriptor();
+};
+
+/**
    Common CUDNN pooling function wrapper.
  */
 class CudnnPooling {
