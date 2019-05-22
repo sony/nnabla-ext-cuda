@@ -67,6 +67,8 @@ void synchronizer_cuda_array_cpu_array(Array *src, Array *dst) {
     return;
   }
   size_t size = src->size() * sizeof_dtype(dst->dtype());
+  // Ensure it runs on devices which doesn't support unified virtual addressing.
+  cuda_set_device(std::stoi(src->context().device_id));
   NBLA_CUDA_CHECK(cudaMemcpy(dst->pointer<void>(), src->const_pointer<void>(),
                              size, cudaMemcpyDeviceToHost));
 }
@@ -84,6 +86,8 @@ void synchronizer_cpu_array_cuda_array(Array *src, Array *dst) {
     return;
   }
   size_t size = src->size() * sizeof_dtype(dst->dtype());
+  // Ensure it runs on devices which doesn't support unified virtual addressing.
+  cuda_set_device(std::stoi(dst->context().device_id));
   NBLA_CUDA_CHECK(cudaMemcpy(dst->pointer<void>(), src->const_pointer<void>(),
                              size, cudaMemcpyHostToDevice));
 }

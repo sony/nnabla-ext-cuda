@@ -32,8 +32,10 @@ public:
   explicit ConvolutionCudaCudnn(const Context &ctx, int base_axis,
                                 const vector<int> &pad,
                                 const vector<int> &stride,
-                                const vector<int> &dilation, int group)
-      : Convolution<T>(ctx, base_axis, pad, stride, dilation, group),
+                                const vector<int> &dilation, int group,
+                                bool channel_last)
+      : Convolution<T>(ctx, base_axis, pad, stride, dilation, group,
+                       channel_last),
         device_(std::stoi(ctx.device_id)) {
 #if CUDNN_VERSION < 6000
     // NOTE: dilation > 1 is not supported by cudnn. (2016.10.19)
@@ -46,7 +48,7 @@ public:
                      "not supported in cuDNN."
                   << std::endl; // TODO: warn.
         this->fall_back_func_.reset(new ConvolutionCuda<T>(
-            ctx, base_axis, pad, stride, dilation, group));
+            ctx, base_axis, pad, stride, dilation, group, channel_last));
         return;
       }
     }
@@ -70,10 +72,12 @@ public:
 protected:
   int device_;
   cudnnHandle_t cudnn_handle_;
+#if CUDNN_VERSION < 7000
   int x_offset_;
   int w_offset_;
   int b_offset_;
   int y_offset_;
+#endif
   shared_ptr<CudnnConvResource> rsc_;
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
