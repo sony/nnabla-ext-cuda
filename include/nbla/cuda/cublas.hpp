@@ -53,7 +53,6 @@ void cublas_getrf_batched(cublasHandle_t handle, int n, T **x, int lda,
 
 template <typename T>
 void cublas_getri_batched(cublasHandle_t handle, int n, const T **x, int lda,
-                          int *pivot, T **y, int ldc, int *info,
-                          int batchSize);
+                          int *pivot, T **y, int ldc, int *info, int batchSize);
 }
 #endif
