@@ -56,9 +56,10 @@ void AdaBoundCuda<T>::update_impl(const string &key, VariablePtr param) {
   const T bias_correction = std::sqrt(1 - std::pow(this->beta2_, t)) /
                             (1 - std::pow(this->beta1_, t));
   T alpha_t = this->alpha_ * bias_correction;
+  T final_lr = this->final_lr_ * (this->alpha_ / this->init_alpha_);
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_adabound_update, size, theta, m, v, g,
                                  alpha_t, this->beta1_, this->beta2_,
-                                 this->eps_, this->final_lr_, this->gamma_);
+                                 this->eps_, final_lr, this->gamma_);
 }
 NBLA_DEF_WEIGHT_DECAY(AdaBoundCuda, weight_decay_cuda);
 NBLA_DEF_CHECK_INF_GRAD(AdaBoundCuda, check_inf_grad_cuda);
