@@ -26,16 +26,25 @@ namespace nbla {
 template <typename T>
 void ConvolutionCudaCudnn<T>::setup_impl(const Variables &inputs,
                                          const Variables &outputs) {
+#if CUDNN_VERSION < 7100
+  NBLA_CHECK(!this->channel_last_, error_code::value,
+             "The passed argument channel_last_=true is not supported in this "
+             "CUDNN version (%d).",
+             (int)CUDNN_VERSION);
+#endif
   cuda_set_device(device_);
   Convolution<T>::setup_impl(inputs, outputs);
   cudnn_handle_ = SingletonManager::get<CudnnHandleManager>()->handle(device_);
 
+#if CUDNN_VERSION < 7000
   x_offset_ = this->inner_size_i_ / this->group_;
   y_offset_ = this->inner_size_o_ / this->group_;
   w_offset_ = this->channels_o_ * this->inner_size_k_ / this->group_;
   if (inputs.size() == 3) {
     b_offset_ = this->channels_o_ / this->group_;
   }
+#endif
+
   // Create or query a resource.
   CudnnConvDesc desc{(int)this->kernel_.size(),
                      device_,
@@ -45,6 +54,7 @@ void ConvolutionCudaCudnn<T>::setup_impl(const Variables &inputs,
                      this->channels_i_,
                      this->channels_o_,
                      this->group_,
+                     this->channel_last_,
                      this->spatial_shape_i_,
                      this->kernel_,
                      this->pad_,
@@ -78,8 +88,14 @@ void ConvolutionCudaCudnn<T>::forward_impl(const Variables &inputs,
   if (inputs.size() == 3) {
     b = inputs[2]->get_data_pointer<Tw>(this->ctx_);
   }
-  void *workspace = SingletonManager::get<Cuda>()->get_workspace(
-      rsc_->workspace_size(), this->device_);
+  auto workspace_size = rsc_->workspace_size();
+  unique_ptr<CudaCachedArray> workspace_arr;
+  void *workspace{nullptr};
+  if (workspace_size) {
+    workspace_arr.reset(
+        new CudaCachedArray(workspace_size, dtypes::BYTE, this->ctx_));
+    workspace = workspace_arr->pointer<void>();
+  }
 #if CUDNN_VERSION >= 7000
   NBLA_CUDNN_CHECK(cudnnConvolutionForward(
       cudnn_handle_, &alpha, rsc_->x_desc, x, rsc_->w_desc, w, rsc_->conv_desc,
@@ -133,8 +149,14 @@ void ConvolutionCudaCudnn<T>::backward_impl(const Variables &inputs,
     db = inputs[2]->cast_grad_and_get_pointer<T>(this->ctx_, !accum[2]);
   }
   auto alpha = get_cudnn_scalar_arg<T>(1);
-  void *workspace = SingletonManager::get<Cuda>()->get_workspace(
-      rsc_->workspace_size(), this->device_);
+  auto workspace_size = rsc_->workspace_size();
+  unique_ptr<CudaCachedArray> workspace_arr;
+  void *workspace{nullptr};
+  if (workspace_size) {
+    workspace_arr.reset(
+        new CudaCachedArray(workspace_size, dtypes::BYTE, this->ctx_));
+    workspace = workspace_arr->pointer<void>();
+  }
 #if CUDNN_VERSION >= 7000
   if (propagate_down[0]) {
     auto beta = get_cudnn_scalar_arg<T>(accum[0] ? 1 : 0);

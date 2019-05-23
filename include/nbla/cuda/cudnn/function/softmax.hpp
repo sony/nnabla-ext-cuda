@@ -24,34 +24,23 @@ namespace nbla {
 
 /** @copydoc Softmax
 
-@note The default algorithm is set as ACCURATE. TODO: Set an algorithm by
-      context.
+@note The default algorithm is set as ACCURATE.
 */
 template <typename T> class SoftmaxCudaCudnn : public Softmax<T> {
 public:
   typedef typename CudaType<T>::type Tw;
 
   explicit SoftmaxCudaCudnn(const Context &ctx, int axis)
-      : Softmax<T>(ctx, axis), device_(std::stoi(ctx.device_id)) {
-    NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&input_desc_));
-    NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&output_desc_));
-  }
-  virtual ~SoftmaxCudaCudnn() {
-    NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(input_desc_));
-    NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(output_desc_));
-  }
+      : Softmax<T>(ctx, axis), device_(std::stoi(ctx.device_id)) {}
   virtual string name() { return "SoftmaxCudaCudnn"; }
   virtual vector<string> allowed_array_classes() {
     return SingletonManager::get<Cuda>()->array_classes();
   }
-  void set_cudnn_softmax_algorithm(std::string algorithm);
 
 protected:
   int device_;
-  cudnnHandle_t cudnn_handle_;
-  cudnnTensorDescriptor_t input_desc_;
-  cudnnTensorDescriptor_t output_desc_;
-  cudnnSoftmaxAlgorithm_t algorithm_;
+  CudnnSoftmax::Ptr cudnn_softmax_;
+
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,

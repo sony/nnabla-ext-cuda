@@ -17,7 +17,7 @@ from __future__ import print_function
 from setuptools import setup
 from distutils.extension import Extension
 import os
-from os.path import dirname, realpath, join, isfile, splitext
+from os.path import dirname, realpath, join, isfile, splitext, exists
 from collections import namedtuple
 import copy
 import os
@@ -46,7 +46,7 @@ assert(__author__ is not None)
 assert(__email__ is not None)
 
 setup_requires = [
-    'numpy<1.16',
+    'numpy>=1.16',
     'Cython',  # Requires python-dev.
 ]
 

@@ -14,7 +14,9 @@
 
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/cudnn/cudnn.hpp>
+#include <nbla/function/utils/base_pooling.hpp>
 #include <nbla/singleton_manager-internal.hpp>
+#include <nbla/utils/nd_index.hpp>
 
 #include <cstdlib>
 #include <string>
@@ -24,14 +26,30 @@ namespace nbla {
 void cudnn_set_tensor_nd_descriptor_force_dim(cudnnTensorDescriptor_t &desc,
                                               cudnnDataType_t dtype,
                                               vector<int> dims,
-                                              vector<int> strides,
-                                              int force_ndim) {
+                                              size_t force_ndim,
+                                              bool channel_last) {
   if (dims.size() < force_ndim) {
-    dims.resize(force_ndim, 1);
-    strides.resize(force_ndim, 1);
+    size_t insert_offset = dims.size() + (channel_last ? -1 : 0);
+    size_t insert_ndim = force_ndim - dims.size();
+    dims.insert(dims.begin() + insert_offset, insert_ndim, 1);
   }
-  NBLA_CUDNN_CHECK(cudnnSetTensorNdDescriptor(desc, dtype, dims.size(),
-                                              dims.data(), strides.data()));
+  if (!channel_last) {
+    auto strides = ndi::strides(dims);
+    NBLA_CUDNN_CHECK(cudnnSetTensorNdDescriptor(desc, dtype, dims.size(),
+                                                dims.data(), strides.data()));
+    return;
+  }
+#if CUDNN_VERSION >= 7100
+  vector<int> nhwc_dims;
+  nhwc_dims.push_back(dims[0]);
+  nhwc_dims.push_back(dims.back());
+  nhwc_dims.insert(nhwc_dims.end(), dims.begin() + 1, dims.end() - 1);
+  NBLA_CUDNN_CHECK(cudnnSetTensorNdDescriptorEx(desc, CUDNN_TENSOR_NHWC, dtype,
+                                                dims.size(), nhwc_dims.data()));
+#else
+  NBLA_ERROR(error_code::value,
+             "channel_last=true is not supported with CUDNN VERSION < 7.1");
+#endif
 }
 
 /* Wrapper function of cudnnSetConvolutionNdDescriptor with ensuring filter
@@ -66,7 +84,8 @@ static size_t get_conv_outsize(int w, int k, int p, int s, int d) {
 
 bool CudnnConvDesc::operator==(const CudnnConvDesc &x) const {
   if (ndim != x.ndim || device != x.device || dtype != x.dtype ||
-      mode != x.mode || n != x.n || c != x.c || o != x.o || group != x.group)
+      mode != x.mode || n != x.n || c != x.c || o != x.o || group != x.group ||
+      channel_last != x.channel_last)
     return false;
   for (int d = 0; d < ndim; d++) {
     if (sample[d] != x.sample[d] || kernel[d] != x.kernel[d] ||
@@ -95,33 +114,24 @@ std::ostream &operator<<(std::ostream &os, const CudnnConvDesc &desc) {
 }
 
 inline vector<int> get_conv_dims(int b, int c, int group,
-                                 const vector<int> &sample) {
+                                 const vector<int> &sample, bool channel_last) {
+  size_t channel_axis = channel_last ? 1 + sample.size() : 1;
+  size_t first_spatial_axis = channel_last ? 1 : 2;
   vector<int> ret(sample.size() + 2);
   ret[0] = b;
 #if CUDNN_VERSION >= 7000
-  ret[1] = c;
+  ret[channel_axis] = c;
 #else
-  ret[1] = c / group;
+  ret[channel_axis] = c / group;
 #endif
   for (int d = 0; d < sample.size(); d++) {
-    ret[d + 2] = sample[d];
+    ret[d + first_spatial_axis] = sample[d];
   }
-  return ret;
-}
-
-inline vector<int> get_conv_strides(int c, const vector<int> &sample) {
-  vector<int> ret(sample.size() + 2);
-  int stride = 1;
-  for (int d = sample.size() - 1; d >= 0; d--) {
-    ret[d + 2] = stride;
-    stride *= sample[d];
-  }
-  ret[1] = stride;
-  ret[0] = stride * c;
   return ret;
 }
 
 CudnnConvResource::CudnnConvResource(const CudnnConvDesc &desc) {
+  const bool &channel_last = desc.channel_last;
   // std::cout << "Creating resource for: " << desc << std::endl;
   device = desc.device;
   // Allocate memory for descriptors
@@ -132,10 +142,10 @@ CudnnConvResource::CudnnConvResource(const CudnnConvDesc &desc) {
   NBLA_CUDNN_CHECK(cudnnCreateFilterDescriptor(&w_desc));
   NBLA_CUDNN_CHECK(cudnnCreateConvolutionDescriptor(&conv_desc));
   // Set input desc
-  auto dims = get_conv_dims(desc.n, desc.c, desc.group, desc.sample);
-  auto strides = get_conv_strides(desc.c, desc.sample);
-  cudnn_set_tensor_nd_descriptor_force_dim(x_desc, desc.dtype, dims, strides,
-                                           4);
+  auto dims =
+      get_conv_dims(desc.n, desc.c, desc.group, desc.sample, channel_last);
+  cudnn_set_tensor_nd_descriptor_force_dim(x_desc, desc.dtype, dims, 4,
+                                           channel_last);
 
   // Set output desc
   vector<int> osample(desc.ndim);
@@ -143,12 +153,14 @@ CudnnConvResource::CudnnConvResource(const CudnnConvDesc &desc) {
     osample[d] = get_conv_outsize(desc.sample[d], desc.kernel[d], desc.pad[d],
                                   desc.stride[d], desc.dilation[d]);
   }
-  auto odims = get_conv_dims(desc.n, desc.o, desc.group, osample);
-  auto ostrides = get_conv_strides(desc.o, osample);
-  cudnn_set_tensor_nd_descriptor_force_dim(y_desc, desc.dtype, odims, ostrides,
-                                           4);
+  auto odims = get_conv_dims(desc.n, desc.o, desc.group, osample, channel_last);
+  cudnn_set_tensor_nd_descriptor_force_dim(y_desc, desc.dtype, odims, 4,
+                                           channel_last);
 
   // Set kernel (filter) desc
+  size_t channel_axis = channel_last ? 1 + desc.ndim : 1;
+  cudnnTensorFormat_t format =
+      channel_last ? CUDNN_TENSOR_NHWC : CUDNN_TENSOR_NCHW;
   vector<int> fdims(desc.ndim + 2);
 #if CUDNN_VERSION >= 7000
   fdims[0] = desc.o;
@@ -159,33 +171,31 @@ CudnnConvResource::CudnnConvResource(const CudnnConvDesc &desc) {
   for (int d = 0; d < desc.ndim; d++) {
     fdims[d + 2] = desc.kernel[d];
   }
+  // Ensure more than 2D filters
   if (desc.ndim == 1) {
-    fdims.resize(4, 1);
+    fdims.push_back(1);
   }
-  NBLA_CUDNN_CHECK(cudnnSetFilterNdDescriptor(
-      w_desc, desc.dtype, CUDNN_TENSOR_NCHW, fdims.size(), fdims.data()));
+  NBLA_CUDNN_CHECK(cudnnSetFilterNdDescriptor(w_desc, desc.dtype, format,
+                                              fdims.size(), fdims.data()));
 
   // Set bias desc
   vector<int> bdims(desc.ndim + 2, 1);
 #if CUDNN_VERSION >= 7000
-  bdims[1] = desc.o;
+  bdims[channel_axis] = desc.o;
 #else
-  bdims[1] = desc.o / desc.group;
+  bdims[channel_axis] = desc.o / desc.group;
 #endif
-  vector<int> bstrides(desc.ndim + 2, 1);
-  bstrides[0] = bdims[1];
-  cudnn_set_tensor_nd_descriptor_force_dim(b_desc, desc.dtype, bdims, bstrides,
-                                           4);
+  cudnn_set_tensor_nd_descriptor_force_dim(b_desc, desc.dtype, bdims, 4,
+                                           channel_last);
 
 // Set bias desc for deconvolution
 #if CUDNN_VERSION >= 7000
-  bdims[1] = desc.c;
+  bdims[channel_axis] = desc.c;
 #else
-  bdims[1] = desc.c / desc.group;
+  bdims[channel_axis] = desc.c / desc.group;
 #endif
-  bstrides[0] = bdims[1];
-  cudnn_set_tensor_nd_descriptor_force_dim(b_desc_deconv, desc.dtype, bdims,
-                                           bstrides, 4);
+  cudnn_set_tensor_nd_descriptor_force_dim(b_desc_deconv, desc.dtype, bdims, 4,
+                                           channel_last);
 
   // Set Conv desc
   // TODO: Support compute type config (but... TRUE_HALF_CONFIG is not supported
@@ -475,6 +485,138 @@ void CudnnConvResource::find_best_algorithms() {
 size_t CudnnConvResource::workspace_size() const {
   return std::max(fwd_workspace_size,
                   std::max(bwd_filter_workspace_size, bwd_data_workspace_size));
+}
+
+////////////////////////////////////////
+// Cudnn activation descriptor Wrapper
+////////////////////////////////////////
+CudnnActivationDescriptor::CudnnActivationDescriptor() {
+  NBLA_CUDNN_CHECK(cudnnCreateActivationDescriptor(&desc));
+}
+CudnnActivationDescriptor::~CudnnActivationDescriptor() {
+  NBLA_CUDNN_CHECK(cudnnDestroyActivationDescriptor(desc));
+}
+
+////////////////////////////////////////
+// Cudnn Pooling Wrapper
+////////////////////////////////////////
+CudnnTensorDescriptor::CudnnTensorDescriptor() {
+  NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&desc));
+}
+CudnnTensorDescriptor::~CudnnTensorDescriptor() {
+  NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(desc));
+}
+CudnnPoolingDescriptor::CudnnPoolingDescriptor() {
+  NBLA_CUDNN_CHECK(cudnnCreatePoolingDescriptor(&desc));
+}
+CudnnPoolingDescriptor::~CudnnPoolingDescriptor() {
+  NBLA_CUDNN_CHECK(cudnnDestroyPoolingDescriptor(desc));
+}
+
+CudnnPooling::Ptr
+CudnnPooling::create(const vector<int> &inshape, const vector<int> &kernel,
+                     const vector<int> &stride, bool ignore_border,
+                     const vector<int> &pad, bool channel_last,
+                     cudnnPoolingMode_t mode, cudnnDataType_t dtype,
+                     int device) {
+  return std::make_shared<CudnnPooling>(inshape, kernel, stride, ignore_border,
+                                        pad, channel_last, mode, dtype, device);
+}
+
+CudnnPooling::CudnnPooling(const vector<int> &inshape,
+                           const vector<int> &kernel, const vector<int> &stride,
+                           bool ignore_border, const vector<int> &pad,
+                           bool channel_last, cudnnPoolingMode_t mode,
+                           cudnnDataType_t dtype, int device)
+    : device_(device) {
+  PoolingConfiguration cfg(inshape, kernel, stride, pad, ignore_border,
+                           channel_last);
+
+  cuda_set_device(device_);
+
+// TODO: Force pooling descriptor > 2 dim to support 1d pooling.
+
+// Create pooling descriptor.
+#if CUDNN_VERSION >= 5000
+  NBLA_CUDNN_CHECK(cudnnSetPoolingNdDescriptor(
+      pooling_desc_.desc, mode, CUDNN_PROPAGATE_NAN, cfg.kernel.size(),
+      cfg.kernel.data(), cfg.pad.data(), cfg.stride.data()));
+#else
+  NBLA_CUDNN_CHECK(cudnnSetPoolingNdDescriptor(
+      pooling_desc_.desc, mode, cfg.kernel.size(), cfg.kernel.data(),
+      cfg.pad.data(), cfg.stride.data()));
+#endif
+
+  // Create input and output descriptor.
+  cudnn_set_tensor_nd_descriptor_force_dim(
+      input_desc_.desc, dtype,
+      ndi::batch_reduced_shape(cfg.inshape, cfg.base_axis), 4, channel_last);
+  cudnn_set_tensor_nd_descriptor_force_dim(
+      output_desc_.desc, dtype,
+      ndi::batch_reduced_shape(cfg.outshape, cfg.base_axis), 4, channel_last);
+}
+
+void CudnnPooling::forward(const void *alpha, const void *x, const void *beta,
+                           void *y) const {
+  cuda_set_device(device_);
+  auto handle = SingletonManager::get<CudnnHandleManager>()->handle(device_);
+  NBLA_CUDNN_CHECK(cudnnPoolingForward(handle, pooling_desc_.desc, alpha,
+                                       input_desc_.desc, x, beta,
+                                       output_desc_.desc, y));
+}
+
+void CudnnPooling::backward(const void *alpha, const void *y, const void *dy,
+                            const void *x, const void *beta, void *dx) const {
+  cuda_set_device(device_);
+  auto handle = SingletonManager::get<CudnnHandleManager>()->handle(device_);
+  NBLA_CUDNN_CHECK(cudnnPoolingBackward(
+      handle, pooling_desc_.desc, alpha, output_desc_.desc, y,
+      output_desc_.desc, dy, input_desc_.desc, x, beta, input_desc_.desc, dx));
+}
+
+//////////////////////////////
+// CUDNN Softmax wrapper
+//////////////////////////////
+CudnnSoftmax::CudnnSoftmax(const Shape_t &inshape, int axis,
+                           cudnnSoftmaxAlgorithm_t algo, cudnnDataType_t dtype,
+                           int device)
+    : algo_(algo), device_(device) {
+  const size_t size = std::accumulate(inshape.cbegin(), inshape.cend(),
+                                      (size_t)1, std::multiplies<size_t>());
+  const size_t size_axis = ndi::inner_size(inshape, axis);
+  const int N = size / size_axis; // Batch size.
+  const int C = inshape[axis];    // Size of specified axis.
+  const int H = size / (N * C);   // Size of rest.
+  const int W = 1;
+  const int stride_w = 1;
+  const int stride_h = W * stride_w;
+  const int stride_c = H * stride_h;
+  const int stride_n = C * stride_c;
+  NBLA_CUDNN_CHECK(cudnnSetTensor4dDescriptorEx(input_desc_.desc, dtype, N, C,
+                                                H, W, stride_n, stride_c,
+                                                stride_h, stride_w));
+  NBLA_CUDNN_CHECK(cudnnSetTensor4dDescriptorEx(output_desc_.desc, dtype, N, C,
+                                                H, W, stride_n, stride_c,
+                                                stride_h, stride_w));
+}
+CudnnSoftmax::Ptr CudnnSoftmax::create(const Shape_t &inshape, int axis,
+                                       cudnnSoftmaxAlgorithm_t algo,
+                                       cudnnDataType_t dtype, int device) {
+  return make_shared<CudnnSoftmax>(inshape, axis, algo, dtype, device);
+}
+void CudnnSoftmax::forward(const void *alpha, const void *x, const void *beta,
+                           void *y) const {
+  auto handle = SingletonManager::get<CudnnHandleManager>()->handle(device_);
+  NBLA_CUDNN_CHECK(
+      cudnnSoftmaxForward(handle, algo_, CUDNN_SOFTMAX_MODE_CHANNEL, alpha,
+                          input_desc_.desc, x, beta, output_desc_.desc, y));
+}
+void CudnnSoftmax::backward(const void *alpha, const void *y, const void *dy,
+                            const void *beta, void *dx) const {
+  auto handle = SingletonManager::get<CudnnHandleManager>()->handle(device_);
+  NBLA_CUDNN_CHECK(cudnnSoftmaxBackward(
+      handle, algo_, CUDNN_SOFTMAX_MODE_CHANNEL, alpha, output_desc_.desc, y,
+      output_desc_.desc, dy, beta, input_desc_.desc, dx));
 }
 
 //////////////////////////////

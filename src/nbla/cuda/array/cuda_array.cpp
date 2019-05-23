@@ -32,30 +32,17 @@ using std::make_shared;
 
 // CudaArray
 CudaArray::CudaArray(const Size_t size, dtypes dtype, const Context &ctx)
-    : Array(size, dtype, ctx), device_(std::stoi(ctx.device_id)),
-      inuse_memory_(nullptr) {}
+    : Array(size, dtype, ctx,
+            SingletonManager::get<Cuda>()->naive_allocator()->alloc(
+                Array::size_as_bytes(size, dtype), ctx.device_id)),
+      device_(std::stoi(ctx.device_id)) {}
 
-CudaArray::~CudaArray() {
-  if (this->object_) {
-    this->deallocate();
-  }
-}
+CudaArray::CudaArray(const Size_t size, dtypes dtype, const Context &ctx,
+                     AllocatorMemory &&mem)
+    : Array::Array(size, dtype, ctx, std::move(mem)),
+      device_(std::stoi(ctx.device_id)) {}
 
-void CudaArray::allocate() {
-#ifdef NBLA_VERBOSE_MEMORY_USAGE
-  printf("CudaArray is created with size of %d\n",
-         (int)(this->size_ * sizeof(this->dtype_)));
-#endif
-  int msize = this->size_ * sizeof_dtype(this->dtype_);
-  inuse_memory_ = make_shared<CudaMemory>(msize, this->ctx_.device_id);
-  inuse_memory_->allocate();
-  this->object_ = inuse_memory_->ptr();
-}
-
-void CudaArray::deallocate() {
-  inuse_memory_ = nullptr;
-  this->object_ = nullptr;
-}
+CudaArray::~CudaArray() {}
 
 void CudaArray::zero() {
   cuda_set_device(device_);
@@ -80,6 +67,8 @@ void synchronizer_cuda_array_cpu_array(Array *src, Array *dst) {
     return;
   }
   size_t size = src->size() * sizeof_dtype(dst->dtype());
+  // Ensure it runs on devices which doesn't support unified virtual addressing.
+  cuda_set_device(std::stoi(src->context().device_id));
   NBLA_CUDA_CHECK(cudaMemcpy(dst->pointer<void>(), src->const_pointer<void>(),
                              size, cudaMemcpyDeviceToHost));
 }
@@ -97,6 +86,8 @@ void synchronizer_cpu_array_cuda_array(Array *src, Array *dst) {
     return;
   }
   size_t size = src->size() * sizeof_dtype(dst->dtype());
+  // Ensure it runs on devices which doesn't support unified virtual addressing.
+  cuda_set_device(std::stoi(dst->context().device_id));
   NBLA_CUDA_CHECK(cudaMemcpy(dst->pointer<void>(), src->const_pointer<void>(),
                              size, cudaMemcpyHostToDevice));
 }
@@ -106,25 +97,12 @@ void synchronizer_cpu_array_cuda_array(Array *src, Array *dst) {
 /////////////////////////////////
 CudaCachedArray::CudaCachedArray(const Size_t size, dtypes dtype,
                                  const Context &ctx)
-    : CudaArray(size, dtype, ctx) {}
+    : CudaArray(size, dtype, ctx,
+                SingletonManager::get<Cuda>()->caching_allocator()->alloc(
+                    Array::size_as_bytes(size, dtype), ctx.device_id)) {}
 
-CudaCachedArray::~CudaCachedArray() { this->deallocate(); }
+CudaCachedArray::~CudaCachedArray() {}
 
-void CudaCachedArray::allocate() {
-  deallocate();
-  int bytes = this->size_ * sizeof_dtype(this->dtype_);
-  auto mem = SingletonManager::get<Cuda>()->memcache().pop_or_create(
-      bytes, this->ctx_.device_id);
-  this->object_ = mem->ptr();
-  this->inuse_memory_ = mem;
-}
-
-void CudaCachedArray::deallocate() {
-  if (this->inuse_memory_) {
-    SingletonManager::get<Cuda>()->memcache().cache(this->inuse_memory_);
-    this->inuse_memory_ = nullptr;
-  }
-}
 Context CudaCachedArray::filter_context(const Context &ctx) {
   return Context({}, "CudaCachedArray", ctx.device_id);
 }

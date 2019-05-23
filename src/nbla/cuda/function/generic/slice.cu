@@ -50,9 +50,9 @@ template <typename T>
 void SliceCuda<T>::setup_impl(const Variables &inputs,
                               const Variables &outputs) {
   Slice<T>::setup_impl(inputs, outputs);
-  // TODO: see nnabla's setup_impl
-  //  if (this->skip_check(outputs))
-  //    return;
+
+  if (outputs[0]->size() == 0)
+    return;
 
   // Prepare address table
   const Shape_t shape_y = outputs[0]->shape();
@@ -97,15 +97,14 @@ __global__ void kernel_slice_forward(const int num, T *y, const T *x,
 template <typename T>
 void SliceCuda<T>::forward_impl(const Variables &inputs,
                                 const Variables &outputs) {
-  // if any shape of outputs
-  // TODO: see nnabla's setup_impl
-  //  if (this->skip_check(outputs))
-  //    return;
+  if (outputs[0]->size() == 0)
+    return;
+
   cuda_set_device(std::stoi(this->ctx_.device_id));
 
   const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
   const int *addr_table_buf =
-      this->addr_table_.get_data_pointer<int>(this->ctx_);
+      addr_table_.template get_data_pointer<int>(this->ctx_);
   Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
   size_t size = outputs[0]->size();
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_slice_forward, size, y, x,
@@ -123,19 +122,18 @@ void SliceCuda<T>::backward_impl(const Variables &inputs,
                                  const Variables &outputs,
                                  const vector<bool> &propagate_down,
                                  const vector<bool> &accum) {
-  if (!propagate_down[0]) {
+  if (!propagate_down[0])
     return;
-  }
-  // TODO: see nnabla's setup_impl
-  //  if (this->skip_check(outputs))
-  //    return;
+
+  if (outputs[0]->size() == 0)
+    return;
 
   cuda_set_device(std::stoi(this->ctx_.device_id));
   if (!accum[0])
     inputs[0]->grad()->zero(); // TODO: optimize?
   Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_, false);
   const int *addr_table_buf =
-      this->addr_table_.get_data_pointer<int>(this->ctx_);
+      this->addr_table_.template get_data_pointer<int>(this->ctx_);
   const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
   size_t size = outputs[0]->size();
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_slice_backward, size, dx, dy,

@@ -18,7 +18,6 @@
 #include <memory>
 
 #include <nbla/array.hpp>
-#include <nbla/cuda/cuda_memory.hpp>
 #include <nbla/cuda/defs.hpp>
 
 namespace nbla {
@@ -31,34 +30,24 @@ using std::shared_ptr;
 class CudaArray : public Array {
 protected:
   int device_;
-  /* Holding CudaMemory until the instance is destroyed to prevent freeing.
-   */
-  shared_ptr<CudaMemory> inuse_memory_;
 
 public:
   explicit CudaArray(const Size_t size, dtypes dtype, const Context &ctx);
+  explicit CudaArray(const Size_t size, dtypes dtype, const Context &ctx,
+                     AllocatorMemory &&mem);
   virtual ~CudaArray();
   virtual void copy_from(const Array *src_array);
   virtual void zero();
   virtual void fill(float value);
   static Context filter_context(const Context &ctx);
-
-protected:
-  virtual void allocate();
-  virtual void deallocate();
 };
 
 NBLA_CUDA_API void synchronizer_cuda_array_cpu_array(Array *src, Array *dst);
 
 NBLA_CUDA_API void synchronizer_cpu_array_cuda_array(Array *src, Array *dst);
 
-/** Array allocated on CUDA device with Memory Pool
-
-This is a necessary ingredient for imperative programming interface of
-neural networks (aka define-by-run or dynamic). Memory allocation of
-CUDA is not asynchronous. Hence, allocating memory region between each
-function will lead thread synchronization that will block executions of
-CUDA kernels. Then, your network execution will be slow and inefficient.
+/** Array allocated on CUDA device with a CudaMemory obtained by
+Cuda::caching_allocator().
 */
 class CudaCachedArray : public CudaArray {
 public:
@@ -71,10 +60,6 @@ public:
   explicit CudaCachedArray(const Size_t size, dtypes dtype, const Context &ctx);
   virtual ~CudaCachedArray();
   static Context filter_context(const Context &ctx);
-
-protected:
-  virtual void allocate();
-  virtual void deallocate();
 };
 }
 #endif

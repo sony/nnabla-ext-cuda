@@ -74,7 +74,7 @@ struct NBLA_ALIGN(2) HalfCuda {
     return *this;
   }
 #if NBLA_CUDA_HALF
-  HALF_CUDA_PREFIX const unsigned short &as_bits() const {
+  HALF_CUDA_PREFIX unsigned short as_bits() const {
 #if CUDA_VERSION >= 9000
     return ((__half_raw)h).x;
 #else
@@ -103,6 +103,9 @@ struct NBLA_ALIGN(2) HalfCuda {
   HALF_CUDA_PREFIX operator unsigned long() const {
     return (unsigned long)((unsigned int)h);
   }
+  HALF_CUDA_PREFIX operator unsigned long long() const {
+    return (unsigned long long)((unsigned short)h);
+  }
   HALF_CUDA_PREFIX operator bool() const { return (bool)(h); }
   HALF_CUDA_PREFIX operator double() const { return (double)(float(*this)); }
   HALF_CUDA_PREFIX operator char() const { return (char)((short)(*this)); }
@@ -122,6 +125,9 @@ struct NBLA_ALIGN(2) HalfCuda {
   }
   HALF_CUDA_PREFIX operator unsigned long() const {
     return (unsigned long)((float)(*this));
+  }
+  HALF_CUDA_PREFIX operator unsigned long long() const {
+    return (unsigned long long)((float)(*this));
   }
   HALF_CUDA_PREFIX operator bool() const { return (bool)((float)(*this)); }
   HALF_CUDA_PREFIX operator double() const { return (double)(float(*this)); }
@@ -430,8 +436,9 @@ HALF_CUDA_PREFIX HalfCuda pow(const HalfCuda &a, const HalfCuda &b) {
 HALF_CUDA_PREFIX HalfCuda pow(const HalfCuda &a, int &b) {
   return std::pow((float)a, b);
 }
-HALF_CUDA_PREFIX nbla::HalfCuda atan2(const nbla::HalfCuda &a, const nbla::HalfCuda &b) {
-  return std::atan2((float)a,(float)b);
+HALF_CUDA_PREFIX nbla::HalfCuda atan2(const nbla::HalfCuda &a,
+                                      const nbla::HalfCuda &b) {
+  return std::atan2((float)a, (float)b);
 }
 #undef MATHF
 #undef MATHF_F
@@ -491,8 +498,9 @@ HALF_CUDA_PREFIX int isnan(const nbla::HalfCuda &x) {
 HALF_CUDA_PREFIX int isinf(const nbla::HalfCuda &x) {
   return (x.as_bits() & 0x7FFF) == 0x7C00;
 }
-HALF_CUDA_PREFIX nbla::HalfCuda atan2(const nbla::HalfCuda &a, const nbla::HalfCuda &b) {
-  return atan2((float)a,(float)b);
+HALF_CUDA_PREFIX nbla::HalfCuda atan2(const nbla::HalfCuda &a,
+                                      const nbla::HalfCuda &b) {
+  return atan2((float)a, (float)b);
 }
 #endif // NBLA_CUDA_HALF
 

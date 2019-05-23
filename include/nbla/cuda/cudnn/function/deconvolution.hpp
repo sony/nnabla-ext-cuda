@@ -64,10 +64,12 @@ public:
 protected:
   int device_;
   cudnnHandle_t cudnn_handle_;
+#if CUDNN_VERSION < 7000
   int x_offset_;
   int w_offset_;
   int b_offset_;
   int y_offset_;
+#endif
   shared_ptr<CudnnConvResource> rsc_;
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);

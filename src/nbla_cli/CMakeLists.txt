@@ -26,7 +26,7 @@ endif()
 include_directories(${NNABLA_DIR}/src/nbla_cli)
 add_definitions(-DWITH_CUDA)
 add_executable(nbla_cuda nbla_cuda.cpp)
-target_link_libraries(nbla_cuda nnabla nnabla_utils nnabla_cuda ${HDF5_LIBRARIES})
+target_link_libraries(nbla_cuda nnabla nnabla_utils nnabla_cuda nbla_cli ${HDF5_LIBRARIES})
 set_property(TARGET nbla_cuda PROPERTY CXX_STANDARD 11)
 
 install(TARGETS nbla_cuda RUNTIME DESTINATION bin)

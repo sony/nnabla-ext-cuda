@@ -37,6 +37,10 @@ void ConvolutionCuda<T>::setup_impl(const Variables &inputs,
 template <class T>
 void ConvolutionCuda<T>::forward_impl(const Variables &inputs,
                                       const Variables &outputs) {
+  NBLA_CHECK(!this->channel_last_, error_code::value,
+             "The passed argument channel_last_=true is not supported in CUDA "
+             "Convolution.");
+
   cuda_set_device(std::stoi(this->ctx_.device_id));
   // Getting variable pointers
   const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
@@ -92,6 +96,11 @@ void ConvolutionCuda<T>::backward_impl(const Variables &inputs,
         (inputs.size() == 3 && propagate_down[2]))) {
     return;
   }
+
+  NBLA_CHECK(!this->channel_last_, error_code::value,
+             "The passed argument channel_last_=true is not supported in CUDA "
+             "Convolution.");
+
   cuda_set_device(std::stoi(this->ctx_.device_id));
   const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
   const Tc *x;

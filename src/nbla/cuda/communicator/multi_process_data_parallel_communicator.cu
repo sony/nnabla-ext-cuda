@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <memory>
+#include <numeric>
 
 #include "mpi.h"
 #include <stdint.h>
@@ -738,7 +739,8 @@ MultiProcessDataParallelCommunicatorNccl<T>::AllReduceCallback::
   dtypes dtype = get_dtype<Tc>();
 
   /* Split gpu_memory into buffers of size n_params_threshold */
-  Tc *buff = this->gpu_memory_->cast(dtype, this->parent_.ctx_)->pointer<Tc>();
+  Tc *buff = this->gpu_memory_->cast(dtype, this->parent_.ctx_)
+                 ->template pointer<Tc>();
   for (size_t i = 0; i < this->gpu_memory_->size() / this->n_params_threshold_;
        ++i) {
     this->buffers_.emplace(

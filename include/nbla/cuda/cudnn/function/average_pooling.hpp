@@ -18,88 +18,29 @@
 #define __NBLA_CUDA_CUDNN_FUNCTION_AVERAGEPOOLING_HPP__
 
 #include <nbla/function/average_pooling.hpp>
-#include <nbla/function_registry.hpp>
 
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/cuda.hpp>
 #include <nbla/cuda/cudnn/cudnn.hpp>
-
-#include <algorithm>
+#include <nbla/cuda/cudnn/function/utils/base_pooling.hpp>
 
 namespace nbla {
 
-template <typename T> class AveragePoolingCudaCudnn : public AveragePooling<T> {
-protected:
-  int device_;
-  cudnnHandle_t cudnn_handle_;
-  cudnnTensorDescriptor_t input_desc_;
-  cudnnTensorDescriptor_t output_desc_;
-  cudnnPoolingDescriptor_t pooling_desc_;
-  cudnnPoolingMode_t mode_;
-
+template <typename T>
+class AveragePoolingCudaCudnn : public BasePoolingCudaCudnn<AveragePooling<T>> {
 public:
-  typedef typename CudaType<T>::type Tw;
-
   AveragePoolingCudaCudnn(const Context &ctx, const vector<int> &kernel,
                           const vector<int> &stride, bool ignore_border,
-                          const vector<int> &pad, bool including_pad)
-      : AveragePooling<T>(ctx, kernel, stride, ignore_border, pad,
-                          including_pad),
-        device_(std::stoi(ctx.device_id)) {
-    NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&input_desc_));
-    NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&output_desc_));
-    NBLA_CUDNN_CHECK(cudnnCreatePoolingDescriptor(&pooling_desc_));
-    if (this->including_pad_) {
-      mode_ = CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING;
-    } else {
-      mode_ = CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
-    }
-    if (this->kernel_.size() == 2) {
-      int h = this->kernel_[0];
-      int w = this->kernel_[1];
-      int pad_h = this->pad_[0];
-      int pad_w = this->pad_[1];
-      int stride_h = this->stride_[0];
-      int stride_w = this->stride_[1];
-#if CUDNN_VERSION >= 5000
-      NBLA_CUDNN_CHECK(
-          cudnnSetPooling2dDescriptor(pooling_desc_, mode_, CUDNN_PROPAGATE_NAN,
-                                      h, w, pad_h, pad_w, stride_h, stride_w));
-#else
-      NBLA_CUDNN_CHECK(cudnnSetPooling2dDescriptor(
-          pooling_desc_, mode_, h, w, pad_h, pad_w, stride_h, stride_w));
-#endif
-    } else if (this->kernel_.size() == 3) {
-      int window[3] = {this->kernel_[0], this->kernel_[1], this->kernel_[2]};
-      int stride[3] = {this->stride_[0], this->stride_[1], this->stride_[2]};
-      int padding[3] = {this->pad_[0], this->pad_[1], this->pad_[2]};
-#if CUDNN_VERSION >= 5000
-      NBLA_CUDNN_CHECK(cudnnSetPoolingNdDescriptor(pooling_desc_, mode_,
-                                                   CUDNN_PROPAGATE_NAN, 3,
-                                                   window, padding, stride));
-#else
-      NBLA_CUDNN_CHECK(cudnnSetPoolingNdDescriptor(pooling_desc_, mode_, 3,
-                                                   window, padding, stride));
-#endif
-    }
+                          const vector<int> &pad, bool channel_last,
+                          bool including_pad)
+      : BasePoolingCudaCudnn<AveragePooling<T>>(ctx, kernel, stride,
+                                                ignore_border, pad,
+                                                channel_last, including_pad) {}
+  string name() override { return "AveragePoolingCudaCudnn"; }
+  cudnnPoolingMode_t mode() const override {
+    return this->including_pad_ ? CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING
+                                : CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
   }
-
-  virtual ~AveragePoolingCudaCudnn() {
-    NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(input_desc_));
-    NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(output_desc_));
-    NBLA_CUDNN_CHECK(cudnnDestroyPoolingDescriptor(pooling_desc_));
-  }
-  virtual string name() { return "AveragePoolingCudaCudnn"; }
-  virtual vector<string> allowed_array_classes() {
-    return SingletonManager::get<Cuda>()->array_classes();
-  }
-
-protected:
-  virtual void setup_impl(const Variables &inputs, const Variables &outputs);
-  virtual void forward_impl(const Variables &inputs, const Variables &outputs);
-  virtual void backward_impl(const Variables &inputs, const Variables &outputs,
-                             const vector<bool> &propagate_down,
-                             const vector<bool> &accum);
 };
 }
 #endif

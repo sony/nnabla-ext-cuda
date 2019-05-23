@@ -19,10 +19,13 @@
 
 namespace nbla {
 
+namespace {
+
 template <typename T>
 __global__ void adjust_index(const int size, T *data,
                              const int reduction_size) {
   NBLA_CUDA_KERNEL_LOOP(i, size) { data[i] -= i * reduction_size; }
+}
 }
 
 template <typename T>

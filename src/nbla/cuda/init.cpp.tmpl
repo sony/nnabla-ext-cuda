@@ -134,7 +134,7 @@ void init_cuda() {
 }
 
 void clear_cuda_memory_cache() {
-  SingletonManager::get<Cuda>()->memcache().clear();
+  SingletonManager::get<Cuda>()->caching_allocator()->free_unused_caches();
 }
 
 /** Get CUDA array classes.

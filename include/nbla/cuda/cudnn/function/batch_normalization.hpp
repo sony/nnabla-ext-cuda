@@ -32,12 +32,20 @@ template <typename T>
 class BatchNormalizationCudaCudnn : public BatchNormalizationCuda<T> {
 protected:
   int device_;
-  cudnnBatchNormMode_t mode_;
   cudnnHandle_t cudnn_handle_;
-  cudnnTensorDescriptor_t input_desc_, output_desc_;
-  cudnnTensorDescriptor_t bn_scale_bias_mean_var_desc_;
+  CudnnTensorDescriptor input_desc_, output_desc_;
+  CudnnTensorDescriptor bn_scale_bias_mean_var_desc_;
   cudnnDataType_t derived_bn_dtype_;
-  double epsilon;
+  cudnnBatchNormMode_t mode_;
+#if CUDNN_VERSION >= 7400
+  bool can_use_bn_ex_{false};
+  CudnnActivationDescriptor act_desc_;
+  NdArrayPtr reserve_;
+  cudnnBatchNormOps_t ops_{CUDNN_BATCHNORM_OPS_BN};
+  size_t forward_workspace_size_{0};
+  size_t backward_workspace_size_{0};
+  size_t reserve_size_{0};
+#endif
 
 public:
   typedef typename CudaType<T>::type Tw;
@@ -53,23 +61,13 @@ public:
     this->fall_back_func_.reset(
         new BatchNormalizationCuda<T>(ctx, axes, decay_rate, eps, batch_stat));
 #else
-    mode_ = CUDNN_BATCHNORM_SPATIAL;
-    NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&input_desc_));
-    NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&output_desc_));
-    NBLA_CUDNN_CHECK(
-        cudnnCreateTensorDescriptor(&bn_scale_bias_mean_var_desc_));
-    // NOTE: epsilon should be less than CUDNN_BN_MIN_EPSILON
-    epsilon = std::max((double)this->eps_, CUDNN_BN_MIN_EPSILON);
+    NBLA_CHECK(eps >= (float)CUDNN_BN_MIN_EPSILON, error_code::value,
+               "eps must be greater than or equal to CUDNN_BN_MIN_EPSILON. "
+               "eps=%g, CUDNN_BN_MIN_EPSILON=%g",
+               eps, CUDNN_BN_MIN_EPSILON);
 #endif
   }
-  virtual ~BatchNormalizationCudaCudnn() {
-    if (this->fall_back_func_)
-      return;
-    NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(input_desc_));
-    NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(output_desc_));
-    NBLA_CUDNN_CHECK(
-        cudnnDestroyTensorDescriptor(bn_scale_bias_mean_var_desc_));
-  }
+  virtual ~BatchNormalizationCudaCudnn() {}
   virtual string name() { return "BatchNormalizationCudaCudnn"; }
   virtual vector<string> allowed_array_classes() {
     return SingletonManager::get<Cuda>()->array_classes();

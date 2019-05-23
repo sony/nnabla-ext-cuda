@@ -135,7 +135,7 @@ void INQConvolutionCuda<T, T1>::setup_impl(const Variables &inputs,
   // C: Initialize internal `convolution` function
   this->convolution_ =
       create_Convolution(this->ctx_, this->base_axis_, this->pad_,
-                         this->stride_, this->dilation_, this->group_);
+                         this->stride_, this->dilation_, this->group_, false);
   if (inputs.size() == 4) { // with bias
     this->convolution_->setup(Variables{inputs[0], inputs[1], inputs[3]},
                               outputs);

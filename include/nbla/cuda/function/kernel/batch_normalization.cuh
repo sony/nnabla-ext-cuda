@@ -18,6 +18,107 @@
 
 namespace nbla {
 
+// Kernels for SyncBatchNormalization
+template <typename T>
+__global__ void
+forward_batch_mean_sqmean_kernel(const int size1, const int size2,
+                                 const int size02, const int size12, const T *x,
+                                 T *m, T *v) {
+  NBLA_CUDA_KERNEL_LOOP(i1, size1) {
+    T tmp_m = 0;
+    T tmp_v = 0;
+    for (int i02 = 0; i02 < size02; ++i02) {
+      const int i0 = i02 / size2;
+      const int i2 = i02 % size2;
+      const int i = i0 * size12 + i1 * size2 + i2;
+      const T value = x[i];
+      tmp_m += value;
+      tmp_v += value * value;
+    }
+    tmp_m /= size02;
+    m[i1] = tmp_m;
+    tmp_v = tmp_v / size02;
+    v[i1] = tmp_v;
+  }
+}
+template <typename T>
+__global__ void
+forward_batch_running_mean_var_kernel(const int size1, const int size02,
+                                      const int n_procs, const float decay_rate,
+                                      T *m, T *v, T *rm, T *rv) {
+  NBLA_CUDA_KERNEL_LOOP(i1, size1) {
+    m[i1] /= n_procs;
+    v[i1] = v[i1] / n_procs - m[i1] * m[i1];
+    rm[i1] = decay_rate * rm[i1] + (1. - decay_rate) * m[i1];
+    rv[i1] = decay_rate * rv[i1] +
+             (1. - decay_rate) * v[i1] * (n_procs * size02) /
+                 ((n_procs * size02) - 1);
+  }
+}
+template <typename T>
+__global__ void backward_batch_data_pre_sync_kernel(
+    const int size1, const int size2, const int size02, const int size12,
+    const float decay_rate, const float eps, const T *dy, const T *m,
+    const T *v, const T *x, const T *g, const T *dm, const T *dv, T *sum_dy,
+    T *sum_xdy) {
+  NBLA_CUDA_KERNEL_LOOP(i1, size1) {
+    sum_dy[i1] = 0;
+    sum_xdy[i1] = 0;
+    for (int i02 = 0; i02 < size02; ++i02) {
+      const int i0 = i02 / size2;
+      const int i2 = i02 % size2;
+      const int i = i0 * size12 + i1 * size2 + i2;
+      sum_dy[i1] += dy[i];
+      sum_xdy[i1] += x[i] * dy[i];
+    }
+  }
+}
+template <typename T>
+__global__ void backward_batch_data_mean_variance_post_sync_kernel(
+    const int size1, const int size02, const float eps, const T *m, const T *v,
+    const T *g, const T *dm, const T *dv, const T *sum_dy, const T *sum_xdy,
+    T *dmean, T *dvar) {
+  NBLA_CUDA_KERNEL_LOOP(i1, size1) {
+    dvar[i1] = g[i1] * sum_xdy[i1] - g[i1] * m[i1] * sum_dy[i1];
+    dvar[i1] = dvar[i1] * -0.5 *
+                   pow(static_cast<T>(v[i1] + eps), static_cast<T>(-1.5)) +
+               (dv ? dv[i1] : (T)0);
+    dmean[i1] = g[i1] * sum_dy[i1];
+    dmean[i1] =
+        dmean[i1] * (-1 / std::sqrt(v[i1] + eps)) + (dm ? dm[i1] : (T)0);
+  }
+}
+template <typename T>
+__global__ void backward_batch_data_dx_post_sync_kernel(
+    const int size102, const int size0, const int size1, const int size2,
+    const int size02, const int size12, const int n, const float decay_rate,
+    const float eps, const T *dy, const T *m, const T *v, const T *x,
+    const T *g, const T *dm, const T *dv, const T *dmean, const T *dvar,
+    T *dx) {
+  NBLA_CUDA_KERNEL_LOOP(idx, size102) {
+    const int i1 = idx / size02;
+    const int i0 = (idx / size2) % size0;
+    const int i2 = idx % size2;
+    const int i = i0 * size12 + i1 * size2 + i2;
+    dx[i] += dy[i] * g[i1] / sqrt(v[i1] + eps) +
+             dvar[i1] * 2 * (x[i] - m[i1]) / n + dmean[i1] / n;
+  }
+}
+template <typename T>
+__global__ void backward_batch_gamma_beta_post_sync_kernel(
+    const int size1_, const int size2_, const int size02_, const int size12_,
+    const float eps_, const T *dy, const T *m, const T *v, const T *x,
+    const T *sum_dy, const T *sum_xdy, T *db, T *dg) {
+  NBLA_CUDA_KERNEL_LOOP(i1, size1_) {
+    const T mean = m[i1];
+    const T inv_sqrt_variance = (T)1 / sqrt(v[i1] + eps_);
+    T dbeta = sum_dy[i1];
+    T dgamma = sum_xdy[i1] - mean * sum_dy[i1];
+    db[i1] += dbeta;
+    dg[i1] += dgamma * inv_sqrt_variance;
+  }
+}
+
 #define NBLA_CUDA_1D_GRID_STRIDE_LOOP(idx, num)                                \
   for (int idx = blockIdx.x * blockDim.x + threadIdx.x; i < num;               \
        idx += blockDim.x * gridDim.x)
@@ -253,8 +354,9 @@ __global__ void backward_batch_data_mean_variance_kernel(
       tmp += cx;
     }
     T tmp_v = v[i1];
-    dvar[i1] =
-        tmp_dvar * -0.5 * pow(tmp_v + eps, (T)-1.5) + (dv ? dv[i1] : (T)0);
+    dvar[i1] = tmp_dvar * -0.5 * pow(static_cast<float>(tmp_v + eps),
+                                     static_cast<float>(-1.5)) +
+               (dv ? dv[i1] : (T)0);
     dmean[i1] = tmp_dmean * (-1. / sqrt(tmp_v + eps)) +
                 dvar[i1] * (-2) * tmp / (size02) + (dm ? dm[i1] : (T)0);
   }
@@ -318,7 +420,8 @@ __global__ void backward_batch_data_kernel_mean_variance_postprocess(
   mean_variance = blockReduceSumOfFloat3(mean_variance);
   if (threadIdx.x == 0) {
     const float tmp_dvar =
-        mean_variance.y * (float)-0.5 * pow(v[0] + eps, (float)-1.5) +
+        mean_variance.y * (float)-0.5 *
+            pow(static_cast<float>(v[0] + eps), static_cast<float>(-1.5)) +
         (dv ? dv[axis_idx] : (T)0);
     dvar[0] = tmp_dvar;
     dmean[0] = mean_variance.x * (-inv_sqrt_variance[0]) +

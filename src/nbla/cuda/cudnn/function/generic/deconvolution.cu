@@ -30,6 +30,7 @@ void DeconvolutionCudaCudnn<T>::setup_impl(const Variables &inputs,
   Deconvolution<T>::setup_impl(inputs, outputs);
   cudnn_handle_ = SingletonManager::get<CudnnHandleManager>()->handle(device_);
 
+#if CUDNN_VERSION < 7000
   // Group stride of output
   x_offset_ = this->inner_size_i_ / this->group_;
   // Group stride of input
@@ -39,6 +40,7 @@ void DeconvolutionCudaCudnn<T>::setup_impl(const Variables &inputs,
   if (inputs.size() == 3) {
     b_offset_ = this->channels_i_ / this->group_;
   }
+#endif
 
   // Create or query a resource.
   CudnnConvDesc desc{(int)this->kernel_.size(),
@@ -49,6 +51,7 @@ void DeconvolutionCudaCudnn<T>::setup_impl(const Variables &inputs,
                      this->channels_i_,
                      this->channels_o_,
                      this->group_,
+                     false, // TODO: Add channel_last option to deconv
                      this->spatial_shape_i_,
                      this->kernel_,
                      this->pad_,
@@ -81,8 +84,14 @@ void DeconvolutionCudaCudnn<T>::forward_impl(const Variables &inputs,
   if (inputs.size() == 3) {
     b = inputs[2]->get_data_pointer<Tw>(this->ctx_);
   }
-  void *workspace = SingletonManager::get<Cuda>()->get_workspace(
-      rsc_->workspace_size(), this->device_);
+  auto workspace_size = rsc_->workspace_size();
+  unique_ptr<CudaCachedArray> workspace_arr;
+  void *workspace{nullptr};
+  if (workspace_size) {
+    workspace_arr.reset(
+        new CudaCachedArray(workspace_size, dtypes::BYTE, this->ctx_));
+    workspace = workspace_arr->pointer<void>();
+  }
 #if CUDNN_VERSION >= 7000
   NBLA_CUDNN_CHECK(cudnnConvolutionBackwardData(
       cudnn_handle_, &alpha, rsc_->w_desc, w, rsc_->y_desc, y, rsc_->conv_desc,
@@ -135,8 +144,16 @@ void DeconvolutionCudaCudnn<T>::backward_impl(
     db = inputs[2]->cast_grad_and_get_pointer<Tw>(this->ctx_, !accum[2]);
   }
   auto alpha = get_cudnn_scalar_arg<T>(1);
-  void *workspace = SingletonManager::get<Cuda>()->get_workspace(
-      rsc_->workspace_size(), this->device_);
+
+  auto workspace_size = rsc_->workspace_size();
+  unique_ptr<CudaCachedArray> workspace_arr;
+  void *workspace{nullptr};
+  if (workspace_size) {
+    workspace_arr.reset(
+        new CudaCachedArray(workspace_size, dtypes::BYTE, this->ctx_));
+    workspace = workspace_arr->pointer<void>();
+  }
+
 #if CUDNN_VERSION >= 7000
   if (propagate_down[0]) {
     auto beta = get_cudnn_scalar_arg<T>(accum[0] ? 1 : 0);
