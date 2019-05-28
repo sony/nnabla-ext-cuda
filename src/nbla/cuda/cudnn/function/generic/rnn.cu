@@ -433,7 +433,7 @@ void RNNCudaCudnn<T>::setup_impl(const Variables &inputs,
   }
 
   // Set output shapes
-  outputs[0]->reshape({seq_len_, batch_size, hidden_size_, num_directions_},
+  outputs[0]->reshape({seq_len_, batch_size, num_directions_ * hidden_size_},
                       true);
   outputs[1]->reshape(inputs[1]->shape(), true);
 }
