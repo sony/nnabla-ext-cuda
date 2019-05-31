@@ -32,6 +32,30 @@ __device__ __forceinline__ float get_src_index(float scale, int dst_index,
 }
 
 template <typename T>
+__global__ void
+kernel_linear_interpolate_1d(const int dst_inner_size, T *dst,
+                             const int src_inner_size, const T *src,
+                             int outer_size, const int iw, const int ow,
+                             const float sx, const bool align_corners) {
+
+  NBLA_CUDA_KERNEL_LOOP(index, dst_inner_size) {
+    const int ox = index % ow;
+
+    const auto fx = get_src_index(sx, ox, align_corners);
+    const auto x1 = static_cast<int>(fx);
+    const auto x2 = min(x1 + 1, iw - 1);
+    const auto lx1 = static_cast<T>(fx - x1);
+    const auto lx0 = static_cast<T>(1) - lx1;
+
+    for (; outer_size--; src += src_inner_size, dst += dst_inner_size) {
+      const T val0 = lx0 * src[x1];
+      const T val1 = lx1 * src[x2];
+      dst[ox] = val0 + val1;
+    }
+  }
+}
+
+template <typename T>
 __global__ void kernel_linear_interpolate_2d(
     const int dst_inner_size, T *dst, const int src_inner_size, const T *src,
     int outer_size, const int iw, const int ih, const int ow, const int oh,
@@ -109,6 +133,28 @@ __global__ void kernel_linear_interpolate_3d(
       const T val9 = ly0 * (val4 + val5) + ly1 * (val6 + val7);
 #undef _I
       dst[oz * oh * ow + oy * ow + ox] = lz0 * val8 + lz1 * val9;
+    }
+  }
+}
+
+template <typename T>
+__global__ void kernel_linear_interpolate_1d_backward(
+    const int g_y_inner_size, const T *g_y, const int g_x_inner_size, T *g_x,
+    int outer_size, const int iw, const int ow, const float sx,
+    const bool align_corners) {
+
+  NBLA_CUDA_KERNEL_LOOP(index, g_y_inner_size) {
+    const int ox = index % ow;
+
+    const auto fx = get_src_index(sx, ox, align_corners);
+    const auto x1 = static_cast<int>(fx);
+    const auto x2 = (x1 < iw - 1) ? (x1 + 1) : x1;
+    const auto lx1 = static_cast<T>(fx - x1);
+    const auto lx0 = static_cast<T>(1) - lx1;
+
+    for (; outer_size--; g_x += g_x_inner_size, g_y += g_y_inner_size) {
+      atomic_add(g_x + x1, lx0 * g_y[ox]);
+      atomic_add(g_x + x2, lx1 * g_y[ox]);
     }
   }
 }
@@ -194,6 +240,24 @@ __global__ void kernel_linear_interpolate_3d_backward(
 }
 
 template <typename T>
+__global__ void kernel_nearest_interpolate_1d(const int dst_inner_size, T *dst,
+                                              const int src_inner_size,
+                                              const T *src, int outer_size,
+                                              const int iw, const int ow,
+                                              const float sx) {
+
+  NBLA_CUDA_KERNEL_LOOP(index, dst_inner_size) {
+    const int ox = index % ow;
+
+    const auto ix = min(static_cast<int>(sx * (ox + 0.5f)), iw - 1);
+
+    for (; outer_size--; src += src_inner_size, dst += dst_inner_size) {
+      dst[ox] = src[ix];
+    }
+  }
+}
+
+template <typename T>
 __global__ void kernel_nearest_interpolate_2d(const int dst_inner_size, T *dst,
                                               const int src_inner_size,
                                               const T *src, int outer_size,
@@ -232,6 +296,22 @@ __global__ void kernel_nearest_interpolate_3d(
 
     for (; outer_size--; src += src_inner_size, dst += dst_inner_size) {
       dst[oz * oh * ow + oy * ow + ox] = src[iz * ih * iw + iy * iw + ix];
+    }
+  }
+}
+
+template <typename T>
+__global__ void kernel_nearest_interpolate_1d_backward(
+    const int g_y_inner_size, const T *g_y, const int g_x_inner_size, T *g_x,
+    int outer_size, const int iw, const int ow, const float sx) {
+
+  NBLA_CUDA_KERNEL_LOOP(index, g_y_inner_size) {
+    const int ox = index % ow;
+
+    const auto ix = min(static_cast<int>(sx * (ox + 0.5f)), iw - 1);
+
+    for (; outer_size--; g_x += g_x_inner_size, g_y += g_y_inner_size) {
+      atomic_add(g_x + ix, g_y[ox]);
     }
   }
 }
@@ -288,12 +368,31 @@ void InterpolateCuda<T>::forward_impl(const Variables &inputs,
   auto dst = outputs[0]->cast_data_and_get_pointer<Tcu>(this->ctx_, true);
 
   const int ndim = inputs[0]->ndim();
-  const int iw = inputs[0]->shape()[ndim - 1];
-  const int ih = inputs[0]->shape()[ndim - 2];
-  const int ow = outputs[0]->shape()[ndim - 1];
-  const int oh = outputs[0]->shape()[ndim - 2];
 
-  if (this->output_size_.size() == 2) {
+  if (this->output_size_.size() == 1) {
+    const int iw = inputs[0]->shape()[ndim - 1];
+    const int ow = outputs[0]->shape()[ndim - 1];
+    const int src_inner_size = iw;
+    const int dst_inner_size = ow;
+    const int outer_size = inputs[0]->size() / src_inner_size;
+    if (this->mode_ == "linear") {
+      const float sx = compute_scale(iw, ow, this->align_corners_);
+      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
+          kernel_linear_interpolate_1d, dst_inner_size, dst, src_inner_size,
+          src, outer_size, iw, ow, sx, this->align_corners_);
+    } else if (this->mode_ == "nearest") {
+      const float sx = iw / static_cast<float>(ow);
+      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_nearest_interpolate_1d,
+                                     dst_inner_size, dst, src_inner_size, src,
+                                     outer_size, iw, ow, sx);
+    }
+  }
+
+  else if (this->output_size_.size() == 2) {
+    const int iw = inputs[0]->shape()[ndim - 1];
+    const int ih = inputs[0]->shape()[ndim - 2];
+    const int ow = outputs[0]->shape()[ndim - 1];
+    const int oh = outputs[0]->shape()[ndim - 2];
     const int src_inner_size = iw * ih;
     const int dst_inner_size = ow * oh;
     const int outer_size = inputs[0]->size() / src_inner_size;
@@ -313,7 +412,11 @@ void InterpolateCuda<T>::forward_impl(const Variables &inputs,
   }
 
   else if (this->output_size_.size() == 3) {
+    const int iw = inputs[0]->shape()[ndim - 1];
+    const int ih = inputs[0]->shape()[ndim - 2];
     const int id = inputs[0]->shape()[ndim - 3];
+    const int ow = outputs[0]->shape()[ndim - 1];
+    const int oh = outputs[0]->shape()[ndim - 2];
     const int od = outputs[0]->shape()[ndim - 3];
     const int src_inner_size = iw * ih * id;
     const int dst_inner_size = ow * oh * od;
@@ -351,12 +454,31 @@ void InterpolateCuda<T>::backward_impl(const Variables &inputs,
   auto g_x = inputs[0]->cast_grad_and_get_pointer<Tcu>(this->ctx_, false);
 
   const int ndim = inputs[0]->ndim();
-  const int iw = inputs[0]->shape()[ndim - 1];
-  const int ih = inputs[0]->shape()[ndim - 2];
-  const int ow = outputs[0]->shape()[ndim - 1];
-  const int oh = outputs[0]->shape()[ndim - 2];
 
-  if (this->output_size_.size() == 2) {
+  if (this->output_size_.size() == 1) {
+    const int iw = inputs[0]->shape()[ndim - 1];
+    const int ow = outputs[0]->shape()[ndim - 1];
+    const int g_x_inner_size = iw;
+    const int g_y_inner_size = ow;
+    const int outer_size = inputs[0]->size() / g_x_inner_size;
+    if (this->mode_ == "linear") {
+      const float sx = compute_scale(iw, ow, this->align_corners_);
+      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
+          kernel_linear_interpolate_1d_backward, g_y_inner_size, g_y,
+          g_x_inner_size, g_x, outer_size, iw, ow, sx, this->align_corners_);
+    } else if (this->mode_ == "nearest") {
+      const float sx = iw / static_cast<float>(ow);
+      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_nearest_interpolate_1d_backward,
+                                     g_y_inner_size, g_y, g_x_inner_size, g_x,
+                                     outer_size, iw, ow, sx);
+    }
+  }
+
+  else if (this->output_size_.size() == 2) {
+    const int iw = inputs[0]->shape()[ndim - 1];
+    const int ih = inputs[0]->shape()[ndim - 2];
+    const int ow = outputs[0]->shape()[ndim - 1];
+    const int oh = outputs[0]->shape()[ndim - 2];
     const int g_x_inner_size = iw * ih;
     const int g_y_inner_size = ow * oh;
     const int outer_size = inputs[0]->size() / g_x_inner_size;
@@ -377,7 +499,11 @@ void InterpolateCuda<T>::backward_impl(const Variables &inputs,
   }
 
   else if (this->output_size_.size() == 3) {
+    const int iw = inputs[0]->shape()[ndim - 1];
+    const int ih = inputs[0]->shape()[ndim - 2];
     const int id = inputs[0]->shape()[ndim - 3];
+    const int ow = outputs[0]->shape()[ndim - 1];
+    const int oh = outputs[0]->shape()[ndim - 2];
     const int od = outputs[0]->shape()[ndim - 3];
     const int g_x_inner_size = iw * ih * id;
     const int g_y_inner_size = ow * oh * od;
