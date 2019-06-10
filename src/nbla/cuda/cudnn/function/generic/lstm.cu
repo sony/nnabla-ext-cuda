@@ -144,14 +144,12 @@ void LSTMCudaCudnn<T>::copy_weight_bias_to_params(
           }
         }
       }
-      if (bias && lin_layer_id == 0) { // copy only when lin_layer_id = 0
-        if (bias_exists) {
-          NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-              (kernel_forward_copy_bias<Tcu>),
-              4 * bias_offsets_[param_index].second,
-              bias + 4 * (layer_id * hidden_size_),
-              params + bias_offsets_[param_index].first / sizeof(T));
-        }
+      if (bias_exists && bias && lin_layer_id < 4) {
+        // copy only when lin_layer_id = 0, 1, 2, 3
+        NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
+            (kernel_forward_copy_bias<Tcu>), bias_offsets_[param_index].second,
+            bias + 4 * layer_id * hidden_size_ + lin_layer_id * hidden_size_,
+            params + bias_offsets_[param_index].first / sizeof(T));
       }
     }
   }
@@ -227,14 +225,12 @@ void LSTMCudaCudnn<T>::copy_params_to_gradients(
           }
         }
       }
-      if (bias && lin_layer_id == 0) { // copy only when lin_layer_id = 0
-        if (b_propagate) {
-          NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-              (kernel_backward_copy_bias<Tcu>),
-              4 * bias_offsets_[param_index].second,
-              bias + 4 * (layer_id * hidden_size_),
-              params + bias_offsets_[param_index].first / sizeof(T), b_accum);
-        }
+      if (bias && b_propagate && lin_layer_id < 4) {
+        // copy only when lin_layer_id = 0, 1, 2, 3
+        NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
+            (kernel_backward_copy_bias<Tcu>), bias_offsets_[param_index].second,
+            bias + 4 * layer_id * hidden_size_ + lin_layer_id * hidden_size_,
+            params + bias_offsets_[param_index].first / sizeof(T), b_accum);
       }
     }
   }

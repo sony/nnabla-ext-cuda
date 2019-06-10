@@ -146,25 +146,13 @@ void GRUCudaCudnn<T>::copy_weight_bias_to_params(Tcu *params, const Tcu *w_init,
           }
         }
       }
-      if (bias && lin_layer_id == 0) { // copy only when lin_layer_id = 0
-        if (bias_exists) {
-          NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-              (kernel_forward_copy_bias<Tcu>),
-              3 * bias_offsets_[param_index].second,
-              bias + 4 * (layer_id * hidden_size_),
-              params + bias_offsets_[param_index].first / sizeof(T));
-        }
-      }
-
-      if (bias && lin_layer_id == 5) {
-        if (bias_exists) {
-          // copy to tanh equation ohly
-          NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-              (kernel_forward_copy_bias<Tcu>),
-              bias_offsets_[param_index].second,
-              bias + 4 * (layer_id * hidden_size_) + 3 * hidden_size_,
-              params + bias_offsets_[param_index].first / sizeof(T));
-        }
+      if (bias_exists && bias && (lin_layer_id < 3 || lin_layer_id == 5)) {
+        // copy only when lin_layer_id = 0, 1, 2 or 5.
+        const int64_t bin_index = std::min(lin_layer_id, (int64_t)3);
+        NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
+            (kernel_forward_copy_bias<Tcu>), bias_offsets_[param_index].second,
+            bias + 4 * layer_id * hidden_size_ + bin_index * hidden_size_,
+            params + bias_offsets_[param_index].first / sizeof(T));
       }
     }
   }
@@ -240,23 +228,13 @@ void GRUCudaCudnn<T>::copy_params_to_gradients(
           }
         }
       }
-      if (bias && lin_layer_id == 0) { // copy only when lin_layer_id = 0
-        if (b_propagate) {
-          NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-              (kernel_backward_copy_bias<Tcu>),
-              3 * bias_offsets_[param_index].second,
-              bias + 4 * (layer_id * hidden_size_),
-              params + bias_offsets_[param_index].first / sizeof(T), b_accum);
-        }
-      }
-      if (bias && lin_layer_id == 5) { // copy only when lin_layer_id = 0
-        if (b_propagate) {
-          NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-              (kernel_backward_copy_bias<Tcu>),
-              bias_offsets_[param_index].second,
-              bias + 4 * (layer_id * hidden_size_) + 3 * hidden_size_,
-              params + bias_offsets_[param_index].first / sizeof(T), b_accum);
-        }
+      if (bias && b_propagate && (lin_layer_id < 3 || lin_layer_id == 5)) {
+        // copy only when lin_layer_id = 0, 1, 2 or 5.
+        const int64_t bin_index = std::min(lin_layer_id, (int64_t)3);
+        NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
+            (kernel_backward_copy_bias<Tcu>), bias_offsets_[param_index].second,
+            bias + 4 * layer_id * hidden_size_ + bin_index * hidden_size_,
+            params + bias_offsets_[param_index].first / sizeof(T), b_accum);
       }
     }
   }
@@ -365,7 +343,7 @@ void GRUCudaCudnn<T>::setup_impl(const Variables &inputs,
     const int b_index = weight_exists_ ? 4 : 3;
     Shape_t b_shape = inputs[b_index]->shape();
     const char *error_msg_b = "Input b must be a 4 dimensional array with a "
-                              "shape of (num_layers, num_directions, 3, "
+                              "shape of (num_layers, num_directions, 4, "
                               "hidden_size).";
     NBLA_CHECK(inputs[b_index]->ndim() == 4, error_code::value, error_msg_b);
     NBLA_CHECK(b_shape[0] == this->num_layers_, error_code::value, error_msg_b);
