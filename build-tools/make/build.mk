@@ -128,8 +128,11 @@ nnabla-ext-cuda-wheel-local: nnabla-install \
 nnabla-ext-cuda-wheel-multi-gpu: \
 			nnabla-cpplib-deb \
 			nnabla-wheel \
-			nnabla-install \
-			nnabla-ext-cuda-cpplib-multi-gpu-deb
+			nnabla-ext-cuda-cpplib-multi-gpu-deb \
+			nnabla-ext-cuda-wheel-multi-gpu-only
+
+.PHONY: nnabla-ext-cuda-wheel-multi-gpu-only
+nnabla-ext-cuda-wheel-multi-gpu-only: nnabla-install
 	mkdir -p $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_MULTI_GPU)
 	cd $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_MULTI_GPU) \
 	&& cmake \
