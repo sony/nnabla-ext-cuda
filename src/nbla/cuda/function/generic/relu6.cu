@@ -23,5 +23,5 @@
 
 namespace nbla {
 NBLA_DEFINE_TRANSFORM_UNARY_CUDA(ReLU6, min(max(x, (T)0), (T)6),
-                                 (T)0 < x && x < (T)6 ? (T)1 : (T)0);
+                                 (T)0 < x && x < (T)6 ? dy : (T)0);
 }
