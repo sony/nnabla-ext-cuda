@@ -173,7 +173,7 @@ protected:
     AllReduceCallback(MultiProcessDataParallelCommunicatorNccl<T> &parent,
                       const string &group, size_t n_params_threshold,
                       bool division, const NdArrayPtr &gpu_memory,
-                      const unordered_set<Tc *> &device_ptrs);
+                      const unordered_set<NdArrayPtr> &device_ptrs);
 
     virtual void on_finish_function_backward(const CgFunctionPtr &ptr) override;
     virtual void on_finish_backward() override;
@@ -200,7 +200,7 @@ protected:
 
     const size_t n_params_threshold_;
     const bool division_;
-    const unordered_set<Tc *> device_ptrs_; //< GPU pointers to send.
+    const unordered_set<NdArrayPtr> device_ptrs_; //< GPU pointers to send.
 
     const NdArrayPtr gpu_memory_;
     std::queue<Buffer>

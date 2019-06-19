@@ -210,11 +210,6 @@ void FusedBatchNormalizationCudaCudnn<T>::backward_impl(
   auto b_param = a_param;
   if (!(accum[1] || accum[2])) {
     b_param = 0;
-  } else {
-    if (!accum[1])
-      inputs[1]->grad()->zero();
-    if (!accum[2])
-      inputs[2]->grad()->zero();
   }
 
   size_t prop_down_workspace_size = 0;
@@ -245,14 +240,20 @@ void FusedBatchNormalizationCudaCudnn<T>::backward_impl(
   const void *gamma =
       inputs[2]->data()->get(DRV_BN_T(), this->ctx_)->const_pointer();
 
-  void *db =
-      propagate_down[1]
-          ? inputs[1]->grad()->cast(DRV_BN_T(), this->ctx_, false)->pointer()
-          : prop_down_buf;
-  void *dg =
-      propagate_down[2]
-          ? inputs[2]->grad()->cast(DRV_BN_T(), this->ctx_, false)->pointer()
-          : prop_down_buf;
+  // Specify write only flag to prevent unnecessary memset.
+  const bool param_diff_write = b_param == 0;
+  void *db = propagate_down[1]
+                 ? inputs[1]
+                       ->grad()
+                       ->cast(DRV_BN_T(), this->ctx_, param_diff_write)
+                       ->pointer()
+                 : prop_down_buf;
+  void *dg = propagate_down[2]
+                 ? inputs[2]
+                       ->grad()
+                       ->cast(DRV_BN_T(), this->ctx_, param_diff_write)
+                       ->pointer()
+                 : prop_down_buf;
 
   // Get buffers.
   NdArray workspace(Shape_t{(Size_t)backward_workspace_size_});
