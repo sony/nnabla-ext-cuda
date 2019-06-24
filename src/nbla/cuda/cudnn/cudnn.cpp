@@ -543,6 +543,7 @@ CudnnTensorDescriptor::CudnnTensorDescriptor() {
 CudnnTensorDescriptor::~CudnnTensorDescriptor() {
   NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(desc));
 }
+
 ////////////////////////////////////////
 // Cudnn Pooling Wrapper
 ////////////////////////////////////////
@@ -579,7 +580,7 @@ CudnnPooling::CudnnPooling(const vector<int> &inshape,
 // Create pooling descriptor.
 #if CUDNN_VERSION >= 5000
   NBLA_CUDNN_CHECK(cudnnSetPoolingNdDescriptor(
-      pooling_desc_.desc, mode, CUDNN_PROPAGATE_NAN, cfg.kernel.size(),
+      pooling_desc_.desc, mode, CUDNN_NOT_PROPAGATE_NAN, cfg.kernel.size(),
       cfg.kernel.data(), cfg.pad.data(), cfg.stride.data()));
 #else
   NBLA_CUDNN_CHECK(cudnnSetPoolingNdDescriptor(
@@ -665,21 +666,28 @@ void CudnnSoftmax::backward(const void *alpha, const void *y, const void *dy,
 CudnnHandleManager::CudnnHandleManager() {}
 
 CudnnHandleManager::~CudnnHandleManager() {
-  for (auto handle : this->handles_) {
-    NBLA_CUDNN_CHECK(cudnnDestroy(handle.second));
+  for (auto dev_handles : this->handles_) {
+    for (auto handle : dev_handles.second) {
+      NBLA_CUDNN_CHECK(cudnnDestroy(*handle.second));
+    }
   }
 }
 
-cudnnHandle_t CudnnHandleManager::handle(int device) {
+cudnnHandle_t CudnnHandleManager::handle(int device, cudaStream_t stream) {
   if (device < 0) {
     NBLA_CUDA_CHECK(cudaGetDevice(&device));
   }
-  if (this->handles_.count(device) == 0) {
-    cudnnHandle_t handle;
-    NBLA_CUDNN_CHECK(cudnnCreate(&handle));
-    this->handles_[device] = handle;
+  auto &dev_handles = this->handles_[device];
+  auto handle = dev_handles[stream];
+  if (handle) {
+    return *handle;
   }
-  return this->handles_[device];
+
+  handle = make_shared<cudnnHandle_t>();
+  NBLA_CUDNN_CHECK(cudnnCreate(handle.get()));
+  NBLA_CUDNN_CHECK(cudnnSetStream(*handle, stream));
+  dev_handles[stream] = handle;
+  return *handle;
 }
 
 int CudnnHandleManager::get_workspace_limit_in_bytes() {

@@ -355,7 +355,7 @@ public:
   /**
      Get cuDNN handle for device.
    */
-  cudnnHandle_t handle(int device = -1);
+  cudnnHandle_t handle(int device = -1, cudaStream_t stream = 0);
 
   /** Hash map for CudnnConvResource.
    */
@@ -398,7 +398,8 @@ public:
   void set_deterministic_option(bool value);
 
 protected:
-  map<int, cudnnHandle_t> handles_;
+  unordered_map<int, unordered_map<cudaStream_t, shared_ptr<cudnnHandle_t>>>
+      handles_;
   int workspace_limit_{0};           ///< Workspace limit in bytes.
   bool deterministic_option_{false}; ///< Choose deterministic algorithms
 
