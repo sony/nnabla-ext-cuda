@@ -36,7 +36,7 @@ void clip_grad_by_norm_cuda(const Context &ctx,
 
   Variable g(param->grad());
   Variable g_pow(param->shape());
-  Variable sum(param->shape());
+  Variable sum(Shape_t{});
 
   // calculate g^2
   auto f_pow_scalar = create_PowScalar(ctx, 2.0);
