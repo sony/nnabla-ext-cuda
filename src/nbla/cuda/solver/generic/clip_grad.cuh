@@ -22,10 +22,10 @@
 
 namespace nbla {
 template <typename T>
-__global__ void kernel_clip_grad_by_norm(const int num, T *grad, const T *l2sum,
+__global__ void kernel_clip_grad_by_norm(const int num, T *grad, const T norm,
                                          const float clip_norm) {
   NBLA_CUDA_KERNEL_LOOP(idx, num) {
-    grad[idx] = clip_norm * grad[idx] / sqrtf(*l2sum);
+    grad[idx] = clip_norm * grad[idx] / norm;
   }
 }
 
@@ -55,10 +55,11 @@ void clip_grad_by_norm_cuda(const Context &ctx,
   const T *l2sum = sum.get_data_pointer<T>(ctx);
   T l2sum_cpu;
   cudaMemcpy(&l2sum_cpu, l2sum, sizeof(T), cudaMemcpyDeviceToHost);
-  if (l2sum_cpu > clip_norm * clip_norm) {
+  T norm = sqrt(l2sum_cpu);
+  if (norm > clip_norm) {
     T *grad = param->cast_grad_and_get_pointer<T>(ctx);
     Size_t size = param->size();
-    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_clip_grad_by_norm, size, grad, l2sum,
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_clip_grad_by_norm, size, grad, norm,
                                    clip_norm);
   }
 }
