@@ -17,6 +17,7 @@
 
 #include "./mixed_precision_training.cuh"
 #include "./weight_decay.cuh"
+#include "./clip_grad.cuh"
 
 namespace nbla {
 
@@ -65,6 +66,7 @@ void AMSBoundCuda<T>::update_impl(const string &key, VariablePtr param) {
                                  this->eps_, final_lr, this->gamma_);
 }
 NBLA_DEF_WEIGHT_DECAY(AMSBoundCuda, weight_decay_cuda);
+NBLA_DEF_CLIP_GRAD_BY_NORM(AMSBoundCuda, clip_grad_by_norm_cuda);
 NBLA_DEF_CHECK_INF_GRAD(AMSBoundCuda, check_inf_grad_cuda);
 NBLA_DEF_CHECK_NAN_GRAD(AMSBoundCuda, check_nan_grad_cuda);
 NBLA_DEF_CHECK_INF_OR_NAN_GRAD(AMSBoundCuda, check_inf_or_nan_grad_cuda);
