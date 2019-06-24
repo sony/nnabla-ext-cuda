@@ -143,6 +143,9 @@ def cuda_config(root_dir, cuda_lib, ext_opts):
         Extension(cuda_pkg + '.init',
                   [join(path_cuda_pkg, 'init.pyx')],
                   **cuda_ext_opts),
+        Extension(cuda_pkg + '.nvtx',
+                  [join(path_cuda_pkg, 'nvtx.pyx')],
+                  **cuda_ext_opts),
     ]
     return ExtConfig(package_dir, packages, package_data,
                      ext_modules, cuda_ext_opts)
