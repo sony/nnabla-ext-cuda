@@ -42,6 +42,9 @@ __global__ void forward(const int x_size, const T *x_data, const int y_size,
     // code (that would imply raising a trap plus always synchronization and
     // costly recovery). Still we don't want to write to unaccessible memory.
     if (y_offset < y_size) {
+      // Scatter indices are supposed to be unique, i.e. not to scatter
+      // different values into the same positions. Otherwise it is the last
+      // update that survives which for parallel execution is unpredictable.
       y_data[y_offset] = x_data[tid];
     }
   }
