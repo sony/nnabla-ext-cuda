@@ -223,6 +223,14 @@ struct NBLA_CUDA_API CudnnConvDesc {
 
 std::ostream &operator<<(std::ostream &os, const CudnnConvDesc &desc);
 
+/** CUDNN Convolution descriptor wrapper.
+ */
+struct CudnnConvolutionDescriptor {
+  cudnnConvolutionDescriptor_t desc;
+  CudnnConvolutionDescriptor();
+  ~CudnnConvolutionDescriptor();
+};
+
 /**
   CUDNN Pooling descriptor wrapper.
  */
@@ -302,14 +310,16 @@ public:
 /** cuDNN Convolution resource cache.
  */
 struct NBLA_CUDA_API CudnnConvResource {
-  int device;                             ///< Device ID.
-  cudnnTensorDescriptor_t x_desc;         ///< Input desc.
-  cudnnTensorDescriptor_t y_desc;         ///< Output desc.
-  cudnnTensorDescriptor_t b_desc;         ///< Bias desc.
-  cudnnTensorDescriptor_t b_desc_deconv;  ///< Bias desc for deconvolution.
-  cudnnFilterDescriptor_t w_desc;         ///< Weight desc.
-  cudnnConvolutionDescriptor_t conv_desc; ///< Conv desc.
-  cudnnConvolutionFwdAlgo_t fwd_algo;     ///< Best forward algorithm found.
+  int device;                                 ///< Device ID.
+  cudnnTensorDescriptor_t x_desc;             ///< Input desc.
+  cudnnTensorDescriptor_t y_desc;             ///< Output desc.
+  cudnnTensorDescriptor_t b_desc;             ///< Bias desc.
+  cudnnTensorDescriptor_t b_desc_deconv;      ///< Bias desc for deconvolution.
+  cudnnFilterDescriptor_t w_desc;             ///< Weight desc.
+  CudnnConvolutionDescriptor conv_desc;       ///< Conv desc.
+  CudnnConvolutionDescriptor conv_dgrad_desc; ///< Conv backward data desc.
+  CudnnConvolutionDescriptor conv_wgrad_desc; ///< Conv backward filter desc.
+  cudnnConvolutionFwdAlgo_t fwd_algo;         ///< Best forward algorithm found.
   cudnnConvolutionBwdFilterAlgo_t
       bwd_filter_algo; ///< Best Backward filter algorithm found.
   cudnnConvolutionBwdDataAlgo_t
