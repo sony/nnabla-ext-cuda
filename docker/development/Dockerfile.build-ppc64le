@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# for nnabla>=1.0.17
-
 ARG BASE
 FROM ${BASE}
 
@@ -118,6 +116,7 @@ ARG PYTHON_VERSION_MAJOR
 ARG PYTHON_VERSION_MINOR
 ENV PYVERNAME=${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}
 
+# Limitation: numpy>=1.17 does not support python2.7
 ADD python/requirements.txt /tmp/deps/
 
 RUN umask 0 \
@@ -132,7 +131,7 @@ RUN umask 0 \
     && conda update --all -y \
     && pip install -U pip wheel mako pyyaml \
     && pip install -U cython \
-    && pip install -U numpy \
+    && pip install -U numpy\<1.17 \
     && pip install -U -r /tmp/deps/requirements.txt \
     && conda clean -y --all \
     && cd / \

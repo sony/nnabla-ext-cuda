@@ -46,7 +46,7 @@ assert(__author__ is not None)
 assert(__email__ is not None)
 
 setup_requires = [
-    'numpy>=1.16',
+    'numpy>=1.16,<1.17',
     'Cython',  # Requires python-dev.
 ]
 
