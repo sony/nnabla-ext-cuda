@@ -498,3 +498,6 @@ GatherNd:
 ScatterNd:
   float: [float]
   half: [Half]
+MaxPoolingBackward:
+  float: [float]
+  half: [Half]
