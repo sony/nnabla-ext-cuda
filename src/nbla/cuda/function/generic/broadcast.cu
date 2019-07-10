@@ -43,12 +43,10 @@ void BroadcastCuda<T>::setup_impl(const Variables &inputs,
         broadcast_dims.push_back(d);
     }
   }
+  broadcast_dims_ = broadcast_dims;
   if (broadcast_dims.size() == 0)
     return;
-  sum_input_ = make_shared<Variable>(outputs[0]->grad());
-  sum_output_ = make_shared<Variable>();
-  f_sum_ = create_Sum(this->ctx_, /*axis*/ broadcast_dims, /*keepdims*/ false);
-  f_sum_->setup(Variables{sum_input_.get()}, Variables{sum_output_.get()});
+  f_sum_ = create_Sum(this->ctx_, /*axis*/ broadcast_dims, /*keepdims*/ true);
 }
 
 // ----------------------------------------------------------------------------
@@ -156,21 +154,21 @@ void BroadcastCuda<T>::backward_impl(const Variables &inputs,
                                      const vector<bool> &accum) {
   if (!propagate_down[0])
     return;
+  shared_ptr<Variable> sum_input = make_shared<Variable>(outputs[0]->grad());
+  shared_ptr<Variable> sum_output;
   if (f_sum_) {
-    sum_input_->set_grad(outputs[0]->grad()); // What is this??? Seems like no
-                                              // effect. set_data()? set_data is
-                                              // done in setup_impl anyway.
     if (!accum[0]) {
-      auto data_backup = sum_output_->data()->array();
-      sum_output_->data()->set_array(inputs[0]->grad()->array());
-      f_sum_->forward(Variables{sum_input_.get()},
-                      Variables{sum_output_.get()});
-      sum_output_->data()->set_array(data_backup);
+      sum_output = make_shared<Variable>(inputs[0]->grad());
+      f_sum_->setup(Variables{sum_input.get()}, Variables{sum_output.get()});
+      f_sum_->forward(Variables{sum_input.get()}, Variables{sum_output.get()});
       return;
     }
-    f_sum_->forward(Variables{sum_input_.get()}, Variables{sum_output_.get()});
-  } else if (!accum[0]) {
-    inputs[0]->grad()->zero();
+    sum_output = make_shared<Variable>(inputs[0]->shape());
+    f_sum_->setup(Variables{sum_input.get()}, Variables{sum_output.get()});
+    f_sum_->forward(Variables{sum_input.get()}, Variables{sum_output.get()});
+  } else {
+    if (!accum[0])
+      inputs[0]->grad()->zero();
   }
   auto _get = [this](Variable *v) {
     return v->get_data_pointer<Tc>(this->ctx_);
@@ -179,7 +177,7 @@ void BroadcastCuda<T>::backward_impl(const Variables &inputs,
     return v->get_grad_pointer<Tc>(this->ctx_);
   };
   cuda_set_device(device_);
-  const Tc *g = f_sum_ ? _get(sum_output_.get()) : _gget(outputs[0]);
+  const Tc *g = f_sum_ ? _get(sum_output.get()) : _gget(outputs[0]);
   Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_, false);
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_add_grad, inputs[0]->size(), g, dx);
 }
