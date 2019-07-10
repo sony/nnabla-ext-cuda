@@ -21,5 +21,5 @@
 
 namespace nbla {
 
-NBLA_DEFINE_TRANSFORM_UNARY_CUDA(Tan, tan(x), dy / pow(cos(x), (T)2.));
+NBLA_DEFINE_TRANSFORM_UNARY_CUDA(Tan, tan(x), dy / pow(cos(x), (T)2.), false);
 }

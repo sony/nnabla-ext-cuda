@@ -17,5 +17,6 @@
 
 namespace nbla {
 
-NBLA_DEFINE_TRANSFORM_UNARY_CUDA(Abs, std::abs(x), (x < (T)0) ? -dy : dy);
+NBLA_DEFINE_TRANSFORM_UNARY_CUDA(Abs, std::abs(x), (x < (T)0) ? -dy : dy,
+                                 false);
 }

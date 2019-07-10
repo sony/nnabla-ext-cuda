@@ -25,5 +25,6 @@ namespace nbla {
 NBLA_DEFINE_TRANSFORM_UNARY_CUDA(Sinc, x == (T)0 ? (T)1 : sin((T)x) / x,
                                  x == (T)0
                                      ? (T)0
-                                     : dy * (cos((T)x) - sin((T)x) / x) / x);
+                                     : dy * (cos((T)x) - sin((T)x) / x) / x,
+                                 false);
 }

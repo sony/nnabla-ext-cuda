@@ -20,5 +20,5 @@
 namespace nbla {
 
 NBLA_DEFINE_TRANSFORM_UNARY_CUDA_1(MinimumScalar, x < (T)a0 ? x : (T)a0,
-                                   x < (T)a0 ? dy : (T)0, double);
+                                   x < (T)a0 ? dy : (T)0, double, false);
 }
