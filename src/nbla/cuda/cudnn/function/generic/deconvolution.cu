@@ -180,6 +180,7 @@ void DeconvolutionCudaCudnn<T>::backward_impl(
   for (int g = 0; g < this->group_; ++g) {
     if (propagate_down[0]) {
       auto beta = get_cudnn_scalar_arg<T>(accum[0] ? 1 : 0);
+      // todo: will enable async streaming execution as well as convolution.
       NBLA_CUDNN_CHECK(cudnnConvolutionForward(
           cudnn_handle_, &alpha, rsc_->x_desc, dx + x_offset_ * g, rsc_->w_desc,
           w + w_offset_ * g, rsc_->conv_desc.desc, rsc_->fwd_algo, workspace,
@@ -187,6 +188,7 @@ void DeconvolutionCudaCudnn<T>::backward_impl(
     }
     if (propagate_down[1]) {
       auto beta = get_cudnn_scalar_arg<T>(accum[1] ? 1 : 0);
+      // todo: will enable async streaming execution as well as convolution.
       NBLA_CUDNN_CHECK(cudnnConvolutionBackwardFilter(
           cudnn_handle_, &alpha, rsc_->x_desc, dx + x_offset_ * g, rsc_->y_desc,
           y + y_offset_ * g, rsc_->conv_wgrad_desc.desc, rsc_->bwd_filter_algo,

@@ -33,6 +33,11 @@ namespace nbla {
 using std::unordered_map;
 
 /**
+ * Enum for nbla global streams.
+ */
+enum CudaStreamId { CONVOLUTION_BWD, MAX_COUNT };
+
+/**
 Singleton class for storing some handles or configs for CUDA Computation.
 */
 class NBLA_CUDA_API Cuda {
@@ -74,6 +79,11 @@ public:
    */
   shared_ptr<Allocator> naive_allocator();
 
+  /** Get auxilliary stream
+   */
+  shared_ptr<cudaStream_t> get_stream(unsigned int flag, CudaStreamId streamId,
+                                      int device = -1);
+
 protected:
   std::mutex mtx_cublas_;
   std::mutex mtx_curand_;
@@ -92,6 +102,8 @@ protected:
    */
   shared_ptr<Allocator> naive_allocator_;
   shared_ptr<Allocator> caching_allocator_;
+  // stream pool -> <device, <id, stream>>
+  unordered_map<int, unordered_map<int, shared_ptr<cudaStream_t>>> streams_;
 
 private:
   friend SingletonManager;

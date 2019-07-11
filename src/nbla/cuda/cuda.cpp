@@ -42,6 +42,12 @@ Cuda::~Cuda() {
       }
     }
   }
+
+  for (auto &all_streams : this->streams_) {
+    for (auto &stream : all_streams.second) {
+      NBLA_CUDA_CHECK(cudaStreamDestroy(*(stream.second)));
+    }
+  }
 }
 
 cublasHandle_t Cuda::cublas_handle(int device) {
@@ -119,6 +125,39 @@ std::shared_ptr<cudaEvent_t> Cuda::cuda_event(unsigned int flags, int device) {
         /* Delete the raw pointer of the cudaEvent_t. */
         deleter(ptr);
       });
+}
+
+shared_ptr<cudaStream_t> Cuda::get_stream(unsigned int flags,
+                                          CudaStreamId streamId, int device) {
+  if (device < 0) {
+    device = cuda_get_device();
+  }
+
+  int streamIdInt = static_cast<int>(streamId);
+
+  auto device_streams = this->streams_[device];
+  auto it = device_streams.find(streamIdInt);
+
+  // Stream has already been created.
+  if (it != device_streams.end()) {
+    // check flags
+    auto stream = it->second;
+    unsigned int register_flags;
+    NBLA_CUDA_CHECK(cudaStreamGetFlags(*stream, &register_flags));
+    NBLA_CHECK(flags == register_flags, error_code::value,
+               "flag mismatch. StreamId: %u, flags created before: %u, flags "
+               "requested: %u",
+               streamId, register_flags, flags);
+    return it->second;
+  }
+
+  // Create stream.
+  auto stream = shared_ptr<cudaStream_t>(new cudaStream_t());
+  NBLA_CUDA_CHECK(cudaStreamCreateWithFlags(stream.get(), flags));
+
+  this->streams_[device].insert({streamIdInt, stream});
+
+  return stream;
 }
 
 curandGenerator_t Cuda::curand_generator() {

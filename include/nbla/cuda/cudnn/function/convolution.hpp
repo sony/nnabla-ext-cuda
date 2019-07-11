@@ -72,6 +72,10 @@ public:
 protected:
   int device_;
   cudnnHandle_t cudnn_handle_;
+  cudnnHandle_t dgrad_handle_;
+  shared_ptr<cudaEvent_t> default_event_;
+  shared_ptr<cudaEvent_t> dgrad_event_;
+  shared_ptr<cudaStream_t> dgrad_stream_;
 #if CUDNN_VERSION < 7000
   int x_offset_;
   int w_offset_;
@@ -84,6 +88,9 @@ protected:
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
+
+  void wait_default_on_dgrad();
+  void wait_dgrad_on_default();
 };
 }
 #endif
