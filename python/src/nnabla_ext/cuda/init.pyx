@@ -18,6 +18,9 @@ from nnabla import add_available_context
 import nnabla._init as cpu_init
 from libcpp.vector cimport vector
 from libcpp.string cimport string
+from libcpp.memory cimport shared_ptr
+from libc.stdint cimport uintptr_t
+from libcpp cimport bool
 
 cdef extern from "nbla/cuda/init.hpp" namespace "nbla":
     void init_cuda() except+
@@ -27,7 +30,17 @@ cdef extern from "nbla/cuda/init.hpp" namespace "nbla":
     void cuda_device_synchronize(const string & device) except +
     int cuda_get_device_count() except +
     vector[string] cuda_get_devices() except +
-
+    shared_ptr[void] cuda_create_stream(int device_id) except +
+    void* cuda_stream_shared_to_void(shared_ptr[void]) except +
+    void print_stream_flag(shared_ptr[void]) except +
+    void print_stream_priority(shared_ptr[void]) except +
+    void cuda_stream_synchronize(shared_ptr[void]) nogil except +
+    void cuda_nullstream_synchronize() nogil except +
+    void cuda_stream_destroy(shared_ptr[void]) except +
+    shared_ptr[void] cuda_create_event(int device_id) except +
+    void cuda_default_stream_event(shared_ptr[void]) except +
+    void cuda_stream_wait_event(shared_ptr[void], shared_ptr[void]) except +
+    void cuda_event_synchronize(shared_ptr[void]) nogil except +
 
 logger.info('Initializing CUDA extension...')
 try:
@@ -110,3 +123,54 @@ def get_devices():
     """
     return cuda_get_devices()
 ###############################################################################
+
+cdef class StreamEventHandler:
+    cdef shared_ptr[void] stream
+    cdef shared_ptr[void] event
+    cdef public object value
+    cdef public int device_id
+    cpdef bool is_stream_destroy
+
+    def __cinit__(self, int device_id=-1):
+        self.is_stream_destroy = True
+        self.device_id = device_id
+
+    def __init__(self, int device_id=-1):
+        self.stream_create(device_id)
+        self.event = cuda_create_event(device_id)
+        self.add_default_stream_event()
+
+    def stream_wait_event(self):
+        if not self.is_stream_destroy:
+            cuda_stream_wait_event(self.stream, self.event)
+
+    def add_default_stream_event(self):
+        cuda_default_stream_event(self.event)
+
+    def event_synchronize(self):
+        with nogil:
+            cuda_event_synchronize(self.event)
+
+    def stream_destroy(self):
+        cuda_stream_destroy(self.stream)
+        self.is_stream_destroy = True
+
+    def stream_create(self, device_id):
+        if not self.is_stream_destroy:
+            self.stream_destroy()
+
+        self.stream = cuda_create_stream(device_id)
+
+        cdef void* stream_vp = cuda_stream_shared_to_void(self.stream)
+        self.value = <uintptr_t>stream_vp
+
+        self.is_stream_destroy = False
+
+    def stream_synchronize(self):
+        if not self.is_stream_destroy:
+            with nogil:
+                cuda_stream_synchronize(self.stream)
+
+    def default_stream_synchronize(self):
+        with nogil:
+            cuda_nullstream_synchronize()

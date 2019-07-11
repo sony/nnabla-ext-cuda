@@ -17,6 +17,7 @@
 
 #include <nbla/cuda/defs.hpp>
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -24,6 +25,7 @@ namespace nbla {
 
 using std::vector;
 using std::string;
+using std::shared_ptr;
 
 /**
 Initialize CUDA features.
@@ -53,5 +55,24 @@ NBLA_CUDA_API int cuda_get_device_count();
 /** get available devices.
  */
 NBLA_CUDA_API vector<string> cuda_get_devices();
+
+/** cudaStream wrapper functions.
+*/
+NBLA_CUDA_API shared_ptr<void> cuda_create_stream(int device_id = -1);
+
+NBLA_CUDA_API void *cuda_stream_shared_to_void(shared_ptr<void> stream);
+NBLA_CUDA_API void print_stream_flag(shared_ptr<void> stream);
+NBLA_CUDA_API void print_stream_priority(shared_ptr<void> stream);
+NBLA_CUDA_API void cuda_stream_synchronize(shared_ptr<void> stream);
+NBLA_CUDA_API void cuda_nullstream_synchronize();
+NBLA_CUDA_API void cuda_stream_destroy(shared_ptr<void> stream);
+
+/** cudaEvent wrapper functions.
+*/
+NBLA_CUDA_API shared_ptr<void> cuda_create_event(int device_id = -1);
+NBLA_CUDA_API void cuda_default_stream_event(shared_ptr<void> event);
+NBLA_CUDA_API void cuda_stream_wait_event(shared_ptr<void> stream,
+                                          shared_ptr<void> event);
+NBLA_CUDA_API void cuda_event_synchronize(shared_ptr<void> event);
 }
 #endif
