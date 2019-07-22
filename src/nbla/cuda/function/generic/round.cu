@@ -17,5 +17,5 @@
 
 namespace nbla {
 
-NBLA_DEFINE_TRANSFORM_UNARY_CUDA(Round, round(x), dy);
+NBLA_DEFINE_TRANSFORM_UNARY_CUDA(Round, round(x), dy, false);
 }

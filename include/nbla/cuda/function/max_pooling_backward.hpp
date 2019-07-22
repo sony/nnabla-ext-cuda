@@ -12,32 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/** Broadcast
- */
-#ifndef __NBLA_CUDA_FUNCTION_BROADCAST_HPP__
-#define __NBLA_CUDA_FUNCTION_BROADCAST_HPP__
+#ifndef NBLA_CUDA_FUNCTION_MAX_POOLING_BACKWARD_HPP
+#define NBLA_CUDA_FUNCTION_MAX_POOLING_BACKWARD_HPP
 
-#include <nbla/cuda/common.hpp>
 #include <nbla/cuda/cuda.hpp>
-#include <nbla/function/broadcast.hpp>
+#include <nbla/function/max_pooling_backward.hpp>
+
 namespace nbla {
-/** @copydoc Broadcast
-*/
 
-template <typename T> class BroadcastCuda : public Broadcast<T> {
-protected:
-  // Variables for backward.
-  shared_ptr<Function> f_transpose_, f_sum_;
-  VariablePtr trp_input_, trp_output_, sum_input_, sum_output_;
-  vector<int> broadcast_dims_;
-
+template <typename T>
+class MaxPoolingBackwardCuda : public MaxPoolingBackward<T> {
 public:
-  typedef typename CudaType<T>::type Tc;
+  typedef typename CudaType<T>::type Tcu;
 
-  explicit BroadcastCuda(const Context &ctx, const vector<int> &shape)
-      : Broadcast<T>(ctx, shape), device_(std::stoi(ctx.device_id)) {}
-  virtual ~BroadcastCuda() {}
-  virtual string name() { return "BroadcastCuda"; }
+  explicit MaxPoolingBackwardCuda(const Context &ctx, const vector<int> &kernel,
+                                  const vector<int> &stride, bool ignore_border,
+                                  const vector<int> &pad, bool channel_last)
+      : MaxPoolingBackward<T>(ctx, kernel, stride, ignore_border, pad,
+                              channel_last),
+        device_(std::stoi(ctx.device_id)) {}
+  virtual ~MaxPoolingBackwardCuda() {}
+  virtual string name() { return "MaxPoolingBackwardCuda"; }
   virtual vector<string> allowed_array_classes() {
     return SingletonManager::get<Cuda>()->array_classes();
   }
@@ -51,5 +46,4 @@ protected:
                              const vector<bool> &accum);
 };
 }
-
 #endif

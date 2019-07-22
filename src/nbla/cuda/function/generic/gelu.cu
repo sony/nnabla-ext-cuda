@@ -32,5 +32,6 @@ NBLA_DEFINE_TRANSFORM_UNARY_CUDA(
             std::pow(1 / cosh((T)0.797885 * x +
                               (T)0.0356774 * std::pow(x, (T)3)),
                      (T)2) +
-        (T)0.5 * std::tanh((T)0.797885 * x + (T)0.0356774 * std::pow(x, (T)3)));
+        (T)0.5 * std::tanh((T)0.797885 * x + (T)0.0356774 * std::pow(x, (T)3)),
+    false);
 }

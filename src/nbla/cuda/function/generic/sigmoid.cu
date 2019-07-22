@@ -22,5 +22,5 @@
 namespace nbla {
 
 NBLA_DEFINE_TRANSFORM_UNARY_CUDA(Sigmoid, (T)1 / ((T)1 + exp(-x)),
-                                 dy *y *((T)1 - y));
+                                 dy *y *((T)1 - y), true);
 }
