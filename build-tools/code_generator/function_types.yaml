@@ -58,7 +58,37 @@ CELU:
 PReLU:
   float: [float]
   half: [Half]
+GELU:
+  float: [float]
+  half: [Half]
+ReLU6:
+  float: [float]
+  half: [Half]
+HardSigmoid:
+  float: [float]
+  half: [Half]
+HardTanh:
+  float: [float]
+  half: [Half]
+LogSigmoid:
+  float: [float]
+  half: [Half]
+SoftPlus:
+  float: [float]
+  half: [Half]
+SoftSign:
+  float: [float]
+  half: [Half]
+TanhShrink:
+  float: [float]
+  half: [Half]
+Sinc:
+  float: [float]
+  half: [Half]
 BatchNormalization:
+  float: [float]
+  half: [Half]
+SyncBatchNormalization:
   float: [float]
   half: [Half]
 MeanSubtraction:
@@ -271,6 +301,9 @@ Transpose:
 Broadcast:
   float: [float]
   half: [Half]
+Tile:
+  float: [float]
+  half: [Half]
 # OneHot:
 #   float: [int, float]
 #   half: [int, Half]
@@ -303,12 +336,21 @@ Interpolate:
 Dropout:
   float: [float]
   half: [Half]
+TopKData:
+  float: [float]
+  half: [Half]
+TopKGrad:
+  float: [float]
+  half: [Half]
 Rand:
   float: [float]
   half: [Half]
 Randint:
   float: [int]
 Randn:
+  float: [float]
+  half: [Half]
+RandomChoice:
   float: [float]
   half: [Half]
 # RandomCrop:
@@ -455,3 +497,12 @@ IFFT:
 Prune:
   float: [float]
 #  half: [Half]
+GatherNd:
+  float: [float]
+  half: [Half]
+ScatterNd:
+  float: [float]
+  half: [Half]
+MaxPoolingBackward:
+  float: [float]
+  half: [Half]

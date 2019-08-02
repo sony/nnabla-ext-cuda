@@ -44,7 +44,9 @@ ReLU:
 #   float: [float]
 Softmax:
   float: [float]
-  half: [Half]
+LogSoftmax:
+  float: [float]
+#   half: [Half]
 # ELU:
 #   float: [float]
 # SELU:
@@ -55,7 +57,13 @@ Softmax:
 #   float: [float]
 # PReLU:
 #   float: [float]
+SyncBatchNormalization:
+  float: [float]
+  half: [Half]
 BatchNormalization:
+  float: [float]
+  half: [Half]
+FusedBatchNormalization:
   float: [float]
   half: [Half]
 # MeanSubtraction:

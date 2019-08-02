@@ -26,20 +26,21 @@ namespace nbla {
 template <typename T>
 __global__ void kernel_softmax_forward(const int size0x2_, const int size1_,
                                        const int size2_, const T *x, T *y) {
+  typedef typename CudaTypeForceFloat<T>::type AccumType;
   NBLA_CUDA_KERNEL_LOOP(idx, size0x2_) {
     const int i0 = idx / size2_;
     const int i2 = idx % size2_;
     // compute maximum
-    T max_x = nbla::numeric_limits_cuda<T>::min();
+    AccumType max_x = -nbla::numeric_limits_cuda<T>::max();
     for (int i1 = 0; i1 < size1_; ++i1) {
       const int k = (i0 * size1_ + i1) * size2_ + i2;
       max_x = max(max_x, x[k]);
     }
     // Compute exponential and sum
-    T exp_sum = T(0);
+    AccumType exp_sum = T(0);
     for (int i1 = 0; i1 < size1_; ++i1) {
       const int k = (i0 * size1_ + i1) * size2_ + i2;
-      const T tmp = std::exp(x[k] - max_x);
+      const AccumType tmp = std::exp(x[k] - max_x);
       y[k] = tmp;
       exp_sum += tmp;
     }
@@ -55,11 +56,12 @@ template <typename T, bool accum>
 __global__ void kernel_softmax_backward(const int size0x2_, const int size1_,
                                         const int size2_, const T *y,
                                         const T *dy, T *dx) {
+  typedef typename CudaTypeForceFloat<T>::type AccumType;
   NBLA_CUDA_KERNEL_LOOP(idx, size0x2_) {
     const int i0 = idx / size2_;
     const int i2 = idx % size2_;
     // compute sum of dy * y
-    T dyy_sum = T(0);
+    AccumType dyy_sum = T(0);
     for (int i1 = 0; i1 < size1_; ++i1) {
       const int k = (i0 * size1_ + i1) * size2_ + i2;
       dyy_sum += dy[k] * y[k];

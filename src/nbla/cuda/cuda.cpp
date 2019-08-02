@@ -16,9 +16,17 @@
 #include <nbla/cuda/utils/random.hpp>
 #include <nbla/singleton_manager-internal.hpp>
 
+#include <nbla/cuda/memory/cuda_memory.hpp>
+
+#include <nbla/memory/caching_allocator_with_buckets.hpp>
+#include <nbla/memory/naive_allocator.hpp>
+
 namespace nbla {
 
-Cuda::Cuda() {}
+Cuda::Cuda()
+    : naive_allocator_(make_shared<NaiveAllocator<CudaMemory>>()),
+      caching_allocator_(
+          make_shared<CachingAllocatorWithBuckets<CudaMemory>>()) {}
 
 Cuda::~Cuda() {
   for (auto handle : this->cublas_handles_) {
@@ -32,6 +40,12 @@ Cuda::~Cuda() {
       for (auto &event : events.second) {
         NBLA_CUDA_CHECK(cudaEventDestroy(event));
       }
+    }
+  }
+
+  for (auto &all_streams : this->streams_) {
+    for (auto &stream : all_streams.second) {
+      NBLA_CUDA_CHECK(cudaStreamDestroy(*(stream.second)));
     }
   }
 }
@@ -113,6 +127,39 @@ std::shared_ptr<cudaEvent_t> Cuda::cuda_event(unsigned int flags, int device) {
       });
 }
 
+shared_ptr<cudaStream_t> Cuda::get_stream(unsigned int flags,
+                                          CudaStreamId streamId, int device) {
+  if (device < 0) {
+    device = cuda_get_device();
+  }
+
+  int streamIdInt = static_cast<int>(streamId);
+
+  auto device_streams = this->streams_[device];
+  auto it = device_streams.find(streamIdInt);
+
+  // Stream has already been created.
+  if (it != device_streams.end()) {
+    // check flags
+    auto stream = it->second;
+    unsigned int register_flags;
+    NBLA_CUDA_CHECK(cudaStreamGetFlags(*stream, &register_flags));
+    NBLA_CHECK(flags == register_flags, error_code::value,
+               "flag mismatch. StreamId: %u, flags created before: %u, flags "
+               "requested: %u",
+               streamId, register_flags, flags);
+    return it->second;
+  }
+
+  // Create stream.
+  auto stream = shared_ptr<cudaStream_t>(new cudaStream_t());
+  NBLA_CUDA_CHECK(cudaStreamCreateWithFlags(stream.get(), flags));
+
+  this->streams_[device].insert({streamIdInt, stream});
+
+  return stream;
+}
+
 curandGenerator_t Cuda::curand_generator() {
   // Get current device
   int device = cuda_get_device();
@@ -144,25 +191,8 @@ void Cuda::register_array_class(const string &name) {
   array_classes_.push_back(name);
 }
 
-MemoryCache<CudaMemory> &Cuda::memcache() { return memcache_; }
-
-void *Cuda::get_workspace(Size_t size_in_bytes, int device) {
-  if (size_in_bytes == 0) {
-    return nullptr;
-  }
-  std::lock_guard<decltype(mtx_workspace_)> lock(mtx_workspace_);
-  auto it = workspace_.find(device);
-  if (it == workspace_.end()) {
-    workspace_[device] =
-        make_shared<CudaMemory>(size_in_bytes, std::to_string(device));
-  } else if (it->second->size() < size_in_bytes) {
-    workspace_.erase(it);
-    workspace_[device] =
-        make_shared<CudaMemory>(size_in_bytes, std::to_string(device));
-  }
-  it = workspace_.find(device);
-  return it->second->ptr();
-}
+shared_ptr<Allocator> Cuda::caching_allocator() { return caching_allocator_; }
+shared_ptr<Allocator> Cuda::naive_allocator() { return naive_allocator_; }
 
 NBLA_INSTANTIATE_SINGLETON(NBLA_CUDA_API, Cuda);
 }

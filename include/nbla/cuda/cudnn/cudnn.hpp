@@ -149,8 +149,8 @@ value of 1 at last.
 void cudnn_set_tensor_nd_descriptor_force_dim(cudnnTensorDescriptor_t &desc,
                                               cudnnDataType_t dtype,
                                               vector<int> dims,
-                                              vector<int> strides,
-                                              int force_ndim = 4);
+                                              size_t force_ndim = 4,
+                                              bool channel_last = false);
 
 template <typename T>
 inline void cudnn_set_tensor_descriptor(cudnnTensorDescriptor_t desc,
@@ -186,6 +186,7 @@ struct NBLA_CUDA_API CudnnConvDesc {
   int c;                ///< Channels of input.
   int o;                ///< Channels of output.
   int group;            ///< Number of groups.
+  bool channel_last;    ///< Channels at last dimension (NHWC).
   vector<int> sample;   ///< Sample size of each dimension.
   vector<int> kernel;   ///< Kernel size of each dimension.
   vector<int> pad;      ///< Padding size of each dimension.
@@ -206,6 +207,8 @@ struct NBLA_CUDA_API CudnnConvDesc {
       hash_combine(h, x.n);
       hash_combine(h, x.c);
       hash_combine(h, x.o);
+      hash_combine(h, x.group);
+      hash_combine(h, x.channel_last);
       for (int d = 0; d < x.ndim; d++) {
         hash_combine(h, x.sample[d]);
         hash_combine(h, x.kernel[d]);
@@ -213,7 +216,6 @@ struct NBLA_CUDA_API CudnnConvDesc {
         hash_combine(h, x.stride[d]);
         hash_combine(h, x.dilation[d]);
       }
-      hash_combine(h, x.group);
       return h;
     }
   };
@@ -221,17 +223,103 @@ struct NBLA_CUDA_API CudnnConvDesc {
 
 std::ostream &operator<<(std::ostream &os, const CudnnConvDesc &desc);
 
+/** CUDNN Convolution descriptor wrapper.
+ */
+struct CudnnConvolutionDescriptor {
+  cudnnConvolutionDescriptor_t desc;
+  CudnnConvolutionDescriptor();
+  ~CudnnConvolutionDescriptor();
+};
+
+/**
+  CUDNN Pooling descriptor wrapper.
+ */
+struct CudnnPoolingDescriptor {
+  cudnnPoolingDescriptor_t desc;
+  CudnnPoolingDescriptor();
+  ~CudnnPoolingDescriptor();
+};
+
+/**
+ * CUDNN tensor descriptor wrapper.
+ */
+struct CudnnTensorDescriptor {
+  cudnnTensorDescriptor_t desc;
+  CudnnTensorDescriptor();
+  ~CudnnTensorDescriptor();
+};
+
+/**
+   CUDNN activation descriptor wrapper.
+ */
+struct CudnnActivationDescriptor {
+  cudnnActivationDescriptor_t desc;
+  CudnnActivationDescriptor();
+  ~CudnnActivationDescriptor();
+};
+
+/**
+   Common CUDNN pooling function wrapper.
+ */
+class CudnnPooling {
+  CudnnTensorDescriptor input_desc_;
+  CudnnTensorDescriptor output_desc_;
+  CudnnPoolingDescriptor pooling_desc_;
+  int device_;
+
+public:
+  typedef shared_ptr<CudnnPooling> Ptr;
+  static Ptr create(const vector<int> &inshape, const vector<int> &kernel,
+                    const vector<int> &stride, bool ignore_border,
+                    const vector<int> &pad, bool channel_last,
+                    cudnnPoolingMode_t mode, cudnnDataType_t dtype, int device);
+
+  CudnnPooling(const vector<int> &inshape, const vector<int> &kernel,
+               const vector<int> &stride, bool ignore_border,
+               const vector<int> &pad, bool channel_last,
+               cudnnPoolingMode_t mode, cudnnDataType_t dtype, int device);
+  void forward(const void *alpha, const void *x, const void *beta,
+               void *y) const;
+
+  void backward(const void *alpha, const void *y, const void *dy, const void *x,
+                const void *beta, void *dx) const;
+};
+
+/**
+   CUDNN softmax function wrapper
+ */
+class CudnnSoftmax {
+  CudnnTensorDescriptor input_desc_;
+  CudnnTensorDescriptor output_desc_;
+  cudnnSoftmaxAlgorithm_t algo_;
+  int device_;
+
+public:
+  typedef shared_ptr<CudnnSoftmax> Ptr;
+  CudnnSoftmax(const Shape_t &inshape, int axis, cudnnSoftmaxAlgorithm_t algo,
+               cudnnDataType_t dtype, int device);
+  static Ptr create(const Shape_t &inshape, int axis,
+                    cudnnSoftmaxAlgorithm_t algo, cudnnDataType_t dtype,
+                    int device);
+  void forward(const void *alpha, const void *x, const void *beta,
+               void *y) const;
+  void backward(const void *alpha, const void *y, const void *dy,
+                const void *beta, void *dx) const;
+};
+
 /** cuDNN Convolution resource cache.
  */
 struct NBLA_CUDA_API CudnnConvResource {
-  int device;                             ///< Device ID.
-  cudnnTensorDescriptor_t x_desc;         ///< Input desc.
-  cudnnTensorDescriptor_t y_desc;         ///< Output desc.
-  cudnnTensorDescriptor_t b_desc;         ///< Bias desc.
-  cudnnTensorDescriptor_t b_desc_deconv;  ///< Bias desc for deconvolution.
-  cudnnFilterDescriptor_t w_desc;         ///< Weight desc.
-  cudnnConvolutionDescriptor_t conv_desc; ///< Conv desc.
-  cudnnConvolutionFwdAlgo_t fwd_algo;     ///< Best forward algorithm found.
+  int device;                                 ///< Device ID.
+  cudnnTensorDescriptor_t x_desc;             ///< Input desc.
+  cudnnTensorDescriptor_t y_desc;             ///< Output desc.
+  cudnnTensorDescriptor_t b_desc;             ///< Bias desc.
+  cudnnTensorDescriptor_t b_desc_deconv;      ///< Bias desc for deconvolution.
+  cudnnFilterDescriptor_t w_desc;             ///< Weight desc.
+  CudnnConvolutionDescriptor conv_desc;       ///< Conv desc.
+  CudnnConvolutionDescriptor conv_dgrad_desc; ///< Conv backward data desc.
+  CudnnConvolutionDescriptor conv_wgrad_desc; ///< Conv backward filter desc.
+  cudnnConvolutionFwdAlgo_t fwd_algo;         ///< Best forward algorithm found.
   cudnnConvolutionBwdFilterAlgo_t
       bwd_filter_algo; ///< Best Backward filter algorithm found.
   cudnnConvolutionBwdDataAlgo_t
@@ -267,7 +355,7 @@ public:
   /**
      Get cuDNN handle for device.
    */
-  cudnnHandle_t handle(int device = -1);
+  cudnnHandle_t handle(int device = -1, cudaStream_t stream = 0);
 
   /** Hash map for CudnnConvResource.
    */
@@ -310,7 +398,8 @@ public:
   void set_deterministic_option(bool value);
 
 protected:
-  map<int, cudnnHandle_t> handles_;
+  unordered_map<int, unordered_map<cudaStream_t, shared_ptr<cudnnHandle_t>>>
+      handles_;
   int workspace_limit_{0};           ///< Workspace limit in bytes.
   bool deterministic_option_{false}; ///< Choose deterministic algorithms
 

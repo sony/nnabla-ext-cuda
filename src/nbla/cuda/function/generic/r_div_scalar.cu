@@ -20,5 +20,5 @@
 namespace nbla {
 
 NBLA_DEFINE_TRANSFORM_UNARY_CUDA_1(RDivScalar, (T)a0 / x,
-                                   dy *(-(T)a0 / (x * x)), double);
+                                   dy *(-(T)a0 / (x * x)), double, false);
 }

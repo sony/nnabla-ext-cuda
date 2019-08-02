@@ -29,6 +29,7 @@ protected:
   // Variables for backward.
   shared_ptr<Function> f_transpose_, f_sum_;
   VariablePtr trp_input_, trp_output_, sum_input_, sum_output_;
+  vector<int> broadcast_dims_;
 
 public:
   typedef typename CudaType<T>::type Tc;

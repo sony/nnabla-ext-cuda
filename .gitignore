@@ -2,11 +2,19 @@
 
 /build_*/
 /build-multi-gpu_*/
+/build
 
 .cache
 *.pyc
 
 /docker/development/Dockerfile.build.py*
+/examples/cpp/mnist_collection/train_dcgan_cuda
+/examples/cpp/mnist_collection/train_lenet_classifier_cuda
+/examples/cpp/mnist_collection/train_resnet_classifier_cuda
+/examples/cpp/mnist_collection/train_siamese_cuda
+/examples/cpp/mnist_collection/train_vae_cuda
+/examples/cpp/mnist_collection/train_vat_cuda
+/examples/cpp/mnist_training/mnist_training_cuda
 /python/setup.cfg
 /python/setup.cfg-Debug
 /python/setup.cfg-MinSizeRel
@@ -15,6 +23,7 @@
 /python/setup.cfg.in.configured
 /python/src/nnabla_ext/cuda/_version.py
 /python/src/nnabla_ext/cuda/init.cpp
+/python/src/nnabla_ext/cuda/nvtx.cpp
 /python/src/nnabla_ext/cuda/libnnabla_cuda.so
 /python/src/nnabla_ext/cuda/nnabla_cuda.dll
 /python/src/nnabla_ext/cuda/nnabla_cuda.lib

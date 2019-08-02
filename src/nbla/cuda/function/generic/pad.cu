@@ -279,7 +279,7 @@ void PadCuda<T>::forward_impl(const Variables &inputs,
   auto threads = 128;
   auto blocks = cuda_get_blocks_by_size(y_var.size());
   auto shared = this->parameter_memory_->size();
-  auto params = this->parameter_memory_->pointer<AxisParam>();
+  auto params = this->parameter_memory_->template pointer<AxisParam>();
 
   if (this->pad_mode_ == this->PAD_CONSTANT) {
     using pad_constant_impl::pad_forward;
@@ -353,7 +353,7 @@ void PadCuda<T>::backward_impl(const Variables &inputs,
       auto threads = 128;
       auto blocks = cuda_get_blocks_by_size(y_var.size());
       auto shared = this->parameter_memory_->size();
-      auto params = this->parameter_memory_->pointer<AxisParam>();
+      auto params = this->parameter_memory_->template pointer<AxisParam>();
       void (*kernel)(const Index_t, const Tcu *, Tcu *, const int,
                      const AxisParam *);
       if (ndim == 1) {

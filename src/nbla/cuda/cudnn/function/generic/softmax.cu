@@ -27,37 +27,21 @@ template <typename T>
 void SoftmaxCudaCudnn<T>::setup_impl(const Variables &inputs,
                                      const Variables &outputs) {
   Softmax<T>::setup_impl(inputs, outputs);
-  cudnn_handle_ = SingletonManager::get<CudnnHandleManager>()->handle(device_);
-  int N = this->size0_;
-  int C = this->size1_;
-  int H = this->size2_;
-  int W = 1;
-  const int stride_w = 1;
-  const int stride_h = W * stride_w;
-  const int stride_c = H * stride_h;
-  const int stride_n = C * stride_c;
-  NBLA_CUDNN_CHECK(cudnnSetTensor4dDescriptorEx(
-      input_desc_, cudnn_data_type<T>::type(), N, C, H, W, stride_n, stride_c,
-      stride_h, stride_w));
-  NBLA_CUDNN_CHECK(cudnnSetTensor4dDescriptorEx(
-      output_desc_, cudnn_data_type<T>::type(), N, C, H, W, stride_n, stride_c,
-      stride_h, stride_w));
-  // default algorithm setting.
-  // TODO: set by context.
-  set_cudnn_softmax_algorithm("ACCURATE");
+  auto dtype = cudnn_data_type<T>::type();
+  cudnn_softmax_ =
+      CudnnSoftmax::create(inputs[0]->shape(), this->axis_,
+                           CUDNN_SOFTMAX_ACCURATE, dtype, this->device_);
 }
 
 template <class T>
 void SoftmaxCudaCudnn<T>::forward_impl(const Variables &inputs,
                                        const Variables &outputs) {
-  cuda_set_device(std::stoi(this->ctx_.device_id));
-  const Tw *x = inputs[0]->get_data_pointer<Tw>(this->ctx_);
-  Tw *y = outputs[0]->cast_data_and_get_pointer<Tw>(this->ctx_, true);
+  NBLA_CHECK(cudnn_softmax_, error_code::value, "setup not called.");
+  auto x = inputs[0]->get_data_pointer<Tw>(this->ctx_);
+  auto y = outputs[0]->cast_data_and_get_pointer<Tw>(this->ctx_, true);
   auto alpha = get_cudnn_scalar_arg<T>(1);
   auto beta = get_cudnn_scalar_arg<T>(0);
-  NBLA_CUDNN_CHECK(cudnnSoftmaxForward(cudnn_handle_, algorithm_,
-                                       CUDNN_SOFTMAX_MODE_CHANNEL, &alpha,
-                                       input_desc_, x, &beta, output_desc_, y));
+  cudnn_softmax_->forward(&alpha, x, &beta, y);
 }
 
 template <class T>
@@ -68,25 +52,12 @@ void SoftmaxCudaCudnn<T>::backward_impl(const Variables &inputs,
   if (!propagate_down[0]) {
     return;
   }
-  cuda_set_device(std::stoi(this->ctx_.device_id));
-  const Tw *y = outputs[0]->get_data_pointer<Tw>(this->ctx_);
-  const Tw *dy = outputs[0]->get_grad_pointer<Tw>(this->ctx_);
-  Tw *dx = inputs[0]->cast_grad_and_get_pointer<Tw>(this->ctx_, !accum[0]);
+  NBLA_CHECK(cudnn_softmax_, error_code::value, "setup not called.");
+  auto y = outputs[0]->get_data_pointer<Tw>(this->ctx_);
+  auto dy = outputs[0]->get_grad_pointer<Tw>(this->ctx_);
+  auto dx = inputs[0]->cast_grad_and_get_pointer<Tw>(this->ctx_, !accum[0]);
   auto alpha = get_cudnn_scalar_arg<T>(1);
   auto beta = get_cudnn_scalar_arg<T>(accum[0] ? 1 : 0);
-  NBLA_CUDNN_CHECK(cudnnSoftmaxBackward(
-      cudnn_handle_, algorithm_, CUDNN_SOFTMAX_MODE_CHANNEL, &alpha,
-      output_desc_, y, output_desc_, dy, &beta, input_desc_, dx));
+  cudnn_softmax_->backward(&alpha, y, dy, &beta, dx);
 }
-
-template <class T>
-void SoftmaxCudaCudnn<T>::set_cudnn_softmax_algorithm(std::string algorithm) {
-  if (algorithm == "FAST") {
-    algorithm_ = CUDNN_SOFTMAX_FAST;
-  } else if (algorithm == "ACCURATE") {
-    algorithm_ = CUDNN_SOFTMAX_ACCURATE;
-  } else {
-    NBLA_ERROR(error_code::target_specific, "Specified unsupported algorithm");
-  }
-}
-}
+} // namespace nbla

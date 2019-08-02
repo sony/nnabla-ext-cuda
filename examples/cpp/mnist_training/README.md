@@ -34,7 +34,7 @@ make
 The above command generates an executable `mnist_training_cuda` at the current directory.
 
 The build file `GNUmakefile` is simple.
-It links `libnnabla.so`, `libnnabla_utils.so`, `libnnabla_utils.so` and `libz.so` with the executable generated from `main.cpp`, and compiles with C++11 option `-std=c++11`.
+It links `libnnabla.so`, `libnnabla_cuda.so`, `libnnabla_utils.so` and `libz.so` with the executable generated from `main.cpp`, and compiles with C++11 option `-std=c++11`.
 It also needs to include path to `mnist_training.hpp` which is located in `nnabla/examples/cpp/mnist_training` directory.
 
 ## Handwritten digit training

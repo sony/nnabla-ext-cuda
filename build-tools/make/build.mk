@@ -66,6 +66,11 @@ nnabla-ext-cuda-cpplib:
 		$(NNABLA_EXT_CUDA_DIRECTORY)
 	$(MAKE) -C $(BUILD_EXT_CUDA_DIRECTORY_CPPLIB) -j$(PARALLEL_BUILD_NUM)
 
+.PHONY: nnabla-ext-cuda-cpplib-rpm
+nnabla-ext-cuda-cpplib-rpm: nnabla-ext-cuda-cpplib
+	@cd $(BUILD_EXT_CUDA_DIRECTORY_CPPLIB) && cpack -G RPM CPackConfig.cmake
+	@cd $(BUILD_EXT_CUDA_DIRECTORY_CPPLIB) && cpack -G TBZ2 CPackConfig.cmake
+
 .PHONY: nnabla-ext-cuda-cpplib-multi-gpu
 nnabla-ext-cuda-cpplib-multi-gpu:
 	mkdir -p $(BUILD_EXT_CUDA_DIRECTORY_CPPLIB_MULTI_GPU)
@@ -83,6 +88,11 @@ nnabla-ext-cuda-cpplib-multi-gpu:
 		$(CMAKE_OPTS) \
 		$(NNABLA_EXT_CUDA_DIRECTORY)
 	$(MAKE) -C $(BUILD_EXT_CUDA_DIRECTORY_CPPLIB_MULTI_GPU) -j$(PARALLEL_BUILD_NUM)
+
+.PHONY: nnabla-ext-cuda-cpplib-multi-gpu-deb
+nnabla-ext-cuda-cpplib-multi-gpu-deb: nnabla-ext-cuda-cpplib-multi-gpu
+	@cd $(BUILD_EXT_CUDA_DIRECTORY_CPPLIB_MULTI_GPU) && cpack -G DEB CPackConfig.cmake
+	@cd $(BUILD_EXT_CUDA_DIRECTORY_CPPLIB_MULTI_GPU) && cpack -G TBZ2 CPackConfig.cmake
 
 ########################################################################################################################
 # wheel
@@ -116,10 +126,13 @@ nnabla-ext-cuda-wheel-local: nnabla-install \
 
 .PHONY: nnabla-ext-cuda-wheel-multi-gpu
 nnabla-ext-cuda-wheel-multi-gpu: \
-			nnabla-cpplib \
+			nnabla-cpplib-deb \
 			nnabla-wheel \
-			nnabla-install \
-			nnabla-ext-cuda-cpplib-multi-gpu
+			nnabla-ext-cuda-cpplib-multi-gpu-deb \
+			nnabla-ext-cuda-wheel-multi-gpu-only
+
+.PHONY: nnabla-ext-cuda-wheel-multi-gpu-only
+nnabla-ext-cuda-wheel-multi-gpu-only: nnabla-install
 	mkdir -p $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_MULTI_GPU)
 	cd $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_MULTI_GPU) \
 	&& cmake \
@@ -174,5 +187,9 @@ nnabla-ext-cuda-test-local: nnabla-install nnabla-ext-cuda-install
 nnabla-ext-cuda-multi-gpu-test-local: nnabla-ext-cuda-multi-gpu-install
 	cd $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_MULTI_GPU) \
 	&& PYTHONPATH=$(NNABLA_EXT_CUDA_DIRECTORY)/python/test:$(NNABLA_DIRECTORY)/python/test \
-			mpiexec -q -n 2 python -m pytest --test-communicator --communicator-gpus=0,1 $(NNABLA_DIRECTORY)/python/test/communicator/ \
-	&& python -m pytest $(NNABLA_DIRECTORY)/python/test/
+		mpiexec -q -n 2 python -m pytest \
+			--test-communicator \
+			--communicator-gpus=0,1 \
+			$(NNABLA_DIRECTORY)/python/test/communicator
+	cd $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_MULTI_GPU) \
+	&& python -m pytest $(NNABLA_DIRECTORY)/python/test

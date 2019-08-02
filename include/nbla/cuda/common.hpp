@@ -47,13 +47,16 @@ using std::map;
 
 /**
 Check CUDA error for synchronous call
+cudaGetLastError is used to clear previous error happening at "condition".
 */
 #define NBLA_CUDA_CHECK(condition)                                             \
   {                                                                            \
     cudaError_t error = condition;                                             \
     if (error != cudaSuccess) {                                                \
-      NBLA_ERROR(error_code::target_specific, "(%s) failed with \"%s\".",      \
-                 #condition, cudaGetErrorString(error));                       \
+      cudaGetLastError();                                                      \
+      NBLA_ERROR(error_code::target_specific, "(%s) failed with \"%s\" (%s).", \
+                 #condition, cudaGetErrorString(error),                        \
+                 cudaGetErrorName(error));                                     \
     }                                                                          \
   }
 
@@ -153,6 +156,12 @@ CUBLAS_TYPE_T(HalfCuda, HALF);
 #undef CUBLAS_TYPE_T
 #endif
 
+enum {
+  CUDA_WARP_SIZE = 32,
+  CUDA_WARP_MASK = 0x1f,
+  CUDA_WARP_BITS = 5,
+};
+
 /** ceil(N/D) where N and D are integers */
 #define NBLA_CEIL_INT_DIV(N, D)                                                \
   ((static_cast<int>(N) + static_cast<int>(D) - 1) / static_cast<int>(D))
@@ -171,6 +180,8 @@ CUBLAS_TYPE_T(HalfCuda, HALF);
     The kernel is assumed to contain a grid-strided loop.
  */
 inline int cuda_get_blocks_by_size(int size) {
+  if (size == 0)
+    return 0;
   const int blocks = NBLA_CUDA_GET_BLOCKS(size);
   const int inkernel_loop = NBLA_CEIL_INT_DIV(blocks, NBLA_CUDA_MAX_BLOCKS);
   const int total_blocks = NBLA_CEIL_INT_DIV(blocks, inkernel_loop);

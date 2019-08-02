@@ -18,11 +18,11 @@
 #define __NBLA_CUDA_CUDA_HPP__
 
 #include <nbla/cuda/common.hpp>
-#include <nbla/cuda/cuda_memory.hpp>
 #include <nbla/cuda/defs.hpp>
 #include <nbla/cuda/init.hpp>
+#include <nbla/cuda/memory/cuda_memory.hpp>
 #include <nbla/exception.hpp>
-#include <nbla/memory.hpp>
+#include <nbla/memory/allocator.hpp>
 #include <nbla/singleton_manager.hpp>
 
 #include <mutex>
@@ -31,6 +31,11 @@
 namespace nbla {
 
 using std::unordered_map;
+
+/**
+ * Enum for nbla global streams.
+ */
+enum CudaStreamId { CONVOLUTION_BWD, MAX_COUNT };
 
 /**
 Singleton class for storing some handles or configs for CUDA Computation.
@@ -66,38 +71,39 @@ public:
    */
   void register_array_class(const string &name);
 
-  /** Get a CudaMemoryCache instance.
+  /** Get a caching allocator.
    */
-  MemoryCache<CudaMemory> &memcache();
+  shared_ptr<Allocator> caching_allocator();
 
-  /** Get workspace memory.
-
-      It returns nullptr if size_in_bytes is 0.
-
-      @param[in] size_in_bytes Size of CUDA device memory requested.
-      @param[in] device GPU ID.
-
-      @note It internally holds workspace memory with maximum size over
-            sizes previously requested. Every time the requested size exceeds
-            the maximum size, it will reallocate a new memory region, which
-            will cause memory allocation overhead and device synchronization.
-
+  /** Get a no-cache allocator.
    */
-  void *get_workspace(Size_t size_in_bytes, int device);
+  shared_ptr<Allocator> naive_allocator();
+
+  /** Get auxilliary stream
+   */
+  shared_ptr<cudaStream_t> get_stream(unsigned int flag, CudaStreamId streamId,
+                                      int device = -1);
 
 protected:
   std::mutex mtx_cublas_;
   std::mutex mtx_curand_;
-  std::mutex mtx_workspace_;
   std::mutex mtx_event_;
   unordered_map<int, cublasHandle_t>
       cublas_handles_; ///< cuBLAS handles for each device.
   unordered_map<int, curandGenerator_t> curand_generators_;
   unordered_map<int, unordered_map<unsigned int, vector<cudaEvent_t>>>
       cuda_unused_events_;
-  vector<string> array_classes_;     ///< Available array classes
-  MemoryCache<CudaMemory> memcache_; ///< CUDA memory cache.
-  unordered_map<int, shared_ptr<CudaMemory>> workspace_; ///< Workspace memory.
+  vector<string> array_classes_; ///< Available array classes
+
+  /*
+    NOTE: Allocators must be retained as shared_ptr in order to be passed to a
+    CachedMemory instance to prevernt destroying allocators before destroying
+    memory.
+   */
+  shared_ptr<Allocator> naive_allocator_;
+  shared_ptr<Allocator> caching_allocator_;
+  // stream pool -> <device, <id, stream>>
+  unordered_map<int, unordered_map<int, shared_ptr<cudaStream_t>>> streams_;
 
 private:
   friend SingletonManager;

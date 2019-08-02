@@ -37,13 +37,33 @@ if(WITH_NCCL)
 	find_package(MPI REQUIRED)
 	list(APPEND NBLA_CUDA_INCLUDE_DIRS 
 		${NCCL_INCLUDE_DIR}
-	  ${MPI_INCLUDE_PATH}
+	        ${MPI_INCLUDE_PATH}
 	  )
 	list(APPEND NBLA_CUDA_LINKER_LIBS
 		${NCCL_LIBRARIES}
-	  ${MPI_LIBRARIES}
+	        ${MPI_LIBRARIES}
 	  )
 endif()
+
+# nvprof support
+option(WITH_NVTX "Build with nvtx API for nvprof support" OFF)
+if(WITH_NVTX)
+    find_library(CUDA_NVTX_LIBRARY nvToolsExt
+            HINTS
+            "${CUDA_TOOLKIT_ROOT_DIR}/lib64"
+            "${CUDA_TOOLKIT_ROOT_DIR}/lib"
+            "${CUDA_TOOLKIT_ROOT_DIR}"
+            ENV CUDA_PATH
+            ENV CUDA_LIB_PATH)
+    if (NOT CUDA_NVTX_LIBRARY)
+        message(WARNING "nvToolsExt-libs is not found. Build without nvToolsExt.")
+    else()
+        list(APPEND NBLA_CUDA_LINKER_LIBS ${CUDA_NVTX_LIBRARY})
+        add_definitions(-DWITH_NVTX)
+        message("NVToolsExt: " ${CUDA_NVTX_LIBRARY})
+    endif()
+endif()
+
 
 ####################################################################################################
 # cuDNN
@@ -81,7 +101,12 @@ set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};${ARCH_FLAGS}")
 # To prevent user confusion, library filename will change that cudnn in included or not.
 set(NBLA_CUDA_LIBRARY_NAME nnabla_cuda)
 
-file(GLOB CPP_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} ./*.cpp array/*.cpp cudnn/*.cpp utils/*.cpp)
+file(GLOB CPP_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+  ./*.cpp
+  memory/*.cpp
+  array/*.cpp
+  cudnn/*.cpp
+  utils/*.cpp)
 
 if(MSVC)
   set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};-Xcompiler /W0")
@@ -117,6 +142,7 @@ if (NOT WIN32)
   install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/nbla
     DESTINATION include
     )
+  include(CPack)
 endif()
 
 set(NBLA_CUDA_INCLUDE_DIRS ${NBLA_CUDA_INCLUDE_DIRS} PARENT_SCOPE)

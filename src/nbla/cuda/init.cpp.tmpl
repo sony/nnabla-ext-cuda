@@ -134,7 +134,7 @@ void init_cuda() {
 }
 
 void clear_cuda_memory_cache() {
-  SingletonManager::get<Cuda>()->memcache().clear();
+  SingletonManager::get<Cuda>()->caching_allocator()->free_unused_caches();
 }
 
 /** Get CUDA array classes.
@@ -168,5 +168,97 @@ vector<string> cuda_get_devices() {
   }
   return ret;
 }
+
+shared_ptr<void> cuda_create_stream(int device_id) {
+  cuda_set_device(device_id);
+
+  std::default_delete<cudaStream_t> default_deleter;
+  auto deleter = [default_deleter](cudaStream_t* ptr) {
+      NBLA_CUDA_CHECK(cudaStreamDestroy(*ptr));
+
+      default_deleter(ptr);
+  };
+
+  auto stream = shared_ptr<cudaStream_t>(new cudaStream_t(), deleter);
+
+  NBLA_CUDA_CHECK(cudaStreamCreateWithFlags(stream.get(), cudaStreamNonBlocking));
+
+  return stream;
+}
+
+void* cuda_stream_shared_to_void(shared_ptr<void> stream) {
+  auto s = static_cast<cudaStream_t*>(stream.get());
+
+  return static_cast<void*>(*s);
+}
+
+void print_stream_flag (shared_ptr<void> stream) {
+  auto s = static_cast<cudaStream_t*>(stream.get());
+  unsigned int flags;
+
+  NBLA_CUDA_CHECK(cudaStreamGetFlags(*s, &flags));
+  printf("flags: %u\n", flags);
+}
+
+void print_stream_priority (shared_ptr<void> stream) {
+  auto s = static_cast<cudaStream_t*>(stream.get());
+  int p;
+
+  NBLA_CUDA_CHECK(cudaStreamGetPriority(*s, &p));
+  printf("priority: %d\n", p);
+}
+
+void cuda_nullstream_synchronize() {
+  NBLA_CUDA_CHECK(cudaStreamSynchronize(0));
+}
+
+void cuda_stream_synchronize(shared_ptr<void> stream) {
+  auto s = static_cast<cudaStream_t*>(stream.get());
+  NBLA_CUDA_CHECK(cudaStreamSynchronize(*s));
+}
+
+void cuda_stream_destroy(shared_ptr<void> stream) {
+  auto s = static_cast<cudaStream_t*>(stream.get());
+
+  NBLA_CUDA_CHECK(cudaStreamDestroy(*s));
+}
+
+std::shared_ptr<void> cuda_create_event(int device_id) {
+  cuda_set_device(device_id);
+
+  std::default_delete<cudaEvent_t> default_deleter;
+  auto deleter = [default_deleter](cudaEvent_t* ptr) {
+      NBLA_CUDA_CHECK(cudaEventDestroy(*ptr));
+
+      default_deleter(ptr);
+  };
+
+  auto event = shared_ptr<cudaEvent_t>(new cudaEvent_t(), deleter);
+
+  NBLA_CUDA_CHECK(cudaEventCreateWithFlags(event.get(), cudaEventDisableTiming));
+
+  return event;
+}
+
+void cuda_default_stream_event(shared_ptr<void> event){
+  auto e = static_cast<cudaEvent_t*>(event.get());
+
+  NBLA_CUDA_CHECK(cudaEventRecord(*e));
+
+}
+void cuda_stream_wait_event(shared_ptr<void> stream, shared_ptr<void> event) {
+  auto s = static_cast<cudaStream_t*>(stream.get());
+  auto e = static_cast<cudaEvent_t*>(event.get());
+
+  NBLA_CUDA_CHECK(cudaStreamWaitEvent(*s, *e, 0));
+
+}
+
+void cuda_event_synchronize(shared_ptr<void> event) {
+  auto e = static_cast<cudaEvent_t*>(event.get());
+
+  NBLA_CUDA_CHECK(cudaEventSynchronize(*e));
+}
+
 }
 

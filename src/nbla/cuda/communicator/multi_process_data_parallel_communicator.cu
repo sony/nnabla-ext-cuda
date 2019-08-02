@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <memory>
+#include <numeric>
 
 #include "mpi.h"
 #include <stdint.h>
@@ -714,12 +715,8 @@ MultiProcessDataParallelCommunicatorNccl<T>::all_reduce_callback(
       make_shared<NdArray>(Shape_t{static_cast<int>(n * pack_size)});
 
   /* Create a hash-set that contains all pointers to all-reduce */
-  unordered_set<Tc *> device_ptrs;
-  for (auto &ndarray : ndarray_list) {
-    Tc *device_ptr = ndarray->array()->cast(dtype, this->ctx_)->pointer<Tc>();
-    device_ptrs.insert(device_ptr);
-  }
-
+  unordered_set<NdArrayPtr> device_ptrs(ndarray_list.begin(),
+                                        ndarray_list.end());
   return make_shared<AllReduceCallback>(*this, group, pack_size, division,
                                         gpu_memory, device_ptrs);
 }
@@ -729,7 +726,7 @@ MultiProcessDataParallelCommunicatorNccl<T>::AllReduceCallback::
     AllReduceCallback(MultiProcessDataParallelCommunicatorNccl<T> &parent,
                       const string &group, size_t n_params_threshold,
                       bool division, const NdArrayPtr &gpu_memory,
-                      const unordered_set<Tc *> &device_ptrs)
+                      const unordered_set<NdArrayPtr> &device_ptrs)
     : parent_(parent), group_(group), n_params_threshold_(n_params_threshold),
       division_(division), gpu_memory_(gpu_memory), device_ptrs_(device_ptrs),
       pack_stream_(parent.nonblocking_streams_[0]),
@@ -738,7 +735,8 @@ MultiProcessDataParallelCommunicatorNccl<T>::AllReduceCallback::
   dtypes dtype = get_dtype<Tc>();
 
   /* Split gpu_memory into buffers of size n_params_threshold */
-  Tc *buff = this->gpu_memory_->cast(dtype, this->parent_.ctx_)->pointer<Tc>();
+  Tc *buff = this->gpu_memory_->cast(dtype, this->parent_.ctx_)
+                 ->template pointer<Tc>();
   for (size_t i = 0; i < this->gpu_memory_->size() / this->n_params_threshold_;
        ++i) {
     this->buffers_.emplace(
@@ -760,7 +758,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::AllReduceCallback::
   for (auto &input : ptr->function_inputs()) {
     Tc *device_ptr = input->cast_grad_and_get_pointer<Tc>(this->parent_.ctx_);
 
-    if (this->device_ptrs_.find(device_ptr) != this->device_ptrs_.end()) {
+    if (this->device_ptrs_.find(input->grad()) != this->device_ptrs_.end()) {
       device_ptr_list.push_back(std::make_pair(device_ptr, input->size()));
     }
   }

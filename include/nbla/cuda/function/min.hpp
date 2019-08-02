@@ -26,9 +26,6 @@ namespace nbla {
 
 template <typename T> class MinCuda : public Min<T> {
 
-protected:
-  int device_;
-
 public:
   typedef typename CudaType<T>::type Tc;
   explicit MinCuda(const Context &ctx, const vector<int> &axes, bool keep_dims,
@@ -42,6 +39,8 @@ public:
   }
 
 protected:
+  int device_;
+  virtual void forward_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl_reduce(const T *x, T *y, int outer_size,
                                    int reduction_size);
   virtual void backward_impl_reduce(const T *dy, T *dx, int outer_size,
