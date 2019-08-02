@@ -30,7 +30,8 @@ try:
         array_classes,
         device_synchronize,
         get_device_count,
-        get_devices)
+        get_devices,
+        StreamEventHandler)
 except:
     print('Please install CUDA version {}.'.format(__cuda_version__))
     print('          and CUDNN version {}.'.format(__cudnn_version__))

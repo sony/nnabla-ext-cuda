@@ -22,7 +22,6 @@
 #include <cmath>
 
 namespace nbla {
-NBLA_DEFINE_TRANSFORM_UNARY_CUDA(LogSigmoid,
-                                 std::log((T)1 / (std::exp(-x) + (T)1)),
-                                 (T)1 / (std::exp(x) + (T)1));
+NBLA_DEFINE_TRANSFORM_UNARY_CUDA(LogSigmoid, -std::log(std::exp(-x) + (T)1),
+                                 dy / (std::exp(x) + (T)1), false);
 }

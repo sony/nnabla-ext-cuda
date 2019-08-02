@@ -242,7 +242,13 @@ void RNNCudaCudnn<T>::setup_impl(const Variables &inputs,
       SingletonManager::get<CudnnHandleManager>()->handle(this->device_);
 
   Shape_t inshape = inputs[0]->shape();
+  Shape_t hshape = inputs[1]->shape();
   Shape_t outshape = outputs[0]->shape();
+
+  // Check input dimensions
+  NBLA_CHECK(inputs[0]->ndim() == 3, error_code::value,
+             "Input x must be a 3 dimensional array with a shape of (steps, "
+             "batch_size, input_size).");
 
   // Get input dimensions
   cudnnDataType_t dt = cudnn_data_type<T>::type();
@@ -250,12 +256,31 @@ void RNNCudaCudnn<T>::setup_impl(const Variables &inputs,
   int batch_size = inshape[1];
   input_dim_ = inshape[2];
   // Assuming this function takes h as (numLayer, numD, B, M)
-  hidden_size_ = inputs[1]->shape()[3];
+  hidden_size_ = hshape[3];
   inputMode = CUDNN_LINEAR_INPUT;
   num_directions_ = this->bidirectional_ ? 2 : 1;
   direction = this->bidirectional_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL;
-  weight_exists_ = true;
-  bias_exists_ = true;
+
+  // Check h shape
+  const char *error_msg_h = "Input h must be a 4 dimensional array with a "
+                            "shape of (num_layers, num_directions, batch_size, "
+                            "hidden_size).";
+  NBLA_CHECK(inputs[1]->ndim() == 4, error_code::value, error_msg_h);
+  NBLA_CHECK(hshape[0] == this->num_layers_, error_code::value, error_msg_h);
+  NBLA_CHECK(hshape[1] == num_directions_, error_code::value, error_msg_h);
+  NBLA_CHECK(hshape[2] == batch_size, error_code::value, error_msg_h);
+
+  // Check weight shape at 0th layer
+  Shape_t w0_shape = inputs[2]->shape();
+  const char *error_msg_w0 = "Input w0 must be a 3 dimensional array with a "
+                             "shape of (num_directions, hidden_size, "
+                             "input_size + hidden_size).";
+  NBLA_CHECK(inputs[2]->ndim() == 3, error_code::value, error_msg_w0);
+  NBLA_CHECK(w0_shape[0] == num_directions_, error_code::value, error_msg_w0);
+  NBLA_CHECK(w0_shape[1] == hidden_size_, error_code::value, error_msg_w0);
+  NBLA_CHECK(w0_shape[2] == hidden_size_ + input_dim_, error_code::value,
+             error_msg_w0);
+
   if (this->nonlinearity_ == "tanh") {
     RNNMode = CUDNN_RNN_TANH;
     num_lin_layers_ = 2;
@@ -267,7 +292,12 @@ void RNNCudaCudnn<T>::setup_impl(const Variables &inputs,
                "Non-linearity must be tanh or relu");
   }
 
-  if (inputs.size() == 4) {
+  weight_exists_ = true;
+  bias_exists_ = true;
+  if (inputs.size() == 3) {
+    weight_exists_ = false;
+    bias_exists_ = false;
+  } else if (inputs.size() == 4) {
     Shape_t opt_shape = inputs[3]->shape();
     if (this->num_layers_ > 1 && opt_shape.size() == 4) {
       bias_exists_ = false;
@@ -280,11 +310,38 @@ void RNNCudaCudnn<T>::setup_impl(const Variables &inputs,
     } else if (this->num_layers_ == 1 && opt_shape.size() == 3) {
       weight_exists_ = false;
     }
-  }
-
-  if ((inputs.size() > 4) && (this->num_layers_ == 1)) {
+  } else if ((inputs.size() > 4) && (this->num_layers_ == 1)) {
     NBLA_ERROR(error_code::value,
                "Weight argument cannot be passed when num_layers == 1");
+  }
+
+  // Check weight shape
+  if (weight_exists_) {
+    Shape_t w_shape = inputs[3]->shape();
+    const char *error_msg_w = "Input w must be a 4 dimensional array with a "
+                              "shape of (num_layers - 1, num_directions, "
+                              "hidden_size, num_directions * hidden_size + "
+                              "hidden_size).";
+    NBLA_CHECK(inputs[3]->ndim() == 4, error_code::value, error_msg_w);
+    NBLA_CHECK(w_shape[0] == this->num_layers_ - 1, error_code::value,
+               error_msg_w);
+    NBLA_CHECK(w_shape[1] == num_directions_, error_code::value, error_msg_w);
+    NBLA_CHECK(w_shape[2] == hidden_size_, error_code::value, error_msg_w);
+    NBLA_CHECK(w_shape[3] == num_directions_ * hidden_size_ + hidden_size_,
+               error_code::value, error_msg_w);
+  }
+
+  // Check bias shape
+  if (bias_exists_) {
+    const int b_index = weight_exists_ ? 4 : 3;
+    Shape_t b_shape = inputs[b_index]->shape();
+    const char *error_msg_b = "Input b must be a 3 dimensional array with a "
+                              "shape of (num_layers, num_directions, "
+                              "hidden_size).";
+    NBLA_CHECK(inputs[b_index]->ndim() == 3, error_code::value, error_msg_b);
+    NBLA_CHECK(b_shape[0] == this->num_layers_, error_code::value, error_msg_b);
+    NBLA_CHECK(b_shape[1] == num_directions_, error_code::value, error_msg_b);
+    NBLA_CHECK(b_shape[2] == hidden_size_, error_code::value, error_msg_b);
   }
 
   // Set X desc
@@ -433,7 +490,7 @@ void RNNCudaCudnn<T>::setup_impl(const Variables &inputs,
   }
 
   // Set output shapes
-  outputs[0]->reshape({seq_len_, batch_size, hidden_size_, num_directions_},
+  outputs[0]->reshape({seq_len_, batch_size, num_directions_ * hidden_size_},
                       true);
   outputs[1]->reshape(inputs[1]->shape(), true);
 }

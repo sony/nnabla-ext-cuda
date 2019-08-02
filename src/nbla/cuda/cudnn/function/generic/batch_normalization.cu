@@ -53,8 +53,17 @@ void BatchNormalizationCudaCudnn<T>::setup_impl(const Variables &inputs,
   int H = this->size2_;
   int W = 1;
   mode_ = CUDNN_BATCHNORM_SPATIAL;
+  // Channel last is restricted for spatial input
   bool channel_last = this->axes_[0] == inputs[0]->ndim() - 1;
-  if (channel_last) {
+  if (inputs[0]->ndim() == 2) { // typical 1-d affine output with shape (N, C)
+    mode_ = CUDNN_BATCHNORM_PER_ACTIVATION;
+    NBLA_CUDNN_CHECK(
+        cudnnSetTensor4dDescriptor(input_desc_.desc, CUDNN_TENSOR_NHWC,
+                                   cudnn_data_type<T>::type(), N, C, H, W));
+    NBLA_CUDNN_CHECK(
+        cudnnSetTensor4dDescriptor(output_desc_.desc, CUDNN_TENSOR_NHWC,
+                                   cudnn_data_type<T>::type(), N, C, H, W));
+  } else if (channel_last) {
     // To prevent NOT SUPPORTED error in CUDNNN, N and H are recalculated.
     // (Large N is not allowed.)
     N = inputs[0]->shape()[0];
@@ -259,11 +268,6 @@ void BatchNormalizationCudaCudnn<T>::backward_impl_batch(
   auto b_param = a_param;
   if (!(accum[1] || accum[2])) {
     b_param = 0;
-  } else {
-    if (!accum[1])
-      inputs[1]->grad()->zero();
-    if (!accum[2])
-      inputs[2]->grad()->zero();
   }
 
   size_t prop_down_workspace_size = 0;
@@ -294,14 +298,20 @@ void BatchNormalizationCudaCudnn<T>::backward_impl_batch(
   const void *gamma =
       inputs[2]->data()->get(DRV_BN_T(), this->ctx_)->const_pointer();
 
-  void *db =
-      propagate_down[1]
-          ? inputs[1]->grad()->cast(DRV_BN_T(), this->ctx_, false)->pointer()
-          : prop_down_buf;
-  void *dg =
-      propagate_down[2]
-          ? inputs[2]->grad()->cast(DRV_BN_T(), this->ctx_, false)->pointer()
-          : prop_down_buf;
+  // Specify write only flag to prevent unnecessary memset.
+  const bool param_diff_write = b_param == 0;
+  void *db = propagate_down[1]
+                 ? inputs[1]
+                       ->grad()
+                       ->cast(DRV_BN_T(), this->ctx_, param_diff_write)
+                       ->pointer()
+                 : prop_down_buf;
+  void *dg = propagate_down[2]
+                 ? inputs[2]
+                       ->grad()
+                       ->cast(DRV_BN_T(), this->ctx_, param_diff_write)
+                       ->pointer()
+                 : prop_down_buf;
   double eps = std::max((double)this->eps_, CUDNN_BN_MIN_EPSILON);
 #if CUDNN_VERSION >= 7400
   if (can_use_bn_ex_) {

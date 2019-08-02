@@ -46,7 +46,7 @@ assert(__author__ is not None)
 assert(__email__ is not None)
 
 setup_requires = [
-    'numpy>=1.16',
+    'numpy>=1.16,<1.17',
     'Cython',  # Requires python-dev.
 ]
 
@@ -142,6 +142,9 @@ def cuda_config(root_dir, cuda_lib, ext_opts):
     ext_modules = [
         Extension(cuda_pkg + '.init',
                   [join(path_cuda_pkg, 'init.pyx')],
+                  **cuda_ext_opts),
+        Extension(cuda_pkg + '.nvtx',
+                  [join(path_cuda_pkg, 'nvtx.pyx')],
                   **cuda_ext_opts),
     ]
     return ExtConfig(package_dir, packages, package_data,

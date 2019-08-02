@@ -21,5 +21,5 @@
 
 namespace nbla {
 
-NBLA_DEFINE_TRANSFORM_UNARY_CUDA(Cos, cos(x), -dy *sin(x));
+NBLA_DEFINE_TRANSFORM_UNARY_CUDA(Cos, cos(x), -dy *sin(x), false);
 }
