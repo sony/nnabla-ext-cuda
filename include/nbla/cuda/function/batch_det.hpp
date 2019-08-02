@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 #ifndef NBLA_CUDA_FUNCTION_BATCH_DET_HPP
 #define NBLA_CUDA_FUNCTION_BATCH_DET_HPP
 
@@ -36,8 +34,7 @@ public:
   typedef typename CudaType<T>::type Tc;
 
   explicit BatchDetCuda(const Context &ctx)
-      : BatchDet<T>(ctx),
-        device_(std::stoi(ctx.device_id)) {}
+      : BatchDet<T>(ctx), device_(std::stoi(ctx.device_id)) {}
   virtual ~BatchDetCuda() {}
   virtual string name() { return "BatchDetCuda"; }
   virtual vector<string> allowed_array_classes() {
