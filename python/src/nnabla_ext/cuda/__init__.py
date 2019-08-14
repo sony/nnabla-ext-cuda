@@ -24,19 +24,48 @@ from ._version import (
     __email__
 )
 
-try:
-    from .init import (
-        clear_memory_cache,
-        array_classes,
-        device_synchronize,
-        get_device_count,
-        get_devices,
-        StreamEventHandler)
-except:
-    print('Please install CUDA version {}.'.format(__cuda_version__))
-    print('          and CUDNN version {}.'.format(__cudnn_version__))
-    print('Or install correct nnabla_ext_cuda for installed version of CUDA/CUDNN.')
-    raise
+
+#
+# Workaround for loading shared library.
+#
+MAX_RETRY_LOAD_SHARED_LIB = 100
+
+
+def load_shared_from_error(err):
+    import ctypes
+    import os
+    import sys
+    base = os.path.dirname(__file__)
+    es = str(err).split(':')
+    if len(es) > 0:
+        fn = os.path.join(base, es[0])
+        if os.path.exists(fn):
+            retry = 0
+            while retry < MAX_RETRY_LOAD_SHARED_LIB:
+                retry += 1
+                try:
+                    ctypes.cdll.LoadLibrary(fn)
+                    retry = MAX_RETRY_LOAD_SHARED_LIB
+                except OSError as err:
+                    load_shared_from_error(err)
+        else:
+            raise err
+
+
+retry = 0
+while retry < MAX_RETRY_LOAD_SHARED_LIB:
+    retry += 1
+    try:
+        from .init import (
+            clear_memory_cache,
+            array_classes,
+            device_synchronize,
+            get_device_count,
+            get_devices,
+            StreamEventHandler)
+        retry = MAX_RETRY_LOAD_SHARED_LIB
+    except ImportError as err:
+        load_shared_from_error(err)
 
 from nnabla.variable import Context
 
