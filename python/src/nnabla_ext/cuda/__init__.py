@@ -14,7 +14,6 @@
 
 from __future__ import absolute_import
 
-import nnabla
 
 from ._version import (
     __version__,
