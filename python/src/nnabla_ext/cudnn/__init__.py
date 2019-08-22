@@ -14,6 +14,8 @@
 
 from __future__ import absolute_import
 
+import nnabla
+import nnabla_ext.cuda
 from . import init
 
 from nnabla.variable import Context
