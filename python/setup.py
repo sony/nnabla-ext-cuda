@@ -17,10 +17,9 @@ from __future__ import print_function
 from setuptools import setup
 from distutils.extension import Extension
 import os
-from os.path import dirname, realpath, join, isfile, splitext, exists
+from os.path import dirname, realpath, join, isfile, splitext
 from collections import namedtuple
 import copy
-import os
 import shutil
 import sys
 
