@@ -351,9 +351,9 @@ RandomChoice:
 # RandomCrop:
 #   float: [float]
 #   half: [Half]
-# RandomFlip:
-#   float: [float]
-#   half: [Half]
+RandomFlip:
+  float: [float]
+  half: [Half]
 # RandomShift:
 #   float: [float]
 #   half: [Half]
