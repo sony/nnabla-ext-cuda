@@ -25,6 +25,7 @@ DOCKER_RUN_OPTS += -e NNABLA_DIRECTORY=$(NNABLA_DIRECTORY)
 NNABLA_EXT_CUDA_DIRECTORY ?= $(shell pwd)
 DOCKER_RUN_OPTS += -e NNABLA_EXT_CUDA_DIRECTORY=$(NNABLA_EXT_CUDA_DIRECTORY)
 DOCKER_RUN_OPTS += -e CMAKE_OPTS=$(CMAKE_OPTS)
+DOCKER_RUN_OPTS += -e INCLUDE_CUDA_CUDNN_LIB_IN_WHL=$(INCLUDE_CUDA_CUDNN_LIB_IN_WHL)
 
 include $(NNABLA_EXT_CUDA_DIRECTORY)/build-tools/make/options.mk
 ifndef NNABLA_BUILD_INCLUDED
@@ -34,6 +35,8 @@ endif
 ifndef NNABLA_BUILD_WITH_DOCKER_INCLUDED
   include $(NNABLA_DIRECTORY)/build-tools/make/build-with-docker.mk
 endif
+
+NVIDIA_DOCKER_WRAPPER=$(NNABLA_EXT_CUDA_DIRECTORY)/build-tools/scripts/nvidia-docker.sh
 
 CUDA_SUFFIX = $(CUDA_VERSION_MAJOR)$(CUDA_VERSION_MINOR)-cudnn$(CUDNN_VERSION)
 
@@ -147,17 +150,17 @@ bwd-nnabla-ext-cuda-wheel-multi-gpu-only: docker_image_build_cuda_multi_gpu
 .PHONY: bwd-nnabla-ext-cuda-test
 bwd-nnabla-ext-cuda-test: docker_image_build_cuda
 	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
-	&& nvidia-docker run $(DOCKER_RUN_OPTS) $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA) make -f build-tools/make/build.mk nnabla-ext-cuda-test-local
+	&& ${NVIDIA_DOCKER_WRAPPER} run $(DOCKER_RUN_OPTS) $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA) make -f build-tools/make/build.mk nnabla-ext-cuda-test-local
 
 .PHONY: bwd-nnabla-ext-cuda-multi-gpu-test
 bwd-nnabla-ext-cuda-multi-gpu-test: docker_image_build_cuda_multi_gpu
 	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
-	&& nvidia-docker run $(DOCKER_RUN_OPTS) $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA_MULTI_GPU) make -f build-tools/make/build.mk nnabla-ext-cuda-multi-gpu-test-local
+	&& ${NVIDIA_DOCKER_WRAPPER} run $(DOCKER_RUN_OPTS) $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA_MULTI_GPU) make -f build-tools/make/build.mk nnabla-ext-cuda-multi-gpu-test-local
 
 .PHONY: bwd-nnabla-ext-cuda-shell
 bwd-nnabla-ext-cuda-shell: docker_image_build_cuda
 	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
-	&& nvidia-docker run $(DOCKER_RUN_OPTS) -it --rm ${DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA} make nnabla-ext-cuda-shell
+	&& ${NVIDIA_DOCKER_WRAPPER} run $(DOCKER_RUN_OPTS) -it --rm ${DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA} make nnabla-ext-cuda-shell
 
 ########################################################################################################################
 # Docker image with current nnabla
