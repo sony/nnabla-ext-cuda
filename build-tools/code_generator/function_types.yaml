@@ -304,9 +304,9 @@ Broadcast:
 Tile:
   float: [float]
   half: [Half]
-# OneHot:
-#   float: [int, float]
-#   half: [int, Half]
+OneHot:
+  float: [int, float]
+  half: [int, Half]
 Flip:
   float: [float]
   half: [Half]
