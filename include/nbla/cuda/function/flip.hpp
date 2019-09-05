@@ -25,11 +25,8 @@ namespace nbla {
 
 template <typename T> class FlipCuda : public Flip<T> {
 
-protected:
-  Variable addr_table_;
-
 public:
-  typedef typename CudaType<T>::type Tc;
+  typedef typename CudaType<T>::type Tcu;
   explicit FlipCuda(const Context &ctx, const vector<int> &axes)
       : Flip<T>(ctx, axes), device_(std::stoi(ctx.device_id)) {}
   virtual ~FlipCuda() {}
@@ -40,6 +37,7 @@ public:
 
 protected:
   int device_;
+  NdArray shape_info_buf_;
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,

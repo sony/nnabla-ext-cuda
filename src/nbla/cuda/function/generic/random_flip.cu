@@ -33,16 +33,14 @@ void RandomFlipCuda<T>::setup_impl(const Variables &inputs,
   this->shape_info_buf_.reshape(Shape_t{shape_info_size}, true);
   int *shape_info_cpu = this->shape_info_buf_.cast(dtypes::INT, cpu_ctx, true)
                             ->template pointer<int>();
-  for (int i = 0; i < shape.size(); i++) {
-    shape_info_cpu[i * 2] = shape[i];      // shape
-    shape_info_cpu[i * 2 + 1] = stride[i]; // stride
-  }
   this->onehot_axses_.reshape(Shape_t{inputs[0]->ndim()}, true);
   int *onehot_axses_cpu = this->onehot_axses_.cast(dtypes::INT, cpu_ctx, true)
                               ->template pointer<int>();
-  for (int id = 0; id < inputs[0]->ndim(); id++) {
-    auto itr = std::find(this->axes_.begin(), this->axes_.end(), id);
-    onehot_axses_cpu[id] = itr != this->axes_.end();
+  for (int i = 0; i < shape.size(); i++) {
+    shape_info_cpu[i * 2] = shape[i];      // shape
+    shape_info_cpu[i * 2 + 1] = stride[i]; // stride
+    auto itr = std::find(this->axes_.begin(), this->axes_.end(), i);
+    onehot_axses_cpu[i] = itr != this->axes_.end();
   }
 }
 
@@ -59,7 +57,6 @@ __global__ void kernel_random_flip(const int num, const int dim, T *y,
       const int shape_info_offset = id * 2;
       const int o = (idx / shape_info[shape_info_offset + 1]) // stride
                     % shape_info[shape_info_offset];          // shape
-      printf("flip_flags : %d\n", flip_flags[flip_index * dim + id]);
       const int i = (flip_flags[flip_index * dim + id] % 2) * onehot_axes[id]
                         ? shape_info[shape_info_offset] - 1 - o
                         : o;
@@ -106,8 +103,6 @@ void RandomFlipCuda<T>::backward_impl(const Variables &inputs,
                                       const Variables &outputs,
                                       const vector<bool> &propagate_down,
                                       const vector<bool> &accum) {
-  printf("\nbackward_impl\n");
-
   if (!(propagate_down[0])) {
     return;
   }
