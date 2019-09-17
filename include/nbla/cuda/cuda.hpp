@@ -79,6 +79,14 @@ public:
    */
   shared_ptr<Allocator> naive_allocator();
 
+  /** Get a caching unified-memory allocator.
+   */
+  shared_ptr<Allocator> unified_allocator();
+
+  /** Get a caching pinned-host-memory allocator.
+   */
+  shared_ptr<Allocator> pinned_allocator();
+
   /** Get auxilliary stream
    */
   shared_ptr<cudaStream_t> get_stream(unsigned int flag, CudaStreamId streamId,
@@ -102,6 +110,9 @@ protected:
    */
   shared_ptr<Allocator> naive_allocator_;
   shared_ptr<Allocator> caching_allocator_;
+  shared_ptr<Allocator> unified_allocator_;
+  shared_ptr<Allocator> pinned_allocator_;
+
   // stream pool -> <device, <id, stream>>
   unordered_map<int, unordered_map<int, shared_ptr<cudaStream_t>>> streams_;
 

@@ -19,6 +19,7 @@
 
 #include <nbla/array.hpp>
 #include <nbla/cuda/defs.hpp>
+#include <nbla/array/cpu_array.hpp>
 
 namespace nbla {
 
@@ -59,6 +60,38 @@ public:
    */
   explicit CudaCachedArray(const Size_t size, dtypes dtype, const Context &ctx);
   virtual ~CudaCachedArray();
+  static Context filter_context(const Context &ctx);
+};
+
+/** Array allocated on unified memory with a CudaUnifiedMemory obtained by
+Cuda::unified_allocator().
+*/
+class CudaCachedUnifiedArray : public CudaArray {
+public:
+  /** Constructor
+
+  @param size Length of array.
+  @param dtype Data type.
+  @param ctx Context specifies device ID.
+  */
+  explicit CudaCachedUnifiedArray(const Size_t size, dtypes dtype, const Context &ctx);
+  virtual ~CudaCachedUnifiedArray();
+  static Context filter_context(const Context &ctx);
+};
+
+/** Array allocated on host with a CudaHostMemory obtained by
+Cuda::pinned_allocator().
+*/
+class CudaCachedHostArray : public CpuArray {
+public:
+  /** Constructor
+
+  @param size Length of array.
+  @param dtype Data type.
+  @param ctx Context.
+  */
+  explicit CudaCachedHostArray(const Size_t size, dtypes dtype, const Context &ctx);
+  virtual ~CudaCachedHostArray();
   static Context filter_context(const Context &ctx);
 };
 }

@@ -26,7 +26,11 @@ namespace nbla {
 Cuda::Cuda()
     : naive_allocator_(make_shared<NaiveAllocator<CudaMemory>>()),
       caching_allocator_(
-          make_shared<CachingAllocatorWithBuckets<CudaMemory>>()) {}
+          make_shared<CachingAllocatorWithBuckets<CudaMemory>>()),
+      unified_allocator_(
+          make_shared<CachingAllocatorWithBuckets<CudaUnifiedMemory>>()),
+      pinned_allocator_(
+          make_shared<CachingAllocatorWithBuckets<CudaPinnedHostMemory>>()) {}
 
 Cuda::~Cuda() {
   for (auto handle : this->cublas_handles_) {
@@ -195,6 +199,8 @@ void Cuda::register_array_class(const string &name) {
 
 shared_ptr<Allocator> Cuda::caching_allocator() { return caching_allocator_; }
 shared_ptr<Allocator> Cuda::naive_allocator() { return naive_allocator_; }
+shared_ptr<Allocator> Cuda::unified_allocator() { return unified_allocator_; }
+shared_ptr<Allocator> Cuda::pinned_allocator() { return pinned_allocator_; }
 
 NBLA_INSTANTIATE_SINGLETON(NBLA_CUDA_API, Cuda);
 }

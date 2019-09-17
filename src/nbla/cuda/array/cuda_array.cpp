@@ -107,4 +107,34 @@ Context CudaCachedArray::filter_context(const Context &ctx) {
   return Context({}, "CudaCachedArray", ctx.device_id);
 }
 
+////////////////////////////////////////
+// CudaCachedUnifiedArray implementation
+////////////////////////////////////////
+CudaCachedUnifiedArray::CudaCachedUnifiedArray(const Size_t size, dtypes dtype,
+                                               const Context &ctx)
+  : CudaArray(size, dtype, ctx,
+              SingletonManager::get<Cuda>()->unified_allocator()->alloc(
+                  Array::size_as_bytes(size, dtype), ctx.device_id)) {}
+
+CudaCachedUnifiedArray::~CudaCachedUnifiedArray() {}
+
+Context CudaCachedUnifiedArray::filter_context(const Context &ctx) {
+  return Context({}, "CudaCachedUnifiedArray", ctx.device_id);
+}
+
+/////////////////////////////////////
+// CudaCachedHostArray implementation
+/////////////////////////////////////
+CudaCachedHostArray::CudaCachedHostArray(const Size_t size, dtypes dtype,
+                                         const Context &ctx)
+  : CpuArray(size, dtype, ctx,
+             SingletonManager::get<Cuda>()->pinned_allocator()->alloc(
+                 Array::size_as_bytes(size, dtype), "")) {}
+
+CudaCachedHostArray::~CudaCachedHostArray() {}
+
+Context CudaCachedHostArray::filter_context(const Context &ctx) {
+  return Context({}, "CudaCachedHostArray", "");
+}
+
 } // End of namespace nbla

@@ -116,6 +116,50 @@ void init_cuda() {
   NBLA_REGISTER_ARRAY_GROUP(CudaCachedArray, cuda);
   NBLA_REGISTER_ARRAY_GROUP(CudaDlpackArray, cuda);
 
+  // CudaCachedUnifuedArray
+  NBLA_REGISTER_ARRAY_CREATOR(CudaCachedUnifiedArray);
+  SingletonManager::get<Cuda>()->register_array_class("CudaCachedUnifiedArray");
+  NBLA_REGISTER_ARRAY_SYNCHRONIZER(CpuArray, CudaCachedUnifiedArray,
+                                   synchronizer_cpu_array_cuda_array);
+  NBLA_REGISTER_ARRAY_SYNCHRONIZER(CudaCachedUnifiedArray, CpuArray,
+                                   synchronizer_cuda_array_cpu_array);
+  NBLA_REGISTER_ARRAY_SYNCHRONIZER(CpuCachedArray, CudaCachedUnifiedArray,
+                                   synchronizer_cpu_array_cuda_array);
+  NBLA_REGISTER_ARRAY_SYNCHRONIZER(CudaCachedUnifiedArray, CpuCachedArray,
+                                   synchronizer_cuda_array_cpu_array);
+  NBLA_REGISTER_ARRAY_SYNCHRONIZER(CudaArray, CudaCachedUnifiedArray,
+                                   synchronizer_default);
+  NBLA_REGISTER_ARRAY_SYNCHRONIZER(CudaCachedUnifiedArray, CudaArray,
+                                   synchronizer_default);
+  NBLA_REGISTER_ARRAY_SYNCHRONIZER(CudaCachedArray, CudaCachedUnifiedArray,
+                                   synchronizer_default);
+  NBLA_REGISTER_ARRAY_SYNCHRONIZER(CudaCachedUnifiedArray, CudaCachedArray,
+                                   synchronizer_default);
+
+  // CudaCachedHostArray
+  NBLA_REGISTER_ARRAY_CREATOR(CudaCachedHostArray);
+  SingletonManager::get<Cpu>()->register_array_class("CudaCachedHostArray");
+  NBLA_REGISTER_ARRAY_SYNCHRONIZER(CpuArray, CudaCachedHostArray,
+                                   synchronizer_default);
+  NBLA_REGISTER_ARRAY_SYNCHRONIZER(CudaCachedHostArray, CpuArray,
+                                   synchronizer_default);
+  NBLA_REGISTER_ARRAY_SYNCHRONIZER(CpuCachedArray, CudaCachedHostArray,
+                                   synchronizer_default);
+  NBLA_REGISTER_ARRAY_SYNCHRONIZER(CudaCachedHostArray, CpuCachedArray,
+                                   synchronizer_default);
+  NBLA_REGISTER_ARRAY_SYNCHRONIZER(CudaArray, CudaCachedHostArray,
+                                   synchronizer_cuda_array_cpu_array);
+  NBLA_REGISTER_ARRAY_SYNCHRONIZER(CudaCachedHostArray, CudaArray,
+                                   synchronizer_cpu_array_cuda_array);
+  NBLA_REGISTER_ARRAY_SYNCHRONIZER(CudaCachedArray, CudaCachedHostArray,
+                                   synchronizer_cuda_array_cpu_array);
+  NBLA_REGISTER_ARRAY_SYNCHRONIZER(CudaCachedHostArray, CudaCachedArray,
+                                   synchronizer_cpu_array_cuda_array);
+  NBLA_REGISTER_ARRAY_SYNCHRONIZER(CudaCachedUnifiedArray, CudaCachedHostArray,
+                                   synchronizer_cuda_array_cpu_array);
+  NBLA_REGISTER_ARRAY_SYNCHRONIZER(CudaCachedHostArray, CudaCachedUnifiedArray,
+                                   synchronizer_cpu_array_cuda_array);
+
   // Function registration
 % for name, _, arg_types in function_list:
   % for type_config, ttypes in function_types.get(name, {}).items():

@@ -23,6 +23,7 @@
 #include <nbla/common.hpp>
 #include <nbla/cuda/defs.hpp>
 #include <nbla/memory/memory.hpp>
+#include <nbla/memory/cpu_memory.hpp>
 
 namespace nbla {
 
@@ -39,6 +40,8 @@ namespace nbla {
 class NBLA_CUDA_API CudaMemory : public Memory {
 private:
   CudaMemory(size_t bytes, const string &device, void *ptr);
+
+protected:
   int device_num_;
 
 public:
@@ -48,6 +51,33 @@ public:
   shared_ptr<Memory> divide_impl(size_t second_start) override;
   void merge_next_impl(Memory *from) override;
   void merge_prev_impl(Memory *from) override;
+};
+
+/** CUDA memory implementation using unified memory
+*/
+class NBLA_CUDA_API CudaUnifiedMemory : public CudaMemory {
+private:
+  CudaUnifiedMemory(size_t bytes, const string &device, void *ptr);
+
+public:
+  CudaUnifiedMemory(size_t bytes, const string &device);
+
+  bool alloc_impl() override;
+  shared_ptr<Memory> divide_impl(size_t second_start) override;
+};
+
+/** Pinned host memory implementation
+*/
+class NBLA_CUDA_API CudaPinnedHostMemory : public CpuMemory {
+  CudaPinnedHostMemory(size_t bytes, const string &device_id, void *ptr);
+
+public:
+  CudaPinnedHostMemory(size_t bytes, const string &device_id);
+  ~CudaPinnedHostMemory();
+
+protected:
+  bool alloc_impl() override;
+  shared_ptr<Memory> divide_impl(size_t second_start) override;
 };
 }
 #endif
