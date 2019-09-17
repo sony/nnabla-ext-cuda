@@ -30,7 +30,10 @@ Cuda::Cuda()
       unified_allocator_(
           make_shared<CachingAllocatorWithBuckets<CudaUnifiedMemory>>()),
       pinned_allocator_(
-          make_shared<CachingAllocatorWithBuckets<CudaPinnedHostMemory>>()) {}
+          make_shared<CachingAllocatorWithBuckets<CudaPinnedHostMemory>>()){
+  NBLA_CUDA_CHECK(cudaStreamCreateWithFlags(&stream_HtoD, cudaStreamNonBlocking));
+  NBLA_CUDA_CHECK(cudaStreamCreateWithFlags(&stream_DtoH, cudaStreamNonBlocking));
+}
 
 Cuda::~Cuda() {
   for (auto handle : this->cublas_handles_) {
@@ -52,6 +55,9 @@ Cuda::~Cuda() {
       NBLA_CUDA_CHECK(cudaStreamDestroy(*(stream.second)));
     }
   }
+  
+  NBLA_CUDA_CHECK(cudaStreamDestroy(stream_HtoD));
+  NBLA_CUDA_CHECK(cudaStreamDestroy(stream_DtoH));
 }
 
 cublasHandle_t Cuda::cublas_handle(int device) {

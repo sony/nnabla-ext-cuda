@@ -20,6 +20,7 @@
 #include <nbla/array.hpp>
 #include <nbla/cuda/defs.hpp>
 #include <nbla/array/cpu_array.hpp>
+#include <nbla/synced_array.hpp>
 
 namespace nbla {
 
@@ -43,9 +44,11 @@ public:
   static Context filter_context(const Context &ctx);
 };
 
-NBLA_CUDA_API void synchronizer_cuda_array_cpu_array(Array *src, Array *dst);
+NBLA_CUDA_API void synchronizer_cuda_array_cpu_array(Array *src, Array *dst,
+                                                     const int async_flags = AsyncFlag::NONE);
 
-NBLA_CUDA_API void synchronizer_cpu_array_cuda_array(Array *src, Array *dst);
+NBLA_CUDA_API void synchronizer_cpu_array_cuda_array(Array *src, Array *dst,
+                                                     const int async_flags = AsyncFlag::NONE);
 
 /** Array allocated on CUDA device with a CudaMemory obtained by
 Cuda::caching_allocator().

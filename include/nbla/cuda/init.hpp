@@ -56,6 +56,10 @@ NBLA_CUDA_API int cuda_get_device_count();
  */
 NBLA_CUDA_API vector<string> cuda_get_devices();
 
+/** Get free and total device memory size.
+ */
+NBLA_CUDA_API vector<size_t> cuda_mem_get_info();
+
 /** cudaStream wrapper functions.
 */
 NBLA_CUDA_API shared_ptr<void> cuda_create_stream(int device_id = -1);

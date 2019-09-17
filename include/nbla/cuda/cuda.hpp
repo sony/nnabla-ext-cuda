@@ -92,6 +92,11 @@ public:
   shared_ptr<cudaStream_t> get_stream(unsigned int flag, CudaStreamId streamId,
                                       int device = -1);
 
+  /** Non blockuing streams for data transfer
+   */
+  cudaStream_t stream_HtoD;
+  cudaStream_t stream_DtoH;
+
 protected:
   std::mutex mtx_cublas_;
   std::mutex mtx_curand_;

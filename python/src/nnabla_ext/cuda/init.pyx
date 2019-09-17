@@ -31,6 +31,7 @@ cdef extern from "nbla/cuda/init.hpp" namespace "nbla":
     void cuda_device_synchronize(const string & device) except +
     int cuda_get_device_count() except +
     vector[string] cuda_get_devices() except +
+    vector[size_t] cuda_mem_get_info() except +
     shared_ptr[void] cuda_create_stream(int device_id) except +
     void* cuda_stream_shared_to_void(shared_ptr[void]) except +
     void print_stream_flag(shared_ptr[void]) except +
@@ -128,6 +129,15 @@ def get_devices():
     """
     return cuda_get_devices()
 
+
+def get_device_memory_size():
+    """Get free and total device memory size.
+
+    Returns:
+        list of free and total device memory size.
+
+    """
+    return cuda_mem_get_info()
 ###############################################################################
 
 

@@ -242,6 +242,12 @@ vector<string> cuda_get_devices() {
   return ret;
 }
 
+vector<size_t> cuda_mem_get_info() {
+  size_t mf, mt;
+  cudaMemGetInfo(&mf, &mt);
+  return vector<size_t>{mf, mt};
+}
+
 shared_ptr<void> cuda_create_stream(int device_id) {
   cuda_set_device(device_id);
 

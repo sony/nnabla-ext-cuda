@@ -16,6 +16,9 @@
 #include <nbla/array_registry.hpp>
 #include <nbla/cuda/array/cuda_array.hpp>
 #include <nbla/cuda/cuda.hpp>
+#include <nbla/cpu.hpp>
+#include <nbla/cuda/event.hpp>
+#include <nbla/singleton_manager.hpp>
 
 #include <thrust/device_ptr.h>
 #include <thrust/fill.h>
@@ -54,42 +57,153 @@ Context CudaArray::filter_context(const Context &ctx) {
   return Context({}, "CudaArray", ctx.device_id);
 }
 
-/////////////////////////////////////
-// Register cpu --> cuda synchronizer
-/////////////////////////////////////
-void synchronizer_cuda_array_cpu_array(Array *src, Array *dst) {
-  if (src->dtype() != dst->dtype()) {
-    // if dtype mismatches, transfer gpu-cpu first, then convert dtype.
-    Context ctx = dst->context();
-    unique_ptr<Array> tmp(new CpuCachedArray(src->size(), src->dtype(), ctx));
-    synchronizer_cuda_array_cpu_array(src, tmp.get());
-    dst->copy_from(tmp.get());
-    return;
+void CUDART_CB delete_callback(cudaStream_t stream, cudaError_t status, void*  userData)
+{
+  delete reinterpret_cast<shared_ptr<Array>*>(userData);
+}
+
+// Main process of asynchronous synchronizer
+void synchronize_async_cuda_array_cpu_array(Array *src, Array *dst, cudaMemcpyKind kind,
+                                            const cudaStream_t stream, const int async_flags) {
+  // Wait an previous asynchronous memcpy
+  if (src->have_event()) {
+    src->wait_event();
   }
+
+  if (dst->have_event()) {
+    NBLA_ERROR(error_code::target_specific_async,
+               "Duplicated asynchronous memcpy to the same destination array");
+  }
+
+  cudaEvent_t null_event;
+  NBLA_CUDA_CHECK(cudaEventCreate(&null_event));
+  NBLA_CUDA_CHECK(cudaEventRecord(null_event, 0));
+  cudaStreamWaitEvent(stream, null_event, 0);
+
+  // Prepare an event
+  cudaEvent_t event;
+  NBLA_CUDA_CHECK(cudaEventCreate(&event));
+
+  // Memory copy
   size_t size = src->size() * sizeof_dtype(dst->dtype());
+  NBLA_CUDA_CHECK(cudaMemcpyAsync(dst->pointer<void>(), src->const_pointer<void>(),
+                                  size, kind, stream));
+
+  // No cudaStreamCallback becasuse cudaStreamSycnhronize(0) in CudaEvent::wait_event
+  // has the same effect.
+
+  // Record the memory copy as an event into the destination array
+  NBLA_CUDA_CHECK(cudaEventRecord(event, stream));
+  dst->set_event(shared_ptr<Event>(new CudaEvent(event, src->getptr())));
+}
+
+// Main process of asynchronous synchronizer
+void synchronize_async_cpu_array_cuda_array(Array *src, Array *dst, cudaMemcpyKind kind,
+                                            const cudaStream_t stream, const int async_flags) {
+  // Wait an previous asynchronous memcpy
+  if (src->have_event()) {
+    src->wait_event();
+  }
+
+  if (dst->have_event()) {
+    NBLA_ERROR(error_code::target_specific_async,
+      "Duplicated asynchronous memcpy to the same destination array");
+  }
+
+  // Synchronize to null stream which managed the GPU memory usage of the array dst
+  cudaEvent_t null_event;
+  NBLA_CUDA_CHECK(cudaEventCreate(&null_event));
+  NBLA_CUDA_CHECK(cudaEventRecord(null_event, 0));
+  cudaStreamWaitEvent(stream, null_event, 0);
+
+  // Prepare an event
+  cudaEvent_t event;
+  NBLA_CUDA_CHECK(cudaEventCreate(&event));
+
+  // Memory copy
+  size_t size = src->size() * sizeof_dtype(dst->dtype());
+  NBLA_CUDA_CHECK(cudaMemcpyAsync(dst->pointer<void>(), src->const_pointer<void>(),
+                                  size, kind, stream));
+
+  if (!(async_flags & AsyncFlag::UNSAFE)) { // Keep safe CPU memory of src
+    auto delete_guard = new shared_ptr<Array>(src->getptr());
+    NBLA_CUDA_CHECK(cudaStreamAddCallback(stream, delete_callback, delete_guard, 0));
+  }
+
+  // Record the memory copy as an event into the destination array
+  NBLA_CUDA_CHECK(cudaEventRecord(event, stream));
+  dst->set_event(shared_ptr<Event>(new CudaEvent(event, src->getptr())));
+}
+
+
+// Main process of synchronous synchronizer
+void synchronize_sync(Array *src, Array *dst, cudaMemcpyKind kind) {
+  // Wait an previous asynchronous memcpy
+  src->wait_event();
+
+  if (dst->have_event()) {
+    NBLA_ERROR(error_code::target_specific_async,
+      "Duplicated asynchronous memcpy to the same destination array");
+  }
+
+  // Memory copy
+  size_t size = src->size() * sizeof_dtype(dst->dtype());
+  NBLA_CUDA_CHECK(cudaMemcpy(dst->pointer<void>(), src->const_pointer<void>(),
+                             size, kind));
+  // Record no event because memory copy has been finished synchronously
+  dst->set_event(nullptr);
+}
+
+/////////////////////////////////////
+// Register cuda --> cpu synchronizer
+/////////////////////////////////////
+void synchronizer_cuda_array_cpu_array(Array *src, Array *dst, const int async_flags) {
   // Ensure it runs on devices which doesn't support unified virtual addressing.
   cuda_set_device(std::stoi(src->context().device_id));
-  NBLA_CUDA_CHECK(cudaMemcpy(dst->pointer<void>(), src->const_pointer<void>(),
-                             size, cudaMemcpyDeviceToHost));
+
+  if (src->dtype() != dst->dtype()) {
+    // if dtype mismatches, convert dtype first, and then transfer gpu-cpu.
+    unique_ptr<Array> tmp(new CudaCachedArray(src->size(), dst->dtype(), src->context()));
+    src->wait_event();
+    tmp->copy_from(src);
+    synchronizer_cuda_array_cpu_array(tmp.get(), dst, async_flags);
+    return;
+  }
+
+  if (async_flags & AsyncFlag::ASYNC) { // cudaMemcpyAsync               
+    synchronize_async_cuda_array_cpu_array(src, dst, cudaMemcpyDeviceToHost,
+                                           SingletonManager::get<Cuda>()->stream_DtoH,
+                                           async_flags);
+  }
+  else { // cudaMemcpy
+    synchronize_sync(src, dst, cudaMemcpyDeviceToHost);
+  }
 }
 
 /////////////////////////////////////
 // Register cpu --> cuda synchronizer
 /////////////////////////////////////
-void synchronizer_cpu_array_cuda_array(Array *src, Array *dst) {
+void synchronizer_cpu_array_cuda_array(Array *src, Array *dst, const int async_flags) {
+  // Ensure it runs on devices which doesn't support unified virtual addressing.
+  cuda_set_device(std::stoi(dst->context().device_id));
+
   if (src->dtype() != dst->dtype()) {
     // If dtype mismatches, transfer cpu-gpu first, then convert dtype in gpu.
-    Context ctx = dst->context();
-    unique_ptr<Array> tmp(new CudaCachedArray(src->size(), src->dtype(), ctx));
-    synchronizer_cpu_array_cuda_array(src, tmp.get());
+    unique_ptr<Array> tmp(new CudaCachedArray(src->size(), src->dtype(), dst->context()));
+    synchronizer_cpu_array_cuda_array(src, tmp.get(), async_flags);
+    tmp->wait_event();
     dst->copy_from(tmp.get());
     return;
   }
-  size_t size = src->size() * sizeof_dtype(dst->dtype());
-  // Ensure it runs on devices which doesn't support unified virtual addressing.
-  cuda_set_device(std::stoi(dst->context().device_id));
-  NBLA_CUDA_CHECK(cudaMemcpy(dst->pointer<void>(), src->const_pointer<void>(),
-                             size, cudaMemcpyHostToDevice));
+
+  if (async_flags & AsyncFlag::ASYNC) { // cudaMemcpyAsync
+    synchronize_async_cpu_array_cuda_array(src, dst, cudaMemcpyHostToDevice,
+                                           SingletonManager::get<Cuda>()->stream_HtoD,
+                                           async_flags);
+  }
+  else { // cudaMemcpy
+    synchronize_sync(src, dst, cudaMemcpyHostToDevice);
+  }
 }
 
 /////////////////////////////////
