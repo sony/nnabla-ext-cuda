@@ -18,6 +18,7 @@
 #include <nbla/cuda/cuda.hpp>
 #include <nbla/cpu.hpp>
 #include <nbla/cuda/event.hpp>
+#include <nbla/cuda/function/my_cuda_memset.hpp>
 #include <nbla/singleton_manager.hpp>
 
 #include <thrust/device_ptr.h>
@@ -49,8 +50,21 @@ CudaArray::~CudaArray() {}
 
 void CudaArray::zero() {
   cuda_set_device(device_);
-  NBLA_CUDA_CHECK(cudaMemset(this->pointer<void>(), 0,
-                             this->size() * sizeof_dtype(this->dtype_)));
+  /* cudaMemset and cudaMemsetAsync issued into null stream 
+     block a non-blocking stream. It seems to be a bug of CUDA.
+
+     Version info:
+
+     nvcc: NVIDIA (R) Cuda compiler driver
+     Copyright (c) 2005-2019 NVIDIA Corporation
+     Built on Fri_Feb__8_19:08:26_Pacific_Standard_Time_2019
+     Cuda compilation tools, release 10.1, V10.1.105
+  */
+  //NBLA_CUDA_CHECK(cudaMemset(this->pointer<void>(), 0,
+  //                           this->size() * sizeof_dtype(this->dtype_)));
+
+  my_cudaMemset(this->pointer<void>(), 0,
+                this->size() * sizeof_dtype(this->dtype_));
 }
 
 Context CudaArray::filter_context(const Context &ctx) {
