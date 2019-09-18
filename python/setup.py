@@ -123,7 +123,61 @@ def get_cpu_extopts(lib):
     return ext_opts
 
 
-def cuda_config(root_dir, cuda_lib, ext_opts, lib_dirs):
+def get_cpu_include_dir():
+    from six.moves.configparser import ConfigParser
+
+    # Parse setup.cfg
+    path_cfg = join(dirname(__file__), "setup.cfg")
+    if not isfile(path_cfg):
+        raise ValueError(
+            "`setup.cfg` does not exist. Read installation document and install using CMake.")
+    cfgp = ConfigParser()
+    cfgp.read(path_cfg)
+
+    # Read cpu lib info
+    cpu_include_dir = cfgp.get("cmake", "cpu_include_dir")
+    print("CPU Include directory:", cpu_include_dir)
+
+    return cpu_include_dir
+
+
+def get_cuda_include_dir():
+    from six.moves.configparser import ConfigParser
+
+    # Parse setup.cfg
+    path_cfg = join(dirname(__file__), "setup.cfg")
+    if not isfile(path_cfg):
+        raise ValueError(
+            "`setup.cfg` does not exist. Read installation document and install using CMake.")
+    cfgp = ConfigParser()
+    cfgp.read(path_cfg)
+
+    # Read cuda header info
+    cuda_include_dir = cfgp.get("cmake", "cuda_include_dir")
+    print("CUDA Include directory:", cuda_include_dir)
+
+    return cuda_include_dir
+
+
+def get_cpu_cython_path():
+    from six.moves.configparser import ConfigParser
+
+    # Parse setup.cfg
+    path_cfg = join(dirname(__file__), "setup.cfg")
+    if not isfile(path_cfg):
+        raise ValueError(
+            "`setup.cfg` does not exist. Read installation document and install using CMake.")
+    cfgp = ConfigParser()
+    cfgp.read(path_cfg)
+
+    # Read cuda header info
+    cpu_cython_path = cfgp.get("cmake", "cpu_cython_path")
+    print("CPU Cython path:", cpu_cython_path)
+
+    return cpu_cython_path
+
+
+def cuda_config(root_dir, cuda_lib, ext_opts):
     # With CUDA
     src_dir = join(root_dir, 'src')
     path_cuda_pkg = join(src_dir, 'nnabla_ext', 'cuda')
@@ -205,12 +259,18 @@ def cuda_config(root_dir, cuda_lib, ext_opts, lib_dirs):
     cuda_ext_opts = copy.deepcopy(ext_opts)
     cuda_ext_opts['libraries'] += [cuda_lib.name]
     cuda_ext_opts['library_dirs'] += [dirname(cuda_lib.path)]
+    cuda_ext_opts['include_dirs'] += [get_cpu_include_dir()]
+    cuda_ext_opts['include_dirs'] += [get_cuda_include_dir()]
+
     ext_modules = [
         Extension(cuda_pkg + '.init',
                   [join(path_cuda_pkg, 'init.pyx')],
                   **cuda_ext_opts),
         Extension(cuda_pkg + '.nvtx',
                   [join(path_cuda_pkg, 'nvtx.pyx')],
+                  **cuda_ext_opts),
+        Extension(cuda_pkg + '.lms',
+                  [join(path_cuda_pkg, 'lms.pyx')],
                   **cuda_ext_opts),
     ]
 
@@ -328,7 +388,9 @@ if __name__ == '__main__':
     pkg_info, cfg = get_setup_config(root_dir)
 
     # Cythonize
-    ext_modules = cythonize(cfg.ext_modules, compiler_directives={
+    ext_modules = cythonize(cfg.ext_modules, 
+                            include_path=[get_cpu_cython_path()], 
+                            compiler_directives={
                             "embedsignature": True,
                             "c_string_type": 'str',
                             "c_string_encoding": "ascii"})

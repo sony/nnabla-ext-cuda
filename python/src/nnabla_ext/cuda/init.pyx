@@ -16,6 +16,7 @@ from nnabla.logger import logger
 from nnabla import add_available_context
 
 import nnabla._init as cpu_init
+cimport nnabla._init as ccpu_init
 from libcpp.vector cimport vector
 from libcpp.string cimport string
 from libcpp.memory cimport shared_ptr
@@ -83,6 +84,18 @@ def reset_array_preference():
 
 def array_classes():
     return cuda_array_classes()
+
+
+def prefer_cpu_pinned_array():
+    a = ccpu_init._cpu_array_classes()
+    a = sorted(a, key=lambda x: (x != 'CudaCachedHostArray'))
+    ccpu_init._cpu_set_array_classes(a)
+
+
+def prefer_unified_array():
+    a = cuda_array_classes()
+    a = sorted(a, key=lambda x: (x != 'CudaCachedUnifiedArray'))
+    _cuda_set_array_classes(a)
 
 
 # Initialize preference according to CPU cache preference.
