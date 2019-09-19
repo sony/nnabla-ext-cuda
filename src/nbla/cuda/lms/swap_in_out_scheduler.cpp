@@ -464,8 +464,8 @@ synced_array_callback_tracer(SyncedArrayPtr saptr,
                              const bool write_only) {
   auto tag = get_tag(func_name, write_only);
 
-  // Return an error when encounting get/cast after preclear
-  // due to unpredicted change of order from the recorded order.
+  // Return an error when encounting get/cast between preclear and actual clear.
+  // It could happens due to unpredicted change from the recorded order.
   if (precleared[saptr]) {
     if (tag == RecTag::CLEAR) {
       precleared[saptr] = false;
@@ -483,13 +483,8 @@ synced_array_callback_tracer(SyncedArrayPtr saptr,
         dtype != rec_order[rec_use_idx].dtype ||
         get_array_key_from_context(ctx) != 
          get_array_key_from_context(rec_order[rec_use_idx].ctx)))) {
-    // The number of real get/cast/clear is larger than that of the recorded order.
+    // The number of real get/cast/clear is larger than that of the recorded order,
     // or the orders are different
-    if (!is_gpu_array(ctx.array_class) && tag != RecTag::CLEAR) {
-      NBLA_ERROR(error_code::unclassified,
-        "The recorded order was changed and CPU or uncertain array was used.");
-    }
-
     wrong_ordered.push_back({tag, saptr, dtype, ctx, false, false, 0});
   }
 
