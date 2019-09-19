@@ -99,6 +99,7 @@ void SwapInOutScheduler::init() {
   swap_in_counts.clear();
   rec_use_idx = 0;
   function_idx = 0;
+  head_function_idx = 1;
   wrong_ordered.clear();
   precleared.clear();
 }
@@ -222,6 +223,12 @@ void SwapInOutScheduler::proc_for_prev_func() {
   // Swap out and preclear the arrays used in the previous function.
   swap_out();
 
+  if (!first_iter && waiting_for_host && rec_head == rec_function_ends[function_idx]) {
+    // The head of the queue is synchronized to host. Restart prefetch.
+    waiting_for_host = false;
+    waiting_for_host_saptr.clear();
+  }
+
   if (rec_use_idx < rec_function_ends[function_idx]) {
     /* If the number of get/cast/clear in this iteration is less than
        recorded one, reset the index the recorded start of the next function 
@@ -254,8 +261,36 @@ void SwapInOutScheduler::proc_for_next_func() {
 /* Swap in (prefetch)
 */
 void SwapInOutScheduler::swap_in() {
+  // Prefetch does not proceed after host finishes to use arrays.
+  if (waiting_for_host) {
+    return;
+  }
+
   // Prefetch arrays as possible.
   while (rec_head < rec_order.size()) {
+#if DEBUG_SWAP_IN_OUT_SCHEDULER
+    // Debug
+    if (head_function_idx < function_idx) {
+      NBLA_ERROR(error_code::unclassified,
+        "Function index overtakes the function index of the head.");
+    }
+
+    if (rec_head > rec_function_ends[head_function_idx]) {
+      NBLA_ERROR(error_code::unclassified,
+        "Head overtakes the end index of functions at the head.");
+    }
+#endif
+
+    if (rec_head == rec_function_ends[head_function_idx]) {
+      // rec_head stepped into the next function.
+      head_function_idx++;
+
+      // Stop prefetch at the end of a function when host uses arrays.
+      if (waiting_for_host) {
+        break;
+      }
+    }
+
     auto r = rec_order[rec_head];
 
     if (r.tag == RecTag::CLEAR) {
@@ -269,7 +304,7 @@ void SwapInOutScheduler::swap_in() {
         break; // Out of memory. Stop fetching.
       }
       else {
-        if (swap_in_counts[r.saptr][r.dtype] == 0) {
+        if (swap_in_counts[r.saptr][r.dtype] == 0 && !waiting_for_host_saptr[r.saptr]) {
           // The array is firstly appeared in the queue.
           // Do not prefetch the array before host finish to use it.
 
@@ -309,8 +344,8 @@ void SwapInOutScheduler::swap_in() {
       rec_head++;
 
       // Stop prefetch until the end of use of the array.
-      //waiting_for_host = true;
-      //waiting_for_host_saptr[r.saptr] = true;
+      waiting_for_host = true;
+      waiting_for_host_saptr[r.saptr] = true;
     }
     else {
       // Get/cast of an array on an uncertain device
