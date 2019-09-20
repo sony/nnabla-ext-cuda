@@ -133,9 +133,6 @@ class SwapInOutScheduler {
   vector<size_t> rec_function_ends = {0}; // 0 is set for convinience.
                                           // function_idx==0 points this virtual 
                                           // 0-th function.
-  size_t head_function_idx = 1; // pointing a function where the head is.
-                                // head_function_idx initialliy skips 
-                                // the virtual 0-th function.                  
 
   /* This counts the number of same arrays in the queue.
      If count of an array > 0, no need to fetch the same array again.
@@ -163,12 +160,8 @@ class SwapInOutScheduler {
   vector<string> cpu_array_classes = SingletonManager::get<Cpu>()->array_classes();
   vector<string> cuda_array_classes = SingletonManager::get<Cuda>()->array_classes();
 
-  /* If a cast of an array to host is recorded, prefetch must stop and 
-     wait for writing values to the array. After that, the array modified by host
-     can be fetched to device safely.
-  */
-  bool waiting_for_host = false; // If true, prefetch stops for host.
-  // If true for an array, this flag prevents prefetching this array.
+  // If a cast of an array to host is recorded, prefetch should stop
+  // This flag prevents prefetching this array.
   unordered_map<SyncedArrayPtr, bool> waiting_for_host_saptr;
 
 public:
