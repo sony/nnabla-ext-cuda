@@ -177,7 +177,7 @@ def get_cpu_cython_path():
     return cpu_cython_path
 
 
-def cuda_config(root_dir, cuda_lib, ext_opts):
+def cuda_config(root_dir, cuda_lib, ext_opts, lib_dirs):
     # With CUDA
     src_dir = join(root_dir, 'src')
     path_cuda_pkg = join(src_dir, 'nnabla_ext', 'cuda')
