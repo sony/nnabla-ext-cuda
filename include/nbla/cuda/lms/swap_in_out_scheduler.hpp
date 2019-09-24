@@ -35,6 +35,7 @@ using std::vector;
 using std::unordered_map;
 using std::string;
 using std::accumulate;
+using std::pair;
 
 /** A class which manages GPU memory usage and schedules swap in/out
     throughout network computation.
@@ -163,6 +164,9 @@ class SwapInOutScheduler {
   // If a cast of an array to host is recorded, prefetch should stop
   // This flag prevents prefetching this array.
   unordered_map<SyncedArrayPtr, bool> waiting_for_host_saptr;
+
+  // If true, the SyncedArray is replaced in the current iteration.
+  unordered_map<SyncedArrayPtr, pair<bool, SyncedArrayPtr>> replaced_saaptr;
 
 public:
   /** Constructor.

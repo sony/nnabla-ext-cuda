@@ -101,6 +101,7 @@ void SwapInOutScheduler::init() {
   function_idx = 0;
   wrong_ordered.clear();
   precleared.clear();
+  replaced_saaptr.clear();
 }
 
 /* Finalizer of the scheduler for each training iteration
@@ -276,7 +277,14 @@ void SwapInOutScheduler::swap_in() {
 
             // Wait for the previous swap out
             if (is_cpu_array(r.saptr->head_array_class()) && r.saptr->get_num_arrays() > 0) {
-              r.saptr->get(r.saptr->dtype(), host_ctx, AsyncFlag::UNSAFE);
+              auto replaced = replaced_saaptr[r.saptr];
+              if (replaced.first) {
+                // The SyncedArray is replaced in this iteration.
+                replaced.second->get(r.saptr->dtype(), host_ctx, AsyncFlag::UNSAFE);
+              }
+              else {
+                r.saptr->get(r.saptr->dtype(), host_ctx, AsyncFlag::UNSAFE);
+              }
             }
 
             // Synchronize to function stream
@@ -292,7 +300,14 @@ void SwapInOutScheduler::swap_in() {
                after "get" prefetch of half type, the prefetched half array will be deleted
                by the "cast".
             */
-            r.saptr->get(r.dtype, r.ctx, AsyncFlag::ASYNC | AsyncFlag::UNSAFE);
+            auto replaced = replaced_saaptr[r.saptr];
+            if (replaced.first) {
+              // The SyncedArray is replaced in this iteration.
+              replaced.second->get(r.dtype, r.ctx, AsyncFlag::ASYNC | AsyncFlag::UNSAFE);
+            }
+            else {
+              r.saptr->get(r.dtype, r.ctx, AsyncFlag::ASYNC | AsyncFlag::UNSAFE);
+            }
           }
           // Increase memory usage
           used_bytes_swap_in += next_array_bytes;
@@ -351,7 +366,14 @@ void SwapInOutScheduler::swap_out_impl() {
             // The array is not cleared yet.
             if (!first_iter && rec_order[i].preclear) {
               // This array just waits for clear. Preclear it by the scheduler.
-              rec_order[i].saptr->clear();
+              auto replaced = replaced_saaptr[rec_order[i].saptr];
+              if (replaced.first) {
+                // The SyncedArray is replaced in this iteration.
+                replaced.second->clear();
+              }
+              else {
+                rec_order[i].saptr->clear();
+              }
               precleared[rec_order[i].saptr] = true;
             }
             else {
@@ -362,10 +384,16 @@ void SwapInOutScheduler::swap_out_impl() {
               cudaStreamWaitEvent(SingletonManager::get<Cuda>()->stream_DtoH, event, 0);
 
               // Swap out the array
-              rec_order[i].saptr->cast(rec_order[i].saptr->dtype(), host_ctx, false, 
-                                       AsyncFlag::ASYNC | AsyncFlag::UNSAFE);
-
-
+              auto replaced = replaced_saaptr[rec_order[i].saptr];
+              if (replaced.first) {
+                // The SyncedArray is replaced in this iteration.
+                replaced.second->cast(rec_order[i].saptr->dtype(), host_ctx, false,
+                                      AsyncFlag::ASYNC | AsyncFlag::UNSAFE);
+              }
+              else {
+                rec_order[i].saptr->cast(rec_order[i].saptr->dtype(), host_ctx, false,
+                                         AsyncFlag::ASYNC | AsyncFlag::UNSAFE);
+              }
               auto array_bytes = rec_order[i].saptr->size()
                                  * sizeof_dtype(rec_order[i].saptr->dtype());
               used_bytes_swap_out += array_bytes; // Increase memory usage
@@ -405,7 +433,15 @@ void SwapInOutScheduler::wait_swap_out(RecType& r) {
     if (r.swapped_out) {
       // Wait to finish swap-out and release the source array of memory copy.
       if (is_cpu_array(r.saptr->head_array_class()) && r.saptr->get_num_arrays() > 0) {
-        r.saptr->get(r.saptr->dtype(), host_ctx, AsyncFlag::UNSAFE);
+        // Swap out the array
+        auto replaced = replaced_saaptr[r.saptr];
+        if (replaced.first) {
+          // The SyncedArray is replaced in this iteration.
+          replaced.second->get(r.saptr->dtype(), host_ctx, AsyncFlag::UNSAFE);
+        }
+        else {
+          r.saptr->get(r.saptr->dtype(), host_ctx, AsyncFlag::UNSAFE);
+        }
       }
 
       // Decrease memory usage
@@ -476,13 +512,22 @@ synced_array_callback_tracer(SyncedArrayPtr saptr,
   }
 
   // Compare between the real and recorded order.
-  if (rec_use_idx >= rec_function_ends[function_idx] ||
-      (rec_use_idx < rec_function_ends[function_idx] && 
-       (tag != rec_order[rec_use_idx].tag || 
-        saptr != rec_order[rec_use_idx].saptr || 
-        dtype != rec_order[rec_use_idx].dtype ||
-        get_array_key_from_context(ctx) != 
-         get_array_key_from_context(rec_order[rec_use_idx].ctx)))) {
+  if (rec_use_idx < rec_function_ends[function_idx] &&
+      (tag == rec_order[rec_use_idx].tag ||
+       saptr != rec_order[rec_use_idx].saptr ||
+       dtype == rec_order[rec_use_idx].dtype ||
+       get_array_key_from_context(ctx) ==
+       get_array_key_from_context(rec_order[rec_use_idx].ctx))) {
+    // The SyncedArray is replaced in the current iteration.
+    replaced_saaptr[rec_order[rec_use_idx].saptr] = pair<bool, SyncedArrayPtr>(true, saptr);    
+  }
+  else if (rec_use_idx >= rec_function_ends[function_idx] ||
+           (rec_use_idx < rec_function_ends[function_idx] && 
+            (tag != rec_order[rec_use_idx].tag || 
+             saptr != rec_order[rec_use_idx].saptr || 
+             dtype != rec_order[rec_use_idx].dtype ||
+             get_array_key_from_context(ctx) != 
+             get_array_key_from_context(rec_order[rec_use_idx].ctx)))) {
     // The number of real get/cast/clear is larger than that of the recorded order,
     // or the orders are different
     wrong_ordered.push_back({tag, saptr, dtype, ctx, false, false, 0});
