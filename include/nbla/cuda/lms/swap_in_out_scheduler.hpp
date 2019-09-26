@@ -36,6 +36,7 @@ using std::unordered_map;
 using std::string;
 using std::accumulate;
 using std::pair;
+using std::weak_ptr;
 
 /** A class which manages GPU memory usage and schedules swap in/out
     throughout network computation.
@@ -89,8 +90,10 @@ class SwapInOutScheduler {
   // Recorded information for get/cast/clear
   struct RecType {
     const RecTag tag;
-    SyncedArrayPtr saptr;
-    dtypes dtype;
+    const unsigned int synced_array_id;
+    weak_ptr<SyncedArray> sawptr;
+    const Size_t size;
+    const dtypes dtype;
     const Context ctx;
     bool preclear; // If true, the saptr can be cleared after this record.
     bool swapped_out;
@@ -140,7 +143,7 @@ class SwapInOutScheduler {
      If count of an array > 1, no need to swap out the array because it is
      planed to be used soon in the queue.
   */
-  unordered_map<SyncedArrayPtr, unordered_map<dtypes, int>> swap_in_counts;
+  unordered_map<unsigned int, unordered_map<dtypes, int>> swap_in_counts;
 
   int accumulate_counts(const unordered_map<dtypes, int>& count_map) {
     return accumulate(count_map.begin(), count_map.end(), 0,
@@ -163,10 +166,10 @@ class SwapInOutScheduler {
 
   // If a cast of an array to host is recorded, prefetch should stop
   // This flag prevents prefetching this array.
-  unordered_map<SyncedArrayPtr, bool> waiting_for_host_saptr;
+  unordered_map<unsigned int, bool> waiting_for_host_saptr;
 
-  // If true, the SyncedArray is replaced in the current iteration.
-  unordered_map<SyncedArrayPtr, pair<bool, SyncedArrayPtr>> replaced_saaptr;
+  // This map is used only in the first iteration
+  unordered_map<SyncedArrayPtr, unsigned int> synced_array_id_mapper;
 
 public:
   /** Constructor.
@@ -231,7 +234,7 @@ private:
   // SyncedArray callback function to record get/cast/clear in the first iteration.
   void synced_array_callback_recorder(SyncedArrayPtr saptr,
                                       const SyncedArrayCallbackTag func_name,
-                                      const dtypes dtype,                                           
+                                      const dtypes dtype,
                                       const Context &ctx,
                                       const bool write_only);
 
@@ -275,6 +278,16 @@ private:
     return std::find(cuda_array_classes.begin(), 
                      cuda_array_classes.end(), 
                      array_class) != cuda_array_classes.end();
+  }
+
+  // Get weak pointer
+  SyncedArrayPtr get_sp_from_wp_safely(const RecType& r) {
+    if (auto sp = r.sawptr.lock()) {
+      return sp;
+    }
+    else {
+      NBLA_ERROR(error_code::unclassified, "Weak pointer is unexpectedly expired.");
+    }
   }
 };
 }
