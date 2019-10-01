@@ -278,19 +278,6 @@ void SwapInOutScheduler::swap_in() {
               // The array is firstly appeared in the queue.
               // Do not prefetch the array before host finish to use it.
 
-              // Wait for the previous swap out
-
-              if (is_cpu_array(p->head_array_class()) && p->get_num_arrays() > 0) {
-                // The SyncedArray is replaced in this iteration.
-                p->get(p->dtype(), host_ctx, AsyncFlag::UNSAFE);
-              }
-
-              // Synchronize to function stream
-              cudaEvent_t event;
-              NBLA_CUDA_CHECK(cudaEventCreate(&event));
-              NBLA_CUDA_CHECK(cudaEventRecord(event, 0));
-              cudaStreamWaitEvent(SingletonManager::get<Cuda>()->stream_HtoD, event, 0);
-
               // Fetch asynchronously
               /* Prefetches of CAST and CAST_WRITE_ONLY are delt as "get"
                  because prefetch as cast destroys other prefetched arrays.
@@ -371,12 +358,6 @@ void SwapInOutScheduler::swap_out_impl() {
                 precleared[p] = true;
               }
               else {
-                // Synchronize to function stream
-                cudaEvent_t event;
-                NBLA_CUDA_CHECK(cudaEventCreate(&event));
-                NBLA_CUDA_CHECK(cudaEventRecord(event, 0));
-                cudaStreamWaitEvent(SingletonManager::get<Cuda>()->stream_DtoH, event, 0);
-
                 // Swap out the array
                 p->cast(p->dtype(), host_ctx, false, AsyncFlag::ASYNC | AsyncFlag::UNSAFE);
                 auto array_bytes = p->size() * sizeof_dtype(p->dtype());

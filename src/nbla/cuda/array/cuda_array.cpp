@@ -81,7 +81,7 @@ void synchronize_async_cuda_array_cpu_array(Array *src, Array *dst, cudaMemcpyKi
                                             const cudaStream_t stream, const int async_flags) {
   // Wait an previous asynchronous memcpy
   if (src->have_event()) {
-    src->wait_event();
+    src->wait_event(async_flags & AsyncFlag::UNSAFE);
   }
 
   if (dst->have_event()) {
@@ -116,7 +116,7 @@ void synchronize_async_cpu_array_cuda_array(Array *src, Array *dst, cudaMemcpyKi
                                             const cudaStream_t stream, const int async_flags) {
   // Wait an previous asynchronous memcpy
   if (src->have_event()) {
-    src->wait_event();
+    src->wait_event(async_flags & AsyncFlag::UNSAFE);
   }
 
   if (dst->have_event()) {
