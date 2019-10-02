@@ -123,7 +123,7 @@ void SwapInOutScheduler::finalize() {
   if (!first_iter) {
     for (int i = 0; i < wrong_ordered.size(); i++) {
       if (wrong_ordered[i].tag != RecTag::CLEAR) {
-        if (is_gpu_array(wrong_ordered[i].ctx.array_class)) { // GPU array
+        if (wrong_ordered[i].ctx.array_class == device_ctx.array_class) { // GPU array
           if (auto p = wrong_ordered[i].sawptr.lock()) { // weak pointer is alive
             if (p->get_num_arrays() > 0) { // The array not cleared yet
               // Swap out the array synchronously
@@ -131,7 +131,7 @@ void SwapInOutScheduler::finalize() {
             }
           }
         }
-        else if (is_cpu_array(wrong_ordered[i].ctx.array_class)) { // CPU array
+        else if (wrong_ordered[i].ctx.array_class == host_ctx.array_class) { // CPU array
           // No need swap-out
         }
         else {
@@ -266,7 +266,7 @@ void SwapInOutScheduler::swap_in() {
     if (r.tag == RecTag::CLEAR) {
       rec_head++; // Nothing to do when clear.
     }
-    else if (is_gpu_array(r.ctx.array_class)) { // GPU array
+    else if (r.ctx.array_class == device_ctx.array_class) { // GPU array
       auto next_array_bytes = r.size * sizeof_dtype(r.dtype);
 
       if (auto p = r.sawptr.lock()) {
@@ -308,7 +308,7 @@ void SwapInOutScheduler::swap_in() {
 
       rec_head++; // Move on the head of the queue
     }
-    else if (is_cpu_array(r.ctx.array_class)) { // CPU array
+    else if (r.ctx.array_class == host_ctx.array_class) { // CPU array
       // No need swap-in (prefetch) to CPU. The array will be gotten/casted 
       // synchronously by the function itself.
       rec_head++;
@@ -346,7 +346,7 @@ void SwapInOutScheduler::swap_out_impl() {
   for (size_t i = rec_function_ends[function_idx - 1]; 
               i < rec_function_ends[function_idx]; i++) {
     if (rec_order[i].tag != RecTag::CLEAR) {
-      if (is_gpu_array(rec_order[i].ctx.array_class)) { // GPU array
+      if (rec_order[i].ctx.array_class == device_ctx.array_class) { // GPU array
         if (auto p = rec_order[i].sawptr.lock()) {
           // SyncedArray is not replaced.
           if (first_iter || accumulate_counts(swap_in_counts[rec_order[i].synced_array_id]) == 1) {
@@ -383,7 +383,7 @@ void SwapInOutScheduler::swap_out_impl() {
           }
         }
       }
-      else if (is_cpu_array(rec_order[i].ctx.array_class)) { // CPU array
+      else if (rec_order[i].ctx.array_class == host_ctx.array_class) { // CPU array
         // No need swap-out
       }
       else {
@@ -402,7 +402,7 @@ void SwapInOutScheduler::wait_swap_out(RecType& r) {
       if (auto p = r.sawptr.lock()) {
         // SyncedArray is not replaced.
         // Wait to finish swap-out and release the source array of memory copy.
-        if (is_cpu_array(p->head_array_class()) && p->get_num_arrays() > 0) {
+        if (p->head_array_class() == host_ctx.array_class && p->get_num_arrays() > 0) {
           // Swap out the array
           p->get(p->dtype(), host_ctx, AsyncFlag::UNSAFE);
         }

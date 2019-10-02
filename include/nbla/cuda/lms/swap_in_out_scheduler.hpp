@@ -269,20 +269,6 @@ private:
   // Converter to RecTag
   RecTag get_tag(const SyncedArrayCallbackTag func_name, const bool write_only);
 
-  // Checker of CPU array class 
-  inline bool is_cpu_array(const string array_class) {
-    return std::find(cpu_array_classes.begin(),
-                     cpu_array_classes.end(),
-                     array_class) != cpu_array_classes.end();
-  }
-
-  // Checker of GPU array class 
-  inline bool is_gpu_array(const string array_class) {
-    return std::find(cuda_array_classes.begin(), 
-                     cuda_array_classes.end(), 
-                     array_class) != cuda_array_classes.end();
-  }
-
   // Get weak pointer
   SyncedArrayPtr get_sp_from_wp_safely(const RecType& r) {
     if (auto sp = r.sawptr.lock()) {
