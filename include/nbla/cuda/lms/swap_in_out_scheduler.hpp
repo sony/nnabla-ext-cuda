@@ -268,16 +268,6 @@ private:
   */
   // Converter to RecTag
   RecTag get_tag(const SyncedArrayCallbackTag func_name, const bool write_only);
-
-  // Get weak pointer
-  SyncedArrayPtr get_sp_from_wp_safely(const RecType& r) {
-    if (auto sp = r.sawptr.lock()) {
-      return sp;
-    }
-    else {
-      NBLA_ERROR(error_code::unclassified, "Weak pointer is unexpectedly expired.");
-    }
-  }
 };
 }
 #endif
