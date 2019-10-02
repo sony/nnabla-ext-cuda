@@ -27,6 +27,8 @@
 #include <nbla/cuda/cudnn/init.hpp>
 #include <nbla/function_registry.hpp>
 #include <nbla/init.hpp>
+#include <nbla/cuda/init.hpp>
+#include <nbla/host_stream_synchronizer_registry.hpp>
 % for name, snake_name, _ in function_list:
 % if name in function_types:
 #include <nbla/cuda/cudnn/function/${snake_name}.hpp>
@@ -42,6 +44,9 @@ void init_cudnn() {
   // Init CPU features
   init_cpu();
   init_cuda();
+
+  // Host stream synchronizer registration
+  NBLA_REGISTER_HOST_STREAM_SYNCHRONIZER(cudnn, cuda_host_stream_synchronize);
 
   // Function registration
 % for name, _, arg_types in function_list:

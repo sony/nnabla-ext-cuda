@@ -22,6 +22,7 @@
 #include <cuda_runtime.h>
 
 #include <nbla/cuda/defs.hpp>
+#include <nbla/cuda/defs.hpp>
 #include <nbla/computation_graph/function.hpp>
 #include <nbla/computation_graph/variable.hpp>
 #include <nbla/synced_array.hpp>
@@ -101,6 +102,7 @@ class SwapInOutScheduler {
   };
 
   const Context host_ctx; // Host context for swap-out
+  const Context device_ctx; // Device context
 
   // The maximum size of usable GPU memory [byte]
   const size_t max_bytes_swap_in;  // for swap-in
@@ -178,6 +180,7 @@ public:
   @param bytes Maximum GPU memory size managed by this class [bytes].
   */
   NBLA_CUDA_API SwapInOutScheduler(const Context &h_ctx,
+                                   const Context &d_ctx,
                                    const size_t bytes);
 
   /** Destructor.

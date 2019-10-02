@@ -170,7 +170,7 @@ def test_lms(type_config, device_id, batch_size, num_dilations,
                 initial_param2.append(p.d)
 
             # Create a scheduler
-            scheduler = lms.SwapInOutScheduler(cpu_ctx, gpu_memory_size)
+            scheduler = lms.SwapInOutScheduler(cpu_ctx, gpu_ctx, gpu_memory_size)
 
             # Training loop.
             for i in range(max_iter):

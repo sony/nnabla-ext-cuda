@@ -82,5 +82,9 @@ NBLA_CUDA_API void cuda_event_synchronize(shared_ptr<void> event);
 NBLA_CUDA_API void cuda_event_record(shared_ptr<void> event);
 NBLA_CUDA_API float cuda_event_elapsed_time(shared_ptr<void> event_s,
                                             shared_ptr<void> event_e);
+
+/** host-stream synchronizer is implemented in cuda extension.
+*/
+NBLA_CUDA_API void cuda_host_stream_synchronize();
 }
 #endif

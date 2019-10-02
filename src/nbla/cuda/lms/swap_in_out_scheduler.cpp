@@ -20,6 +20,7 @@
 #include <nbla/array_registry.hpp>
 #include <nbla/singleton_manager.hpp>
 #include <nbla/cuda/common.hpp>
+#include <nbla/host_stream_synchronizer_registry.hpp>
 
 namespace nbla {
 
@@ -29,8 +30,10 @@ namespace nbla {
    Balancing the maximum GPU memory size for swap in/out in half
 */
 SwapInOutScheduler::SwapInOutScheduler(const Context &h_ctx,
+                                       const Context &d_ctx,
                                        const size_t bytes)
   : host_ctx(h_ctx),
+    device_ctx(d_ctx),
     max_bytes_swap_in(bytes / 2), 
     max_bytes_swap_out(bytes / 2) {}
 
@@ -65,7 +68,7 @@ void SwapInOutScheduler::end_scheduling() {
      In particular, one of the modification of CPU memory is the writing of 
      the input data for the next training iteration.
   */
-  cudaStreamSynchronize(0);
+  HostStreamSynchronizer::synchronize(device_ctx);
 }
 
 /* Initializer of the scheduler for each training iteration
