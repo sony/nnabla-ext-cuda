@@ -111,8 +111,7 @@ file(GLOB CPP_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
   memory/*.cpp
   array/*.cpp
   cudnn/*.cpp
-  utils/*.cpp
-  lms/*.cpp)
+  utils/*.cpp)
 
 if(MSVC)
   set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};-Xcompiler /W0")

@@ -25,7 +25,7 @@ import nnabla.parametric_functions as PF
 import nnabla.solvers as S
 import nnabla_ext.cuda.init as cuda_init
 import nnabla._init as cpu_init
-import nnabla_ext.cuda.lms as lms
+import nnabla.lms as lms
 import nnabla.ext_utils as ext_utils
 
 from model import WaveNet
