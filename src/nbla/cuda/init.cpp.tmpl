@@ -30,7 +30,7 @@
 #include <nbla/array/cpu_array.hpp>
 #include <nbla/cuda/array/cuda_array.hpp>
 #include <nbla/cuda/array/cuda_dlpack_array.hpp>
-#include <nbla/host_stream_synchronizer_registry.hpp>
+#include <nbla/device_synchronizer_registry.hpp>
 % for name, snake_name, _ in function_list:
 % if name in function_types:
 #include <nbla/cuda/function/${snake_name}.hpp>
@@ -161,8 +161,8 @@ void init_cuda() {
   NBLA_REGISTER_ARRAY_SYNCHRONIZER(CudaCachedHostArray, CudaCachedUnifiedArray,
                                    synchronizer_cpu_array_cuda_array);
 
-  // Host stream synchronizer registration
-  NBLA_REGISTER_HOST_STREAM_SYNCHRONIZER(cuda, cuda_host_stream_synchronize);
+  // Device synchronizer registration
+  NBLA_REGISTER_DEVICE_SYNCHRONIZER(cuda, (BackendBase*)SingletonManager::get<Cuda>());
 
   // Function registration
 % for name, _, arg_types in function_list:
@@ -358,10 +358,6 @@ float cuda_event_elapsed_time(shared_ptr<void> event_s, shared_ptr<void> event_e
   NBLA_CUDA_CHECK(cudaEventElapsedTime(&milliseconds, *event_s_ptr, *event_e_ptr));
 
   return milliseconds;
-
-void cuda_host_stream_synchronize() {
-  cuda_nullstream_synchronize();
-}
 
 }
 

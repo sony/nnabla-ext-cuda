@@ -24,6 +24,7 @@
 #include <nbla/exception.hpp>
 #include <nbla/memory/allocator.hpp>
 #include <nbla/singleton_manager.hpp>
+#include <nbla/backend_base.hpp>
 
 #include <mutex>
 #include <unordered_map>
@@ -40,7 +41,7 @@ enum CudaStreamId { CONVOLUTION_BWD, MAX_COUNT };
 /**
 Singleton class for storing some handles or configs for CUDA Computation.
 */
-class NBLA_CUDA_API Cuda {
+class NBLA_CUDA_API Cuda : BackendBase {
 
 public:
   ~Cuda();
@@ -86,6 +87,10 @@ public:
   /** Get a caching pinned-host-memory allocator.
    */
   shared_ptr<Allocator> pinned_allocator();
+
+  /** Synchronize host to device.
+  */
+  void device_synchronize(const string &device);
 
   /** Get auxilliary stream
    */

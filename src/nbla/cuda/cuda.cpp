@@ -208,5 +208,9 @@ shared_ptr<Allocator> Cuda::naive_allocator() { return naive_allocator_; }
 shared_ptr<Allocator> Cuda::unified_allocator() { return unified_allocator_; }
 shared_ptr<Allocator> Cuda::pinned_allocator() { return pinned_allocator_; }
 
+void Cuda::device_synchronize(const string &device) {
+  cuda_device_synchronize(device);
+}
+
 NBLA_INSTANTIATE_SINGLETON(NBLA_CUDA_API, Cuda);
 }
