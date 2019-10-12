@@ -20,9 +20,10 @@ import nnabla as nn
 import nnabla.functions as F
 
 
-@pytest.mark.skipif("not hasattr(nn.extensions, 'cuda')")
 @pytest.mark.parametrize("m", [1, 2, 3])
-def test_cuda_large_blocks(m):
+def test_cuda_large_blocks(cuda_test_opts, m):
+    if cuda_test_opts.disable_test_large_blocks:
+        pytest.skip('`--disable-test-large-blocks` is passed')
     CUDA_THREAD_PER_BLOCK = 512
     CUDA_MAX_BLOCKS = 65536
     size = CUDA_MAX_BLOCKS * CUDA_THREAD_PER_BLOCK * m + 3
@@ -30,5 +31,7 @@ def test_cuda_large_blocks(m):
     x = np.zeros((size,), np.float32)
     v = nn.Variable(x.shape)
     v.d = x
-    ctx = nn.Context(backend='cuda')
-    y = F.relu(v)
+    from nnabla.ext_utils import get_extension_context
+    with nn.context_scope(get_extension_context('cuda')):
+        y = F.relu(v)
+        y.forward()
