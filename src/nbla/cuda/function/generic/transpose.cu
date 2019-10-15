@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <limits>
 #include <nbla/array.hpp>
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/function/transpose.hpp>
@@ -21,14 +22,14 @@ namespace nbla {
 
 namespace { // local namespace
 
-template <typename T, bool ACCUM = false>
+template <typename T, bool accum = false>
 __global__ void transpose_1d(const int size, const T *src, T *dst) {
   NBLA_CUDA_KERNEL_LOOP(idx, size) {
-    dst[idx] = ACCUM ? dst[idx] + src[idx] : src[idx];
+    dst[idx] = accum ? dst[idx] + src[idx] : src[idx];
   }
 }
 
-template <typename T, bool ACCUM = false>
+template <typename T, bool accum = false>
 __global__ void transpose_2d(const int2 shape, const T *src, T *dst) {
   // One extra column to avoid memory bank conflicts.
   __shared__ T tile[CUDA_WARP_SIZE][CUDA_WARP_SIZE + 1];
@@ -53,12 +54,12 @@ __global__ void transpose_2d(const int2 shape, const T *src, T *dst) {
     if ((x < shape.y) && (y + j < shape.x)) {
       auto val = tile[threadIdx.x][threadIdx.y + j];
       auto idx = (y + j) * shape.y + x;
-      dst[idx] = ACCUM ? dst[idx] + val : val;
+      dst[idx] = accum ? dst[idx] + val : val;
     }
   }
 }
 
-template <typename T, bool ACCUM = false>
+template <typename T, bool accum = false>
 __global__ void transpose_3d(const int size, const int3 ostride,
                              const int3 tstride, const T *src, T *dst) {
   // ostride - strides of the transposed input shape
@@ -70,11 +71,11 @@ __global__ void transpose_3d(const int size, const int3 ostride,
     auto y = (idx - z * ostride.z) / ostride.y;
     auto x = (idx - z * ostride.z - y * ostride.y);
     T val = src[z * tstride.z + y * tstride.y + x * tstride.x];
-    dst[idx] = ACCUM ? dst[idx] + val : val;
+    dst[idx] = accum ? dst[idx] + val : val;
   }
 }
 
-template <typename T, bool ACCUM = false>
+template <typename T, bool accum = false>
 __global__ void transpose_4d(const int size, const int4 ostride,
                              const int4 tstride, const T *src, T *dst) {
   // ostride - strides of the transposed input shape
@@ -87,7 +88,7 @@ __global__ void transpose_4d(const int size, const int4 ostride,
     auto y = (idx - w * ostride.w - z * ostride.z) / ostride.y;
     auto x = (idx - w * ostride.w - z * ostride.z - y * ostride.y);
     T val = src[w * tstride.w + z * tstride.z + y * tstride.y + x * tstride.x];
-    dst[idx] = ACCUM ? dst[idx] + val : val;
+    dst[idx] = accum ? dst[idx] + val : val;
   }
 }
 
@@ -96,7 +97,7 @@ template <typename T> struct TransposeStrides {
   T tstride; // transposed strides of input shape
 };
 
-template <typename T, bool ACCUM = false>
+template <typename T, bool accum = false>
 __global__ void transpose_nd(const int size, const T *src, T *dst,
                              const TransposeStrides<int> *strides,
                              const int ndim) {
@@ -107,7 +108,7 @@ __global__ void transpose_nd(const int size, const T *src, T *dst,
       src_index += k * strides[axis].tstride;
       idx -= k * strides[axis].ostride;
     }
-    dst[dst_index] = ACCUM ? dst[dst_index] + src[src_index] : src[src_index];
+    dst[dst_index] = accum ? dst[dst_index] + src[src_index] : src[src_index];
   }
 }
 
@@ -119,6 +120,11 @@ void TransposeCuda<T>::setup_impl(const Variables &inputs,
   Transpose<T>::setup_impl(inputs, outputs);
 
   const int ndim = this->x_shape_.size();
+  const int size = outputs[0]->size();
+
+  NBLA_CHECK(size <= std::numeric_limits<int>::max(), error_code::value,
+             "Maximum supported array size is %d elements",
+             std::numeric_limits<int>::max());
 
   if (ndim > 4) {
     Shape_t shape = {2, ndim * (int)sizeof(TransposeStrides<int>)};
