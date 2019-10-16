@@ -19,7 +19,7 @@
 
 #include <thrust/device_ptr.h>
 #include <thrust/device_vector.h>
-#include <thrust/sequence.h>
+#include <thrust/execution_policy.h>
 #if THRUST_VERSION < 100904 || !defined(THRUST_CPP11) ||                       \
     !defined(THRUST_MODERN_GCC)
 #include <thrust/sort.h>
@@ -107,23 +107,30 @@ void SortCuda<T>::forward_impl(const Variables &inputs,
   auto outer_i_raw = sort_index_raw;
   auto stride = this->inner_size;
 
+  cudaStream_t stream;
+  NBLA_CUDA_CHECK(cudaStreamCreate(&stream));
+
   while (outer_x_raw < x_data + this->total_size) {
     auto inner_x_raw = outer_x_raw;
     auto inner_i_raw = outer_i_raw;
 
     while (inner_x_raw < outer_x_raw + this->inner_size) {
-      const auto size = temp_index_var.size();
-      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(make_sequence, size, temp_index_raw);
+      auto size = temp_index_var.size();
       auto compare = Compare<Tcu>(inner_x_raw, stride, this->reverse);
-      static_cast<void>(sort(temp_index_ptr, temp_index_ptr + size, compare));
-      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(copy_index, shape[this->axis], stride,
-                                     temp_index_raw, inner_i_raw);
+      NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(make_sequence, stream, size,
+                                        temp_index_raw);
+      (void)sort(thrust::cuda::par.on(stream), temp_index_ptr,
+                 temp_index_ptr + size, compare);
+      NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(copy_index, stream, shape[this->axis],
+                                        stride, temp_index_raw, inner_i_raw);
       inner_x_raw++;
       inner_i_raw++;
     }
     outer_x_raw += this->outer_size;
     outer_i_raw += this->outer_size;
   }
+
+  NBLA_CUDA_CHECK(cudaStreamDestroy(stream));
 
   if (!this->only_index) {
     auto y_data = outputs[0]->cast_data_and_get_pointer<Tcu>(ctx, true);
