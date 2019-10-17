@@ -20,46 +20,6 @@ import nnabla as nn
 
 from nnabla_ext.cuda.experimental import dali_iterator
 
-if dali_iterator.enabled:
-    from nvidia.dali.pipeline import Pipeline
-
-    class IteratorPipeline(Pipeline):
-        def __init__(self, it, num_threads=2, device_id=0, seed=12):
-            import nvidia.dali.ops as ops
-            # Use first mini-batch to see how iterator returns arrays
-            values = it.next()
-            self.initial_values = values  # Use it at first batch
-            # Assuming batch size is at first dimension
-            batch_size = values[0].shape[0]
-            super(IteratorPipeline, self).__init__(
-                batch_size,
-                num_threads,
-                device_id,
-                seed=seed)
-            self.it = it
-            self.inputs = []
-            for _ in range(len(values)):
-                self.inputs.append(ops.ExternalSource())
-
-        def define_graph(self):
-            self.graph_inputs = []
-            ret = tuple()
-            for i in self.inputs:
-                g = i()
-                self.graph_inputs.append(g)
-                # Prefetch to GPU
-                ret += (g.gpu(),)
-            return ret
-
-        def iter_setup(self):
-            if self.initial_values is not None:
-                values = self.initial_values
-                self.initial_values = None
-            else:
-                values = self.it.next()
-            for g, v in zip(self.graph_inputs, values):
-                self.feed_input(g, v)
-
 
 @pytest.mark.skipif("not dali_iterator.enabled")
 def test_dali_iterator():
@@ -85,10 +45,10 @@ def test_dali_iterator():
         assert di.shape == shape2
 
     it = Iterator1(shape1, shape2)
-    p = IteratorPipeline(it)
     # Testing non_blocking=True because we know it's safe in the following loop.
     # --> TODO: Noticed that non_blocking option is not suppported as of 2019/10/11.
-    dali_it = dali_iterator.DaliIterator(p, False)
+    dali_it = dali_iterator.create_dali_iterator_from_data_iterator(
+        it, non_blocking=False)
 
     for i in range(5):
         ddf, ddi = dali_it.next()
