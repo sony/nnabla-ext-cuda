@@ -41,7 +41,7 @@ enum CudaStreamId { CONVOLUTION_BWD, MAX_COUNT };
 /**
 Singleton class for storing some handles or configs for CUDA Computation.
 */
-class NBLA_CUDA_API Cuda : BackendBase {
+class NBLA_CUDA_API Cuda : public BackendBase {
 
 public:
   ~Cuda();

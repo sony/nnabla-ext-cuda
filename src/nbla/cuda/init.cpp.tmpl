@@ -30,7 +30,7 @@
 #include <nbla/array/cpu_array.hpp>
 #include <nbla/cuda/array/cuda_array.hpp>
 #include <nbla/cuda/array/cuda_dlpack_array.hpp>
-#include <nbla/device_synchronizer_registry.hpp>
+#include <nbla/backend_registry.hpp>
 % for name, snake_name, _ in function_list:
 % if name in function_types:
 #include <nbla/cuda/function/${snake_name}.hpp>
@@ -60,6 +60,9 @@ void init_cuda() {
 
   // Init CPU features
   init_cpu();
+
+  // Backend registration
+  NBLA_REGISTER_BACKEND("cuda", []() { return SingletonManager::get<Cuda>(); });
 
   // Array registration
   // CudaArray
@@ -160,9 +163,6 @@ void init_cuda() {
                                    synchronizer_cuda_array_cpu_array);
   NBLA_REGISTER_ARRAY_SYNCHRONIZER(CudaCachedHostArray, CudaCachedUnifiedArray,
                                    synchronizer_cpu_array_cuda_array);
-
-  // Device synchronizer registration
-  NBLA_REGISTER_DEVICE_SYNCHRONIZER(cuda, (BackendBase*)SingletonManager::get<Cuda>());
 
   // Function registration
 % for name, _, arg_types in function_list:

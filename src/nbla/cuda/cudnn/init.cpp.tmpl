@@ -28,7 +28,7 @@
 #include <nbla/function_registry.hpp>
 #include <nbla/init.hpp>
 #include <nbla/cuda/init.hpp>
-#include <nbla/device_synchronizer_registry.hpp>
+#include <nbla/backend_registry.hpp>
 % for name, snake_name, _ in function_list:
 % if name in function_types:
 #include <nbla/cuda/cudnn/function/${snake_name}.hpp>
@@ -45,8 +45,8 @@ void init_cudnn() {
   init_cpu();
   init_cuda();
 
-  // Device synchronizer registration
-  NBLA_REGISTER_DEVICE_SYNCHRONIZER(cudnn, (BackendBase*)SingletonManager::get<Cuda>());
+  // Backend registration
+  NBLA_REGISTER_BACKEND("cudnn", []() { return SingletonManager::get<Cuda>(); });
 
   // Function registration
 % for name, _, arg_types in function_list:
