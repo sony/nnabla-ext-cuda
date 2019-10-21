@@ -19,7 +19,7 @@
 
 #include <thrust/device_ptr.h>
 #include <thrust/device_vector.h>
-#include <thrust/sequence.h>
+#include <thrust/execution_policy.h>
 #if THRUST_VERSION < 100904 || !defined(THRUST_CPP11) ||                       \
     !defined(THRUST_MODERN_GCC)
 #include <thrust/sort.h>
@@ -112,10 +112,10 @@ void SortCuda<T>::forward_impl(const Variables &inputs,
     auto inner_i_raw = outer_i_raw;
 
     while (inner_x_raw < outer_x_raw + this->inner_size) {
-      const auto size = temp_index_var.size();
+      auto size = temp_index_var.size();
       NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(make_sequence, size, temp_index_raw);
-      auto compare = Compare<Tcu>(inner_x_raw, stride, this->reverse);
-      static_cast<void>(sort(temp_index_ptr, temp_index_ptr + size, compare));
+      (void)sort(thrust::cuda::par.on(0), temp_index_ptr, temp_index_ptr + size,
+                 Compare<Tcu>(inner_x_raw, stride, this->reverse));
       NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(copy_index, shape[this->axis], stride,
                                      temp_index_raw, inner_i_raw);
       inner_x_raw++;
