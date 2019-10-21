@@ -129,7 +129,10 @@ def cuda_config(root_dir, cuda_lib, ext_opts, lib_dirs):
     path_cuda_pkg = join(src_dir, 'nnabla_ext', 'cuda')
     cuda_pkg = "nnabla_ext.cuda"
     package_dir = {cuda_pkg: path_cuda_pkg}
-    packages = [cuda_pkg]
+    packages = [
+        cuda_pkg,
+        cuda_pkg + '.experimental',
+    ]
 
     cuda_lib_out = join(path_cuda_pkg, cuda_lib.file_name)
     shutil.copyfile(cuda_lib.path, cuda_lib_out)
