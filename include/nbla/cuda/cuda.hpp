@@ -99,8 +99,12 @@ public:
 
   /** Non blockuing streams for data transfer
    */
-  cudaStream_t stream_HtoD;
-  cudaStream_t stream_DtoH;
+  cudaStream_t stream_HtoD = 0;
+  cudaStream_t stream_DtoH = 0;
+
+  /** Create non blockuing streams for data transfer
+   */
+  void create_lms_streams(int device = -1);
 
 protected:
   std::mutex mtx_cublas_;

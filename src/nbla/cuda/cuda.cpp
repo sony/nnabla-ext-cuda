@@ -30,10 +30,7 @@ Cuda::Cuda()
       unified_allocator_(
           make_shared<CachingAllocatorWithBuckets<CudaUnifiedMemory>>()),
       pinned_allocator_(
-          make_shared<CachingAllocatorWithBuckets<CudaPinnedHostMemory>>()){
-  NBLA_CUDA_CHECK(cudaStreamCreateWithFlags(&stream_HtoD, cudaStreamNonBlocking));
-  NBLA_CUDA_CHECK(cudaStreamCreateWithFlags(&stream_DtoH, cudaStreamNonBlocking));
-}
+          make_shared<CachingAllocatorWithBuckets<CudaPinnedHostMemory>>()){}
 
 Cuda::~Cuda() {
   for (auto handle : this->cublas_handles_) {
@@ -56,8 +53,13 @@ Cuda::~Cuda() {
     }
   }
   
-  NBLA_CUDA_CHECK(cudaStreamDestroy(stream_HtoD));
-  NBLA_CUDA_CHECK(cudaStreamDestroy(stream_DtoH));
+  if (stream_HtoD != 0) {
+    NBLA_CUDA_CHECK(cudaStreamDestroy(stream_HtoD));
+  }
+
+  if (stream_DtoH != 0) {
+    NBLA_CUDA_CHECK(cudaStreamDestroy(stream_DtoH));
+  }
 }
 
 cublasHandle_t Cuda::cublas_handle(int device) {
@@ -137,6 +139,18 @@ std::shared_ptr<cudaEvent_t> Cuda::cuda_event(unsigned int flags, int device) {
         /* Delete the raw pointer of the cudaEvent_t. */
         deleter(ptr);
       });
+}
+
+void Cuda::create_lms_streams(int device) {
+  if (device < 0) {
+    device = cuda_get_device();
+  }
+  else {
+    cuda_set_device(device);
+  }
+
+  NBLA_CUDA_CHECK(cudaStreamCreateWithFlags(&stream_HtoD, cudaStreamNonBlocking));
+  NBLA_CUDA_CHECK(cudaStreamCreateWithFlags(&stream_DtoH, cudaStreamNonBlocking));
 }
 
 shared_ptr<cudaStream_t> Cuda::get_stream(unsigned int flags,
