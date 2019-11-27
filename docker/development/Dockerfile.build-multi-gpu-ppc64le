@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# for nnabla>=1.5.0
+
 ARG BASE
 FROM ${BASE}
 
@@ -102,4 +104,11 @@ RUN umask 0 \
 
 ENV PATH /opt/miniconda3/envs/nnabla-build/bin:$PATH
 
-RUN apt-get update && apt-get install -y --no-install-recommends  --allow-change-held-packages libnccl2 libnccl-dev
+# Fix NCCL version
+ARG CUDA_VERSION_MAJOR_MINOR
+ENV NCCL_VERSION 2.4.8
+RUN apt-get remove -y --allow-change-held-packages libnccl2 libnccl-dev \
+    && apt-get install -y --no-install-recommends \
+        libnccl2=$NCCL_VERSION-1+cuda${CUDA_VERSION_MAJOR_MINOR} \
+        libnccl-dev=$NCCL_VERSION-1+cuda${CUDA_VERSION_MAJOR_MINOR} \
+    && rm -rf /var/lib/apt/lists/*

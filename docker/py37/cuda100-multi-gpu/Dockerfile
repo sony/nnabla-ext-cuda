@@ -4,6 +4,13 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl bzip2 libopenmpi-dev openmpi-bin \
     && rm -rf /var/lib/apt/lists/*
 
+# Fix NCCL version
+ENV NCCL_VERSION 2.4.8
+RUN apt-get remove -y --allow-change-held-packages libnccl2 \
+    && apt-get install -y --no-install-recommends \
+        libnccl2=$NCCL_VERSION-1+cuda10.0 \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN umask 0 \
     && mkdir -p /tmp/deps \
     && cd /tmp/deps \
