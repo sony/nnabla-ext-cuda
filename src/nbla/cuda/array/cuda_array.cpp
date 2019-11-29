@@ -80,9 +80,7 @@ void CUDART_CB delete_callback(cudaStream_t stream, cudaError_t status, void*  u
 void synchronize_async_cuda_array_cpu_array(Array *src, Array *dst, cudaMemcpyKind kind,
                                             const cudaStream_t stream, const int async_flags) {
   // Wait an previous asynchronous memcpy
-  if (src->have_event()) {
-    src->wait_event(async_flags & AsyncFlag::UNSAFE);
-  }
+  src->wait_event(dst->context(), async_flags);
 
   if (dst->have_event()) {
     NBLA_ERROR(error_code::target_specific_async,
@@ -115,9 +113,7 @@ void synchronize_async_cuda_array_cpu_array(Array *src, Array *dst, cudaMemcpyKi
 void synchronize_async_cpu_array_cuda_array(Array *src, Array *dst, cudaMemcpyKind kind,
                                             const cudaStream_t stream, const int async_flags) {
   // Wait an previous asynchronous memcpy
-  if (src->have_event()) {
-    src->wait_event(async_flags & AsyncFlag::UNSAFE);
-  }
+  src->wait_event(dst->context(), async_flags);
 
   if (dst->have_event()) {
     NBLA_ERROR(error_code::target_specific_async,
@@ -151,9 +147,10 @@ void synchronize_async_cpu_array_cuda_array(Array *src, Array *dst, cudaMemcpyKi
 
 
 // Main process of synchronous synchronizer
-void synchronize_sync(Array *src, Array *dst, cudaMemcpyKind kind) {
+void synchronize_sync(Array *src, Array *dst, cudaMemcpyKind kind, 
+                      const int async_flags) {
   // Wait an previous asynchronous memcpy
-  src->wait_event();
+  src->wait_event(dst->context(), async_flags);
 
   if (dst->have_event()) {
     NBLA_ERROR(error_code::target_specific_async,
@@ -178,7 +175,7 @@ void synchronizer_cuda_array_cpu_array(Array *src, Array *dst, const int async_f
   if (src->dtype() != dst->dtype()) {
     // if dtype mismatches, convert dtype first, and then transfer gpu-cpu.
     unique_ptr<Array> tmp(new CudaCachedArray(src->size(), dst->dtype(), src->context()));
-    src->wait_event();
+    src->wait_event(tmp->context(), async_flags);
     tmp->copy_from(src);
     synchronizer_cuda_array_cpu_array(tmp.get(), dst, async_flags);
     return;
@@ -190,7 +187,7 @@ void synchronizer_cuda_array_cpu_array(Array *src, Array *dst, const int async_f
                                            async_flags);
   }
   else { // cudaMemcpy
-    synchronize_sync(src, dst, cudaMemcpyDeviceToHost);
+    synchronize_sync(src, dst, cudaMemcpyDeviceToHost, async_flags);
   }
 }
 
@@ -205,7 +202,7 @@ void synchronizer_cpu_array_cuda_array(Array *src, Array *dst, const int async_f
     // If dtype mismatches, transfer cpu-gpu first, then convert dtype in gpu.
     unique_ptr<Array> tmp(new CudaCachedArray(src->size(), src->dtype(), dst->context()));
     synchronizer_cpu_array_cuda_array(src, tmp.get(), async_flags);
-    tmp->wait_event();
+    tmp->wait_event(dst->context(), async_flags);
     dst->copy_from(tmp.get());
     return;
   }
@@ -216,7 +213,7 @@ void synchronizer_cpu_array_cuda_array(Array *src, Array *dst, const int async_f
                                            async_flags);
   }
   else { // cudaMemcpy
-    synchronize_sync(src, dst, cudaMemcpyHostToDevice);
+    synchronize_sync(src, dst, cudaMemcpyHostToDevice, async_flags);
   }
 }
 

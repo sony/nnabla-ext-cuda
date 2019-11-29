@@ -32,8 +32,10 @@ public:
   CudaEvent(cudaEvent_t event, ArrayPtr &&src);
   virtual ~CudaEvent();
   virtual cudaEvent_t raw_event();
-  virtual void wait_event(const Context ctx,
-                          const bool unsafe = false) override;
+
+  // Return the flag which is true if this event can be delete.
+  virtual bool wait_event(const Context ctx,
+                          const int async_flags = AsyncFlag::NONE) override;
 
 private:
   // Checker of CPU array class 
