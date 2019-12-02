@@ -319,6 +319,9 @@ Sort:
 Reshape:
   float: [float]
   half: [Half]
+BatchInv:
+  float: [float]
+#  half: [Half]
 MatrixDiag:
   float: [float]
   half: [Half]

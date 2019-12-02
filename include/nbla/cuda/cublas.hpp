@@ -46,5 +46,13 @@ void cublas_gemm_strided_batched(cublasHandle_t handle, cublasOperation_t op_x,
                                  float alpha, const T *x, int lda, int stride_a,
                                  const T *y, int ldb, int stride_b, float beta,
                                  T *z, int ldc, int stride_c, int batchCount);
+
+template <typename T>
+void cublas_getrf_batched(cublasHandle_t handle, int n, T **x, int lda,
+                          int *pivot, int *info, int batchSize);
+
+template <typename T>
+void cublas_getri_batched(cublasHandle_t handle, int n, const T **x, int lda,
+                          int *pivot, T **y, int ldc, int *info, int batchSize);
 }
 #endif
