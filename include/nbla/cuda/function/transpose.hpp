@@ -25,10 +25,10 @@ namespace nbla {
 template <typename T> class TransposeCuda : public Transpose<T> {
 protected:
 public:
-  typedef typename CudaType<T>::type Tc;
+  typedef typename CudaType<T>::type Tcu;
 
   explicit TransposeCuda(const Context &ctx, const vector<int> &axes)
-      : Transpose<T>(ctx, axes) {}
+      : Transpose<T>(ctx, axes), device_(std::stoi(ctx.device_id)) {}
   virtual ~TransposeCuda() {}
   virtual string name() { return "TransposeCuda"; }
   virtual vector<string> allowed_array_classes() {
@@ -36,6 +36,9 @@ public:
   }
 
 protected:
+  int device_;
+  std::shared_ptr<Variable> var_strides_;
+
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,

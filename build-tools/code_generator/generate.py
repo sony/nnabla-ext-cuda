@@ -26,17 +26,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import io
-import os
 from os.path import abspath, dirname, join
 import sys
 
 # Set path to <NNabla root>/build-tools/code_generator to import the following two
-from utils.common import check_update
-from utils.type_conv import type_from_proto
 import code_generator_utils as utils
 
-import itertools
 
 here = abspath(dirname(abspath(__file__)))
 base = abspath(here + '/../..')

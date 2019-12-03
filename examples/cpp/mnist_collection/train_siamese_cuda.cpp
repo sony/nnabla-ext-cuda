@@ -19,6 +19,7 @@ using namespace std;
 using namespace nbla;
 
 #include <siamese_training.hpp>
+#include <string.h>
 
 /******************************************/
 // Example of mnist training
@@ -31,8 +32,21 @@ int main(int argc, char *argv[]) {
       {"cudnn:float", "cuda:float", "cpu:float"}, "CudaCachedArray", "0"};
 
   // Execute training
-  if (!siamese_training(ctx)) {
-    return (-1);
+  if (argc < 2 || strcmp(argv[1], "--static") == 0) {
+    std::cout << "Execute training with static graph" << std::endl;
+    if (!siamese_training_with_static_graph(ctx)) {
+      return -1;
+    }
+  } else if (strcmp(argv[1], "--dynamic") == 0) {
+    std::cout << "Execute training with dynamic graph" << std::endl;
+    if (!siamese_training_with_dynamic_graph(ctx)) {
+      return -1;
+    }
+  } else {
+    std::cerr << std::endl;
+    std::cerr << "Usage: " << argv[0] << " --static / --dynamic " << std::endl;
+    std::cerr << std::endl;
+    return -1;
   }
 
   return 0;

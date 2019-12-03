@@ -25,6 +25,7 @@ DOCKER_RUN_OPTS += -e NNABLA_DIRECTORY=$(NNABLA_DIRECTORY)
 NNABLA_EXT_CUDA_DIRECTORY ?= $(shell pwd)
 DOCKER_RUN_OPTS += -e NNABLA_EXT_CUDA_DIRECTORY=$(NNABLA_EXT_CUDA_DIRECTORY)
 DOCKER_RUN_OPTS += -e CMAKE_OPTS=$(CMAKE_OPTS)
+DOCKER_RUN_OPTS += -e INCLUDE_CUDA_CUDNN_LIB_IN_WHL=$(INCLUDE_CUDA_CUDNN_LIB_IN_WHL)
 
 include $(NNABLA_EXT_CUDA_DIRECTORY)/build-tools/make/options.mk
 ifndef NNABLA_BUILD_INCLUDED
@@ -35,7 +36,10 @@ ifndef NNABLA_BUILD_WITH_DOCKER_INCLUDED
   include $(NNABLA_DIRECTORY)/build-tools/make/build-with-docker.mk
 endif
 
+NVIDIA_DOCKER_WRAPPER=$(NNABLA_EXT_CUDA_DIRECTORY)/build-tools/scripts/nvidia-docker.sh
+
 CUDA_SUFFIX = $(CUDA_VERSION_MAJOR)$(CUDA_VERSION_MINOR)-cudnn$(CUDNN_VERSION)
+CUDA_VERSION_MAJOR_MINOR = $(CUDA_VERSION_MAJOR).$(CUDA_VERSION_MINOR)
 
 DOCKER_IMAGE_ID_BUILD_NNABLA_EXT_CUDA = $(shell md5sum $(NNABLA_EXT_CUDA_DIRECTORY)/docker/development/Dockerfile.build$(ARCH_SUFFIX) |cut -d \  -f 1)
 DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA ?= $(DOCKER_IMAGE_NAME_BASE)-build-cuda$(CUDA_SUFFIX)$(ARCH_SUFFIX):$(DOCKER_IMAGE_ID_BUILD_NNABLA_EXT_CUDA)
@@ -64,6 +68,8 @@ docker_image_build_cuda$(DOCKER_IMAGE_TARGET_SUFFIX):
 		docker pull $(DOCKER_IMAGE_BUILD_CUDA_BASE) && \
 		(cd $(NNABLA_EXT_CUDA_DIRECTORY) && docker build $(DOCKER_BUILD_ARGS)\
 			--build-arg BASE=$(DOCKER_IMAGE_BUILD_CUDA_BASE) \
+			--build-arg CUDA_VERSION_MAJOR_MINOR=$(CUDA_VERSION_MAJOR_MINOR) \
+			--build-arg ARCH_SUFFIX=$(ARCH_SUFFIX) \
 			-t $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA) \
 			-f docker/development/Dockerfile.build$(ARCH_SUFFIX) \
 			.) \
@@ -75,6 +81,8 @@ docker_image_build_cuda_multi_gpu$(DOCKER_IMAGE_TARGET_SUFFIX):
 		docker pull $(DOCKER_IMAGE_BUILD_CUDA_MULTI_GPU_BASE) && \
 		(cd $(NNABLA_EXT_CUDA_DIRECTORY) && docker build $(DOCKER_BUILD_ARGS) \
 			--build-arg BASE=$(DOCKER_IMAGE_BUILD_CUDA_MULTI_GPU_BASE) \
+			--build-arg CUDA_VERSION_MAJOR_MINOR=$(CUDA_VERSION_MAJOR_MINOR) \
+			--build-arg ARCH_SUFFIX=$(ARCH_SUFFIX) \
 			-t $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA_MULTI_GPU) \
 			-f docker/development/Dockerfile.build-multi-gpu$(ARCH_SUFFIX) \
 			.) \
@@ -147,17 +155,17 @@ bwd-nnabla-ext-cuda-wheel-multi-gpu-only: docker_image_build_cuda_multi_gpu
 .PHONY: bwd-nnabla-ext-cuda-test
 bwd-nnabla-ext-cuda-test: docker_image_build_cuda
 	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
-	&& nvidia-docker run $(DOCKER_RUN_OPTS) $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA) make -f build-tools/make/build.mk nnabla-ext-cuda-test-local
+	&& ${NVIDIA_DOCKER_WRAPPER} run $(DOCKER_RUN_OPTS) $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA) make -f build-tools/make/build.mk nnabla-ext-cuda-test-local
 
 .PHONY: bwd-nnabla-ext-cuda-multi-gpu-test
 bwd-nnabla-ext-cuda-multi-gpu-test: docker_image_build_cuda_multi_gpu
 	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
-	&& nvidia-docker run $(DOCKER_RUN_OPTS) $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA_MULTI_GPU) make -f build-tools/make/build.mk nnabla-ext-cuda-multi-gpu-test-local
+	&& ${NVIDIA_DOCKER_WRAPPER} run $(DOCKER_RUN_OPTS) $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA_MULTI_GPU) make -f build-tools/make/build.mk nnabla-ext-cuda-multi-gpu-test-local
 
 .PHONY: bwd-nnabla-ext-cuda-shell
 bwd-nnabla-ext-cuda-shell: docker_image_build_cuda
 	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
-	&& nvidia-docker run $(DOCKER_RUN_OPTS) -it --rm ${DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA} make nnabla-ext-cuda-shell
+	&& ${NVIDIA_DOCKER_WRAPPER} run $(DOCKER_RUN_OPTS) -it --rm ${DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA} make nnabla-ext-cuda-shell
 
 ########################################################################################################################
 # Docker image with current nnabla
@@ -173,7 +181,10 @@ docker_image_nnabla_ext_cuda:
 	&& cp $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/*.whl . \
 	&& echo ADD $(shell basename $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/*.whl) /tmp/ >>Dockerfile \
 	&& echo RUN pip install /tmp/$(shell basename $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/*.whl) >>Dockerfile \
-	&& docker build --build-arg BASE=$${BASE} $(DOCKER_BUILD_ARGS) -t $(DOCKER_IMAGE_NNABLA_EXT_CUDA) . \
+	&& docker build --build-arg BASE=$${BASE} $(DOCKER_BUILD_ARGS) \
+		--build-arg CUDA_VERSION_MAJOR_MINOR=$(CUDA_VERSION_MAJOR_MINOR) \
+		--build-arg ARCH_SUFFIX=$(ARCH_SUFFIX) \
+		-t $(DOCKER_IMAGE_NNABLA_EXT_CUDA) . \
 	&& rm -f $(shell basename $(BUILD_DIRECTORY_WHEEL)/dist/*.whl) \
 	&& rm -f $(shell basename $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_MULTI_GPU)/dist/*.whl) \
 	&& rm -f Dockerfile
@@ -191,7 +202,10 @@ docker_image_nnabla_ext_cuda_multi_gpu: bwd-nnabla-ext-cuda-wheel-multi-gpu
 	&& cp $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_MULTI_GPU)/dist/*.whl . \
 	&& echo ADD $(shell basename $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_MULTI_GPU)/dist/*.whl) /tmp/ >>Dockerfile \
 	&& echo RUN pip install /tmp/$(shell basename $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_MULTI_GPU)/dist/*.whl) >>Dockerfile \
-	&& docker build --build-arg BASE=$${BASE} $(DOCKER_BUILD_ARGS) -t $(DOCKER_IMAGE_NNABLA_EXT_CUDA_MULTI_GPU) . \
+	&& docker build --build-arg BASE=$${BASE} $(DOCKER_BUILD_ARGS) \
+		--build-arg CUDA_VERSION_MAJOR_MINOR=$(CUDA_VERSION_MAJOR_MINOR) \
+		--build-arg ARCH_SUFFIX=$(ARCH_SUFFIX) \
+		-t $(DOCKER_IMAGE_NNABLA_EXT_CUDA_MULTI_GPU) . \
 	&& rm -f $(shell basename $(BUILD_DIRECTORY_WHEEL)/dist/*.whl) \
 	&& rm -f $(shell basename $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_MULTI_GPU)/dist/*.whl) \
 	&& rm -f Dockerfile

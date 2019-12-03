@@ -17,11 +17,11 @@ from __future__ import print_function
 from setuptools import setup
 from distutils.extension import Extension
 import os
-from os.path import dirname, realpath, join, isfile, splitext, exists
+from os.path import dirname, realpath, join, isfile, splitext
 from collections import namedtuple
 import copy
-import os
 import shutil
+import subprocess
 import sys
 
 root_dir = realpath(dirname(__file__))
@@ -90,7 +90,15 @@ def get_libinfo():
     print("CUDA Library name:", cuda_lib.name)
     print("CUDA Library file name:", cuda_lib.file_name)
     print("CUDA Library file:", cuda_lib.path)
-    return cpu_lib, cuda_lib
+
+    if 'INCLUDE_CUDA_CUDNN_LIB_IN_WHL' in os.environ and os.environ['INCLUDE_CUDA_CUDNN_LIB_IN_WHL'] == 'True':
+        print("CUDA/cuDNN libraries will include into wheel package.")
+        libs = [cfgp.get("cmake", "cuda_toolkit_root_dir"),
+                os.path.dirname(cfgp.get("cmake", "cudnn_include_dir"))]
+    else:
+        libs = None
+
+    return cpu_lib, cuda_lib, libs
 
 
 def get_cpu_extopts(lib):
@@ -115,26 +123,74 @@ def get_cpu_extopts(lib):
     return ext_opts
 
 
-def cuda_config(root_dir, cuda_lib, ext_opts):
+def cuda_config(root_dir, cuda_lib, ext_opts, lib_dirs):
     # With CUDA
     src_dir = join(root_dir, 'src')
     path_cuda_pkg = join(src_dir, 'nnabla_ext', 'cuda')
     cuda_pkg = "nnabla_ext.cuda"
     package_dir = {cuda_pkg: path_cuda_pkg}
-    packages = [cuda_pkg]
+    packages = [
+        cuda_pkg,
+        cuda_pkg + '.experimental',
+    ]
 
     cuda_lib_out = join(path_cuda_pkg, cuda_lib.file_name)
     shutil.copyfile(cuda_lib.path, cuda_lib_out)
     package_data = {cuda_pkg: [cuda_lib.file_name]}
 
-    if sys.platform == 'win32':
-        libdir = dirname(cuda_lib.path)
-        libname, _ = splitext(cuda_lib.file_name)
-        cuda_ext_lib_file_name = libname + '.lib'
-        cuda_ext_lib_path = join(libdir, cuda_ext_lib_file_name)
-        cuda_ext_lib_out = join(path_cuda_pkg, cuda_ext_lib_file_name)
-        shutil.copyfile(cuda_ext_lib_path, cuda_ext_lib_out)
-        package_data[cuda_pkg].append(cuda_ext_lib_file_name)
+    if lib_dirs is not None:
+        if sys.platform.startswith('linux'):
+            out = subprocess.check_output(['ldd', cuda_lib_out])
+            for l in out.splitlines():
+                ls = l.strip().decode('ascii').split()
+                if len(ls) >= 3:
+                    libname = ls[0]
+                    libfile = ls[2]
+
+                    # Copy libraries into WHL file.
+                    # libcu*   : CUDA/cuDNN
+                    # libnccl  : NCCL2
+                    if libname.startswith('libcu') or \
+                            libname.startswith('libnccl'):
+                        print('Copying {}'.format(libname))
+                        path_out = join(path_cuda_pkg, libname)
+                        shutil.copyfile(libfile, path_out)
+                        package_data[cuda_pkg].append(libname)
+
+        elif sys.platform == 'win32':
+            libdir = dirname(cuda_lib.path)
+            libname, _ = splitext(cuda_lib.file_name)
+            cuda_ext_lib_file_name = libname + '.lib'
+            cuda_ext_lib_path = join(libdir, cuda_ext_lib_file_name)
+            cuda_ext_lib_out = join(path_cuda_pkg, cuda_ext_lib_file_name)
+            shutil.copyfile(cuda_ext_lib_path, cuda_ext_lib_out)
+            package_data[cuda_pkg].append(cuda_ext_lib_file_name)
+
+            def search_dependencies(lib, libs=[]):
+                print('Searching libs in {}'.format(lib))
+                out = subprocess.check_output(['dumpbin', '/DEPENDENTS', lib])
+                for l in out.splitlines():
+                    l = l.strip().decode('ascii')
+                    if l[:2] == 'cu' and l[-4:] == '.dll':
+                        copied = False
+                        for d in lib_dirs:
+                            for currentdir, dirs, files in os.walk(d):
+                                if l in files and not copied and l not in libs:
+                                    print('Copying {}'.format(l))
+                                    path_in = join(currentdir, l)
+                                    libs = search_dependencies(path_in, libs)
+                                    path_out = join(path_cuda_pkg, l)
+                                    shutil.copyfile(path_in, path_out)
+                                    libs.append(l)
+                                    copied = True
+                        if not copied:
+                            print('Shared library {} is not found.'.format(l))
+                            sys.exit(-1)
+                return libs
+
+            for d in search_dependencies(cuda_lib_out):
+                print('LIB: {}'.format(d))
+                package_data[cuda_pkg].append(d)
 
     cuda_ext_opts = copy.deepcopy(ext_opts)
     cuda_ext_opts['libraries'] += [cuda_lib.name]
@@ -167,14 +223,14 @@ def cudnn_config(root_dir, cuda_lib, cuda_ext_opts):
 
 
 def get_setup_config(root_dir):
-    cpu_lib, cuda_lib = get_libinfo()
+    cpu_lib, cuda_lib, libs = get_libinfo()
 
     packages = ['nnabla_ext']
     package_dir = {'nnabla_ext': join(root_dir, 'src', 'nnabla_ext')}
     package_data = {}
     ext_modules = []
 
-    cuda_ext = cuda_config(root_dir, cuda_lib, get_cpu_extopts(cpu_lib))
+    cuda_ext = cuda_config(root_dir, cuda_lib, get_cpu_extopts(cpu_lib), libs)
     packages += cuda_ext.packages
     package_dir.update(cuda_ext.package_dir)
     package_data.update(cuda_ext.package_data)
@@ -187,7 +243,7 @@ def get_setup_config(root_dir):
     ext_modules += cudnn_ext.ext_modules
 
     cuda_version = ''
-    if 'WHL_NO_PREFIX' in os.environ and os.environ['WHL_NO_PREFIX'] == 'True':
+    if 'WHL_NO_CUDA_SUFFIX' in os.environ and os.environ['WHL_NO_CUDA_SUFFIX'] == 'True':
         cuda_version = ''
     elif 'CUDA_VERSION_MAJOR' in os.environ:
         cuda_version = os.environ['CUDA_VERSION_MAJOR'] + \
