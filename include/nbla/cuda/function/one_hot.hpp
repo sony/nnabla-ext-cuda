@@ -12,32 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/** Flip
- */
-#ifndef __NBLA_CUDA_FUNCTION_FLIP_HPP__
-#define __NBLA_CUDA_FUNCTION_FLIP_HPP__
+#ifndef NBLA_CUDA_FUNCTION_ONE_HOT_HPP
+#define NBLA_CUDA_FUNCTION_ONE_HOT_HPP
 
 #include <nbla/cuda/cuda.hpp>
-#include <nbla/function/flip.hpp>
+#include <nbla/function/one_hot.hpp>
+
 namespace nbla {
-/** @copydoc Flip
-*/
 
-template <typename T> class FlipCuda : public Flip<T> {
-
+template <typename TI, typename T> class OneHotCuda : public OneHot<TI, T> {
 public:
+  typedef typename CudaType<TI>::type TIcu;
   typedef typename CudaType<T>::type Tcu;
-  explicit FlipCuda(const Context &ctx, const vector<int> &axes)
-      : Flip<T>(ctx, axes), device_(std::stoi(ctx.device_id)) {}
-  virtual ~FlipCuda() {}
-  virtual string name() { return "FlipCuda"; }
+
+  explicit OneHotCuda(const Context &ctx, const vector<int> &shape)
+      : OneHot<TI, T>(ctx, shape), device_(std::stoi(ctx.device_id)) {}
+  virtual ~OneHotCuda() {}
+  virtual string name() { return "OneHotCuda"; }
   virtual vector<string> allowed_array_classes() {
     return SingletonManager::get<Cuda>()->array_classes();
   }
 
 protected:
   int device_;
-  NdArray shape_info_buf_;
+  NdArray stride_info_buf_;
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,
@@ -45,5 +43,4 @@ protected:
                              const vector<bool> &accum);
 };
 }
-
 #endif

@@ -48,10 +48,18 @@ void ConvolutionCudaCudnn<T>::setup_impl(const Variables &inputs,
   Convolution<T>::setup_impl(inputs, outputs);
   cudnn_handle_ = SingletonManager::get<CudnnHandleManager>()->handle(device_);
 
-  dgrad_event_ =
-      SingletonManager::get<Cuda>()->cuda_event(cudaEventDisableTiming);
-  default_event_ =
-      SingletonManager::get<Cuda>()->cuda_event(cudaEventDisableTiming);
+  auto event_deleter = [](cudaEvent_t *ptr) {
+    NBLA_CUDA_CHECK(cudaEventDestroy(*ptr));
+    std::default_delete<cudaEvent_t>()(ptr);
+  };
+
+  dgrad_event_ = shared_ptr<cudaEvent_t>(new cudaEvent_t(), event_deleter);
+  NBLA_CUDA_CHECK(
+      cudaEventCreateWithFlags(dgrad_event_.get(), cudaEventDisableTiming));
+
+  default_event_ = shared_ptr<cudaEvent_t>(new cudaEvent_t(), event_deleter);
+  NBLA_CUDA_CHECK(
+      cudaEventCreateWithFlags(default_event_.get(), cudaEventDisableTiming));
 
   dgrad_stream_ = SingletonManager::get<Cuda>()->get_stream(
       cudaStreamNonBlocking, nbla::CudaStreamId::CONVOLUTION_BWD, device_);

@@ -12,32 +12,44 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/** Flip
- */
-#ifndef __NBLA_CUDA_FUNCTION_FLIP_HPP__
-#define __NBLA_CUDA_FUNCTION_FLIP_HPP__
+#ifndef NBLA_CUDA_FUNCTION_RANDOM_FLIP_HPP
+#define NBLA_CUDA_FUNCTION_RANDOM_FLIP_HPP
 
+#include <nbla/cuda/array/cuda_array.hpp>
 #include <nbla/cuda/cuda.hpp>
-#include <nbla/function/flip.hpp>
+#include <nbla/cuda/utils/random.hpp>
+#include <nbla/function/random_flip.hpp>
+
 namespace nbla {
-/** @copydoc Flip
-*/
 
-template <typename T> class FlipCuda : public Flip<T> {
-
+template <typename T> class RandomFlipCuda : public RandomFlip<T> {
 public:
   typedef typename CudaType<T>::type Tcu;
-  explicit FlipCuda(const Context &ctx, const vector<int> &axes)
-      : Flip<T>(ctx, axes), device_(std::stoi(ctx.device_id)) {}
-  virtual ~FlipCuda() {}
-  virtual string name() { return "FlipCuda"; }
+
+  explicit RandomFlipCuda(const Context &ctx, const vector<int> &axes,
+                          int base_axis, int seed)
+      : RandomFlip<T>(ctx, axes, base_axis, seed),
+        device_(std::stoi(ctx.device_id)) {
+
+    cuda_set_device(std::stoi(ctx.device_id));
+    if (this->seed_ != -1) {
+      curand_generator_ = curand_create_generator(this->seed_);
+    } else {
+      curand_generator_ = SingletonManager::get<Cuda>()->curand_generator();
+    }
+  }
+  virtual ~RandomFlipCuda() {}
+  virtual string name() { return "RandomFlipCuda"; }
   virtual vector<string> allowed_array_classes() {
     return SingletonManager::get<Cuda>()->array_classes();
   }
 
 protected:
+  curandGenerator_t curand_generator_;
   int device_;
+  shared_ptr<CudaCachedArray> flip_flags_;
   NdArray shape_info_buf_;
+  NdArray onehot_axses_;
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,
@@ -45,5 +57,4 @@ protected:
                              const vector<bool> &accum);
 };
 }
-
 #endif

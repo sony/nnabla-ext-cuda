@@ -15,14 +15,17 @@
 #include <nbla/cuda/array/cuda_array.hpp>
 #include <nbla/cuda/utils/random.hpp>
 
+#include <random>
+
 namespace nbla {
 curandGenerator_t curand_create_generator(int seed) {
   // CURAND_RNG_PSEUDO_DEFAULT is CURAND_RNG_PSEUDO_XORWOW.
   curandGenerator_t gen;
   NBLA_CURAND_CHECK(curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT));
-  if (seed != -1) {
-    curand_set_seed(gen, seed);
+  if (seed == -1) {
+    seed = std::random_device()();
   }
+  curand_set_seed(gen, seed);
   return gen;
 }
 

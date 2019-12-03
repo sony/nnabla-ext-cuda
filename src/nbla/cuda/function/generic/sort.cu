@@ -19,8 +19,13 @@
 
 #include <thrust/device_ptr.h>
 #include <thrust/device_vector.h>
-#include <thrust/sequence.h>
+#include <thrust/execution_policy.h>
+#if THRUST_VERSION < 100904 || !defined(THRUST_CPP11) ||                       \
+    !defined(THRUST_MODERN_GCC)
 #include <thrust/sort.h>
+#else
+#include <thrust/async/sort.h>
+#endif
 
 namespace nbla {
 
@@ -39,6 +44,10 @@ template <typename T> struct Compare {
     return data[i1 * stride] < data[i2 * stride] != reverse;
   }
 };
+
+__global__ void make_sequence(const size_t size, size_t *dst) {
+  NBLA_CUDA_KERNEL_LOOP(i, size) { dst[i] = static_cast<size_t>(i); }
+}
 
 __global__ void copy_index(const size_t size, const size_t stride,
                            const size_t *src, size_t *dst) {
@@ -72,15 +81,15 @@ __global__ void set_grad(const size_t size, const size_t stride, const T *src,
 } // namespace sort_impl
 
 template <typename T>
-void SortCuda<T>::setup_impl(const Variables &inputs,
-                             const Variables &outputs) {
-  Sort<T>::setup_impl(inputs, outputs);
-  cuda_set_device(this->device_);
-}
-
-template <typename T>
 void SortCuda<T>::forward_impl(const Variables &inputs,
                                const Variables &outputs) {
+#if THRUST_VERSION < 100904 || !defined(THRUST_CPP11) ||                       \
+    !defined(THRUST_MODERN_GCC)
+  using thrust::sort;
+#else
+  using thrust::async::sort;
+#endif
+
   using namespace sort_impl;
   cuda_set_device(this->device_);
 
@@ -103,9 +112,10 @@ void SortCuda<T>::forward_impl(const Variables &inputs,
     auto inner_i_raw = outer_i_raw;
 
     while (inner_x_raw < outer_x_raw + this->inner_size) {
-      thrust::sequence(temp_index_ptr, temp_index_ptr + temp_index_var.size());
-      auto cmp = Compare<Tcu>(inner_x_raw, stride, this->reverse);
-      thrust::sort(temp_index_ptr, temp_index_ptr + temp_index_var.size(), cmp);
+      auto size = temp_index_var.size();
+      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(make_sequence, size, temp_index_raw);
+      (void)sort(thrust::cuda::par.on(0), temp_index_ptr, temp_index_ptr + size,
+                 Compare<Tcu>(inner_x_raw, stride, this->reverse));
       NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(copy_index, shape[this->axis], stride,
                                      temp_index_raw, inner_i_raw);
       inner_x_raw++;

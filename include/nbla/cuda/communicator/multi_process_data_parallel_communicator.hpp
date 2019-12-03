@@ -41,6 +41,10 @@ using std::unordered_map;
 using std::unordered_set;
 using std::pair;
 
+/** Forward decl. of a wrapper object of MPI_Comm
+ */
+class MpiCommWrapper;
+
 /** \addtogroup NNablaCoreGrp */
 /*@{*/
 
@@ -74,6 +78,13 @@ protected:
 
   // Groups
   unordered_map<string, ncclComm_t> comms_;
+  unordered_map<string, shared_ptr<MpiCommWrapper>> mpi_comms_;
+
+  bool mpi_check_any(bool condition, const string &group);
+  bool mpi_check_all(bool condition, const string &group);
+
+  vector<NdArrayPtr> get_modified_arrays(const vector<NdArrayPtr> &arrays,
+                                         const string &group);
 
 public:
   typedef typename CudaType<T>::type Tc;
