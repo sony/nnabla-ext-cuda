@@ -71,6 +71,11 @@ nnabla-ext-cuda-cpplib-rpm: nnabla-ext-cuda-cpplib
 	@cd $(BUILD_EXT_CUDA_DIRECTORY_CPPLIB) && cpack -G RPM CPackConfig.cmake
 	@cd $(BUILD_EXT_CUDA_DIRECTORY_CPPLIB) && cpack -G TBZ2 CPackConfig.cmake
 
+.PHONY: nnabla-ext-cuda-cpplib-deb
+nnabla-ext-cuda-cpplib-deb: nnabla-ext-cuda-cpplib
+	@cd $(BUILD_EXT_CUDA_DIRECTORY_CPPLIB) && cpack -G DEB CPackConfig.cmake
+	@cd $(BUILD_EXT_CUDA_DIRECTORY_CPPLIB) && cpack -G TBZ2 CPackConfig.cmake
+
 .PHONY: nnabla-ext-cuda-cpplib-multi-gpu
 nnabla-ext-cuda-cpplib-multi-gpu:
 	mkdir -p $(BUILD_EXT_CUDA_DIRECTORY_CPPLIB_MULTI_GPU)
@@ -98,7 +103,7 @@ nnabla-ext-cuda-cpplib-multi-gpu-deb: nnabla-ext-cuda-cpplib-multi-gpu
 # wheel
 .PHONY: nnabla-ext-cuda-wheel
 nnabla-ext-cuda-wheel:
-	$(call with-virtualenv, \
+	$(call with-venv, \
 		$(NNABLA_EXT_CUDA_DIRECTORY), \
 		$(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/env, \
 		-f build-tools/make/build.mk, \
@@ -171,7 +176,7 @@ nnabla-ext-cuda-shell:
 # test
 .PHONY: nnabla-ext-cuda-test
 nnabla-ext-cuda-test:
-	$(call with-virtualenv, \
+	$(call with-venv, \
 		$(NNABLA_EXT_CUDA_DIRECTORY), \
 		$(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/env, \
 		-f build-tools/make/build.mk, \

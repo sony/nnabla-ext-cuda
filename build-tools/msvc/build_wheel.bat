@@ -37,7 +37,7 @@ IF NOT DEFINED WHL (
 )
 
 IF EXIST env RD /s /q env
-virtualenv --system-site-packages env || GOTO :error
+python -m venv --system-site-packages env || GOTO :error
 CALL env\scripts\activate.bat || GOTO :error
 
 pip install --no-deps %WHL% || GOTO :error
