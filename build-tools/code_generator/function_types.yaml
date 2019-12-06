@@ -507,3 +507,6 @@ ScatterNd:
 MaxPoolingBackward:
   float: [float]
   half: [Half]
+WarpByFlow:
+  float: [float]
+  half: [Half]
