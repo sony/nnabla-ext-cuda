@@ -322,6 +322,9 @@ Reshape:
 BatchInv:
   float: [float]
 #  half: [Half]
+BatchDet:
+  float: [float]
+#  half: [Half]
 MatrixDiag:
   float: [float]
   half: [Half]
