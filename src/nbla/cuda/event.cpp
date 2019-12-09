@@ -34,21 +34,24 @@ bool CudaEvent::wait_event(const Context ctx,
   if (src_) {
     // Null stream (function stream) waits for an event
     NBLA_CUDA_CHECK(cudaStreamWaitEvent(0, raw_event_, 0));
-  }
 
-  if (!(async_flags & AsyncFlag::ASYNC) && is_cpu_context(ctx)) {
-    if (async_flags & AsyncFlag::UNSAFE) { // Unsafe sync
-      // This event will be needed for additional wait to resolve the dependency
-      // on subsequent get/cast on host. This event cannot be deleted yet.
-      src_ = nullptr; // Only release the memory of the source array
-      return false;
-    }
-    else { // Safe sync
-      // Resolve the rest dependency. Host waits for this event.
-      NBLA_CUDA_CHECK(cudaStreamSynchronize(0));
+    if (!(async_flags & AsyncFlag::ASYNC) && 
+        (async_flags & AsyncFlag::UNSAFE) &&
+        is_cpu_context(ctx)) { // Unsafe sync
+        // This event will be needed for additional wait to resolve the dependency
+        // on subsequent get/cast on host. This event cannot be deleted yet.
+        src_ = nullptr; // Only release the memory of the source array
+        return false;
     }
   }
 
+  // Resolve the rest dependency. Host waits for this event.
+  if (!(async_flags & AsyncFlag::ASYNC) &&
+      !(async_flags & AsyncFlag::UNSAFE) &&
+      is_cpu_context(ctx)) { // safe sync get/cast or clear
+    NBLA_CUDA_CHECK(cudaStreamSynchronize(0));
+  }
+  
   // This event has been finished. It can be deleted.
   return true;
 }
