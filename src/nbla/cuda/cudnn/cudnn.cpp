@@ -23,16 +23,16 @@
 
 namespace nbla {
 
-void cudnn_set_tensor_nd_descriptor_force_dim(cudnnTensorDescriptor_t &desc,
-                                              cudnnDataType_t dtype,
-                                              vector<int> dims,
-                                              size_t force_ndim,
-                                              bool channel_last) {
+void cudnn_set_tensor_nd_descriptor_force_dim(
+    cudnnTensorDescriptor_t &desc, cudnnDataType_t dtype, vector<int> dims,
+    size_t force_ndim, bool channel_last, bool expand_left) {
   if (dims.size() < force_ndim) {
-    size_t insert_offset = dims.size() + (channel_last ? -1 : 0);
+    size_t insert_offset =
+        expand_left ? 0 : dims.size() + (channel_last ? -1 : 0);
     size_t insert_ndim = force_ndim - dims.size();
     dims.insert(dims.begin() + insert_offset, insert_ndim, 1);
   }
+
   if (!channel_last) {
     auto strides = ndi::strides(dims);
     NBLA_CUDNN_CHECK(cudnnSetTensorNdDescriptor(desc, dtype, dims.size(),
@@ -591,10 +591,12 @@ CudnnPooling::CudnnPooling(const vector<int> &inshape,
   // Create input and output descriptor.
   cudnn_set_tensor_nd_descriptor_force_dim(
       input_desc_.desc, dtype,
-      ndi::batch_reduced_shape(cfg.inshape, cfg.base_axis), 4, channel_last);
+      ndi::batch_reduced_shape(cfg.inshape, cfg.base_axis), kernel.size() + 2,
+      channel_last, true);
   cudnn_set_tensor_nd_descriptor_force_dim(
       output_desc_.desc, dtype,
-      ndi::batch_reduced_shape(cfg.outshape, cfg.base_axis), 4, channel_last);
+      ndi::batch_reduced_shape(cfg.outshape, cfg.base_axis), kernel.size() + 2,
+      channel_last, true);
 }
 
 void CudnnPooling::forward(const void *alpha, const void *x, const void *beta,
