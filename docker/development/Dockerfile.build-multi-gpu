@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# for nnabla>=1.5.0
+
 ARG BASE
 FROM ${BASE}
 
@@ -90,13 +92,21 @@ RUN umask 0 \
     && conda create -n nnabla-build python=${PYVERNAME} \
     && conda activate nnabla-build \
     && pip install numpy\<1.17 \
-    && pip install --only-binary -U -r /tmp/deps/requirements.txt \
+    && pip install -U -r /tmp/deps/requirements.txt \
     && ( [ "$CUDA_VERSION_MAJOR_MINOR" = "10.0" ] || [ "$CUDA_VERSION_MAJOR_MINOR" = "9.0" ] \
         && [ "x$ARCH_SUFFIX" = "x" ] \
-        && pip install --extra-index-url https://developer.download.nvidia.com/compute/redist/cuda/${CUDA_VERSION_MAJOR_MINOR} nvidia-dali \
+        && pip install --extra-index-url https://developer.download.nvidia.com/compute/redist/cuda/${CUDA_VERSION_MAJOR_MINOR} nvidia-dali==0.14.0 \
         || echo "Skip DALI installation (CUDA=$CUDA_VERSION_MAJOR_MINOR ARCH=$ARCH_SUFFIX)" ) \
     && conda clean -y --all \
     && cd / \
     && rm -rf /tmp/*
 
 ENV PATH /opt/miniconda3/envs/nnabla-build/bin:$PATH
+
+# Fix NCCL version
+ENV NCCL_VERSION 2.4.8
+RUN apt-get remove -y --allow-change-held-packages libnccl2 libnccl-dev \
+    && apt-get install -y --no-install-recommends \
+        libnccl2=$NCCL_VERSION-1+cuda${CUDA_VERSION_MAJOR_MINOR} \
+        libnccl-dev=$NCCL_VERSION-1+cuda${CUDA_VERSION_MAJOR_MINOR} \
+    && rm -rf /var/lib/apt/lists/*
