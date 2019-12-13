@@ -145,9 +145,8 @@ void Cuda::create_lms_streams(int device) {
   if (device < 0) {
     device = cuda_get_device();
   }
-  else {
-    cuda_set_device(device);
-  }
+
+  cuda_set_device(device);
 
   NBLA_CUDA_CHECK(cudaStreamCreateWithFlags(&stream_HtoD, cudaStreamNonBlocking));
   NBLA_CUDA_CHECK(cudaStreamCreateWithFlags(&stream_DtoH, cudaStreamNonBlocking));
