@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <nbla/array.hpp>
+#include <nbla/logger.hpp>
 #include <nbla/variable.hpp>
 
 #include <nbla/cuda/array/cuda_array.hpp>
@@ -98,6 +99,23 @@ void BatchNormalizationCudaCudnn<T>::setup_impl(const Variables &inputs,
   // Check if the confition we can use faster BN.
   can_use_bn_ex_ =
       channel_last && std::is_same<Tw, nbla::HalfCuda>::value && C % 4 == 0;
+#if _WIN32
+  // In cudnn 7.4.1 and 7.4.2, cudnnBatchNormalization*Ex does't support windows
+  // platform without TCC mode.
+  // In cudnn 7.5 or higher, cudnnBatchNormalization*Ex just fallbacks to a
+  // slower implementation.
+  // Currently we don't support TCC mode. Therefore, can_use_bn_ex must be
+  // false.
+  if (can_use_bn_ex_) {
+    NBLA_LOG_WARN(
+        "[BatchNormalization] "
+        "Currently, on windows, cudnn doesn't support a faster "
+        "BatchNormalization kernel,"
+        " which is used with channel_last and half datatype on other platforms."
+        "Fallbacks to a slower implemantation.")
+    can_use_bn_ex_ = false;
+  }
+#endif // _WIN32
   can_use_bn_ex_ &= this->batch_stat_;
   if (can_use_bn_ex_) {
     NBLA_CUDNN_CHECK(cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize(

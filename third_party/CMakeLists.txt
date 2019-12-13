@@ -36,3 +36,4 @@ if(BUILD_TEST)
 endif()
 
 download_and_extract_third_party_library(eigen-git-mirror-3.3.5 https://github.com/eigenteam/eigen-git-mirror/archive/3.3.5.zip)
+download_and_extract_third_party_library(spdlog-0.16.3 https://github.com/gabime/spdlog/archive/v0.16.3.zip)
