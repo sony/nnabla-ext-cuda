@@ -89,8 +89,12 @@ public:
   shared_ptr<Allocator> pinned_allocator();
 
   /** Synchronize host to device.
-  */
+   */
   void device_synchronize(const string &device);
+
+  /** Synchronize host to default stream of device.
+   */
+  void default_stream_synchronize(const string &device);
 
   /** Get auxilliary stream
    */

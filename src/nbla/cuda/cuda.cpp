@@ -226,5 +226,9 @@ void Cuda::device_synchronize(const string &device) {
   cuda_device_synchronize(device);
 }
 
+void Cuda::default_stream_synchronize(const string &device) {
+  cuda_nullstream_synchronize();
+}
+
 NBLA_INSTANTIATE_SINGLETON(NBLA_CUDA_API, Cuda);
 }
