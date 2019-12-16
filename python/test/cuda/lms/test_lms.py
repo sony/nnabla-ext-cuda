@@ -174,14 +174,14 @@ def test_lms(type_config, device_id, batch_size, num_dilations,
 
             # Training loop.
             for i in range(max_iter):
+                # Init the scheduler
+                scheduler.start_scheduling()
+
                 x.d = x0[i]
                 t.d = t0[i]
 
                 solver.zero_grad()
                 
-                # Init the scheduler
-                scheduler.start_scheduling()
-
                 loss.forward(clear_no_need_grad=True, 
                              function_pre_hook=scheduler.function_pre_hook,
                              function_post_hook=scheduler.function_post_hook)
