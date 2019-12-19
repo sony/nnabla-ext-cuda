@@ -12,32 +12,39 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/** Flip
- */
-#ifndef __NBLA_CUDA_FUNCTION_FLIP_HPP__
-#define __NBLA_CUDA_FUNCTION_FLIP_HPP__
+#ifndef NBLA_CUDA_FUNCTION_BATCH_DET_HPP
+#define NBLA_CUDA_FUNCTION_BATCH_DET_HPP
 
 #include <nbla/cuda/cuda.hpp>
-#include <nbla/function/flip.hpp>
+#include <nbla/function/batch_det.hpp>
+
 namespace nbla {
-/** @copydoc Flip
-*/
 
-template <typename T> class FlipCuda : public Flip<T> {
-
+template <typename T> class BatchDetCuda : public BatchDet<T> {
 public:
-  typedef typename CudaType<T>::type Tcu;
-  explicit FlipCuda(const Context &ctx, const vector<int> &axes)
-      : Flip<T>(ctx, axes), device_(std::stoi(ctx.device_id)) {}
-  virtual ~FlipCuda() {}
-  virtual string name() { return "FlipCuda"; }
+  /* TODO: remove this help message.
+  Typedef of CUDA scalar types used in source file.
+  This template function class might be instantiated for each CPU scalar types
+  (double, float, nbla::Half), however, for Half, CUDA kernel functions
+  must use nbla::HalfCuda in which a bunch of device operator functions are
+  overloaded. nbla::CudaType<T>::type will translate nbla::Half
+  to nbla::HalfCuda. For other types, it will keep it as-is.
+  See nbla/cuda/half.hpp for other template utilities.
+  */
+  typedef typename CudaType<T>::type Tc;
+
+  explicit BatchDetCuda(const Context &ctx)
+      : BatchDet<T>(ctx), device_(std::stoi(ctx.device_id)) {}
+  virtual ~BatchDetCuda() {}
+  virtual string name() { return "BatchDetCuda"; }
   virtual vector<string> allowed_array_classes() {
     return SingletonManager::get<Cuda>()->array_classes();
   }
+  virtual bool grad_depends_output_data(int i, int o) const { return true; }
 
 protected:
   int device_;
-  NdArray shape_info_buf_;
+  int dim_, batch_size_;
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,
@@ -45,5 +52,4 @@ protected:
                              const vector<bool> &accum);
 };
 }
-
 #endif

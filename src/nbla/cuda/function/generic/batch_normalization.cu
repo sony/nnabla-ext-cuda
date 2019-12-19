@@ -173,7 +173,7 @@ void BatchNormalizationCuda<T>::backward_impl(
   if (this->batch_stat_) { // Training mode.
     backward_impl_batch(inputs, outputs, propagate_down, accum);
   } else { // Testing mode.
-    NBLA_ERROR(error_code::not_implemented, "");
+    this->backward_impl_global(inputs, outputs, propagate_down, accum);
   }
 }
 

@@ -304,9 +304,9 @@ Broadcast:
 Tile:
   float: [float]
   half: [Half]
-# OneHot:
-#   float: [int, float]
-#   half: [int, Half]
+OneHot:
+  float: [int, float]
+  half: [int, Half]
 Flip:
   float: [float]
   half: [Half]
@@ -320,6 +320,9 @@ Reshape:
   float: [float]
   half: [Half]
 BatchInv:
+  float: [float]
+#  half: [Half]
+BatchDet:
   float: [float]
 #  half: [Half]
 MatrixDiag:
@@ -354,9 +357,9 @@ RandomChoice:
 # RandomCrop:
 #   float: [float]
 #   half: [Half]
-# RandomFlip:
-#   float: [float]
-#   half: [Half]
+RandomFlip:
+  float: [float]
+  half: [Half]
 # RandomShift:
 #   float: [float]
 #   half: [Half]
@@ -418,6 +421,9 @@ FixedPointQuantize:
   float: [float]
   half: [Half]
 Pow2Quantize:
+  float: [float]
+  half: [Half]
+MinMaxQuantize:
   float: [float]
   half: [Half]
 TopNError:
@@ -502,5 +508,8 @@ ScatterNd:
   float: [float]
   half: [Half]
 MaxPoolingBackward:
+  float: [float]
+  half: [Half]
+WarpByFlow:
   float: [float]
   half: [Half]
