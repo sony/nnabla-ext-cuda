@@ -24,6 +24,7 @@
 
 #include "./mixed_precision_training.cuh"
 #include "./weight_decay.cuh"
+#include "./clip_grad.cuh"
 
 namespace nbla {
 
@@ -142,6 +143,7 @@ void LarsCuda<T>::update_impl(const string &key, VariablePtr param) {
   t = std::min(t + 1, std::numeric_limits<uint32_t>::max() - 1);
 }
 
+NBLA_DEF_CLIP_GRAD_BY_NORM(SgdCuda, clip_grad_by_norm_cuda);
 NBLA_DEF_CHECK_INF_GRAD(LarsCuda, check_inf_grad_cuda);
 NBLA_DEF_CHECK_NAN_GRAD(LarsCuda, check_nan_grad_cuda);
 NBLA_DEF_CHECK_INF_OR_NAN_GRAD(LarsCuda, check_inf_or_nan_grad_cuda);
