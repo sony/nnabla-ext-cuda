@@ -15,9 +15,9 @@
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/solver/adabound.hpp>
 
+#include "./clip_grad.cuh"
 #include "./mixed_precision_training.cuh"
 #include "./weight_decay.cuh"
-#include "./clip_grad.cuh"
 
 namespace nbla {
 

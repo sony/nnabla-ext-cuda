@@ -22,9 +22,9 @@
 #include <nbla/cuda/solver/lars.hpp>
 #include <nbla/cuda/utils/block_reduce.cuh>
 
+#include "./clip_grad.cuh"
 #include "./mixed_precision_training.cuh"
 #include "./weight_decay.cuh"
-#include "./clip_grad.cuh"
 
 namespace nbla {
 
