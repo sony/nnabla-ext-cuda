@@ -24,9 +24,10 @@ namespace nbla {
 template <typename T>
 __global__ void kernel_clip_grad_by_norm(const int num, T *grad, const T *l2sum,
                                          const float clip_norm) {
-  const float norm = sqrtf(*l2sum);
-  if (norm <= clip_norm)
+  // to avoid zero division
+  if (*l2sum == 0.0 || *l2sum <= clip_norm * clip_norm)
     return;
+  const float norm = sqrtf(*l2sum);
   NBLA_CUDA_KERNEL_LOOP(idx, num) {
     grad[idx] = clip_norm * grad[idx] / norm;
   }
