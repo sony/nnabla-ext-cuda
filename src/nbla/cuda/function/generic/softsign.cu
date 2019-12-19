@@ -23,5 +23,6 @@
 
 namespace nbla {
 NBLA_DEFINE_TRANSFORM_UNARY_CUDA(SoftSign, x / ((T)1 + std::abs(x)),
-                                 dy / std::pow(((T)1 + std::abs(x)), (T)2));
+                                 dy / std::pow(((T)1 + std::abs(x)), (T)2),
+                                 false);
 }

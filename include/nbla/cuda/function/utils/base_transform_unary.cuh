@@ -118,6 +118,12 @@ void backward_impl_transform_unary(const Variables &inputs,
         NAME##UnaryOpCuda(this->args_));                                       \
   }
 
+#define NBLA_DEFINE_GRAD_DEPENDS_OUTPUT_DATA(NAME, DEP_Y)                      \
+  template <typename T>                                                        \
+  bool NAME##Cuda<T>::grad_depends_output_data(int i, int o) const {           \
+    return DEP_Y;                                                              \
+  };
+
 // ----------------------------------------------------------------------------
 // Zero argument
 // ----------------------------------------------------------------------------
@@ -138,11 +144,13 @@ void backward_impl_transform_unary(const Variables &inputs,
 
 #define NBLA_DEFINE_TRANSFORM_UNARY_CUDA_NO_GRAD(NAME, OP)                     \
   NBLA_DEFINE_UNARY_OP_CUDA_NO_GRAD(NAME, OP);                                 \
-  NBLA_DEFINE_TRANSFORM_UNARY_CUDA_FORWARD_BACKWARD(NAME)
+  NBLA_DEFINE_TRANSFORM_UNARY_CUDA_FORWARD_BACKWARD(NAME)                      \
+  NBLA_DEFINE_GRAD_DEPENDS_OUTPUT_DATA(NAME, false)
 
-#define NBLA_DEFINE_TRANSFORM_UNARY_CUDA(NAME, OP, GOP)                        \
+#define NBLA_DEFINE_TRANSFORM_UNARY_CUDA(NAME, OP, GOP, DEP_Y)                 \
   NBLA_DEFINE_UNARY_OP_CUDA(NAME, OP, GOP);                                    \
-  NBLA_DEFINE_TRANSFORM_UNARY_CUDA_FORWARD_BACKWARD(NAME)
+  NBLA_DEFINE_TRANSFORM_UNARY_CUDA_FORWARD_BACKWARD(NAME)                      \
+  NBLA_DEFINE_GRAD_DEPENDS_OUTPUT_DATA(NAME, DEP_Y)
 
 // ----------------------------------------------------------------------------
 // One argument
@@ -157,9 +165,10 @@ void backward_impl_transform_unary(const Variables &inputs,
     NBLA_DEFINE_UNARY_OP_CUDA_BACKWARD(GOP)                                    \
   }
 
-#define NBLA_DEFINE_TRANSFORM_UNARY_CUDA_1(NAME, OP, GOP, A0)                  \
+#define NBLA_DEFINE_TRANSFORM_UNARY_CUDA_1(NAME, OP, GOP, A0, DEP_Y)           \
   NBLA_DEFINE_UNARY_OP_CUDA_1(NAME, OP, GOP, A0);                              \
-  NBLA_DEFINE_TRANSFORM_UNARY_CUDA_FORWARD_BACKWARD(NAME)
+  NBLA_DEFINE_TRANSFORM_UNARY_CUDA_FORWARD_BACKWARD(NAME)                      \
+  NBLA_DEFINE_GRAD_DEPENDS_OUTPUT_DATA(NAME, DEP_Y)
 
 #define NBLA_DEFINE_UNARY_OP_CUDA_1_NO_GRAD(NAME, OP, A0)                      \
   class NAME##UnaryOpCuda : public BaseUnaryOpCuda {                           \
@@ -172,6 +181,7 @@ void backward_impl_transform_unary(const Variables &inputs,
 
 #define NBLA_DEFINE_TRANSFORM_UNARY_CUDA_1_NO_GRAD(NAME, OP, A0)               \
   NBLA_DEFINE_UNARY_OP_CUDA_1_NO_GRAD(NAME, OP, A0);                           \
-  NBLA_DEFINE_TRANSFORM_UNARY_CUDA_FORWARD_BACKWARD(NAME)
+  NBLA_DEFINE_TRANSFORM_UNARY_CUDA_FORWARD_BACKWARD(NAME)                      \
+  NBLA_DEFINE_GRAD_DEPENDS_OUTPUT_DATA(NAME, false)
 }
 #endif

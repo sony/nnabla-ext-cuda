@@ -65,14 +65,12 @@ inline void cudnn_set_convolution_nd_descriptor_force_2dim(
     stride.resize(2, 1);
     dilation.resize(2, 1);
   }
-#if CUDNN_VERSION >= 7000
-  NBLA_CUDNN_CHECK(
-      cudnnSetConvolutionMathType(conv_desc, CUDNN_TENSOR_OP_MATH));
-#endif
   NBLA_CUDNN_CHECK(cudnnSetConvolutionNdDescriptor(
       conv_desc, ndim, pad.data(), stride.data(), dilation.data(), mode,
       dtype));
 #if CUDNN_VERSION >= 7000
+  NBLA_CUDNN_CHECK(
+      cudnnSetConvolutionMathType(conv_desc, CUDNN_TENSOR_OP_MATH));
   NBLA_CUDNN_CHECK(cudnnSetConvolutionGroupCount(conv_desc, group));
 #endif
 }
@@ -140,7 +138,7 @@ CudnnConvResource::CudnnConvResource(const CudnnConvDesc &desc) {
   NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&b_desc));
   NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&b_desc_deconv));
   NBLA_CUDNN_CHECK(cudnnCreateFilterDescriptor(&w_desc));
-  NBLA_CUDNN_CHECK(cudnnCreateConvolutionDescriptor(&conv_desc));
+
   // Set input desc
   auto dims =
       get_conv_dims(desc.n, desc.c, desc.group, desc.sample, channel_last);
@@ -204,8 +202,14 @@ CudnnConvResource::CudnnConvResource(const CudnnConvDesc &desc) {
   cudnnDataType_t compute_type =
       desc.dtype == CUDNN_DATA_HALF ? CUDNN_DATA_FLOAT : desc.dtype;
   cudnn_set_convolution_nd_descriptor_force_2dim(
-      conv_desc, desc.ndim, desc.pad, desc.stride, desc.dilation, desc.group,
-      desc.mode, compute_type);
+      conv_desc.desc, desc.ndim, desc.pad, desc.stride, desc.dilation,
+      desc.group, desc.mode, compute_type);
+  cudnn_set_convolution_nd_descriptor_force_2dim(
+      conv_dgrad_desc.desc, desc.ndim, desc.pad, desc.stride, desc.dilation,
+      desc.group, desc.mode, compute_type);
+  cudnn_set_convolution_nd_descriptor_force_2dim(
+      conv_wgrad_desc.desc, desc.ndim, desc.pad, desc.stride, desc.dilation,
+      desc.group, desc.mode, compute_type);
 
   // Find best algorithm
   find_best_algorithms();
@@ -218,7 +222,6 @@ CudnnConvResource::~CudnnConvResource() {
   NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(b_desc));
   NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(b_desc_deconv));
   NBLA_CUDNN_CHECK(cudnnDestroyFilterDescriptor(w_desc));
-  NBLA_CUDNN_CHECK(cudnnDestroyConvolutionDescriptor(conv_desc));
 }
 
 inline bool check_workspace_limit(int workspace_limit, size_t used_memory) {
@@ -244,9 +247,9 @@ void CudnnConvResource::find_forward_algorithm(int workspace_limit,
   std::unique_ptr<cudnnConvolutionFwdAlgoPerf_t[]> perf_results{
       new cudnnConvolutionFwdAlgoPerf_t[max_results]};
 
-  NBLA_CUDNN_CHECK(find_algorithm(cudnn_handle, this->x_desc, this->w_desc,
-                                  this->conv_desc, this->y_desc, max_results,
-                                  &num_results, perf_results.get()));
+  NBLA_CUDNN_CHECK(find_algorithm(
+      cudnn_handle, this->x_desc, this->w_desc, this->conv_desc.desc,
+      this->y_desc, max_results, &num_results, perf_results.get()));
 #if 0
   for (int i = 0; i < num_results; i++) {
     auto &perf_result = perf_results[i];
@@ -260,13 +263,21 @@ void CudnnConvResource::find_forward_algorithm(int workspace_limit,
   for (int i = 0; i < num_results; i++) {
     auto &perf_result = perf_results[i];
     if (CUDNN_STATUS_SUCCESS == perf_result.status) {
+#if CUDNN_VERSION >= 7000
+      NBLA_CUDNN_CHECK(cudnnSetConvolutionMathType(this->conv_desc.desc,
+                                                   perf_result.mathType));
+#endif
       NBLA_CUDNN_CHECK(get_workspace(cudnn_handle, this->x_desc, this->w_desc,
-                                     this->conv_desc, this->y_desc,
+                                     this->conv_desc.desc, this->y_desc,
                                      perf_result.algo, &workspace_size));
       if (check_workspace_limit(workspace_limit, workspace_size)) {
         if (check_determinism(deterministic, perf_result.determinism)) {
           this->fwd_algo = perf_result.algo;
           this->fwd_workspace_size = workspace_size;
+#if CUDNN_VERSION >= 7000
+          NBLA_CUDNN_CHECK(cudnnSetConvolutionMathType(this->conv_desc.desc,
+                                                       perf_result.mathType));
+#endif
           return;
         }
       }
@@ -294,9 +305,9 @@ void CudnnConvResource::find_backward_data_algorithm(int workspace_limit,
   std::unique_ptr<cudnnConvolutionBwdDataAlgoPerf_t[]> perf_results{
       new cudnnConvolutionBwdDataAlgoPerf_t[max_results]};
 
-  NBLA_CUDNN_CHECK(find_algorithm(cudnn_handle, this->w_desc, this->y_desc,
-                                  this->conv_desc, this->x_desc, max_results,
-                                  &num_results, perf_results.get()));
+  NBLA_CUDNN_CHECK(find_algorithm(
+      cudnn_handle, this->w_desc, this->y_desc, this->conv_dgrad_desc.desc,
+      this->x_desc, max_results, &num_results, perf_results.get()));
 #if 0
   for (int i = 0; i < num_results; i++) {
     auto &perf_result = perf_results[i];
@@ -310,13 +321,21 @@ void CudnnConvResource::find_backward_data_algorithm(int workspace_limit,
   for (int i = 0; i < num_results; i++) {
     auto &perf_result = perf_results[i];
     if (CUDNN_STATUS_SUCCESS == perf_result.status) {
+#if CUDNN_VERSION >= 7000
+      NBLA_CUDNN_CHECK(cudnnSetConvolutionMathType(conv_dgrad_desc.desc,
+                                                   perf_result.mathType));
+#endif
       NBLA_CUDNN_CHECK(get_workspace(cudnn_handle, this->w_desc, this->y_desc,
-                                     this->conv_desc, this->x_desc,
+                                     this->conv_dgrad_desc.desc, this->x_desc,
                                      perf_result.algo, &workspace_size));
       if (check_workspace_limit(workspace_limit, workspace_size)) {
         if (check_determinism(deterministic, perf_result.determinism)) {
           this->bwd_data_algo = perf_result.algo;
           this->bwd_data_workspace_size = workspace_size;
+#if CUDNN_VERSION >= 7000
+          NBLA_CUDNN_CHECK(cudnnSetConvolutionMathType(conv_dgrad_desc.desc,
+                                                       perf_result.mathType));
+#endif
           return;
         }
       }
@@ -344,9 +363,9 @@ void CudnnConvResource::find_backward_filter_algorithm(int workspace_limit,
   std::unique_ptr<cudnnConvolutionBwdFilterAlgoPerf_t[]> perf_results{
       new cudnnConvolutionBwdFilterAlgoPerf_t[max_results]};
 
-  NBLA_CUDNN_CHECK(find_algorithm(cudnn_handle, this->x_desc, this->y_desc,
-                                  this->conv_desc, this->w_desc, max_results,
-                                  &num_results, perf_results.get()));
+  NBLA_CUDNN_CHECK(find_algorithm(
+      cudnn_handle, this->x_desc, this->y_desc, this->conv_wgrad_desc.desc,
+      this->w_desc, max_results, &num_results, perf_results.get()));
 #if 0
   for (int i = 0; i < num_results; i++) {
     auto &perf_result = perf_results[i];
@@ -360,13 +379,21 @@ void CudnnConvResource::find_backward_filter_algorithm(int workspace_limit,
   for (int i = 0; i < num_results; i++) {
     auto &perf_result = perf_results[i];
     if (CUDNN_STATUS_SUCCESS == perf_result.status) {
+#if CUDNN_VERSION >= 7000
+      NBLA_CUDNN_CHECK(cudnnSetConvolutionMathType(conv_wgrad_desc.desc,
+                                                   perf_result.mathType));
+#endif
       NBLA_CUDNN_CHECK(get_workspace(cudnn_handle, this->x_desc, this->y_desc,
-                                     this->conv_desc, this->w_desc,
+                                     this->conv_wgrad_desc.desc, this->w_desc,
                                      perf_result.algo, &workspace_size));
       if (check_workspace_limit(workspace_limit, workspace_size)) {
         if (check_determinism(deterministic, perf_result.determinism)) {
           this->bwd_filter_algo = perf_result.algo;
           this->bwd_filter_workspace_size = workspace_size;
+#if CUDNN_VERSION >= 7000
+          NBLA_CUDNN_CHECK(cudnnSetConvolutionMathType(conv_wgrad_desc.desc,
+                                                       perf_result.mathType));
+#endif
           return;
         }
       }
@@ -392,11 +419,11 @@ void CudnnConvResource::get_forward_algorithm(int workspace_limit) {
     preference = CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT;
 
   NBLA_CUDNN_CHECK(get_algorithm(cudnn_handle, this->x_desc, this->w_desc,
-                                 this->conv_desc, this->y_desc, preference,
+                                 this->conv_desc.desc, this->y_desc, preference,
                                  workspace_limit, &this->fwd_algo));
   if (workspace_limit != 0) {
     NBLA_CUDNN_CHECK(get_workspace(cudnn_handle, this->x_desc, this->w_desc,
-                                   this->conv_desc, this->y_desc,
+                                   this->conv_desc.desc, this->y_desc,
                                    this->fwd_algo, &this->fwd_workspace_size));
   } else {
     this->fwd_workspace_size = 0;
@@ -415,13 +442,13 @@ void CudnnConvResource::get_backward_data_algorithm(int workspace_limit) {
   else if (workspace_limit > 0)
     preference = CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT;
 
-  NBLA_CUDNN_CHECK(get_algorithm(cudnn_handle, this->w_desc, this->y_desc,
-                                 this->conv_desc, this->x_desc, preference,
-                                 workspace_limit, &this->bwd_data_algo));
+  NBLA_CUDNN_CHECK(get_algorithm(
+      cudnn_handle, this->w_desc, this->y_desc, this->conv_dgrad_desc.desc,
+      this->x_desc, preference, workspace_limit, &this->bwd_data_algo));
   if (workspace_limit != 0) {
     NBLA_CUDNN_CHECK(get_workspace(
-        cudnn_handle, this->w_desc, this->y_desc, this->conv_desc, this->x_desc,
-        this->bwd_data_algo, &this->bwd_data_workspace_size));
+        cudnn_handle, this->w_desc, this->y_desc, this->conv_dgrad_desc.desc,
+        this->x_desc, this->bwd_data_algo, &this->bwd_data_workspace_size));
   } else {
     this->bwd_data_workspace_size = 0;
   }
@@ -439,13 +466,13 @@ void CudnnConvResource::get_backward_filter_algorithm(int workspace_limit) {
   else if (workspace_limit > 0)
     preference = CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT;
 
-  NBLA_CUDNN_CHECK(get_algorithm(cudnn_handle, this->x_desc, this->y_desc,
-                                 this->conv_desc, this->w_desc, preference,
-                                 workspace_limit, &this->bwd_filter_algo));
+  NBLA_CUDNN_CHECK(get_algorithm(
+      cudnn_handle, this->x_desc, this->y_desc, this->conv_wgrad_desc.desc,
+      this->w_desc, preference, workspace_limit, &this->bwd_filter_algo));
   if (workspace_limit != 0) {
     NBLA_CUDNN_CHECK(get_workspace(
-        cudnn_handle, this->x_desc, this->y_desc, this->conv_desc, this->w_desc,
-        this->bwd_filter_algo, &this->bwd_filter_workspace_size));
+        cudnn_handle, this->x_desc, this->y_desc, this->conv_wgrad_desc.desc,
+        this->w_desc, this->bwd_filter_algo, &this->bwd_filter_workspace_size));
   } else {
     this->bwd_filter_workspace_size = 0;
   }
@@ -488,6 +515,16 @@ size_t CudnnConvResource::workspace_size() const {
 }
 
 ////////////////////////////////////////
+// Cudnn Convolution Wrapper
+////////////////////////////////////////
+CudnnConvolutionDescriptor::CudnnConvolutionDescriptor() {
+  NBLA_CUDNN_CHECK(cudnnCreateConvolutionDescriptor(&desc));
+}
+CudnnConvolutionDescriptor::~CudnnConvolutionDescriptor() {
+  NBLA_CUDNN_CHECK(cudnnDestroyConvolutionDescriptor(desc));
+}
+
+////////////////////////////////////////
 // Cudnn activation descriptor Wrapper
 ////////////////////////////////////////
 CudnnActivationDescriptor::CudnnActivationDescriptor() {
@@ -498,7 +535,7 @@ CudnnActivationDescriptor::~CudnnActivationDescriptor() {
 }
 
 ////////////////////////////////////////
-// Cudnn Pooling Wrapper
+// Cudnn Tensor Descriptor Wrapper
 ////////////////////////////////////////
 CudnnTensorDescriptor::CudnnTensorDescriptor() {
   NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&desc));
@@ -506,6 +543,10 @@ CudnnTensorDescriptor::CudnnTensorDescriptor() {
 CudnnTensorDescriptor::~CudnnTensorDescriptor() {
   NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(desc));
 }
+
+////////////////////////////////////////
+// Cudnn Pooling Wrapper
+////////////////////////////////////////
 CudnnPoolingDescriptor::CudnnPoolingDescriptor() {
   NBLA_CUDNN_CHECK(cudnnCreatePoolingDescriptor(&desc));
 }
@@ -539,7 +580,7 @@ CudnnPooling::CudnnPooling(const vector<int> &inshape,
 // Create pooling descriptor.
 #if CUDNN_VERSION >= 5000
   NBLA_CUDNN_CHECK(cudnnSetPoolingNdDescriptor(
-      pooling_desc_.desc, mode, CUDNN_PROPAGATE_NAN, cfg.kernel.size(),
+      pooling_desc_.desc, mode, CUDNN_NOT_PROPAGATE_NAN, cfg.kernel.size(),
       cfg.kernel.data(), cfg.pad.data(), cfg.stride.data()));
 #else
   NBLA_CUDNN_CHECK(cudnnSetPoolingNdDescriptor(
@@ -625,21 +666,28 @@ void CudnnSoftmax::backward(const void *alpha, const void *y, const void *dy,
 CudnnHandleManager::CudnnHandleManager() {}
 
 CudnnHandleManager::~CudnnHandleManager() {
-  for (auto handle : this->handles_) {
-    NBLA_CUDNN_CHECK(cudnnDestroy(handle.second));
+  for (auto dev_handles : this->handles_) {
+    for (auto handle : dev_handles.second) {
+      NBLA_CUDNN_CHECK(cudnnDestroy(*handle.second));
+    }
   }
 }
 
-cudnnHandle_t CudnnHandleManager::handle(int device) {
+cudnnHandle_t CudnnHandleManager::handle(int device, cudaStream_t stream) {
   if (device < 0) {
     NBLA_CUDA_CHECK(cudaGetDevice(&device));
   }
-  if (this->handles_.count(device) == 0) {
-    cudnnHandle_t handle;
-    NBLA_CUDNN_CHECK(cudnnCreate(&handle));
-    this->handles_[device] = handle;
+  auto &dev_handles = this->handles_[device];
+  auto handle = dev_handles[stream];
+  if (handle) {
+    return *handle;
   }
-  return this->handles_[device];
+
+  handle = make_shared<cudnnHandle_t>();
+  NBLA_CUDNN_CHECK(cudnnCreate(handle.get()));
+  NBLA_CUDNN_CHECK(cudnnSetStream(*handle, stream));
+  dev_handles[stream] = handle;
+  return *handle;
 }
 
 int CudnnHandleManager::get_workspace_limit_in_bytes() {

@@ -180,6 +180,8 @@ enum {
     The kernel is assumed to contain a grid-strided loop.
  */
 inline int cuda_get_blocks_by_size(int size) {
+  if (size == 0)
+    return 0;
   const int blocks = NBLA_CUDA_GET_BLOCKS(size);
   const int inkernel_loop = NBLA_CEIL_INT_DIV(blocks, NBLA_CUDA_MAX_BLOCKS);
   const int total_blocks = NBLA_CEIL_INT_DIV(blocks, inkernel_loop);

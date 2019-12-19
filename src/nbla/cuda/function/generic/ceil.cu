@@ -17,5 +17,5 @@
 
 namespace nbla {
 
-NBLA_DEFINE_TRANSFORM_UNARY_CUDA(Ceil, ceil(x), dy);
+NBLA_DEFINE_TRANSFORM_UNARY_CUDA(Ceil, ceil(x), dy, false);
 }

@@ -72,6 +72,9 @@ protected:                                                                     \
       return create_##NAME(this->ctx_);                                        \
     }                                                                          \
     NBLA_DECLARE_TRANSFORM_UNARY_CUDA_FORWARD_BACKWARD();                      \
+                                                                               \
+  public:                                                                      \
+    virtual bool grad_depends_output_data(int i, int o) const;                 \
   }
 
 // ----------------------------------------------------------------------------
@@ -90,6 +93,9 @@ protected:                                                                     \
       return create_##NAME(this->ctx_, std::get<0>(this->args_));              \
     }                                                                          \
     NBLA_DECLARE_TRANSFORM_UNARY_CUDA_FORWARD_BACKWARD();                      \
+                                                                               \
+  public:                                                                      \
+    virtual bool grad_depends_output_data(int i, int o) const;                 \
   }
 }
 #endif

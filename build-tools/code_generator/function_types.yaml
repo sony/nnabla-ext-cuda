@@ -319,6 +319,9 @@ Sort:
 Reshape:
   float: [float]
   half: [Half]
+BatchInv:
+  float: [float]
+#  half: [Half]
 MatrixDiag:
   float: [float]
   half: [Half]
@@ -493,5 +496,11 @@ Prune:
   float: [float]
 #  half: [Half]
 GatherNd:
+  float: [float]
+  half: [Half]
+ScatterNd:
+  float: [float]
+  half: [Half]
+MaxPoolingBackward:
   float: [float]
   half: [Half]

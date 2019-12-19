@@ -23,5 +23,5 @@
 
 namespace nbla {
 NBLA_DEFINE_TRANSFORM_UNARY_CUDA(TanhShrink, x - std::tanh(x),
-                                 dy *std::pow(std::tanh(x), (T)2));
+                                 dy *std::pow(std::tanh(x), (T)2), false);
 }

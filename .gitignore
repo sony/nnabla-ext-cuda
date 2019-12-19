@@ -23,6 +23,7 @@
 /python/setup.cfg.in.configured
 /python/src/nnabla_ext/cuda/_version.py
 /python/src/nnabla_ext/cuda/init.cpp
+/python/src/nnabla_ext/cuda/nvtx.cpp
 /python/src/nnabla_ext/cuda/libnnabla_cuda.so
 /python/src/nnabla_ext/cuda/nnabla_cuda.dll
 /python/src/nnabla_ext/cuda/nnabla_cuda.lib

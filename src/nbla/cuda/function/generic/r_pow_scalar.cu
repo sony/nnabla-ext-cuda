@@ -20,5 +20,6 @@
 namespace nbla {
 
 NBLA_DEFINE_TRANSFORM_UNARY_CUDA_1(RPowScalar, pow((T)a0, x),
-                                   dy *pow((T)a0, x) * log((T)a0), double);
+                                   dy *pow((T)a0, x) * log((T)a0), double,
+                                   false);
 }

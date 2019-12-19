@@ -45,6 +45,26 @@ if(WITH_NCCL)
 	  )
 endif()
 
+# nvprof support
+option(WITH_NVTX "Build with nvtx API for nvprof support" OFF)
+if(WITH_NVTX)
+    find_library(CUDA_NVTX_LIBRARY nvToolsExt
+            HINTS
+            "${CUDA_TOOLKIT_ROOT_DIR}/lib64"
+            "${CUDA_TOOLKIT_ROOT_DIR}/lib"
+            "${CUDA_TOOLKIT_ROOT_DIR}"
+            ENV CUDA_PATH
+            ENV CUDA_LIB_PATH)
+    if (NOT CUDA_NVTX_LIBRARY)
+        message(WARNING "nvToolsExt-libs is not found. Build without nvToolsExt.")
+    else()
+        list(APPEND NBLA_CUDA_LINKER_LIBS ${CUDA_NVTX_LIBRARY})
+        add_definitions(-DWITH_NVTX)
+        message("NVToolsExt: " ${CUDA_NVTX_LIBRARY})
+    endif()
+endif()
+
+
 ####################################################################################################
 # cuDNN
 

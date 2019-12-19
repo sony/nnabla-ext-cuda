@@ -21,5 +21,5 @@
 
 namespace nbla {
 
-NBLA_DEFINE_TRANSFORM_UNARY_CUDA(ACos, acos(x), -dy *rsqrt(1 - x * x));
+NBLA_DEFINE_TRANSFORM_UNARY_CUDA(ACos, acos(x), -dy *rsqrt(1 - x * x), false);
 }
