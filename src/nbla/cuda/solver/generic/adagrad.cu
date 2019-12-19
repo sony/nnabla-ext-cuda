@@ -15,6 +15,7 @@
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/solver/adagrad.hpp>
 
+#include "./clip_grad.cuh"
 #include "./mixed_precision_training.cuh"
 #include "./weight_decay.cuh"
 
@@ -44,6 +45,7 @@ void AdagradCuda<T>::update_impl(const string &key, VariablePtr param) {
 }
 
 NBLA_DEF_WEIGHT_DECAY(AdagradCuda, weight_decay_cuda);
+NBLA_DEF_CLIP_GRAD_BY_NORM(AdagradCuda, clip_grad_by_norm_cuda);
 NBLA_DEF_CHECK_INF_GRAD(AdagradCuda, check_inf_grad_cuda);
 NBLA_DEF_CHECK_NAN_GRAD(AdagradCuda, check_nan_grad_cuda);
 NBLA_DEF_CHECK_INF_OR_NAN_GRAD(AdagradCuda, check_inf_or_nan_grad_cuda);

@@ -15,6 +15,7 @@
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/solver/sgdw.hpp>
 
+#include "./clip_grad.cuh"
 #include "./mixed_precision_training.cuh"
 #include "./weight_decay.cuh"
 
@@ -54,6 +55,7 @@ void SgdWCuda<T>::weight_decay_impl(const string &key, VariablePtr param,
   weight_decay_cuda<T>(this->ctx_, param, decay_rate);
 }
 
+NBLA_DEF_CLIP_GRAD_BY_NORM(SgdWCuda, clip_grad_by_norm_cuda);
 NBLA_DEF_CHECK_INF_GRAD(SgdWCuda, check_inf_grad_cuda);
 NBLA_DEF_CHECK_NAN_GRAD(SgdWCuda, check_nan_grad_cuda);
 NBLA_DEF_CHECK_INF_OR_NAN_GRAD(SgdWCuda, check_inf_or_nan_grad_cuda);
