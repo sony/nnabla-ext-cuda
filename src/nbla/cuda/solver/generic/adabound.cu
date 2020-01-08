@@ -15,6 +15,7 @@
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/solver/adabound.hpp>
 
+#include "./clip_grad.cuh"
 #include "./mixed_precision_training.cuh"
 #include "./weight_decay.cuh"
 
@@ -62,6 +63,7 @@ void AdaBoundCuda<T>::update_impl(const string &key, VariablePtr param) {
                                  this->eps_, final_lr, this->gamma_);
 }
 NBLA_DEF_WEIGHT_DECAY(AdaBoundCuda, weight_decay_cuda);
+NBLA_DEF_CLIP_GRAD_BY_NORM(AdaBoundCuda, clip_grad_by_norm_cuda);
 NBLA_DEF_CHECK_INF_GRAD(AdaBoundCuda, check_inf_grad_cuda);
 NBLA_DEF_CHECK_NAN_GRAD(AdaBoundCuda, check_nan_grad_cuda);
 NBLA_DEF_CHECK_INF_OR_NAN_GRAD(AdaBoundCuda, check_inf_or_nan_grad_cuda);

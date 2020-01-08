@@ -33,6 +33,7 @@ public:
 protected:
   virtual void update_impl(const string &key, VariablePtr param);
   NBLA_DECL_WEIGHT_DECAY();
+  NBLA_DECL_CLIP_GRAD_BY_NORM();
   NBLA_DECL_CHECK_INF_GRAD();
   NBLA_DECL_CHECK_NAN_GRAD();
   NBLA_DECL_CHECK_INF_OR_NAN_GRAD();
