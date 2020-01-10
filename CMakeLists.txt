@@ -166,7 +166,8 @@ if(BUILD_CPP_LIB)
   list(APPEND NBLA_INCLUDE_DIRS
     ${PROJECT_SOURCE_DIR}/include
     ${NNABLA_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/eigen-git-mirror-3.3.5)
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/eigen-git-mirror-3.3.5
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/spdlog-0.16.3/include)
   include_directories(${NBLA_INCLUDE_DIRS};${PROJECT_BINARY_DIR})
   
   ###############################################################################

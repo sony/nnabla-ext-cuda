@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <nbla/array.hpp>
+#include <nbla/logger.hpp>
 #include <nbla/variable.hpp>
 
 #include <nbla/cuda/array/cuda_array.hpp>
@@ -50,6 +51,21 @@ void FusedBatchNormalizationCudaCudnn<T>::setup_impl(const Variables &inputs,
   int W = 1;
   // Check if the confition we can use faster BN.
   bool can_use_bn_ex = channel_last && C % 4 == 0;
+#if _WIN32
+  // On windows, cudnnBatchNormalization*Ex with fused option raises error with
+  // CUDNN_STATUS_NOT_SUPPORTED.
+  // (The case when bnOps = {CUDNN_BATCHNORM_OPS_BN_ACTIVATION,
+  // CUDNN_BATCHNORM_OPS_BN_ADD_ACTIVATION}.)
+  // Therefore, can_use_bn_ex is fored to be False and FusedBN fallbackes to the
+  // composite one.
+  if (can_use_bn_ex) {
+    NBLA_LOG_WARN(
+        "[FusedBatchNormalization] "
+        "Currently cudnn doesn't support fusedBatchNormalization on windows. "
+        "Fallbacks to a composite implementation.")
+    can_use_bn_ex = false;
+  }
+#endif // _WIN32
   if (!can_use_bn_ex || outputs.size() == 3) {
     this->fall_back_func_ = make_shared<FusedBatchNormalization<T>>(
         this->ctx_, this->axes_, this->decay_rate_, this->eps_,
