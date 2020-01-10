@@ -11,8 +11,6 @@ The available tags are as following.
 | ------ |:------------:|:-----:|:------:|:---------------:|:------------------- |
 | latest | 8.0          | 7.1   | 3.5    | >=361           | py3/cuda80/         |
 | 92     | 9.2          | 7.1   | 3.5    | >=396           | py3/cuda92/         |
-| py2    | 8.0          | 7.1   | 2.7    | >=361           | py2/cuda80/         |
-| py2-92 | 9.2          | 7.1   | 2.7    | >=396           | py2/cuda92/         |
 
 The docker image can be executed as below.
 

@@ -74,7 +74,7 @@ ENV PATH=/opt/rh/git19/root/usr/bin:/opt/rh/devtoolset-4/root/usr/bin:$PATH
 ENV LD_LIBRARY_PATH=/opt/rh/gti19/root/usr/lib64:/opt/rh/devtoolset-4/root/usr/lib64:/opt/rh/devtoolset-4/root/usr/lib:$LD_LIBRARY_PATH
 ENV PKG_CONFIG_PATH=/opt/rh/git19/root/usr/lib64/pkgconfig:${PKG_CONFIG_PATH}
 
-################################################### cmake
+############################################################# cmake
 ENV CMAKEVER=3.14.3
 RUN mkdir /tmp/deps \
     && cd /tmp/deps \
@@ -93,8 +93,8 @@ RUN mkdir /tmp/deps \
     && cd / \
     && rm -rf /tmp/*
 
-################################################## protobuf
-ENV PROTOVER=3.4.1
+############################################################ protobuf
+ENV PROTOVER=3.10.1
 RUN mkdir /tmp/deps \
     && cd /tmp/deps \
     && curl -L https://github.com/google/protobuf/archive/v${PROTOVER}.tar.gz -o protobuf-v${PROTOVER}.tar.gz \
@@ -111,7 +111,7 @@ RUN mkdir /tmp/deps \
     && cd / \
     && rm -rf /tmp/*
 
-################################################## libarchive
+############################################################ libarchive
 RUN mkdir /tmp/deps \
     && cd /tmp/deps \
     && curl -L https://www.libarchive.org/downloads/libarchive-3.3.2.tar.gz -o libarchive-3.3.2.tar.gz \
@@ -131,7 +131,7 @@ RUN mkdir /tmp/deps \
     && cd / \
     && rm -rf /tmp/*
 
-################################################## patchelf
+############################################################ patchelf
 RUN mkdir /tmp/deps \
     && cd /tmp/deps \
     && wget http://nixos.org/releases/patchelf/patchelf-0.9/patchelf-0.9.tar.bz2 \
@@ -143,12 +143,11 @@ RUN mkdir /tmp/deps \
     && cd / \
     && rm -rf /tmp/*
 
-################################################## miniconda3
+############################################################ miniconda3
 ARG PYTHON_VERSION_MAJOR
 ARG PYTHON_VERSION_MINOR
 ENV PYVERNAME=${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}
 
-# Limitation: numpy>=1.17 does not support python2.7
 ADD python/requirements.txt /tmp/deps/
 
 ARG CUDA_VERSION_MAJOR_MINOR
@@ -161,7 +160,7 @@ RUN umask 0 \
     && . /opt/miniconda3/bin/activate \
     && conda create -n nnabla-build python=${PYVERNAME} \
     && conda activate nnabla-build \
-    && pip install numpy\<1.17 \
+    && pip install numpy \
     && pip install -U -r /tmp/deps/requirements.txt \
     && ( [ "$CUDA_VERSION_MAJOR_MINOR" = "10.0" ] || [ "$CUDA_VERSION_MAJOR_MINOR" = "9.0" ] \
         && [ "x$ARCH_SUFFIX" = "x" ] \

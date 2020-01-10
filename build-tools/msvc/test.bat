@@ -43,10 +43,13 @@ IF NOT DEFINED WHLCUDA (
 )
 
 IF EXIST env RD /s /q env
-virtualenv --system-site-packages env || GOTO :error
+python -m venv --system-site-packages env || GOTO :error
 CALL env\scripts\activate.bat || GOTO :error
 
-pip install --no-deps %WHL% || GOTO :error
+REM Workaround for ONNX installation
+pip install "onnx<1.6"
+
+pip install %WHL% || GOTO :error
 pip install --no-deps %WHLCUDA% || GOTO :error
 
 SET PYTHONPATH=%nnabla_ext_cuda_root%\python\test;%PYTHONPATH%

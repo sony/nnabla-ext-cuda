@@ -46,7 +46,7 @@ assert(__author__ is not None)
 assert(__email__ is not None)
 
 setup_requires = [
-    'numpy>=1.16,<1.17',
+    'numpy',
     'Cython',  # Requires python-dev.
 ]
 
@@ -277,11 +277,10 @@ def get_setup_config(root_dir):
             'Topic :: Scientific/Engineering :: Artificial Intelligence',
             'License :: OSI Approved :: Apache Software License',
             'Programming Language :: C++',
-            'Programming Language :: Python :: 2',
-            'Programming Language :: Python :: 2.7',
             'Programming Language :: Python :: 3',
             'Programming Language :: Python :: 3.5',
             'Programming Language :: Python :: 3.6',
+            'Programming Language :: Python :: 3.7',
             'Programming Language :: Python :: Implementation :: CPython',
             'Operating System :: Microsoft :: Windows',
             'Operating System :: POSIX :: Linux',
@@ -290,7 +289,7 @@ def get_setup_config(root_dir):
         platforms=['CUDA {}'.format(__cuda_version__),
                    'cuDNN {}'.format(__cudnn_version__)],
         keywords="deep learning artificial intelligence machine learning neural network cuda",
-        python_requires='>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*',
+        python_requires='>=3.5',
     )
     return pkg_info, ExtConfig(package_dir, packages, package_data, ext_modules, {})
 

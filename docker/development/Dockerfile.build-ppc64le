@@ -44,7 +44,7 @@ RUN yum install -y \
     && yum group install -y "Development Tools" \
     && yum clean all
 
-################################################### cmake
+############################################################# cmake
 ENV CMAKEVER=3.14.3
 RUN mkdir /tmp/deps \
     && cd /tmp/deps \
@@ -63,8 +63,8 @@ RUN mkdir /tmp/deps \
     && cd / \
     && rm -rf /tmp/*
 
-################################################## protobuf
-ENV PROTOVER=3.4.1
+############################################################ protobuf
+ENV PROTOVER=3.10.1
 RUN mkdir /tmp/deps \
     && cd /tmp/deps \
     && curl -L https://github.com/google/protobuf/archive/v${PROTOVER}.tar.gz -o protobuf-v${PROTOVER}.tar.gz \
@@ -81,7 +81,7 @@ RUN mkdir /tmp/deps \
     && cd / \
     && rm -rf /tmp/*
 
-################################################## libarchive
+############################################################ libarchive
 RUN mkdir /tmp/deps \
     && cd /tmp/deps \
     && curl -L https://www.libarchive.org/downloads/libarchive-3.3.2.tar.gz -o libarchive-3.3.2.tar.gz \
@@ -101,7 +101,7 @@ RUN mkdir /tmp/deps \
     && cd / \
     && rm -rf /tmp/*
 
-################################################## patchelf
+############################################################ patchelf
 RUN mkdir /tmp/deps \
     && cd /tmp/deps \
     && wget http://nixos.org/releases/patchelf/patchelf-0.9/patchelf-0.9.tar.bz2 \
@@ -113,12 +113,10 @@ RUN mkdir /tmp/deps \
     && cd / \
     && rm -rf /tmp/*
 
-################################################## miniconda3
+############################################################ miniconda3
 ARG PYTHON_VERSION_MAJOR
 ARG PYTHON_VERSION_MINOR
-ENV PYVERNAME=${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}
 
-# Limitation: numpy>=1.17 does not support python2.7
 ADD python/requirements.txt /tmp/deps/
 
 RUN umask 0 \
@@ -128,15 +126,16 @@ RUN umask 0 \
     && bash Miniconda3-latest-Linux-ppc64le.sh -b -p /opt/miniconda3 \
     && rm -rf Miniconda3-latest-Linux-ppc64le.sh \
     && . /opt/miniconda3/bin/activate \
-    && conda create -n nnabla-build python=${PYVERNAME} \
-    && conda activate nnabla-build \
+    && conda create -n nnabla-build${PYTHON_VERSION_MAJOR}${PYTHON_VERSION_MINOR} python=${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR} \
+    && conda activate nnabla-build${PYTHON_VERSION_MAJOR}${PYTHON_VERSION_MINOR} \
     && conda update --all -y \
-    && pip install -U pip wheel mako pyyaml \
-    && pip install -U cython \
-    && pip install -U numpy\<1.17 \
-    && pip install -U -r /tmp/deps/requirements.txt \
+    && pip install pip wheel mako pyyaml \
+    && pip install cython \
+    && CFLAGS="--std=c99" pip install numpy \
+    && CFLAGS="--std=c99" pip install scipy\<1.4 \
+    && pip install -r /tmp/deps/requirements.txt \
     && conda clean -y --all \
     && cd / \
     && rm -rf /tmp/*
 
-ENV PATH /opt/miniconda3/envs/nnabla-build/bin:$PATH
+ENV PATH /opt/miniconda3/envs/nnabla-build${PYTHON_VERSION_MAJOR}${PYTHON_VERSION_MINOR}/bin:$PATH

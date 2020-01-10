@@ -8,12 +8,12 @@ PyYAML
 Cython
 boto3
 h5py
-numpy>=1.16,<1.17
+numpy
 onnx
 protobuf
 requests
+six
 tqdm
-virtualenv
 
 autopep8
 
