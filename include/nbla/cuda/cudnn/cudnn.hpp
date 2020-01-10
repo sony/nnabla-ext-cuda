@@ -146,11 +146,9 @@ value of 1 at last.
 
 @param force_ndim
  */
-void cudnn_set_tensor_nd_descriptor_force_dim(cudnnTensorDescriptor_t &desc,
-                                              cudnnDataType_t dtype,
-                                              vector<int> dims,
-                                              size_t force_ndim = 4,
-                                              bool channel_last = false);
+void cudnn_set_tensor_nd_descriptor_force_dim(
+    cudnnTensorDescriptor_t &desc, cudnnDataType_t dtype, vector<int> dims,
+    size_t force_ndim = 4, bool channel_last = false, bool expand_left = false);
 
 template <typename T>
 inline void cudnn_set_tensor_descriptor(cudnnTensorDescriptor_t desc,
