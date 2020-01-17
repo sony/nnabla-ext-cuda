@@ -62,8 +62,8 @@ else
 endif
 
 
-.PHONY: docker_image_build_cuda$(DOCKER_IMAGE_TARGET_SUFFIX)
-docker_image_build_cuda$(DOCKER_IMAGE_TARGET_SUFFIX):
+.PHONY: docker_image_build_cuda
+docker_image_build_cuda:
 	if ! docker image inspect $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA) >/dev/null 2>/dev/null; then \
 		docker pull $(DOCKER_IMAGE_BUILD_CUDA_BASE) && \
 		(cd $(NNABLA_EXT_CUDA_DIRECTORY) && docker build $(DOCKER_BUILD_ARGS)\
@@ -75,8 +75,8 @@ docker_image_build_cuda$(DOCKER_IMAGE_TARGET_SUFFIX):
 			.) \
 	fi
 
-.PHONY: docker_image_build_cuda_multi_gpu$(DOCKER_IMAGE_TARGET_SUFFIX)
-docker_image_build_cuda_multi_gpu$(DOCKER_IMAGE_TARGET_SUFFIX):
+.PHONY: docker_image_build_cuda_multi_gpu
+docker_image_build_cuda_multi_gpu:
 	if ! docker image inspect $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA_MULTI_GPU) >/dev/null 2>/dev/null; then \
 		docker pull $(DOCKER_IMAGE_BUILD_CUDA_MULTI_GPU_BASE) && \
 		(cd $(NNABLA_EXT_CUDA_DIRECTORY) && docker build $(DOCKER_BUILD_ARGS) \
@@ -92,7 +92,7 @@ docker_image_build_cuda_multi_gpu$(DOCKER_IMAGE_TARGET_SUFFIX):
 # Auto Format
 
 .PHONY: bwd-nnabla-ext-cuda-auto-format
-bwd-nnabla-ext-cuda-auto-format: docker_image_auto_format$(DOCKER_IMAGE_TARGET_SUFFIX)
+bwd-nnabla-ext-cuda-auto-format: docker_image_auto_format
 	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
 	&& docker run $(DOCKER_RUN_OPTS) $(DOCKER_IMAGE_AUTO_FORMAT) make -f build-tools/make/build.mk nnabla-ext-cuda-auto-format
 
