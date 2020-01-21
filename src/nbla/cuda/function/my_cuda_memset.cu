@@ -22,8 +22,7 @@ namespace nbla {
 __global__ void my_cudaMemset_kernel(size_t count,
                                      unsigned char *devPtr,
                                      unsigned char value) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < count) devPtr[i] = value;
+  NBLA_CUDA_KERNEL_LOOP(idx, count) { devPtr[idx] = value; }
 }
 
 
@@ -31,8 +30,8 @@ void my_cudaMemset(void *devPtr, int value, size_t count) {
   unsigned char *ptr = static_cast<unsigned char*>(devPtr);
   unsigned char val = (unsigned char)value;
 
-  my_cudaMemset_kernel<<<NBLA_CUDA_GET_BLOCKS(count),
-                         NBLA_CUDA_NUM_THREADS>>>(count, ptr, val);
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(my_cudaMemset_kernel,
+                                 count, ptr, val);
 }
 
 }
