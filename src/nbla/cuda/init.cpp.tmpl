@@ -223,7 +223,7 @@ void cuda_stream_destroy(shared_ptr<void> stream) {
   NBLA_CUDA_CHECK(cudaStreamDestroy(*s));
 }
 
-std::shared_ptr<void> cuda_create_event(int device_id) {
+std::shared_ptr<void> cuda_create_event(int device_id, unsigned int flags) {
   cuda_set_device(device_id);
 
   std::default_delete<cudaEvent_t> default_deleter;
@@ -235,7 +235,7 @@ std::shared_ptr<void> cuda_create_event(int device_id) {
 
   auto event = shared_ptr<cudaEvent_t>(new cudaEvent_t(), deleter);
 
-  NBLA_CUDA_CHECK(cudaEventCreateWithFlags(event.get(), cudaEventDisableTiming));
+  NBLA_CUDA_CHECK(cudaEventCreateWithFlags(event.get(), flags));
 
   return event;
 }
@@ -258,6 +258,23 @@ void cuda_event_synchronize(shared_ptr<void> event) {
   auto e = static_cast<cudaEvent_t*>(event.get());
 
   NBLA_CUDA_CHECK(cudaEventSynchronize(*e));
+}
+
+void cuda_event_record(shared_ptr<void> event) {
+  auto event_ptr = (cudaEvent_t*)(event.get());
+
+  NBLA_CUDA_CHECK(cudaEventRecord(*event_ptr));
+}
+
+float cuda_event_elapsed_time(shared_ptr<void> event_s, shared_ptr<void> event_e) {
+  auto event_s_ptr = (cudaEvent_t*)(event_s.get());
+  auto event_e_ptr = (cudaEvent_t*)(event_e.get());
+
+  float milliseconds = 0;
+
+  NBLA_CUDA_CHECK(cudaEventElapsedTime(&milliseconds, *event_s_ptr, *event_e_ptr));
+
+  return milliseconds;
 }
 
 }

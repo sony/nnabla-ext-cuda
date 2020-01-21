@@ -19,6 +19,7 @@ import nnabla._init as cpu_init
 from libcpp.vector cimport vector
 from libcpp.string cimport string
 from libcpp.memory cimport shared_ptr
+
 from libc.stdint cimport uintptr_t
 from libcpp cimport bool
 
@@ -38,9 +39,13 @@ cdef extern from "nbla/cuda/init.hpp" namespace "nbla":
     void cuda_nullstream_synchronize() nogil except +
     void cuda_stream_destroy(shared_ptr[void]) except +
     shared_ptr[void] cuda_create_event(int device_id) except +
+    shared_ptr[void] cuda_create_event(int device_id, unsigned int) except +
     void cuda_default_stream_event(shared_ptr[void]) except +
     void cuda_stream_wait_event(shared_ptr[void], shared_ptr[void]) except +
     void cuda_event_synchronize(shared_ptr[void]) nogil except +
+    float cuda_event_elapsed_time(shared_ptr[void], shared_ptr[void]) except +
+    void cuda_event_record(shared_ptr[void]) except +
+
 
 logger.info('Initializing CUDA extension...')
 try:
@@ -122,6 +127,36 @@ def get_devices():
 
     """
     return cuda_get_devices()
+
+###############################################################################
+
+
+###############################################################################
+# Wrapper class for CudaEvent.
+###############################################################################
+
+cdef class Event:
+    cdef shared_ptr[void] event
+
+    def __init__(self, device_id):
+        # get cudaEvent with cudaEventDefault flag.
+        self.event = cuda_create_event(device_id, 0)
+
+    def record(self):
+        cuda_event_record(self.event)
+
+    def synchronize(self):
+        with nogil:
+            cuda_event_synchronize(self.event)
+
+    def elapsed(self, start_event):
+        cdef float ret
+        ret = cuda_event_elapsed_time((<Event?>start_event).event, self.event)
+
+        return ret
+
+###############################################################################
+# Wrapper class for CudaStream & CudaEvent.
 ###############################################################################
 
 cdef class StreamEventHandler:

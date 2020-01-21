@@ -69,10 +69,14 @@ NBLA_CUDA_API void cuda_stream_destroy(shared_ptr<void> stream);
 
 /** cudaEvent wrapper functions.
 */
-NBLA_CUDA_API shared_ptr<void> cuda_create_event(int device_id = -1);
+NBLA_CUDA_API shared_ptr<void> cuda_create_event(int device_id = -1,
+                                                 unsigned int flags = 0x02);
 NBLA_CUDA_API void cuda_default_stream_event(shared_ptr<void> event);
 NBLA_CUDA_API void cuda_stream_wait_event(shared_ptr<void> stream,
                                           shared_ptr<void> event);
 NBLA_CUDA_API void cuda_event_synchronize(shared_ptr<void> event);
+NBLA_CUDA_API void cuda_event_record(shared_ptr<void> event);
+NBLA_CUDA_API float cuda_event_elapsed_time(shared_ptr<void> event_s,
+                                            shared_ptr<void> event_e);
 }
 #endif
