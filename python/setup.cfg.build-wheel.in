@@ -2,7 +2,7 @@
 compiler=${NBLA_PYTHON_BUILD_EXT_COMPILER}
 
 [cmake]
-cpu_target_name=nnabla
+cpu_target_name=${CPPLIB_LIBRARY_NAME}
 cpu_target_file=${CPPLIB_LIBRARY}
 
 cuda_target_name=${CPPLIB_CUDA_LIBRARY_NAME}

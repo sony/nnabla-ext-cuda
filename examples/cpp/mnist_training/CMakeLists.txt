@@ -1,6 +1,23 @@
+# Copyright (c) 2019 Sony Corporation. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+get_filename_component(CPPLIB_DIR ${CPPLIB_LIBRARY} DIRECTORY)
+link_directories(${CPPLIB_DIR})
+
 add_executable(mnist_training_cuda main.cpp)
 find_package(ZLIB REQUIRED)
 include_directories(${ZLIB_INCLUDE_DIRS})
 include_directories(${NNABLA_DIR}/examples/cpp/mnist_training)
-target_link_libraries(mnist_training_cuda nnabla nnabla_utils nnabla_cuda ${ZLIB_LIBRARIES})
+target_link_libraries(mnist_training_cuda ${NBLA_LIBRARY_NAME} ${NBLA_UTILS_LIBRARY_NAME} ${NBLA_CUDA_LIBRARY_NAME} ${ZLIB_LIBRARIES})
 set_property(TARGET mnist_training_cuda PROPERTY CXX_STANDARD 11)

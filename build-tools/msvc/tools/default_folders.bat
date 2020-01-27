@@ -43,7 +43,11 @@ CD %nnabla_ext_cuda_root%
 SET nnabla_ext_cuda_root=%CD%
 POPD
 
+IF NOT DEFINED nnabla_ext_cuda_build_folder_name (
+  SET nnabla_ext_cuda_build_folder_name=build
+)
+
 IF NOT DEFINED nnabla_ext_cuda_build_folder (
-  SET nnabla_ext_cuda_build_folder=%nnabla_ext_cuda_root%\build%nnabla_ext_cuda_build_folder_suffix%
+  SET nnabla_ext_cuda_build_folder=%nnabla_ext_cuda_root%\%nnabla_ext_cuda_build_folder_name%%nnabla_ext_cuda_build_folder_suffix%
 )
 
