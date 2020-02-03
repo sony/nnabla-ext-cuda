@@ -119,12 +119,12 @@ void ConvolutionCudaCudnn<T>::forward_impl(const Variables &inputs,
     b = inputs[2]->get_data_pointer<Tw>(this->ctx_);
   }
   auto workspace_size = rsc_->workspace_size();
-  unique_ptr<CudaCachedArray> workspace_arr;
+  NdArray workspace_arr;
   void *workspace{nullptr};
   if (workspace_size) {
-    workspace_arr.reset(
-        new CudaCachedArray(workspace_size, dtypes::BYTE, this->ctx_));
-    workspace = workspace_arr->pointer<void>();
+    workspace_arr.reshape({static_cast<Size_t>(workspace_size)}, true);
+    workspace = workspace_arr.cast(dtypes::BYTE, 
+                                   this->ctx_, true)->pointer<void>();
   }
 #if CUDNN_VERSION >= 7000
   NBLA_CUDNN_CHECK(cudnnConvolutionForward(
@@ -179,15 +179,15 @@ void ConvolutionCudaCudnn<T>::backward_impl(const Variables &inputs,
   }
   auto alpha = get_cudnn_scalar_arg<T>(1);
   auto workspace_size = rsc_->workspace_size();
-  unique_ptr<CudaCachedArray> workspace_arr, workspace_arr_dgrad;
+  NdArray workspace_arr, workspace_arr_dgrad;
   void *workspace{nullptr}, *workspace_dgrad{nullptr};
   if (workspace_size) {
-    workspace_arr.reset(
-        new CudaCachedArray(workspace_size, dtypes::BYTE, this->ctx_));
-    workspace = workspace_arr->pointer<void>();
-    workspace_arr_dgrad.reset(
-        new CudaCachedArray(workspace_size, dtypes::BYTE, this->ctx_));
-    workspace_dgrad = workspace_arr_dgrad->pointer<void>();
+    workspace_arr.reshape({static_cast<Size_t>(workspace_size)}, true);
+    workspace = workspace_arr.cast(dtypes::BYTE,
+                                   this->ctx_, true)->pointer<void>();
+    workspace_arr_dgrad.reshape({static_cast<Size_t>(workspace_size)}, true);
+    workspace_dgrad = workspace_arr_dgrad.cast(dtypes::BYTE, this->ctx_,
+                                               true)->pointer<void>();
   }
 #if CUDNN_VERSION >= 7000
   if (propagate_down[0]) {
