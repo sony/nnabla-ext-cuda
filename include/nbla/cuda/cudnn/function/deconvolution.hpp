@@ -35,8 +35,10 @@ public:
   explicit DeconvolutionCudaCudnn(const Context &ctx, int base_axis,
                                   const vector<int> &pad,
                                   const vector<int> &stride,
-                                  const vector<int> &dilation, int group)
-      : Deconvolution<T>(ctx, base_axis, pad, stride, dilation, group),
+                                  const vector<int> &dilation, int group,
+                                  bool channel_last)
+      : Deconvolution<T>(ctx, base_axis, pad, stride, dilation, group,
+                         channel_last),
         device_(std::stoi(ctx.device_id)) {
 #if CUDNN_VERSION < 6000
     // NOTE: dilation > 1 is not supported by cudnn. (2016.10.19)

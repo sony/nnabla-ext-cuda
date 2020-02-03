@@ -26,6 +26,12 @@ namespace nbla {
 template <typename T>
 void DeconvolutionCudaCudnn<T>::setup_impl(const Variables &inputs,
                                            const Variables &outputs) {
+#if CUDNN_VERSION < 7100
+  NBLA_CHECK(!this->channel_last_, error_code::value,
+             "The passed argument channel_last_=true is not supported in this "
+             "CUDNN version (%d).",
+             (int)CUDNN_VERSION);
+#endif
   cuda_set_device(std::stoi(this->ctx_.device_id));
   Deconvolution<T>::setup_impl(inputs, outputs);
   cudnn_handle_ = SingletonManager::get<CudnnHandleManager>()->handle(device_);
@@ -51,7 +57,7 @@ void DeconvolutionCudaCudnn<T>::setup_impl(const Variables &inputs,
                      this->channels_i_,
                      this->channels_o_,
                      this->group_,
-                     false, // TODO: Add channel_last option to deconv
+                     this->channel_last_,
                      this->spatial_shape_i_,
                      this->kernel_,
                      this->pad_,

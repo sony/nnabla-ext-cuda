@@ -35,6 +35,10 @@ void DeconvolutionCuda<T>::setup_impl(const Variables &inputs,
 template <typename T>
 void DeconvolutionCuda<T>::forward_impl(const Variables &inputs,
                                         const Variables &outputs) {
+  NBLA_CHECK(!this->channel_last_, error_code::value,
+             "The passed argument channel_last_=true is not supported in CUDA "
+             "Deconvolution.");
+
   // Getting variable pointers
   cuda_set_device(std::stoi(this->ctx_.device_id));
   const Tc *y = inputs[0]->get_data_pointer<Tc>(this->ctx_);
@@ -97,6 +101,10 @@ void DeconvolutionCuda<T>::backward_impl(const Variables &inputs,
         (inputs.size() == 3 && propagate_down[2]))) {
     return;
   }
+
+  NBLA_CHECK(!this->channel_last_, error_code::value,
+             "The passed argument channel_last_=true is not supported in CUDA "
+             "Deconvolution.");
 
   cuda_set_device(std::stoi(this->ctx_.device_id));
   const Tc *dx = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
