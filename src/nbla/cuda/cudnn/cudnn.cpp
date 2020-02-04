@@ -285,7 +285,7 @@ void CudnnConvResource::find_forward_algorithm(int workspace_limit,
   }
   NBLA_ERROR(error_code::target_specific,
              "Could not find any CUDNN Convolution Forward Algorithm for "
-             "the combination of NNBLA_CUDNN_WORKSPACE_LIMIT=%d and "
+             "the combination of NNABLA_CUDNN_WORKSPACE_LIMIT=%d and "
              "NNABLA_CUDNN_DETERMINISTIC=%d",
              workspace_limit, deterministic);
 }
