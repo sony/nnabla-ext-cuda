@@ -49,9 +49,8 @@ void MeanCuda<T>::forward_impl_reduce(const T *x_, T *y_, int outer_size,
   } else if (reduction_size > 1024) {
     const int threads = NBLA_CUDA_NUM_THREADS;
     const int blocks = min(NBLA_CUDA_GET_BLOCKS(reduction_size), 1024);
-    shared_ptr<CudaCachedArray> arr_buff =
-        make_shared<CudaCachedArray>(blocks, get_dtype<Tc>(), this->ctx_);
-    Tc *buff = arr_buff->pointer<Tc>();
+    NdArray arr_buff({blocks});
+    Tc *buff = arr_buff.cast(get_dtype<Tc>(), this->ctx_, true)->pointer<Tc>();
     while (outer_size--) {
       kernel_reduce_per_block<Tc><<<blocks, threads>>>(reduction_size, x, buff,
                                                        scale);
