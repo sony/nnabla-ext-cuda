@@ -39,9 +39,8 @@ learning_rate = 1e-3
 # Set GPU memory size for test
 # The values below of GPU memory size were based on GeForce 1050 Ti with 4GB memory.
 mem_size = 1e9
-total_mem_size = cuda_init.get_device_memory_size()[1];
+total_mem_size = cuda_init.get_device_memory_size()[1]
 skip_test = (total_mem_size < 3e9)
-print(total_mem_size)
 
 
 def create_network(batch_size, num_dilations, learning_rate):
@@ -92,15 +91,19 @@ class GetVariableSizeFunc(object):
         return self.max_size * 4.0 # computed as 4 byte float
 
 
-@pytest.mark.parametrize("type_config, device_id, batch_size, " \
-                         "num_dilations, learning_rate, max_iter, gpu_memory_size", 
-                         [('float', '0', batch_size, num_dilations, learning_rate, 2, mem_size),
-                          ('half', '0', batch_size, num_dilations, learning_rate, 2, mem_size)])
+@pytest.mark.parametrize("type_config, device_id, batch_size, num_dilations, "\
+                         "learning_rate, max_iter, gpu_memory_size, max_prefetch_length",
+                         [('float', '0', batch_size, num_dilations, learning_rate, 2, mem_size, 10),
+                          ('half', '0', batch_size, num_dilations, learning_rate, 2, mem_size, 10)])
 
 
 @pytest.mark.skipif(skip_test, reason='Out of GPU memory by the variables used in a single function.')
 def test_lms(type_config, device_id, batch_size, num_dilations, 
-             learning_rate, max_iter, gpu_memory_size):
+             learning_rate, max_iter, gpu_memory_size, max_prefetch_length):
+
+    #import time
+    #time.sleep(10)
+    
     # Use pinned host memory
     cuda_init.prefer_cpu_pinned_array()
  
@@ -170,7 +173,8 @@ def test_lms(type_config, device_id, batch_size, num_dilations,
                 initial_param2.append(p.d)
 
             # Create a scheduler
-            scheduler = lms.SwapInOutScheduler(cpu_ctx, gpu_ctx, gpu_memory_size)
+            scheduler = lms.SwapInOutScheduler(cpu_ctx, gpu_ctx,
+                                               gpu_memory_size, max_prefetch_length)
 
             # Training loop.
             for i in range(max_iter):
