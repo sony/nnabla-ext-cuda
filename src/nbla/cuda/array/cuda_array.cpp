@@ -90,7 +90,8 @@ void synchronize_async_cuda_array_cpu_array(Array *src, Array *dst, cudaMemcpyKi
   cudaEvent_t null_event;
   NBLA_CUDA_CHECK(cudaEventCreate(&null_event));
   NBLA_CUDA_CHECK(cudaEventRecord(null_event, 0));
-  cudaStreamWaitEvent(stream, null_event, 0);
+  NBLA_CUDA_CHECK(cudaStreamWaitEvent(stream, null_event, 0));
+  NBLA_CUDA_CHECK(cudaEventDestroy(null_event));
 
   // Prepare an event
   cudaEvent_t event;
@@ -124,7 +125,9 @@ void synchronize_async_cpu_array_cuda_array(Array *src, Array *dst, cudaMemcpyKi
   cudaEvent_t null_event;
   NBLA_CUDA_CHECK(cudaEventCreate(&null_event));
   NBLA_CUDA_CHECK(cudaEventRecord(null_event, 0));
-  cudaStreamWaitEvent(stream, null_event, 0);
+  NBLA_CUDA_CHECK(cudaStreamWaitEvent(stream, null_event, 0));
+  NBLA_CUDA_CHECK(cudaEventDestroy(null_event));
+
 
   // Prepare an event
   cudaEvent_t event;
