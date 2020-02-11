@@ -15,6 +15,7 @@
 #include <nbla/array.hpp>
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/function/max_pooling_backward.hpp>
+#include <nbla/cuda/utils/nd_index.hpp>
 #include <nbla/variable.hpp>
 
 #include <thrust/device_ptr.h>
@@ -40,36 +41,15 @@ void MaxPoolingBackwardCuda<T>::forward_impl(const Variables &inputs,
              "Directly call the backward method.");
 }
 
-template <int NDIM> struct NdIndex { int64_t nd_idx[NDIM]; };
-
-template <int NDIM>
-__device__ NdIndex<NDIM> device_flat2nd(int64_t idx, const int64_t *stride) {
-  NdIndex<NDIM> nd_index;
-  for (int i = 0; i < NDIM; i++) {
-    nd_index.nd_idx[i] = idx / stride[i];
-    idx -= nd_index.nd_idx[i] * stride[i];
-  }
-  return nd_index;
-}
-
-template <int NDIM>
-__device__ int64_t device_nd2flat(NdIndex<NDIM> &nd_index,
-                                  const int64_t *stride) {
-  auto idx = 0;
-  for (int i = 0; i < NDIM; i++) {
-    idx += stride[i] * nd_index.nd_idx[i];
-  }
-  return idx;
-}
-
 // TODO: Optimize
 template <typename T, int NDIM, bool accum = true>
 __global__ void kernel_max_pooling_2d_double_backward(
     const Size_t y_size, const T *x, const T *g_dx, T *g_dy,
     const int64_t *x_shape, const int64_t *x_stride, const int64_t *y_stride,
-    const int *kernel, const int *stride, const int *pad) {
-  auto hdim = NDIM - 2;
-  auto wdim = NDIM - 1;
+    const int *kernel, const int *stride, const int *pad,
+    const bool channel_last) {
+  auto hdim = channel_last ? NDIM - 3 : NDIM - 2;
+  auto wdim = channel_last ? NDIM - 2 : NDIM - 1;
   NBLA_CUDA_KERNEL_LOOP(idx, y_size) {
     // 1. NdIndex
     NdIndex<NDIM> nd_index = device_flat2nd<NDIM>(idx, y_stride);
@@ -111,10 +91,11 @@ template <typename T, int NDIM, bool accum = true>
 __global__ void kernel_max_pooling_3d_double_backward(
     const Size_t y_size, const T *x, const T *g_dx, T *g_dy,
     const int64_t *x_shape, const int64_t *x_stride, const int64_t *y_stride,
-    const int *kernel, const int *stride, const int *pad) {
-  auto ddim = NDIM - 3;
-  auto hdim = NDIM - 2;
-  auto wdim = NDIM - 1;
+    const int *kernel, const int *stride, const int *pad,
+    const bool channel_last) {
+  auto ddim = channel_last ? NDIM - 4 : NDIM - 3;
+  auto hdim = channel_last ? NDIM - 3 : NDIM - 2;
+  auto wdim = channel_last ? NDIM - 2 : NDIM - 1;
   NBLA_CUDA_KERNEL_LOOP(idx, y_size) {
     // 1. NdIndex
     NdIndex<NDIM> nd_index = device_flat2nd<NDIM>(idx, y_stride);
@@ -190,6 +171,7 @@ void MaxPoolingBackwardCuda<T>::backward_impl(
     auto kernel = thrust::raw_pointer_cast(d_vec_kernel.data());
     auto stride = thrust::raw_pointer_cast(d_vec_stride.data());
     auto pad = thrust::raw_pointer_cast(d_vec_pad.data());
+    auto channel_last = this->channel_last_;
 
     auto ndim = inputs[0]->shape().size();
     if (this->kernel_.size() == 2) {
@@ -197,31 +179,37 @@ void MaxPoolingBackwardCuda<T>::backward_impl(
         if (accum[1]) {
           NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
               (kernel_max_pooling_2d_double_backward<Tcu, 4, true>), y_size, x,
-              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad);
+              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad,
+              channel_last);
         } else {
           NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
               (kernel_max_pooling_2d_double_backward<Tcu, 4, false>), y_size, x,
-              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad);
+              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad,
+              channel_last);
         }
       } else if (ndim == 5) {
         if (accum[1]) {
           NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
               (kernel_max_pooling_2d_double_backward<Tcu, 5, true>), y_size, x,
-              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad);
+              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad,
+              channel_last);
         } else {
           NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
               (kernel_max_pooling_2d_double_backward<Tcu, 5, false>), y_size, x,
-              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad);
+              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad,
+              channel_last);
         }
       } else if (ndim == 6) {
         if (accum[1]) {
           NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
               (kernel_max_pooling_2d_double_backward<Tcu, 6, true>), y_size, x,
-              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad);
+              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad,
+              channel_last);
         } else {
           NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
               (kernel_max_pooling_2d_double_backward<Tcu, 6, false>), y_size, x,
-              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad);
+              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad,
+              channel_last);
         }
       }
     } else if (this->kernel_.size() == 3) {
@@ -229,31 +217,37 @@ void MaxPoolingBackwardCuda<T>::backward_impl(
         if (accum[1]) {
           NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
               (kernel_max_pooling_3d_double_backward<Tcu, 5, true>), y_size, x,
-              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad);
+              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad,
+              channel_last);
         } else {
           NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
               (kernel_max_pooling_3d_double_backward<Tcu, 5, false>), y_size, x,
-              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad);
+              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad,
+              channel_last);
         }
       } else if (ndim == 6) {
         if (accum[1]) {
           NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
               (kernel_max_pooling_3d_double_backward<Tcu, 6, true>), y_size, x,
-              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad);
+              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad,
+              channel_last);
         } else {
           NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
               (kernel_max_pooling_3d_double_backward<Tcu, 6, false>), y_size, x,
-              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad);
+              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad,
+              channel_last);
         }
       } else if (ndim == 7) {
         if (accum[1]) {
           NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
               (kernel_max_pooling_3d_double_backward<Tcu, 7, true>), y_size, x,
-              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad);
+              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad,
+              channel_last);
         } else {
           NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
               (kernel_max_pooling_3d_double_backward<Tcu, 7, false>), y_size, x,
-              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad);
+              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad,
+              channel_last);
         }
       }
     }
