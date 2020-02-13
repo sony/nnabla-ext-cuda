@@ -29,8 +29,10 @@ public:
   typedef typename CudaType<T>::type Tc;
   explicit DeconvolutionCuda(const Context &ctx, int base_axis,
                              const vector<int> &pad, const vector<int> &stride,
-                             const vector<int> &dilation, int group)
-      : Deconvolution<T>(ctx, base_axis, pad, stride, dilation, group),
+                             const vector<int> &dilation, int group,
+                             bool channel_last)
+      : Deconvolution<T>(ctx, base_axis, pad, stride, dilation, group,
+                         channel_last),
         device_(std::stoi(ctx.device_id)) {}
   virtual ~DeconvolutionCuda() {}
   virtual string name() { return "DeconvolutionCuda"; }
