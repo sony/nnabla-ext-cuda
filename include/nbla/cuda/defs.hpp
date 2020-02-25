@@ -16,7 +16,17 @@
 #define __NBLA_CUDA_DEFS_HPP__
 // For windows support
 #if defined(_MSC_VER) && !defined(__CUDACC__)
-#if defined(nnabla_cuda_EXPORTS) || defined(nnabla_cuda_cudnn_EXPORTS)
+#if defined(nnabla_cuda_EXPORTS) || defined(nnabla_cuda_dbg_EXPORTS) ||        \
+    defined(nnabla_cuda_80_7_EXPORTS) ||                                       \
+    defined(nnabla_cuda_80_7_dbg_EXPORTS) ||                                   \
+    defined(nnabla_cuda_90_7_EXPORTS) ||                                       \
+    defined(nnabla_cuda_90_7_dbg_EXPORTS) ||                                   \
+    defined(nnabla_cuda_100_7_EXPORTS) ||                                      \
+    defined(nnabla_cuda_100_7_dbg_EXPORTS) ||                                  \
+    defined(nnabla_cuda_101_7_EXPORTS) ||                                      \
+    defined(nnabla_cuda_101_7_dbg_EXPORTS) ||                                  \
+    defined(nnabla_cuda_102_7_EXPORTS) ||                                      \
+    defined(nnabla_cuda_102_7_dbg_EXPORTS)
 #define NBLA_CUDA_API __declspec(dllexport)
 #else
 #define NBLA_CUDA_API __declspec(dllimport)

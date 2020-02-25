@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set(NBLA_CUDA_LIBRARY_NAME nnabla_cuda${EXT_CUDA_LIB_NAME_SUFFIX})
 set(CUDA_SELECT_NVCC_ARCH_ARG "Auto" CACHE STRING "Select NVCC Arch. Options: Common | All | LIST(ARCH_AND_PTX ...). See select_compute_arch.cmake for details.")
 
 find_package(CUDA REQUIRED)
@@ -97,10 +98,6 @@ CUDA_SELECT_NVCC_ARCH_FLAGS(ARCH_FLAGS ${CUDA_SELECT_NVCC_ARCH_ARG})
 message("Arch: ${ARCH_FLAGS}")
 set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};${ARCH_FLAGS}")
 
-# cuDNN code will link into single library with CUDA code.
-# To prevent user confusion, library filename will change that cudnn in included or not.
-set(NBLA_CUDA_LIBRARY_NAME nnabla_cuda)
-
 file(GLOB CPP_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
   ./*.cpp
   memory/*.cpp
@@ -134,16 +131,10 @@ add_library(${NBLA_CUDA_LIBRARY_NAME} SHARED ${CPP_SOURCES} ${CU_OBJECTS})
 target_link_libraries(${NBLA_CUDA_LIBRARY_NAME} ${NBLA_LINKER_LIBS} ${NBLA_CUDA_LINKER_LIBS} ${CPPLIB_LIBRARY})
 set_property(TARGET ${NBLA_CUDA_LIBRARY_NAME} PROPERTY CXX_STANDARD 11)
 
-if (NOT WIN32)
-  # Install library nnabla and include files.
-  install(TARGETS ${NBLA_CUDA_LIBRARY_NAME}
-    LIBRARY DESTINATION lib
-    )
-  install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/nbla
-    DESTINATION include
-    )
-  include(CPack)
-endif()
+# Install library nnabla and include files.
+install(TARGETS ${NBLA_CUDA_LIBRARY_NAME} LIBRARY DESTINATION lib)
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/nbla DESTINATION include)
+include(CPack)
 
 set(NBLA_CUDA_INCLUDE_DIRS ${NBLA_CUDA_INCLUDE_DIRS} PARENT_SCOPE)
 set(NBLA_CUDA_LINKER_LIBS ${NBLA_CUDA_LINKER_LIBS} PARENT_SCOPE)

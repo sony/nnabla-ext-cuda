@@ -18,6 +18,10 @@ IF NOT EXIST %nnabla_build_wheel_folder% (
    exit /b 255
 )
 
+IF NOT DEFINED nnabla_ext_cuda_build_wheel_folder_name (
+  SET nnabla_ext_cuda_build_wheel_folder_name=build_wheel
+)
+
 IF NOT DEFINED nnabla_ext_cuda_build_wheel_folder (
-  SET nnabla_ext_cuda_build_wheel_folder=%nnabla_ext_cuda_root%\build_wheel%nnabla_ext_cuda_build_wheel_folder_suffix%
+  SET nnabla_ext_cuda_build_wheel_folder=%nnabla_ext_cuda_root%\%nnabla_ext_cuda_build_wheel_folder_name%%nnabla_ext_cuda_build_wheel_folder_suffix%
 )

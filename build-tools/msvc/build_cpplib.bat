@@ -22,20 +22,32 @@ CALL %~dp0tools\default_folders.bat || GOTO :error
 :: Settings
 CALL %~dp0tools\default_settings.bat || GOTO :error
 
+
+SET third_party_folder=%nnabla_root%\third_party
+:: Build third party libraries.
+CALL %nnabla_root%\build-tools\msvc\tools\build_zlib.bat       || GOTO :error
+
+
 :: Build CUDA extension library
 IF NOT EXIST %nnabla_ext_cuda_build_folder% MKDIR %nnabla_ext_cuda_build_folder%
 CD %nnabla_ext_cuda_build_folder%
 
 cmake -G "%generate_target%" ^
-      -DPYTHON_COMMAND_NAME=python ^
-      -DCUDA_SELECT_NVCC_ARCH_ARG:STRING="Common" ^
       -DBUILD_CPP_LIB=ON ^
+      -DBUILD_CPP_UTILS=ON ^
       -DBUILD_PYTHON_PACKAGE=OFF ^
+      -DEXT_CUDA_LIB_NAME_SUFFIX=%ext_cuda_lib_name_suffix% ^
+      -DLIB_NAME_SUFFIX=%lib_name_suffix% ^
+      -DCPPLIB_LIBRARY=%nnabla_build_folder%\bin\%build_type%\nnabla%lib_name_suffix%.lib ^
+      -DCUDA_SELECT_NVCC_ARCH_ARG:STRING="Common" ^
       -DNNABLA_DIR=%nnabla_root% ^
-      -DCPPLIB_LIBRARY=%nnabla_build_folder%\bin\%build_type%\nnabla.lib ^
+      -DPYTHON_COMMAND_NAME=python ^
+      -DZLIB_INCLUDE_DIR=%zlib_include_dir% ^
+      -DZLIB_LIBRARY_RELEASE=%zlib_library% ^
       %nnabla_ext_cuda_root% || GOTO :error
 
 msbuild ALL_BUILD.vcxproj /p:Configuration=%build_type% /verbosity:minimal /maxcpucount || GOTO :error
+cpack -G ZIP -C %build_type%
 
 ENDLOCAL
 exit /b

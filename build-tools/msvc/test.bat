@@ -46,9 +46,6 @@ IF EXIST env RD /s /q env
 python -m venv --system-site-packages env || GOTO :error
 CALL env\scripts\activate.bat || GOTO :error
 
-REM Workaround for ONNX installation
-pip install "onnx<1.6"
-
 pip install %WHL% || GOTO :error
 pip install --no-deps %WHLCUDA% || GOTO :error
 

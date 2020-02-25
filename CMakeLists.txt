@@ -33,6 +33,18 @@ if(NOT IS_ABSOLUTE ${NNABLA_DIR})
   get_filename_component(NNABLA_DIR ${CMAKE_CURRENT_BINARY_DIR}/${NNABLA_DIR} ABSOLUTE)
 endif()
 
+if (NOT NBLA_LIBRARY_NAME)
+  set(NBLA_LIBRARY_NAME nnabla${LIB_NAME_SUFFIX})
+endif()
+
+if (NOT NBLA_CLI_LIBRARY_NAME)
+  set(NBLA_CLI_LIBRARY_NAME nnabla_cli${LIB_NAME_SUFFIX})
+endif()
+
+if (NOT NBLA_UTILS_LIBRARY_NAME)
+  set(NBLA_UTILS_LIBRARY_NAME nnabla_utils${LIB_NAME_SUFFIX})
+endif()
+
 file(STRINGS ${NNABLA_DIR}/VERSION.txt versions NEWLINE_CONSUME)
 string(REGEX REPLACE [[^([A-z0-9.\-_]+).*$]] [[\1]] version ${versions})
 string(REGEX REPLACE [[^([0-9]+)\.([0-9]+)\.(.*)$]] [[\1]] version_major ${version})
@@ -86,7 +98,7 @@ endif()
 
 include(${PROJECT_SOURCE_DIR}/build-tools/cmake/get_cuda_version.cmake)
 
-set(CPACK_PACKAGE_NAME "nnabla-cpplib-cuda${CUDA_VERSION}-cudnn${CUDNN_VERSION}")
+set(CPACK_PACKAGE_NAME "nnabla-cpplib-cuda${EXT_CUDA_LIB_NAME_SUFFIX}")
 if(UNIX)
   find_program(LSB_RELEASE lsb_release)
   if(EXISTS ${LSB_RELEASE})
@@ -99,6 +111,14 @@ if(UNIX)
       OUTPUT_STRIP_TRAILING_WHITESPACE
       )
     set(CPACK_SYSTEM_NAME ${LSB_RELEASE_ID}${LSB_RELEASE_RELEASE})
+  endif()
+  find_program(UNAME uname)
+  if(EXISTS ${UNAME})
+    execute_process(COMMAND ${UNAME} -m
+      OUTPUT_VARIABLE UNAME_MACHINE_NAME
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      )
+    set(CPACK_SYSTEM_NAME ${CPACK_SYSTEM_NAME}_${UNAME_MACHINE_NAME})
   endif()
 endif()
 
@@ -137,6 +157,7 @@ if(BUILD_CPP_LIB)
     else()
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W0")
     endif()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
   endif()
   
   if(UNIX OR APPLE)
@@ -243,7 +264,7 @@ if(BUILD_CPP_LIB)
   
   file(GENERATE OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.cfg
     INPUT ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.cfg.in.configured
-    CONDITION $<CONFIG:Release>)
+    CONDITION $<CONFIG:${CMAKE_BUILD_TYPE}>)
   
   set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.cfg
@@ -264,18 +285,18 @@ if(BUILD_PYTHON_PACKAGE)
       message(FATAL_ERROR "Invalid CPPLIB_LIBRARY :[${CPPLIB_LIBRARY}]")
     endif()
     if(NOT EXISTS ${CPPLIB_CUDA_LIBRARY})
-      message(FATAL_ERROR "Invalid CPPLIB_LIBRARY :[${CPPLIB_CUDA_LIBRARY}]")
+      message(FATAL_ERROR "Invalid CPPLIB_CUDA_LIBRARY :[${CPPLIB_CUDA_LIBRARY}]")
     endif()
 
     # No one sets the following two vars if !BUILD_CPP_LIB
     set(NBLA_LIBRARY_NAME ${CPPLIB_LIBRARY})
     set(NBLA_CUDA_LIBRARY_NAME ${CPPLIB_CUDA_LIBRARY})
 
-    set(CPPLIB_LIBRARY_NAME "nnabla")
+    set(CPPLIB_LIBRARY_NAME nnabla${LIB_NAME_SUFFIX})
     set(CPPLIB_TARGET_FILE ${CPPLIB_LIBRARY})
     get_filename_component(CPPLIB_TARGET_FILE_NAME ${CPPLIB_TARGET_FILE} NAME)
 
-    set(CPPLIB_CUDA_LIBRARY_NAME "nnabla_cuda")
+    set(CPPLIB_CUDA_LIBRARY_NAME nnabla_cuda${EXT_CUDA_LIB_NAME_SUFFIX})
     set(CPPLIB_CUDA_TARGET_FILE ${CPPLIB_CUDA_LIBRARY})
     get_filename_component(CPPLIB_CUDA_TARGET_FILE_NAME ${CPPLIB_CUDA_TARGET_FILE} NAME)
     

@@ -110,11 +110,6 @@ bwd-nnabla-ext-cuda-cpplib: docker_image_build_cuda
 	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
 	&& docker run $(DOCKER_RUN_OPTS) $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA) make -f build-tools/make/build.mk nnabla-ext-cuda-cpplib
 
-.PHONY: bwd-nnabla-ext-cuda-cpplib-rpm
-bwd-nnabla-ext-cuda-cpplib-rpm: docker_image_build_cuda
-	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
-	&& docker run $(DOCKER_RUN_OPTS) $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA) make -f build-tools/make/build.mk nnabla-ext-cuda-cpplib-rpm
-
 .PHONY: bwd-nnabla-ext-cuda-wheel
 bwd-nnabla-ext-cuda-wheel: docker_image_build_cuda
 	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
@@ -126,7 +121,7 @@ bwd-nnabla-ext-cuda-wheel: docker_image_build_cuda
 bwd-nnabla-cpplib-multi-gpu: docker_image_build_cuda_multi_gpu
 	mkdir -p ~/.ccache
 	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
-	&& docker run $(DOCKER_RUN_OPTS) $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA_MULTI_GPU) make -f build-tools/make/build.mk nnabla-cpplib-deb
+	&& docker run $(DOCKER_RUN_OPTS) $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA_MULTI_GPU) make -f build-tools/make/build.mk nnabla-cpplib
 
 .PHONY: bwd-nnabla-wheel-multi-gpu
 bwd-nnabla-wheel-multi-gpu: docker_image_build_cuda_multi_gpu
@@ -138,7 +133,7 @@ bwd-nnabla-wheel-multi-gpu: docker_image_build_cuda_multi_gpu
 bwd-nnabla-ext-cuda-cpplib-multi-gpu: docker_image_build_cuda_multi_gpu
 	mkdir -p ~/.ccache
 	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
-	&& docker run $(DOCKER_RUN_OPTS) $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA_MULTI_GPU) make -f build-tools/make/build.mk nnabla-ext-cuda-cpplib-multi-gpu-deb
+	&& docker run $(DOCKER_RUN_OPTS) $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA_MULTI_GPU) make -f build-tools/make/build.mk nnabla-ext-cuda-cpplib-multi-gpu
 
 .PHONY: bwd-nnabla-ext-cuda-wheel-multi-gpu
 bwd-nnabla-ext-cuda-wheel-multi-gpu: docker_image_build_cuda_multi_gpu

@@ -41,15 +41,17 @@ python -m venv --system-site-packages env || GOTO :error
 CALL env\scripts\activate.bat || GOTO :error
 
 pip install --no-deps %WHL% || GOTO :error
-
+chcp 932
 cmake -G "%generate_target%" ^
-      -DPYTHON_COMMAND_NAME=python ^
       -DBUILD_CPP_LIB=OFF ^
       -DBUILD_PYTHON_PACKAGE=ON ^
-      -DNNABLA_DIR=%nnabla_root% ^
       -DCPPLIB_BUILD_DIR=%nnabla_build_folder% ^
-      -DCPPLIB_LIBRARY=%nnabla_build_folder%\bin\%build_type%\nnabla.dll ^
-      -DCPPLIB_CUDA_LIBRARY=%nnabla_ext_cuda_build_folder%\bin\%build_type%\nnabla_cuda.dll ^
+      -DCPPLIB_CUDA_LIBRARY=%nnabla_ext_cuda_build_folder%\bin\%build_type%\nnabla_cuda%ext_cuda_lib_name_suffix%.dll ^
+      -DCPPLIB_LIBRARY=%nnabla_build_folder%\bin\%build_type%\nnabla%lib_name_suffix%.dll ^
+      -DEXT_CUDA_LIB_NAME_SUFFIX=%ext_cuda_lib_name_suffix% ^
+      -DLIB_NAME_SUFFIX=%lib_name_suffix% ^
+      -DNNABLA_DIR=%nnabla_root% ^
+      -DPYTHON_COMMAND_NAME=python ^
       %nnabla_ext_cuda_root% || GOTO :error
 
 msbuild wheel.vcxproj /p:Configuration=%build_type% /verbosity:minimal || GOTO :error
