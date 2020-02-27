@@ -80,7 +80,7 @@ class DaliIterator(object):
         outputs = self.pipeline.run()
 
         # force outputs to be list object.
-        if not isinstance(outputs, list):
+        if not hasattr(outputs, '__iter__'):
             outputs = [outputs]
 
         # Get current cpu&gpu context first.
