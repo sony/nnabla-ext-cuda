@@ -33,6 +33,13 @@ static __global__ void kernel_randint_post_process(int size, int *dev_ptr,
   }
 }
 
+__global__ void kernel_curand_init(const int size, const int seed,
+                                   const int offset, curandState *state) {
+  NBLA_CUDA_KERNEL_LOOP(idx, size) {
+    curand_init(seed, idx, offset, &state[idx]);
+  }
+}
+
 template <>
 void curand_generate_rand<float>(curandGenerator_t gen, float low, float high,
                                  float *dev_ptr, size_t size) {
@@ -48,5 +55,10 @@ void curand_generate_rand<int>(curandGenerator_t gen, int low, int high,
       curandGenerateUniform(gen, reinterpret_cast<float *>(dev_ptr), size));
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_randint_post_process, size, dev_ptr,
                                  low, high);
+}
+
+void curand_initialize(const int size, const int seed, const int offset,
+                       curandState *state) {
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_curand_init, size, seed, offset, state);
 }
 }
