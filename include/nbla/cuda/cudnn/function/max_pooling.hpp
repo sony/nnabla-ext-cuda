@@ -36,6 +36,16 @@ public:
       : BasePoolingCudaCudnn<typename MaxPooling<T>::base_pooling_type>(
             ctx, kernel, stride, ignore_border, pad, channel_last) {}
   string name() override { return "MaxPoolingCudaCudnn"; }
+  // NOTE: With an unknown reason, creating this class derived from
+  // `BasePoolingCudaCudnn<MaxPooling<T>>` gave a compile error. So I decided to
+  // derive it from BasePooling class which seems to succeed, but the problem is
+  // that it doesn't implement `copy()` function. I copy & paste the copy
+  // function found in the MaxPooling class although it's ugly.
+  shared_ptr<Function> copy() const override {
+    return create_MaxPooling(this->ctx_, this->kernel_, this->stride_,
+                             this->ignore_border_, this->pad_,
+                             this->channel_last_);
+  }
   cudnnPoolingMode_t mode() const override { return CUDNN_POOLING_MAX; }
 };
 }
