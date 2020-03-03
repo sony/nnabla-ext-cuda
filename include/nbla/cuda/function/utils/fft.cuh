@@ -292,9 +292,8 @@ void exec_cufft(const Context ctx, const Tcu *input_ptr, Tcu *output_ptr,
       cufftXtMakePlanMany(plan, rank, n.data(), inembed.data(), istride, idist,
                           input_type, onembed.data(), ostride, odist,
                           output_type, batch, &work_size, execution_type));
-  shared_ptr<CudaCachedArray> arr_buff(
-      new CudaCachedArray(work_size, get_dtype<unsigned char>(), ctx));
-  unsigned char *buff = arr_buff->pointer<unsigned char>();
+  NdArray arr_buff(Shape_t{static_cast<Size_t>(work_size)});
+  void *buff = arr_buff.cast(get_dtype<unsigned char>(), ctx, true)->pointer();
   NBLA_CUFFT_CHECK(cufftSetWorkArea(plan, (void *)buff));
 
   // Execute FFT
