@@ -727,20 +727,22 @@ void GRUCudaCudnn<T>::backward_impl(const Variables &inputs,
                                   this->ctx_, true)->pointer<void>();
   }
 
-  shared_ptr<CudaCachedArray> mem_x_accum{nullptr};
-  shared_ptr<CudaCachedArray> mem_h_accum{nullptr};
+  NdArray mem_x_accum;
+  NdArray mem_h_accum;
   Tcu *dx_tmp = g_x;
   Tcu *dh_tmp = g_h;
 
   if (!propagate_down[0] || accum[0]) {
-    mem_x_accum.reset(new CudaCachedArray(inputs[0]->size() * sizeof(Tcu),
-                                          dtypes::BYTE, this->ctx_));
-    dx_tmp = mem_x_accum->pointer<Tcu>();
+    mem_x_accum.reshape({static_cast<Size_t>(inputs[0]->size() * sizeof(Tcu))},
+                        true);
+    dx_tmp = mem_x_accum.cast(dtypes::BYTE,
+                              this->ctx_, true)->pointer<Tcu>();
   }
   if (!propagate_down[1] || accum[1]) {
-    mem_h_accum.reset(new CudaCachedArray(inputs[1]->size() * sizeof(Tcu),
-                                          dtypes::BYTE, this->ctx_));
-    dh_tmp = mem_h_accum->pointer<Tcu>();
+    mem_h_accum.reshape({static_cast<Size_t>(inputs[1]->size() * sizeof(Tcu))},
+      true);
+    dh_tmp = mem_h_accum.cast(dtypes::BYTE,
+                              this->ctx_, true)->pointer<Tcu>();
   }
 
   NBLA_CUDNN_CHECK(cudnnRNNBackwardData(
