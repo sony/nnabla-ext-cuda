@@ -248,12 +248,12 @@ void FusedBatchNormalizationCudaCudnn<T>::backward_impl(
         prop_down_workspace_size, inputs[1]->size() * sizeof_dtype(DRV_BN_T()));
   }
   void *prop_down_buf = nullptr;
-  shared_ptr<CudaCachedArray> prop_down_workspace(
-      prop_down_workspace_size ? new CudaCachedArray(prop_down_workspace_size,
-                                                     dtypes::BYTE, this->ctx_)
-                               : nullptr);
+  NdArray prop_down_workspace;
   if (prop_down_workspace_size) {
-    prop_down_buf = prop_down_workspace->pointer();
+    prop_down_workspace.reshape({static_cast<Size_t>(prop_down_workspace_size)},
+                                true);
+    prop_down_buf = prop_down_workspace.cast(dtypes::BYTE,
+                                             this->ctx_, true)->pointer<void>();
   }
 
   Tw *dx = propagate_down[0]
