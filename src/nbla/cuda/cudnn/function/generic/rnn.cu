@@ -722,8 +722,8 @@ void RNNCudaCudnn<T>::backward_impl(const Variables &inputs,
   void *mem_reserve_buff
     = mem_reservespace_.cast(dtypes::BYTE, this->ctx_, true)->pointer<void>();
 
-  NdArray mem_x_accum{nullptr};
-  NdArray mem_h_accum{nullptr};
+  NdArray mem_x_accum;
+  NdArray mem_h_accum;
   Tcu *dx_tmp = g_x;
   Tcu *dh_tmp = g_h;
 
