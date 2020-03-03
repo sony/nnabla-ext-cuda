@@ -561,13 +561,16 @@ void GRUCudaCudnn<T>::forward_impl_training(const Variables &inputs,
     mem_buff = mem_workspace.cast(dtypes::BYTE,
                                   this->ctx_, true)->pointer<void>();
   }
-  if (mem_reservespace_) {
-    NBLA_CHECK(mem_reservespace_->size() == reserve_size_, error_code::value,
+  if (mem_reservespace_.array()->get_num_arrays() > 0) {
+    NBLA_CHECK(mem_reservespace_.size() == reserve_size_, error_code::value,
                "reserve_size_ is inconsistent with the previously set "
                "reservespace size.");
   }
-  mem_reservespace_.reset(
-      new CudaCachedArray(reserve_size_, dtypes::BYTE, this->ctx_));
+  else {
+    mem_reservespace_.reshape({static_cast<Size_t>(reserve_size_)}, true);
+  }
+  void *mem_reserve_buff
+    = mem_reservespace_.cast(dtypes::BYTE, this->ctx_, true)->pointer<void>();
 
   auto alpha = get_cudnn_scalar_arg<T>(1);
   auto beta = get_cudnn_scalar_arg<T>(0);
@@ -575,7 +578,7 @@ void GRUCudaCudnn<T>::forward_impl_training(const Variables &inputs,
       cudnn_handle, rnn_desc_.desc, seq_len_, x_desc_->data(), x, h_desc_.desc,
       h, c_x_desc_.desc, NULL, params_desc_.desc, params, y_desc_->data(), y,
       h_n_desc_.desc, h_n, c_y_desc_.desc, NULL, mem_buff,
-      workspace_size_, mem_reservespace_->pointer(), reserve_size_));
+      workspace_size_, mem_reserve_buff, reserve_size_));
 }
 
 template <typename T>
@@ -639,9 +642,9 @@ void GRUCudaCudnn<T>::backward_impl(const Variables &inputs,
 
   NBLA_CHECK(this->training_, error_code::value,
              "Backward is called for training only");
-  NBLA_CHECK(mem_reservespace_, error_code::value,
+  NBLA_CHECK(mem_reservespace_.array()->get_num_arrays() > 0, error_code::value,
              "Reserve space should be allocated memory space.");
-  NBLA_CHECK(mem_reservespace_->size() == reserve_size_, error_code::value,
+  NBLA_CHECK(mem_reservespace_.size() == reserve_size_, error_code::value,
              "reserve_size_ is inconsistent with the previously set "
              "reservespace size.");
 
@@ -727,6 +730,9 @@ void GRUCudaCudnn<T>::backward_impl(const Variables &inputs,
                                   this->ctx_, true)->pointer<void>();
   }
 
+  void *mem_reserve_buff
+    = mem_reservespace_.cast(dtypes::BYTE, this->ctx_, true)->pointer<void>();
+
   NdArray mem_x_accum;
   NdArray mem_h_accum;
   Tcu *dx_tmp = g_x;
@@ -750,8 +756,7 @@ void GRUCudaCudnn<T>::backward_impl(const Variables &inputs,
       y_desc_->data(), g_y, h_n_desc_.desc, g_h_n, c_y_desc_.desc, NULL,
       params_desc_.desc, params, h_desc_.desc, h, c_x_desc_.desc, NULL,
       x_desc_->data(), dx_tmp, h_desc_.desc, dh_tmp, c_x_desc_.desc, NULL,
-      mem_buff, workspace_size_, mem_reservespace_->pointer(),
-      reserve_size_));
+      mem_buff, workspace_size_, mem_reserve_buff, reserve_size_));
 
   if (propagate_down[0] && accum[0]) {
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_accumulate_x_and_h<Tcu>),
@@ -768,7 +773,7 @@ void GRUCudaCudnn<T>::backward_impl(const Variables &inputs,
         cudnn_handle, rnn_desc_.desc, seq_len_, x_desc_->data(), x,
         h_desc_.desc, h, y_desc_->data(), y, mem_buff,
         workspace_size_, params_desc_.desc, g_params,
-        mem_reservespace_->pointer(), reserve_size_));
+        mem_reserve_buff, reserve_size_));
   }
 
   bool w_init_accum = false;
