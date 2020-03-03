@@ -746,7 +746,7 @@ void GRUCudaCudnn<T>::backward_impl(const Variables &inputs,
   }
   if (!propagate_down[1] || accum[1]) {
     mem_h_accum.reshape({static_cast<Size_t>(inputs[1]->size() * sizeof(Tcu))},
-      true);
+                         true);
     dh_tmp = mem_h_accum.cast(dtypes::BYTE,
                               this->ctx_, true)->pointer<Tcu>();
   }
