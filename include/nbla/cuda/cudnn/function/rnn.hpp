@@ -130,7 +130,7 @@ protected:
 
   vector<pair<int, int>> weight_offsets_;
   vector<pair<int, int>> bias_offsets_;
-  shared_ptr<CudaCachedArray> mem_reservespace_{nullptr};
+  NdArray mem_reservespace_;
 
   virtual void copy_weight_bias_to_params(Tcu *params, const Tcu *w_init,
                                           const Tcu *weight, const Tcu *bias,
