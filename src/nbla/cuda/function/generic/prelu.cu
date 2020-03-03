@@ -148,9 +148,8 @@ void PReLUCuda<T>::backward_impl(const Variables &inputs,
     // 1) Element-wise backward operation (sample dimensions are reduced).
     // 2) Reduction to weight vector (or scalar) by using well-tuned cublas
     // function.
-    shared_ptr<CudaCachedArray> arr_buff(
-        new CudaCachedArray(insize, get_dtype<Tc>(), this->ctx_));
-    Tc *buff = arr_buff->pointer<Tc>();
+    NdArray arr_buff(Shape_t{static_cast<Size_t>(insize)});
+    Tc *buff = arr_buff.cast(get_dtype<Tc>(), this->ctx_, true)->pointer<Tc>();
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(backward_prelu_kernel_weights_temp, insize,
                                    outsize, dy, x, buff);
     if (channels == 1) {
