@@ -554,10 +554,12 @@ void GRUCudaCudnn<T>::forward_impl_training(const Variables &inputs,
   this->copy_weight_bias_to_params(params, w_init, weight, bias, weight_exists_,
                                    bias_exists_);
 
-  shared_ptr<CudaCachedArray> mem_workspace{nullptr};
+  void *mem_buff = nullptr;
+  NdArray mem_workspace;
   if (workspace_size_) {
-    mem_workspace.reset(
-        new CudaCachedArray(workspace_size_, dtypes::BYTE, this->ctx_));
+    mem_workspace.reshape({static_cast<Size_t>(workspace_size_)}, true);
+    mem_buff = mem_workspace.cast(dtypes::BYTE,
+                                  this->ctx_, true)->pointer<void>();
   }
   if (mem_reservespace_) {
     NBLA_CHECK(mem_reservespace_->size() == reserve_size_, error_code::value,
@@ -572,7 +574,7 @@ void GRUCudaCudnn<T>::forward_impl_training(const Variables &inputs,
   NBLA_CUDNN_CHECK(cudnnRNNForwardTraining(
       cudnn_handle, rnn_desc_.desc, seq_len_, x_desc_->data(), x, h_desc_.desc,
       h, c_x_desc_.desc, NULL, params_desc_.desc, params, y_desc_->data(), y,
-      h_n_desc_.desc, h_n, c_y_desc_.desc, NULL, mem_workspace->pointer(),
+      h_n_desc_.desc, h_n, c_y_desc_.desc, NULL, mem_buff,
       workspace_size_, mem_reservespace_->pointer(), reserve_size_));
 }
 
@@ -610,17 +612,18 @@ void GRUCudaCudnn<T>::forward_impl_inference(const Variables &inputs,
   this->copy_weight_bias_to_params(params, w_init, weight, bias, weight_exists_,
                                    bias_exists_);
 
-  shared_ptr<CudaCachedArray> mem_workspace{nullptr};
+  void *mem_buff = nullptr;
+  NdArray mem_workspace;
   if (workspace_size_) {
-    mem_workspace.reset(
-        new CudaCachedArray(workspace_size_, dtypes::BYTE, this->ctx_));
+    mem_workspace.reshape({static_cast<Size_t>(workspace_size_)}, true);
+    mem_buff = mem_workspace.cast(dtypes::BYTE,
+                                  this->ctx_, true)->pointer<void>();
   }
 
   NBLA_CUDNN_CHECK(cudnnRNNForwardInference(
       cudnn_handle, rnn_desc_.desc, seq_len_, x_desc_->data(), x, h_desc_.desc,
       h, c_x_desc_.desc, NULL, params_desc_.desc, params, y_desc_->data(), y,
-      h_n_desc_.desc, h_n, c_y_desc_.desc, NULL,
-      mem_workspace ? mem_workspace->pointer() : nullptr, workspace_size_));
+      h_n_desc_.desc, h_n, c_y_desc_.desc, NULL, mem_buff, workspace_size_));
 }
 
 template <typename T>
@@ -716,10 +719,12 @@ void GRUCudaCudnn<T>::backward_impl(const Variables &inputs,
     g_bias = inputs[4]->cast_grad_and_get_pointer<Tcu>(this->ctx_, !accum[4]);
   }
 
-  shared_ptr<CudaCachedArray> mem_workspace{nullptr};
+  void *mem_buff = nullptr;
+  NdArray mem_workspace;
   if (workspace_size_) {
-    mem_workspace.reset(
-        new CudaCachedArray(workspace_size_, dtypes::BYTE, this->ctx_));
+    mem_workspace.reshape({static_cast<Size_t>(workspace_size_)}, true);
+    mem_buff = mem_workspace.cast(dtypes::BYTE,
+                                  this->ctx_, true)->pointer<void>();
   }
 
   shared_ptr<CudaCachedArray> mem_x_accum{nullptr};
@@ -743,7 +748,7 @@ void GRUCudaCudnn<T>::backward_impl(const Variables &inputs,
       y_desc_->data(), g_y, h_n_desc_.desc, g_h_n, c_y_desc_.desc, NULL,
       params_desc_.desc, params, h_desc_.desc, h, c_x_desc_.desc, NULL,
       x_desc_->data(), dx_tmp, h_desc_.desc, dh_tmp, c_x_desc_.desc, NULL,
-      mem_workspace->pointer(), workspace_size_, mem_reservespace_->pointer(),
+      mem_buff, workspace_size_, mem_reservespace_->pointer(),
       reserve_size_));
 
   if (propagate_down[0] && accum[0]) {
@@ -759,7 +764,7 @@ void GRUCudaCudnn<T>::backward_impl(const Variables &inputs,
       (inputs.size() == 5 && propagate_down[4])) {
     NBLA_CUDNN_CHECK(cudnnRNNBackwardWeights(
         cudnn_handle, rnn_desc_.desc, seq_len_, x_desc_->data(), x,
-        h_desc_.desc, h, y_desc_->data(), y, mem_workspace->pointer(),
+        h_desc_.desc, h, y_desc_->data(), y, mem_buff,
         workspace_size_, params_desc_.desc, g_params,
         mem_reservespace_->pointer(), reserve_size_));
   }
