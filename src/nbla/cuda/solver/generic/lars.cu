@@ -119,12 +119,10 @@ void LarsCuda<T>::update_impl(const string &key, VariablePtr param) {
   Tc *g_sq = g_sq_arr->cast(dtype, this->ctx_)->pointer<Tc>();
   Tc *d_sq = d_sq_arr->cast(dtype, this->ctx_)->pointer<Tc>();
 
-  shared_ptr<CudaCachedArray> d_buff_arr =
-      make_shared<CudaCachedArray>(blocks, dtype, this->ctx_);
-  Tc *d_buff = d_buff_arr->pointer<Tc>();
-  shared_ptr<CudaCachedArray> g_buff_arr =
-      make_shared<CudaCachedArray>(blocks, dtype, this->ctx_);
-  Tc *g_buff = g_buff_arr->pointer<Tc>();
+  NdArray d_buff_arr(Shape_t{blocks});
+  Tc *d_buff = d_buff_arr.cast(dtype, this->ctx_, true)->pointer<Tc>();
+  NdArray g_buff_arr(Shape_t{blocks});
+  Tc *g_buff = g_buff_arr.cast(dtype, this->ctx_, true)->pointer<Tc>();
 
   Size_t size = param->size();
   VariablePtr v_var = this->states_.at(key).pstate["v"];
