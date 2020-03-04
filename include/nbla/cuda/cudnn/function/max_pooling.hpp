@@ -36,7 +36,13 @@ public:
       : BasePoolingCudaCudnn<typename MaxPooling<T>::base_pooling_type>(
             ctx, kernel, stride, ignore_border, pad, channel_last) {}
   string name() override { return "MaxPoolingCudaCudnn"; }
-  cudnnPoolingMode_t mode() const override { return CUDNN_POOLING_MAX; }
+  cudnnPoolingMode_t mode() const override {
+    auto cudnn_handle_manager = SingletonManager::get<CudnnHandleManager>();
+    bool deterministic = cudnn_handle_manager->get_deterministic_option();
+    if (deterministic)
+      return CUDNN_POOLING_MAX_DETERMINISTIC;
+    return CUDNN_POOLING_MAX;
+  }
 };
 }
 #endif
