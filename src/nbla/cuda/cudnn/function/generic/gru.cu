@@ -547,9 +547,9 @@ void GRUCudaCudnn<T>::forward_impl_training(const Variables &inputs,
   }
 
   // Create flattened weight buffer.
-  CudaCachedArray params_array(params_size_in_bytes_, dtypes::BYTE, this->ctx_);
+  NdArray params_array(Shape_t{static_cast<Size_t>(params_size_in_bytes_)});
   params_array.zero(); // Initialize params with 0
-  Tcu *params = params_array.pointer<Tcu>();
+  Tcu *params = params_array.cast(dtypes::BYTE, this->ctx_)->pointer<Tcu>();
 
   this->copy_weight_bias_to_params(params, w_init, weight, bias, weight_exists_,
                                    bias_exists_);
@@ -608,9 +608,9 @@ void GRUCudaCudnn<T>::forward_impl_inference(const Variables &inputs,
   }
 
   // Create flattened weight buffer.
-  CudaCachedArray params_array(params_size_in_bytes_, dtypes::BYTE, this->ctx_);
+  NdArray params_array(Shape_t{static_cast<Size_t>(params_size_in_bytes_)});
   params_array.zero(); // Initialize params with 0
-  Tcu *params = params_array.pointer<Tcu>();
+  Tcu *params = params_array.cast(dtypes::BYTE, this->ctx_)->pointer<Tcu>();
 
   this->copy_weight_bias_to_params(params, w_init, weight, bias, weight_exists_,
                                    bias_exists_);
@@ -687,13 +687,12 @@ void GRUCudaCudnn<T>::backward_impl(const Variables &inputs,
   Tcu *g_weight{nullptr};
   Tcu *g_bias{nullptr};
 
-  CudaCachedArray params_array(params_size_in_bytes_, dtypes::BYTE, this->ctx_);
-  CudaCachedArray g_params_array(params_size_in_bytes_, dtypes::BYTE,
-                                 this->ctx_);
+  NdArray params_array(Shape_t{static_cast<Size_t>(params_size_in_bytes_)});
+  NdArray g_params_array(Shape_t{static_cast<Size_t>(params_size_in_bytes_)});
   params_array.zero(); // Initialize params with 0
   g_params_array.zero();
-  Tcu *params = params_array.pointer<Tcu>();
-  Tcu *g_params = g_params_array.pointer<Tcu>();
+  Tcu *params = params_array.cast(dtypes::BYTE, this->ctx_)->pointer<Tcu>();
+  Tcu *g_params = g_params_array.cast(dtypes::BYTE, this->ctx_)->pointer<Tcu>();
 
   this->copy_weight_bias_to_params(params, w_init, weight, bias, weight_exists_,
                                    bias_exists_);
