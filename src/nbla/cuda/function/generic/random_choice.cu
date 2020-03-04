@@ -124,12 +124,11 @@ void RandomChoiceCuda<T>::sample_with_replacement(const Variables &inputs,
   auto w_size = w->shape().back(); // size of each weight vector
   auto u_size = this->inner_loop_; // samples to draw per weight vector
 
-  ArrayPtr tmp[] = {
-      make_shared<CudaCachedArray>(x->size(), get_dtype<Tcu>(), this->ctx_),
-      make_shared<CudaCachedArray>(y->size(), get_dtype<float>(), this->ctx_)};
-
-  auto w_sums = tmp[0]->pointer<Tcu>();
-  auto u_vals = tmp[1]->pointer<float>();
+  NdArray tmp0(Shape_t{x->size()});
+  NdArray tmp1(Shape_t{y->size()});
+  auto w_sums = tmp0.cast(get_dtype<Tcu>(), this->ctx_, true)->pointer<Tcu>();
+  auto u_vals = tmp1.cast(get_dtype<float>(), 
+                          this->ctx_, true)->pointer<float>();
 
   // Generate random choices for each output sample point.
   curand_generate_rand<float>(curand_generator_, 0, 1, u_vals, y->size());
@@ -164,20 +163,19 @@ void RandomChoiceCuda<T>::sample_without_replace(const Variables &inputs,
   auto u_size = this->inner_loop_; // samples to draw per weight vector
   auto b_size = this->outer_loop_; // batch size (left N-1 dims of x and w)
 
-  ArrayPtr tmp[] = {
-      make_shared<CudaCachedArray>(x->size(), get_dtype<Tcu>(), this->ctx_),
-      make_shared<CudaCachedArray>(x->size(), get_dtype<Tcu>(), this->ctx_),
-      make_shared<CudaCachedArray>(y->size(), get_dtype<float>(), this->ctx_)};
+  NdArray tmp0(Shape_t{x->size()});
+  NdArray tmp1(Shape_t{x->size()});
+  NdArray tmp2(Shape_t{y->size()});
+  auto w_data = tmp0.cast(get_dtype<Tcu>(), this->ctx_, true)->pointer<Tcu>();
+  auto w_sums = tmp1.cast(get_dtype<Tcu>(), this->ctx_, true)->pointer<Tcu>();
+  auto u_vals = tmp2.cast(get_dtype<float>(),
+                          this->ctx_, true)->pointer<float>();
 
   // Copy the weight data to writable memory where we can remove a
   // category (by nulling it's weight) after each round.
   auto w_data_ptr = w->get_data_pointer<Tcu>(this->ctx_);
   thrust::copy_n(thrust::device_pointer_cast(w_data_ptr), w->size(),
-                 thrust::device_pointer_cast(tmp[0]->pointer<Tcu>()));
-
-  auto w_data = tmp[0]->pointer<Tcu>();
-  auto w_sums = tmp[1]->pointer<Tcu>();
-  auto u_vals = tmp[2]->pointer<float>();
+                 thrust::device_pointer_cast(w_data));
 
   // Generate random choices for each output sample point.
   curand_generate_rand<float>(curand_generator_, 0, 1, u_vals, y->size());
