@@ -43,11 +43,11 @@ void curand_generate_randn<float>(curandGenerator_t gen, float mu, float sigma,
                                   float *dev_ptr, size_t size) {
   if (size % 2 != 0) {
     // Normal generator requires length with multiple of two.
+    Context ctx;
+    ctx.set_device_id(std::to_string(cuda_get_device()));
+    ctx.set_array_class("CudaCachedArray");
     NdArray arr(Shape_t{static_cast<Size_t>(size + 1)});
-    float *buff
-      = arr.cast(get_dtype<float>(),
-                 Context().set_device_id(std::to_string(cuda_get_device())), 
-                 true)->pointer<float>();
+    float *buff = arr.cast(get_dtype<float>(), ctx, true)->pointer<float>();
 
     NBLA_CURAND_CHECK(curandGenerateNormal(gen, buff, size + 1, mu, sigma));
     NBLA_CUDA_CHECK(cudaMemcpy(dev_ptr, buff, size * sizeof(float),
