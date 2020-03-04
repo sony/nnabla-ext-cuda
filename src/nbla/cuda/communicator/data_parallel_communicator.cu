@@ -120,10 +120,9 @@ void DataParallelCommunicatorNccl<T>::allreduce(bool division, bool inplace) {
     auto comm = comms_[i];
     auto stream = streams_[i];
 
-    shared_ptr<CudaCachedArray> arr_buff = // TODO: address 16 bits also here?
-        make_shared<CudaCachedArray>(this->total_params_, get_dtype<Tc>(), ctx);
-
-    Tc *buff = arr_buff->pointer<Tc>();
+    // TODO: address 16 bits also here?
+    NdArray arr_buff(Shape_t{this->total_params_});
+    Tc *buff = arr_buff.cast(get_dtype<Tc>(), ctx, true)->pointer<Tc>();
     Size_t type_size = sizeof(Tc);
 
     for (auto elm : func_named_param) {
@@ -148,10 +147,10 @@ void DataParallelCommunicatorNccl<T>::allreduce(bool division, bool inplace) {
     auto comm = comms_[i];
     auto stream = streams_[i];
 
-    shared_ptr<CudaCachedArray> arr_buff = // TODO: address 16 bits also here?
-        make_shared<CudaCachedArray>(this->total_params_, get_dtype<Tc>(), ctx);
+    // TODO: address 16 bits also here?
+    NdArray arr_buff(Shape_t{this->total_params_});
+    Tc *buff = arr_buff.cast(get_dtype<Tc>(), ctx, true)->pointer<Tc>();
 
-    Tc *buff = arr_buff->pointer<Tc>();
     ncclResult_t ret =
         ncclAllReduce(buff, buff, this->total_params_, get_nccl_dtype<Tc>(),
                       ncclSum, comm, 0); // use default stream
@@ -176,11 +175,10 @@ void DataParallelCommunicatorNccl<T>::allreduce(bool division, bool inplace) {
       auto comm = comms_[i];
       auto stream = streams_[i];
 
-      shared_ptr<CudaCachedArray> arr_buff = // TODO: address 16 bits also here?
-          make_shared<CudaCachedArray>(this->total_params_, get_dtype<Tc>(),
-                                       ctx);
+      // TODO: address 16 bits also here?
+      NdArray arr_buff(Shape_t{this->total_params_});
+      Tc *buff = arr_buff.cast(get_dtype<Tc>(), ctx, true)->pointer<Tc>();
 
-      Tc *buff = arr_buff->pointer<Tc>();
       NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace, stream,
                                         this->total_params_, n_devices_, buff);
     }
@@ -196,10 +194,9 @@ void DataParallelCommunicatorNccl<T>::allreduce(bool division, bool inplace) {
     auto comm = comms_[i];
     auto stream = streams_[i];
 
-    shared_ptr<CudaCachedArray> arr_buff = // TODO: address 16 bits also here?
-        make_shared<CudaCachedArray>(this->total_params_, get_dtype<Tc>(), ctx);
-
-    Tc *buff = arr_buff->pointer<Tc>();
+    // TODO: address 16 bits also here?
+    NdArray arr_buff(Shape_t{this->total_params_});
+    Tc *buff = arr_buff.cast(get_dtype<Tc>(), ctx, true)->pointer<Tc>();
     Size_t type_size = sizeof(Tc);
 
     for (auto elm : func_named_param) {
