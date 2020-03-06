@@ -402,9 +402,9 @@ void GRUCudaCudnn<T>::setup_impl(const Variables &inputs,
   // Set dropout descriptor
   size_t dropout_stateSize;
   NBLA_CUDNN_CHECK(cudnnDropoutGetStatesSize(cudnn_handle, &dropout_stateSize));
-  state_array_ =
-      make_shared<CudaCachedArray>(dropout_stateSize, dtypes::BYTE, this->ctx_);
-  void *state_ptr = state_array_->pointer<void>();
+  state_array_.reshape(Shape_t{static_cast<Size_t>(dropout_stateSize)}, true);
+  void *state_ptr = state_array_.cast(dtypes::BYTE,
+                                      this->ctx_, true)->pointer<void>();
   std::random_device seed_gen;
   std::default_random_engine engine(seed_gen());
   std::uniform_int_distribution<> dist(0, 999);
@@ -454,8 +454,9 @@ void GRUCudaCudnn<T>::setup_impl(const Variables &inputs,
 
   // Temporary buffer. This is used only for getting address offsets of matrix
   // and biases from the head of the params pointer.
-  CudaCachedArray params_array(params_size_in_bytes_, dtypes::BYTE, this->ctx_);
-  Tcu *params = params_array.pointer<Tcu>();
+  NdArray params_array(Shape_t{static_cast<Size_t>(params_size_in_bytes_)});
+  Tcu *params = params_array.cast(dtypes::BYTE,
+                                  this->ctx_, true)->pointer<Tcu>();
 
   weight_offsets_.clear();
   bias_offsets_.clear();

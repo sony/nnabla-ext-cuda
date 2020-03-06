@@ -60,7 +60,7 @@ protected:
   WCudnnTensorDesc c_x_desc_; // dummy
   WCudnnTensorDesc c_y_desc_; // dummy
 
-  shared_ptr<CudaCachedArray> state_array_;
+  NdArray state_array_;
   WCudnnDropoutDesc dropout_desc_;
   WCudnnRNNDesc rnn_desc_;
   cudnnRNNInputMode_t inputMode;
