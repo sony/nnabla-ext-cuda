@@ -86,7 +86,7 @@ void TopKDataCuda<T>::setup_impl(const Variables &inputs,
   cuda_set_device(this->device_);
 
   if (this->k_ > 1024) {
-    this->buffer_.reshape(Shape_t{outputs[0]->size(this->base_axis_)}, true);
+    this->buffer_.reshape(Shape_t{this->ss_}, true);
   }
   else {
     this->buffer_.reshape(Shape_t{static_cast<Size_t>(sizeof(Buffer<Tcu>))},
