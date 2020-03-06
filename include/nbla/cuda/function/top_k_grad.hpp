@@ -36,7 +36,7 @@ public:
 
 protected:
   int device_;
-  shared_ptr<CudaCachedArray> buffer_;
+  NdArray buffer_;
 
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
