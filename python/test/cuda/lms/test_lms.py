@@ -92,14 +92,16 @@ class GetVariableSizeFunc(object):
 
 
 @pytest.mark.parametrize("type_config, device_id, batch_size, num_dilations, "\
-                         "learning_rate, max_iter, gpu_memory_size, max_prefetch_bytes",
-                         [('float', '0', batch_size, num_dilations, learning_rate, 2, mem_size, mem_size / 2),
-                          ('half', '0', batch_size, num_dilations, learning_rate, 2, mem_size, mem_size / 2)])
+                         "learning_rate, max_iter, gpu_memory_size, max_prefetch_bytes, cast_prefetch",
+                         [('float', '0', batch_size, num_dilations, learning_rate, 2, mem_size, mem_size * 1.5, False),
+                          ('float', '0', batch_size, num_dilations, learning_rate, 2, mem_size, mem_size * 1.5, True),
+                          ('half', '0', batch_size, num_dilations, learning_rate, 2, mem_size, mem_size * 1.5, False),
+                          ('half', '0', batch_size, num_dilations, learning_rate, 2, mem_size, mem_size * 1.5, True)])
 
 
 @pytest.mark.skipif(skip_test, reason='Out of GPU memory by the variables used in a single function.')
 def test_lms(type_config, device_id, batch_size, num_dilations, 
-             learning_rate, max_iter, gpu_memory_size, max_prefetch_bytes):
+             learning_rate, max_iter, gpu_memory_size, max_prefetch_bytes, cast_prefetch):
 
     #import time
     #time.sleep(10)
@@ -173,8 +175,8 @@ def test_lms(type_config, device_id, batch_size, num_dilations,
                 initial_param2.append(p.d)
 
             # Create a scheduler
-            scheduler = lms.SwapInOutScheduler(cpu_ctx, gpu_ctx,
-                                               gpu_memory_size, max_prefetch_bytes)
+            scheduler = lms.SwapInOutScheduler(cpu_ctx, gpu_ctx, gpu_memory_size, 
+                                               max_prefetch_bytes, cast_prefetch)
 
             # Training loop.
             for i in range(max_iter):
