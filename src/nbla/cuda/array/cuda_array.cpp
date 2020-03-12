@@ -20,6 +20,7 @@
 #include <nbla/cuda/event.hpp>
 #include <nbla/cuda/function/my_cuda_memset.hpp>
 #include <nbla/singleton_manager.hpp>
+#include <nbla/nd_array.hpp>
 
 #include <thrust/device_ptr.h>
 #include <thrust/fill.h>
@@ -177,10 +178,13 @@ void synchronizer_cuda_array_cpu_array(Array *src, Array *dst, const int async_f
 
   if (src->dtype() != dst->dtype()) {
     // if dtype mismatches, convert dtype first, and then transfer gpu-cpu.
-    unique_ptr<Array> tmp(new CudaCachedArray(src->size(), dst->dtype(), src->context()));
+    NdArray tmp_arr(Shape_t{src->size()});
+    // cast() in synchronizer passes the off-recording flag for LMS;
+    Array *tmp = tmp_arr.array()->cast(dst->dtype(), src->context(),
+                                       true, AsyncFlag::OFFREC);
     src->wait_event(tmp->context(), async_flags);
     tmp->copy_from(src);
-    synchronizer_cuda_array_cpu_array(tmp.get(), dst, async_flags);
+    synchronizer_cuda_array_cpu_array(tmp, dst, async_flags);
     return;
   }
 
@@ -203,10 +207,13 @@ void synchronizer_cpu_array_cuda_array(Array *src, Array *dst, const int async_f
 
   if (src->dtype() != dst->dtype()) {
     // If dtype mismatches, transfer cpu-gpu first, then convert dtype in gpu.
-    unique_ptr<Array> tmp(new CudaCachedArray(src->size(), src->dtype(), dst->context()));
-    synchronizer_cpu_array_cuda_array(src, tmp.get(), async_flags);
+    NdArray tmp_arr(Shape_t{src->size()});
+    // cast() in synchronizer passes the off-recording flag for LMS;
+    Array *tmp = tmp_arr.array()->cast(src->dtype(), dst->context(),
+                                       true, AsyncFlag::OFFREC);
+    synchronizer_cpu_array_cuda_array(src, tmp, async_flags);
     tmp->wait_event(dst->context(), async_flags);
-    dst->copy_from(tmp.get());
+    dst->copy_from(tmp);
     return;
   }
 
