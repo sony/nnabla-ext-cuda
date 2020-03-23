@@ -205,31 +205,6 @@ void RandomEraseCuda<T>::forward_impl(const Variables &inputs,
       this->random_coordinates_->size() / 5, random_coords, H, W, area_ratios,
       aspect_ratios);
 
-  // // Debug
-  // auto ctx_cpu = Context({"cpu:float"}, "CpuCachedArray", "0");
-  // auto random_coordinates_cpu = std::make_shared<NdArray>(Shape_t{5, N, B});
-  // float *random_coords_cpu = random_coordinates_cpu->cast(get_dtype<Tcu>(),
-  //                                                         ctx_cpu)->pointer<typename
-  //                                                         force_float<T>::type>();
-
-  // cudaMemcpy((void*)random_coords_cpu, (void*)random_coords,
-  // 5*N*B*sizeof(float), cudaMemcpyDeviceToHost);
-
-  // for (int n = 0; n < N; ++n) {
-  //   for (int b = 0; b < B; ++b) {
-  //     float prob = random_coords_cpu[0 * (N*B) + n * (B) + b];
-  //     float ye_start = random_coords_cpu[1 * (N*B) + n * (B) + b];
-  //     float xe_start = random_coords_cpu[2 * (N*B) + n * (B) + b];
-  //     float ye_end = random_coords_cpu[3 * (N*B) + n * (B) + b];
-  //     float xe_end = random_coords_cpu[4 * (N*B) + n * (B) + b];
-  //     printf("prob = %f\n", prob);
-  //     printf("ye_start = %f\n", ye_start);
-  //     printf("ye_end = %f\n", ye_end);
-  //     printf("xe_start = %f\n", xe_start);
-  //     printf("xe_end = %f\n", xe_end);
-  //   }
-  // }
-
   // Copy once
   auto size = inputs[0]->size();
   Tcu *y =
