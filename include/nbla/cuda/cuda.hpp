@@ -88,6 +88,10 @@ public:
    */
   shared_ptr<Allocator> pinned_allocator();
 
+  /** Free all unused host memory caches
+  */
+  void free_unused_host_caches();
+
   /** Synchronize host to device.
    */
   void device_synchronize(const string &device);

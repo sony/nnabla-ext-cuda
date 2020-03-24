@@ -221,6 +221,11 @@ shared_ptr<Allocator> Cuda::naive_allocator() { return naive_allocator_; }
 shared_ptr<Allocator> Cuda::unified_allocator() { return unified_allocator_; }
 shared_ptr<Allocator> Cuda::pinned_allocator() { return pinned_allocator_; }
 
+void Cuda::free_unused_host_caches() {
+  pinned_allocator_->free_unused_caches();
+  unified_allocator_->free_unused_caches();
+}
+
 void Cuda::device_synchronize(const string &device) {
   cuda_device_synchronize(device);
 }
