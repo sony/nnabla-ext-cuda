@@ -15,6 +15,7 @@
 #ifndef __NBLA_CUDA_UTILS_RANDOM_HPP__
 #define __NBLA_CUDA_UTILS_RANDOM_HPP__
 
+#include <curand_kernel.h>
 #include <nbla/cuda/common.hpp>
 
 namespace nbla {
@@ -66,5 +67,9 @@ void curand_generate_rand(curandGenerator_t gen, T low, T high, T *dev_ptr,
 template <typename T>
 void curand_generate_randn(curandGenerator_t gen, T mu, T sigma, T *dev_ptr,
                            size_t size);
+
+void curand_initialize(const int size, const int seed, const int offset,
+                       curandState *state);
 }
+
 #endif

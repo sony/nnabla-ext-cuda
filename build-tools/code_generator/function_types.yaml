@@ -372,6 +372,9 @@ RandomFlip:
 # RandomShift:
 #   float: [float]
 #   half: [Half]
+RandomErase:
+  float: [float]
+  half: [Half]
 ImageAugmentation:
   float: [float]
   half: [Half]
