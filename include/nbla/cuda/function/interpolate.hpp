@@ -34,8 +34,9 @@ public:
   typedef typename CudaType<T>::type Tcu;
 
   explicit InterpolateCuda(const Context &ctx, const vector<int> &output_size,
-                           const string &mode, bool align_corners)
-      : Interpolate<T>(ctx, output_size, mode, align_corners),
+                           const string &mode, bool align_corners,
+                           bool channel_last)
+      : Interpolate<T>(ctx, output_size, mode, align_corners, channel_last),
         device_(std::stoi(ctx.device_id)) {}
   virtual ~InterpolateCuda() {}
   virtual string name() { return "InterpolateCuda"; }

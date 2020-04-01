@@ -23,8 +23,9 @@ MaxPooling:
 AveragePooling:
   float: [float]
   half: [Half]
-# SumPooling:
-#   float: [float]
+SumPooling:
+  float: [float]
+  half: [Half]
 # Unpooling:
 #   float: [float]
 # Embed:
