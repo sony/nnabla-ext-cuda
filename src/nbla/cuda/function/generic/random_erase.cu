@@ -161,8 +161,8 @@ void RandomEraseCuda<T>::setup_impl(const Variables &inputs,
                                : shape[this->base_axis_ + 2];
   this->state_ = std::make_shared<NdArray>(
       Shape_t{static_cast<long>(H * W * sizeof(curandState))});
-  curandState *func_state =
-      this->state_->cast(get_dtype<char>(), this->ctx_)->pointer<curandState>();
+  curandState *func_state = this->state_->cast(get_dtype<char>(), this->ctx_)
+                                ->template pointer<curandState>();
   curand_initialize(H * W, this->seed_, 0, func_state);
 }
 
@@ -220,8 +220,8 @@ void RandomEraseCuda<T>::forward_impl(const Variables &inputs,
       this->channel_last_ ? make_int4(B, H, W, C) : make_int4(B, C, H, W);
   auto estride =
       this->share_ ? make_int3(N * B, B, 1) : make_int3(N * B * C, B * C, C);
-  curandState *func_state =
-      this->state_->cast(get_dtype<char>(), this->ctx_)->pointer<curandState>();
+  curandState *func_state = this->state_->cast(get_dtype<char>(), this->ctx_)
+                                ->template pointer<curandState>();
   auto replacements =
       make_float2(this->replacements_[0], this->replacements_[1]);
   using random_erase::kernel_random_erase;
