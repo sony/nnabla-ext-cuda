@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-from setuptools import setup
+from setuptools import setup, find_packages
 from distutils.extension import Extension
 import os
 from os.path import dirname, realpath, join, isfile, splitext
@@ -203,6 +203,7 @@ def cuda_config(root_dir, cuda_lib, ext_opts, lib_dirs):
                   [join(path_cuda_pkg, 'nvtx.pyx')],
                   **cuda_ext_opts),
     ]
+
     return ExtConfig(package_dir, packages, package_data,
                      ext_modules, cuda_ext_opts)
 
@@ -218,6 +219,21 @@ def cudnn_config(root_dir, cuda_lib, cuda_ext_opts):
                   [join(path_cudnn_pkg, 'init.pyx')],
                   **cuda_ext_opts),
     ]
+
+    return ExtConfig(package_dir, packages, {},
+                     ext_modules, cuda_ext_opts)
+
+
+def utils_config(root_dir, cuda_ext_opts):
+    src_dir = join(root_dir, 'src')
+    path_utils_pkg = join(src_dir, 'nnabla_ext', 'cuda', 'utils')
+    utils_pkg = "nnabla_ext.cuda.utils"
+    package_dir = {utils_pkg: path_utils_pkg}
+
+    packages = [utils_pkg, ] + [utils_pkg + "." +
+                                x for x in find_packages(where=path_utils_pkg)]
+    ext_modules = []
+
     return ExtConfig(package_dir, packages, {},
                      ext_modules, cuda_ext_opts)
 
@@ -241,6 +257,12 @@ def get_setup_config(root_dir):
     package_dir.update(cudnn_ext.package_dir)
     package_data.update(cudnn_ext.package_data)
     ext_modules += cudnn_ext.ext_modules
+
+    utils_ext = utils_config(root_dir, cuda_ext.ext_opts)
+    packages += utils_ext.packages
+    package_dir.update(utils_ext.package_dir)
+    package_data.update(utils_ext.package_data)
+    ext_modules += utils_ext.ext_modules
 
     cuda_version = ''
     if 'WHL_NO_CUDA_SUFFIX' in os.environ and os.environ['WHL_NO_CUDA_SUFFIX'] == 'True':
