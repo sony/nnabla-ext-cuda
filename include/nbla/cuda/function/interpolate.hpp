@@ -22,15 +22,6 @@ namespace nbla {
 
 template <typename T> class InterpolateCuda : public Interpolate<T> {
 public:
-  /* TODO: remove this help message.
-  Typedef of CUDA scalar types used in source file.
-  This template function class might be instantiated for each CPU scalar types
-  (double, float, nbla::Half), however, for Half, CUDA kernel functions
-  must use nbla::HalfCuda in which a bunch of device operator functions are
-  overloaded. nbla::CudaType<T>::type will translate nbla::Half
-  to nbla::HalfCuda. For other types, it will keep it as-is.
-  See nbla/cuda/half.hpp for other template utilities.
-  */
   typedef typename CudaType<T>::type Tcu;
 
   explicit InterpolateCuda(const Context &ctx, const vector<int> &output_size,
