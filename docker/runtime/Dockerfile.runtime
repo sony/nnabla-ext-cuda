@@ -14,22 +14,21 @@ ARG PYTHON_VERSION_MINOR
 ENV PYVERNAME=${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}
 
 ARG CUDA_VERSION_MAJOR_MINOR
-ARG ARCH_SUFFIX
 RUN umask 0 \
+    && mkdir -p /tmp/deps \
     && cd /tmp/deps \
     && wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh \
     && bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/miniconda3 \
     && rm -rf Miniconda3-latest-Linux-x86_64.sh \
     && . /opt/miniconda3/bin/activate \
-    && conda create -n nnabla-build python=${PYVERNAME} \
-    && conda activate nnabla-build \
-    && ( [ "$CUDA_VERSION_MAJOR_MINOR" = "10.0" ] || [ "$CUDA_VERSION_MAJOR_MINOR" = "9.0" ] \
-        && [ "x$ARCH_SUFFIX" = "x" ] \
-        && pip install --extra-index-url https://developer.download.nvidia.com/compute/redist/cuda/${CUDA_VERSION_MAJOR_MINOR} nvidia-dali==0.14.0 \
-        || echo "Skip DALI installation (CUDA=$CUDA_VERSION_MAJOR_MINOR ARCH=$ARCH_SUFFIX)" ) \
+    && conda install python=${PYVERNAME} \
+    && conda update -y --all \
+    && conda install pip wheel opencv \
+    && pip install --extra-index-url https://developer.download.nvidia.com/compute/redist/cuda/${CUDA_VERSION_MAJOR_MINOR} nvidia-dali==0.14.0 \
+        || echo "Skip DALI installation (CUDA=$CUDA_VERSION_MAJOR_MINOR)" \
     && conda clean -y --all \
     && cd / \
     && rm -rf /tmp/*
 
-ENV PATH /opt/miniconda3/envs/nnabla-build/bin:$PATH
-ENV LD_LIBRARY_PATH /opt/miniconda3/envs/nnabla-build/lib:$LD_LIBRARY_PATH
+ENV PATH /opt/miniconda3/bin:$PATH
+ENV LD_LIBRARY_PATH /opt/miniconda3/lib:$LD_LIBRARY_PATH

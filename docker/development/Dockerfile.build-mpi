@@ -12,14 +12,47 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 ARG CUDA_VERSION_MAJOR=10
 ARG CUDA_VERSION_MINOR=0
 ARG CUDNN_VERSION=7
-FROM nvidia/cuda-ppc64le:${CUDA_VERSION_MAJOR}.${CUDA_VERSION_MINOR}-cudnn${CUDNN_VERSION}-devel-centos7
+
+############################################################ OpenMPI
+# CentOS7:  1.10.7-1 (12)
+# Ubuntu16: 1.10.2-1 (12)
+# Ubuntu18: 2.1.1-1  (20)
+# Ubuntu20: 4.0.3-1  (40)
+# CentOS7:  3.1.3-1  (40)
+# ABCI:     2.1.6-1  (20)
+FROM centos:7 as openmpi
 
 ENV LC_ALL C
 ENV LANG C
 ENV LANGUAGE C
+
+RUN yum install -y \
+    epel-release \
+    yum-utils \
+    && yum install -y \
+        curl \
+        rpm-build \
+    && yum group install -y "Development Tools" \
+    && yum clean all
+
+ARG MPIVER=2.1.6
+RUN mkdir /root/rpmbuild
+RUN cd /root/rpmbuild; curl https://download.open-mpi.org/release/open-mpi/v${MPIVER%.*}/openmpi-${MPIVER}-1.src.rpm -o openmpi-${MPIVER}-1.src.rpm
+RUN cd /root/rpmbuild; rpmbuild --rebuild openmpi-${MPIVER}-1.src.rpm
+RUN mv /root/rpmbuild/RPMS/x86_64/openmpi-${MPIVER}-1.*.rpm /root
+
+FROM nvidia/cuda:${CUDA_VERSION_MAJOR}.${CUDA_VERSION_MINOR}-cudnn${CUDNN_VERSION}-devel-centos7
+
+ENV LC_ALL C
+ENV LANG C
+ENV LANGUAGE C
+
+RUN yum install -y https://developer.download.nvidia.com/compute/machine-learning/repos/rhel7/x86_64/nvidia-machine-learning-repo-rhel7-1.0.0-1.x86_64.rpm
+RUN yum install -y libnccl libnccl-devel
 
 RUN yum install -y \
     epel-release \
@@ -112,25 +145,34 @@ RUN mkdir /tmp/deps \
     && cd / \
     && rm -rf /tmp/*
 
+
+############################################################ Copy OpenMPI
+COPY --from=openmpi /root/openmpi-*.rpm /root
+RUN rpm -i /root/openmpi-*.rpm
+
 ############################################################ miniconda3
 ARG PYTHON_VERSION_MAJOR=3
 ARG PYTHON_VERSION_MINOR=6
 ENV PYVERNAME=${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}
 
 ADD python/requirements.txt /tmp/deps/
+
+ARG ARCH_SUFFIX
+ENV CUDA_VERSION_MAJOR_MINOR=${CUDA_VERSION_MAJOR}.${CUDA_VERSION_MINOR}
 RUN umask 0 \
-    && mkdir -p /tmp/deps \
     && cd /tmp/deps \
-    && wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-ppc64le.sh \
-    && bash Miniconda3-latest-Linux-ppc64le.sh -b -p /opt/miniconda3 \
-    && rm -rf Miniconda3-latest-Linux-ppc64le.sh \
+    && wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh \
+    && bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/miniconda3 \
+    && rm -rf Miniconda3-latest-Linux-x86_64.sh \
     && . /opt/miniconda3/bin/activate \
-    && conda update -n base -c defaults conda \
-    && conda create -n nnabla-build python=${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR} \
+    && conda create -n nnabla-build python=${PYVERNAME} \
     && conda activate nnabla-build \
-    && conda update --all -y \
-    && conda install numpy scipy scikit-image six \
-    && pip install -r /tmp/deps/requirements.txt \
+    && pip install numpy \
+    && pip install -U -r /tmp/deps/requirements.txt \
+    && ( [ "$CUDA_VERSION_MAJOR_MINOR" = "10.0" ] || [ "$CUDA_VERSION_MAJOR_MINOR" = "9.0" ] \
+        && [ "x$ARCH_SUFFIX" = "x" ] \
+        && pip install --extra-index-url https://developer.download.nvidia.com/compute/redist/cuda/${CUDA_VERSION_MAJOR_MINOR} nvidia-dali==0.14.0 \
+        || echo "Skip DALI installation (CUDA=$CUDA_VERSION_MAJOR_MINOR ARCH=$ARCH_SUFFIX)" ) \
     && conda clean -y --all \
     && cd / \
     && rm -rf /tmp/*
