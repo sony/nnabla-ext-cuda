@@ -114,7 +114,6 @@ kernel_random_erase(const int size, T *y, const T *x, int3 dstride, int N,
   NBLA_CUDA_KERNEL_LOOP(idx, size) {
     auto B = shape.x;
     auto C = channel_last ? shape.w : shape.y;
-    auto H = channel_last ? shape.y : shape.z;
     auto W = channel_last ? shape.z : shape.w;
 
     auto h = idx / W;

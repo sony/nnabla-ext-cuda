@@ -66,14 +66,12 @@ __global__ void kernel_random_crop(const int num, const int dim, T *dst,
 
     // Determin input offset
     for (int id = 0; id < dim; id++) {
-      const int shape_info_offset = id * 5;
       const int o = (idx / OUT_STRIDE(id)) % OUT_SHAPE(id);
       offset += o * (IN_STRIDE(id) - OUT_STRIDE(id));
     }
 
     // Determin input address
     for (int id = 0; id < dim; id++) {
-      const int shape_info_offset = id * 5;
       const int o = ((idx + offset) / IN_STRIDE(id)) % IN_SHAPE(id);
       const int left =
           id >= dim_offset
