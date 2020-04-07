@@ -25,14 +25,12 @@ namespace nbla {
 
 template <typename T> class UnpoolingCuda : public Unpooling<T> {
 
-protected:
-  Variable addr_table_;
-  int kernel_size_;
-
 public:
   typedef typename CudaType<T>::type Tc;
-  explicit UnpoolingCuda(const Context &ctx, const vector<int> &kernel)
-      : Unpooling<T>(ctx, kernel), device_(std::stoi(ctx.device_id)) {}
+  explicit UnpoolingCuda(const Context &ctx, const vector<int> &kernel,
+                         bool channel_last)
+      : Unpooling<T>(ctx, kernel, channel_last),
+        device_(std::stoi(ctx.device_id)) {}
   virtual ~UnpoolingCuda() {}
   virtual string name() { return "UnpoolingCuda"; }
   virtual vector<string> allowed_array_classes() {
@@ -41,7 +39,6 @@ public:
 
 protected:
   int device_;
-  virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,
                              const vector<bool> &propagate_down,
