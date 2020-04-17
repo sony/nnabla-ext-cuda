@@ -12,127 +12,234 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////
-/* UNDER REVIEW.
-
-   NOTE: cudaMemcpy and kernel execution bat setup_impl.
-*/
-////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////
-
 #include <nbla/array.hpp>
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/function/unpooling.hpp>
 #include <nbla/cuda/math.hpp>
+#include <nbla/cuda/utils/atomic_add.cuh>
+#include <nbla/cuda/utils/nd_index.cuh>
 #include <nbla/variable.hpp>
 
 namespace nbla {
 
-__global__ void kernel_unpooling_create_table(const int num, const int dim,
-                                              int *addr_table_buf,
-                                              const int *shape_info_buf,
-                                              const int kernel_size_) {
-  NBLA_CUDA_KERNEL_LOOP(idx, num) {
-    int top_left_addr = 0;
-    for (int id = 0; id < dim; id++) {
-      const int shape_info_offset = id * 5;
-      const int o = (idx / shape_info_buf[shape_info_offset + 2]) // stride_x
-                    % shape_info_buf[shape_info_offset + 1];      // shape_x
-      const int i = o * shape_info_buf[shape_info_offset + 3];    // kernel_size
-      top_left_addr += i * shape_info_buf[shape_info_offset];     // stride_y
-    }
-    int addr_table_index = idx * kernel_size_;
-    for (int ik = 0; ik < kernel_size_; ik++) {
-      int addr = top_left_addr;
-      for (int id = 0; id < dim; id++) {
-        const int shape_info_offset = id * 5;
-        const int o =
-            (ik / shape_info_buf[shape_info_offset + 4]) // stride_kernel
-            % shape_info_buf[shape_info_offset + 3];     // kernel
-        addr += o * shape_info_buf[shape_info_offset];   // stride_y
-      }
-      addr_table_buf[addr_table_index++] = addr;
-    }
+template <typename T, bool channel_last = false>
+__global__ void
+kernel_unpooling_forward_1d(const int osize, T *dst, const T *src,
+                            int outer_size, const int iinner_size,
+                            const int oinner_size, const int istride,
+                            const int ostride, const int kernel) {
+  NBLA_CUDA_KERNEL_LOOP(oidx, osize) {
+    auto ond_index = device_flat_to_2d(oidx, ostride);
+    auto oc = channel_last ? ond_index.y : 0;
+    auto ow = ond_index.x;
+    auto iw = ow / kernel;
+    auto ind_index = make_int2(iw, oc);
+    auto iidx = device_2d_to_flat(ind_index, istride);
+    do {
+      dst[oidx] = src[iidx];
+      src += iinner_size;
+      dst += oinner_size;
+    } while (--outer_size);
   }
 }
 
-template <typename T>
-void UnpoolingCuda<T>::setup_impl(const Variables &inputs,
-                                  const Variables &outputs) {
-  Unpooling<T>::setup_impl(inputs, outputs);
-
-  // Prepare address table
-  const Shape_t shape_y = outputs[0]->shape();
-  const Shape_t stride_y = outputs[0]->strides();
-  const Shape_t shape_x = inputs[0]->shape();
-  const Shape_t stride_x = inputs[0]->strides();
-  size_t size = inputs[0]->size();
-  this->addr_table_.reshape(shape_y, true);
-  const int shape_info_size = shape_y.size() * 5;
-  // out_stride, in_size, in_stride, kernel, kernel_stride
-  int *shape_info = new int[shape_info_size];
-
-  this->kernel_size_ = 1;
-  for (int i = this->kernel_.size() - 1; i >= 0; i--) {
-    shape_info[i * 5] = stride_y[i];
-    shape_info[i * 5 + 1] = shape_x[i];
-    shape_info[i * 5 + 2] = stride_x[i];
-    shape_info[i * 5 + 3] = this->kernel_[i];
-    shape_info[i * 5 + 4] = this->kernel_size_; // kernel stride
-    this->kernel_size_ *= this->kernel_[i];
+template <typename T, bool channel_last = false>
+__global__ void
+kernel_unpooling_forward_2d(const int osize, T *dst, const T *src,
+                            int outer_size, const int iinner_size,
+                            const int oinner_size, const int2 istride,
+                            const int2 ostride, const int2 kernel) {
+  NBLA_CUDA_KERNEL_LOOP(oidx, osize) {
+    auto ond_index = device_flat_to_3d(oidx, ostride);
+    auto oc = channel_last ? ond_index.z : 0;
+    auto oh = ond_index.x;
+    auto ow = ond_index.y;
+    auto ih = oh / kernel.x;
+    auto iw = ow / kernel.y;
+    auto ind_index = make_int3(ih, iw, oc);
+    auto iidx = device_3d_to_flat(ind_index, istride);
+    do {
+      dst[oidx] = src[iidx];
+      src += iinner_size;
+      dst += oinner_size;
+    } while (--outer_size);
   }
-  Shape_t shape_info_shape;
-  shape_info_shape.push_back(shape_info_size);
-  Variable shape_info_variable;
-  shape_info_variable.reshape(shape_info_shape, true);
-  int *shape_info_buf =
-      shape_info_variable.cast_data_and_get_pointer<int>(this->ctx_, true);
-  cudaMemcpy(shape_info_buf, shape_info, sizeof(int) * shape_info_size,
-             cudaMemcpyHostToDevice);
-  delete[] shape_info;
-  Variable *addr_table_ = &this->addr_table_;
-  int *addr_table_buf =
-      addr_table_->cast_data_and_get_pointer<int>(this->ctx_, true);
-  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_unpooling_create_table, size,
-                                 shape_y.size(), addr_table_buf, shape_info_buf,
-                                 this->kernel_size_);
 }
 
-template <typename T>
-__global__ void kernel_unpooling_forward(const int num, T *y, const T *x,
-                                         const int *addr_table_buf,
-                                         const int kernel_size) {
-  NBLA_CUDA_KERNEL_LOOP(idx, num) {
-    int addr_table_index = idx * kernel_size;
-    for (int ik = 0; ik < kernel_size; ik++) {
-      y[addr_table_buf[addr_table_index++]] = x[idx];
-    }
+template <typename T, bool channel_last = false>
+__global__ void
+kernel_unpooling_forward_3d(const int osize, T *dst, const T *src,
+                            int outer_size, const int iinner_size,
+                            const int oinner_size, const int3 istride,
+                            const int3 ostride, const int3 kernel) {
+  NBLA_CUDA_KERNEL_LOOP(oidx, osize) {
+    auto ond_index = device_flat_to_4d(oidx, ostride);
+    auto oc = channel_last ? ond_index.w : 0;
+    auto od = ond_index.x;
+    auto oh = ond_index.y;
+    auto ow = ond_index.z;
+    auto id = od / kernel.x;
+    auto ih = oh / kernel.y;
+    auto iw = ow / kernel.z;
+    auto ind_index = make_int4(id, ih, iw, oc);
+    auto iidx = device_4d_to_flat(ind_index, istride);
+    do {
+      dst[oidx] = src[iidx];
+      src += iinner_size;
+      dst += oinner_size;
+    } while (--outer_size);
+  }
+}
+
+template <typename T, bool channel_last = false>
+__global__ void
+kernel_unpooling_backward_1d(const int osize, T *dst, const T *src,
+                             int outer_size, const int iinner_size,
+                             const int oinner_size, const int istride,
+                             const int ostride, const int kernel) {
+  NBLA_CUDA_KERNEL_LOOP(oidx, osize) {
+    auto ond_index = device_flat_to_2d(oidx, ostride);
+    auto oc = channel_last ? ond_index.y : 0;
+    auto ow = ond_index.x;
+    auto iw = ow / kernel;
+    auto ind_index = make_int2(iw, oc);
+    auto iidx = device_2d_to_flat(ind_index, istride);
+    do {
+      atomic_add(dst + iidx, src[oidx]);
+      src += oinner_size;
+      dst += iinner_size;
+    } while (--outer_size);
+  }
+}
+
+template <typename T, bool channel_last = false>
+__global__ void
+kernel_unpooling_backward_2d(const int osize, T *dst, const T *src,
+                             int outer_size, const int iinner_size,
+                             const int oinner_size, const int2 istride,
+                             const int2 ostride, const int2 kernel) {
+  NBLA_CUDA_KERNEL_LOOP(oidx, osize) {
+    auto ond_index = device_flat_to_3d(oidx, ostride);
+    auto oc = channel_last ? ond_index.z : 0;
+    auto oh = ond_index.x;
+    auto ow = ond_index.y;
+    auto ih = oh / kernel.x;
+    auto iw = ow / kernel.y;
+    auto ind_index = make_int3(ih, iw, oc);
+    auto iidx = device_3d_to_flat(ind_index, istride);
+    do {
+      atomic_add(dst + iidx, src[oidx]);
+      src += oinner_size;
+      dst += iinner_size;
+    } while (--outer_size);
+  }
+}
+
+template <typename T, bool channel_last = false>
+__global__ void
+kernel_unpooling_backward_3d(const int osize, T *dst, const T *src,
+                             int outer_size, const int iinner_size,
+                             const int oinner_size, const int3 istride,
+                             const int3 ostride, const int3 kernel) {
+  NBLA_CUDA_KERNEL_LOOP(oidx, osize) {
+    auto ond_index = device_flat_to_4d(oidx, ostride);
+    auto oc = channel_last ? ond_index.w : 0;
+    auto od = ond_index.x;
+    auto oh = ond_index.y;
+    auto ow = ond_index.z;
+    auto id = od / kernel.x;
+    auto ih = oh / kernel.y;
+    auto iw = ow / kernel.z;
+    auto ind_index = make_int4(id, ih, iw, oc);
+    auto iidx = device_4d_to_flat(ind_index, istride);
+    do {
+      atomic_add(dst + iidx, src[oidx]);
+      src += oinner_size;
+      dst += iinner_size;
+    } while (--outer_size);
   }
 }
 
 template <typename T>
 void UnpoolingCuda<T>::forward_impl(const Variables &inputs,
                                     const Variables &outputs) {
-  cuda_set_device(std::stoi(this->ctx_.device_id));
-  const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
-  const int *addr_table_buf =
-      this->addr_table_.template get_data_pointer<int>(this->ctx_);
-  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
-  size_t size = inputs[0]->size();
-  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_unpooling_forward, size, y, x,
-                                 addr_table_buf, this->kernel_size_);
-}
+  cuda_set_device(this->device_);
 
-template <typename T>
-__global__ void kernel_unpooling_backward(const int num, T *dx, const T *dy,
-                                          const int *addr_table_buf,
-                                          const int kernel_size) {
-  NBLA_CUDA_KERNEL_LOOP(idx, num) {
-    int addr_table_index = idx * kernel_size;
-    for (int ik = 0; ik < kernel_size; ik++) {
-      dx[idx] += dy[addr_table_buf[addr_table_index++]];
-    }
+  auto x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
+  auto y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
+  auto size = outputs[0]->size();
+  auto ndim = inputs[0]->ndim();
+  auto kdim = this->kernel_.size();
+
+  auto ishape = inputs[0]->shape();
+  auto oshape = outputs[0]->shape();
+  if (kdim == 1) {
+    auto oc = this->channel_last_ ? oshape[ndim - 1] : oshape[ndim - 2];
+    auto ow = this->channel_last_ ? oshape[ndim - 2] : oshape[ndim - 1];
+    auto ic = this->channel_last_ ? ishape[ndim - 1] : ishape[ndim - 2];
+    auto iw = this->channel_last_ ? ishape[ndim - 2] : ishape[ndim - 1];
+    auto osize = this->channel_last_ ? oc * ow : ow;
+    auto outer_size = size / osize;
+    auto iinner_size = this->channel_last_ ? ic * iw : iw;
+    auto oinner_size = osize;
+    auto istride = this->channel_last_ ? (ic) : 1;
+    auto ostride = this->channel_last_ ? (oc) : 1;
+    auto kernel = this->kernel_[0];
+    auto cuda_kernel = this->channel_last_
+                           ? kernel_unpooling_forward_1d<Tc, true>
+                           : kernel_unpooling_forward_1d<Tc, false>;
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(cuda_kernel, osize, y, x, outer_size,
+                                   iinner_size, oinner_size, istride, ostride,
+                                   kernel);
+  } else if (kdim == 2) {
+    auto oc = this->channel_last_ ? oshape[ndim - 1] : oshape[ndim - 3];
+    auto oh = this->channel_last_ ? oshape[ndim - 3] : oshape[ndim - 2];
+    auto ow = this->channel_last_ ? oshape[ndim - 2] : oshape[ndim - 1];
+    auto ic = this->channel_last_ ? ishape[ndim - 1] : ishape[ndim - 3];
+    auto ih = this->channel_last_ ? ishape[ndim - 3] : ishape[ndim - 2];
+    auto iw = this->channel_last_ ? ishape[ndim - 2] : ishape[ndim - 1];
+    auto osize = this->channel_last_ ? oc * oh * ow : oh * ow;
+    auto outer_size = size / osize;
+    auto iinner_size = this->channel_last_ ? ic * ih * iw : ih * iw;
+    auto oinner_size = osize;
+    auto istride =
+        this->channel_last_ ? make_int2(iw * ic, ic) : make_int2(iw, 1);
+    auto ostride =
+        this->channel_last_ ? make_int2(ow * oc, oc) : make_int2(ow, 1);
+    auto kernel = make_int2(this->kernel_[0], this->kernel_[1]);
+    auto cuda_kernel = this->channel_last_
+                           ? kernel_unpooling_forward_2d<Tc, true>
+                           : kernel_unpooling_forward_2d<Tc, false>;
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(cuda_kernel, osize, y, x, outer_size,
+                                   iinner_size, oinner_size, istride, ostride,
+                                   kernel);
+  } else if (kdim == 3) {
+    auto oc = this->channel_last_ ? oshape[ndim - 1] : oshape[ndim - 4];
+    auto od = this->channel_last_ ? oshape[ndim - 4] : oshape[ndim - 3];
+    auto oh = this->channel_last_ ? oshape[ndim - 3] : oshape[ndim - 2];
+    auto ow = this->channel_last_ ? oshape[ndim - 2] : oshape[ndim - 1];
+    auto ic = this->channel_last_ ? ishape[ndim - 1] : ishape[ndim - 4];
+    auto id = this->channel_last_ ? ishape[ndim - 4] : ishape[ndim - 3];
+    auto ih = this->channel_last_ ? ishape[ndim - 3] : ishape[ndim - 2];
+    auto iw = this->channel_last_ ? ishape[ndim - 2] : ishape[ndim - 1];
+    auto osize = this->channel_last_ ? oc * od * oh * ow : od * oh * ow;
+    auto outer_size = size / osize;
+    auto iinner_size = this->channel_last_ ? ic * id * ih * iw : id * ih * iw;
+    auto oinner_size = osize;
+    auto istride = this->channel_last_ ? make_int3(ih * iw * ic, iw * ic, ic)
+                                       : make_int3(ih * iw, iw, 1);
+    auto ostride = this->channel_last_ ? make_int3(oh * ow * oc, ow * oc, oc)
+                                       : make_int3(oh * ow, ow, 1);
+    auto kernel =
+        make_int3(this->kernel_[0], this->kernel_[1], this->kernel_[2]);
+    auto cuda_kernel = this->channel_last_
+                           ? kernel_unpooling_forward_3d<Tc, true>
+                           : kernel_unpooling_forward_3d<Tc, false>;
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(cuda_kernel, osize, y, x, outer_size,
+                                   iinner_size, oinner_size, istride, ostride,
+                                   kernel);
+  } else {
+    NBLA_ERROR(error_code::value, "1D, 2D, 3D unpooling are supported.");
   }
 }
 
@@ -144,15 +251,83 @@ void UnpoolingCuda<T>::backward_impl(const Variables &inputs,
   if (!propagate_down[0]) {
     return;
   }
-  cuda_set_device(std::stoi(this->ctx_.device_id));
-  if (!accum[0])
-    inputs[0]->grad()->zero();
-  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_, false);
-  const int *addr_table_buf =
-      this->addr_table_.template get_data_pointer<int>(this->ctx_);
-  const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
-  size_t size = inputs[0]->size();
-  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_unpooling_backward, size, dx, dy,
-                                 addr_table_buf, this->kernel_size_);
+  cuda_set_device(this->device_);
+
+  auto dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_, false);
+  auto dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
+  auto size = outputs[0]->size();
+  auto ndim = inputs[0]->ndim();
+  auto kdim = this->kernel_.size();
+
+  auto ishape = inputs[0]->shape();
+  auto oshape = outputs[0]->shape();
+  if (kdim == 1) {
+    auto oc = this->channel_last_ ? oshape[ndim - 1] : oshape[ndim - 2];
+    auto ow = this->channel_last_ ? oshape[ndim - 2] : oshape[ndim - 1];
+    auto ic = this->channel_last_ ? ishape[ndim - 1] : ishape[ndim - 2];
+    auto iw = this->channel_last_ ? ishape[ndim - 2] : ishape[ndim - 1];
+    auto osize = this->channel_last_ ? oc * ow : ow;
+    auto outer_size = size / osize;
+    auto iinner_size = this->channel_last_ ? ic * iw : iw;
+    auto oinner_size = osize;
+    auto istride = this->channel_last_ ? (ic) : 1;
+    auto ostride = this->channel_last_ ? (oc) : 1;
+    auto kernel = this->kernel_[0];
+    auto cuda_kernel = this->channel_last_
+                           ? kernel_unpooling_backward_1d<Tc, true>
+                           : kernel_unpooling_backward_1d<Tc, false>;
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(cuda_kernel, osize, dx, dy, outer_size,
+                                   iinner_size, oinner_size, istride, ostride,
+                                   kernel);
+  } else if (kdim == 2) {
+    auto oc = this->channel_last_ ? oshape[ndim - 1] : oshape[ndim - 3];
+    auto oh = this->channel_last_ ? oshape[ndim - 3] : oshape[ndim - 2];
+    auto ow = this->channel_last_ ? oshape[ndim - 2] : oshape[ndim - 1];
+    auto ic = this->channel_last_ ? ishape[ndim - 1] : ishape[ndim - 3];
+    auto ih = this->channel_last_ ? ishape[ndim - 3] : ishape[ndim - 2];
+    auto iw = this->channel_last_ ? ishape[ndim - 2] : ishape[ndim - 1];
+    auto osize = this->channel_last_ ? oc * oh * ow : oh * ow;
+    auto outer_size = size / osize;
+    auto iinner_size = this->channel_last_ ? ic * ih * iw : ih * iw;
+    auto oinner_size = osize;
+    auto istride =
+        this->channel_last_ ? make_int2(iw * ic, ic) : make_int2(iw, 1);
+    auto ostride =
+        this->channel_last_ ? make_int2(ow * oc, oc) : make_int2(ow, 1);
+    auto kernel = make_int2(this->kernel_[0], this->kernel_[1]);
+    auto cuda_kernel = this->channel_last_
+                           ? kernel_unpooling_backward_2d<Tc, true>
+                           : kernel_unpooling_backward_2d<Tc, false>;
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(cuda_kernel, osize, dx, dy, outer_size,
+                                   iinner_size, oinner_size, istride, ostride,
+                                   kernel);
+  } else if (kdim == 3) {
+    auto oc = this->channel_last_ ? oshape[ndim - 1] : oshape[ndim - 4];
+    auto od = this->channel_last_ ? oshape[ndim - 4] : oshape[ndim - 3];
+    auto oh = this->channel_last_ ? oshape[ndim - 3] : oshape[ndim - 2];
+    auto ow = this->channel_last_ ? oshape[ndim - 2] : oshape[ndim - 1];
+    auto ic = this->channel_last_ ? ishape[ndim - 1] : ishape[ndim - 4];
+    auto id = this->channel_last_ ? ishape[ndim - 4] : ishape[ndim - 3];
+    auto ih = this->channel_last_ ? ishape[ndim - 3] : ishape[ndim - 2];
+    auto iw = this->channel_last_ ? ishape[ndim - 2] : ishape[ndim - 1];
+    auto osize = this->channel_last_ ? oc * od * oh * ow : od * oh * ow;
+    auto outer_size = size / osize;
+    auto iinner_size = this->channel_last_ ? ic * id * ih * iw : id * ih * iw;
+    auto oinner_size = osize;
+    auto istride = this->channel_last_ ? make_int3(ih * iw * ic, iw * ic, ic)
+                                       : make_int3(ih * iw, iw, 1);
+    auto ostride = this->channel_last_ ? make_int3(oh * ow * oc, ow * oc, oc)
+                                       : make_int3(oh * ow, ow, 1);
+    auto kernel =
+        make_int3(this->kernel_[0], this->kernel_[1], this->kernel_[2]);
+    auto cuda_kernel = this->channel_last_
+                           ? kernel_unpooling_backward_3d<Tc, true>
+                           : kernel_unpooling_backward_3d<Tc, false>;
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(cuda_kernel, osize, dx, dy, outer_size,
+                                   iinner_size, oinner_size, istride, ostride,
+                                   kernel);
+  } else {
+    NBLA_ERROR(error_code::value, "Only 1D, 2D, 3D unpooling are supported.");
+  }
 }
 }
