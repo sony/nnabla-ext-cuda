@@ -54,7 +54,7 @@ template <bool accum, typename T>
 __global__ void backward(const int x_size, T *x_grad, const int y_size,
                          const T *y_grad, const int *y_shape,
                          const int *y_stride, const int *idx_data,
-                         const int idx_rows, const int idx_cols) {
+                         const int idx_rows, const int idx_cols, T *o_grad) {
   NBLA_CUDA_KERNEL_LOOP(tid, x_size) {
     auto slice_length = x_size / idx_cols;
     auto index_column = tid / slice_length;
@@ -66,6 +66,9 @@ __global__ void backward(const int x_size, T *x_grad, const int y_size,
     }
     if (y_offset < y_size) {
       x_grad[tid] = accum ? x_grad[tid] + y_grad[y_offset] : y_grad[y_offset];
+      if (o_grad != nullptr) {
+        o_grad[y_offset] = T(0);
+      }
     }
   }
 }
@@ -91,6 +94,9 @@ template <typename T>
 void ScatterNdCuda<T>::forward_impl(const Variables &inputs,
                                     const Variables &outputs) {
   cuda_set_device(this->device_);
+
+  if (inputs.size() < 3)
+    outputs[0]->data()->zero();
 
   auto src = inputs[0]->get_data_pointer<Tcu>(this->ctx_);
   auto idx = inputs[1]->get_data_pointer<int>(this->ctx_);
@@ -122,6 +128,10 @@ void ScatterNdCuda<T>::backward_impl(const Variables &inputs,
   auto g_x = inputs[0]->cast_grad_and_get_pointer<Tcu>(this->ctx_, !accum[0]);
   auto idx = inputs[1]->get_data_pointer<int>(this->ctx_);
 
+  Tcu *g_o = nullptr;
+  if (inputs.size() > 2)
+    g_o = inputs[2]->cast_grad_and_get_pointer<Tcu>(this->ctx_, true);
+
   auto idx_rows = static_cast<int>(inputs[1]->shape().at(0));
   auto idx_cols = static_cast<int>(ndi::inner_size(inputs[1]->shape(), 1));
 
@@ -132,12 +142,12 @@ void ScatterNdCuda<T>::backward_impl(const Variables &inputs,
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(scatter_nd_cuda::backward<true>,
                                    inputs[0]->size(), g_x, outputs[0]->size(),
                                    g_y, y_shape_ptr, y_stride_ptr, idx,
-                                   idx_rows, idx_cols);
+                                   idx_rows, idx_cols, g_o);
   } else {
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(scatter_nd_cuda::backward<false>,
                                    inputs[0]->size(), g_x, outputs[0]->size(),
                                    g_y, y_shape_ptr, y_stride_ptr, idx,
-                                   idx_rows, idx_cols);
+                                   idx_rows, idx_cols, g_o);
   }
 }
 }
