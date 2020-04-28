@@ -36,27 +36,11 @@ public:
                                   const vector<int> &pad,
                                   const vector<int> &stride,
                                   const vector<int> &dilation, int group,
-                                  bool channel_last)
+                                  bool channel_last,
+                                  const vector<int> &output_padding)
       : Deconvolution<T>(ctx, base_axis, pad, stride, dilation, group,
-                         channel_last),
-        device_(std::stoi(ctx.device_id)) {
-#if CUDNN_VERSION < 6000
-    // NOTE: dilation > 1 is not supported by cudnn. (2016.10.19)
-    for (int i = 0; i < dilation.size(); ++i) {
-      if (dilation[i] > 1) {
-        // Fall back to original CUDA implementation if dilation > 1.
-        // Setting fall_back_func_ overwrites behaviors of setup, forward and
-        // backward functions by the specified function class instance.
-        std::cout << "Falling back to DeconvolutionCuda since dilation > 1 is "
-                     "not supported in cuDNN."
-                  << std::endl; // TODO: warn.
-        this->fall_back_func_.reset(new DeconvolutionCuda<T>(
-            ctx, base_axis, pad, stride, dilation, group));
-        return;
-      }
-    }
-#endif
-  }
+                         channel_last, output_padding),
+        device_(std::stoi(ctx.device_id)) {}
   virtual ~DeconvolutionCudaCudnn() {}
   virtual string name() { return "DeconvolutionCudaCudnn"; }
   virtual vector<string> allowed_array_classes() {
