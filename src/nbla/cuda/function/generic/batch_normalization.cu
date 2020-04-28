@@ -51,7 +51,7 @@ void BatchNormalizationCuda<T>::setup_impl(const Variables &inputs,
   // work memory for each block data of shuffle reduction
   this->blocks =
       min((this->size02_ + NBLA_CUDA_NUM_THREADS - 1) / NBLA_CUDA_NUM_THREADS,
-          1024);
+          Size_t{1024});
   v_mean_reduction_space_.reshape(Shape_t{blocks}, true);
   v_variance_reduction_space_.reshape(Shape_t{blocks}, true);
   v_tmp_reduction_space_.reshape(Shape_t{blocks}, true);
