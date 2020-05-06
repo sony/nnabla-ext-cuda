@@ -26,8 +26,10 @@ public:
 
   explicit InterpolateCuda(const Context &ctx, const vector<int> &output_size,
                            const string &mode, bool align_corners,
+                           bool half_pixel, bool half_pixel_for_nn,
                            bool channel_last)
-      : Interpolate<T>(ctx, output_size, mode, align_corners, channel_last),
+      : Interpolate<T>(ctx, output_size, mode, align_corners, half_pixel,
+                       half_pixel_for_nn, channel_last),
         device_(std::stoi(ctx.device_id)) {}
   virtual ~InterpolateCuda() {}
   virtual string name() { return "InterpolateCuda"; }
