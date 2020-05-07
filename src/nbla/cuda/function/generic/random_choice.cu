@@ -127,8 +127,8 @@ void RandomChoiceCuda<T>::sample_with_replacement(const Variables &inputs,
   NdArray tmp0(Shape_t{x->size()});
   NdArray tmp1(Shape_t{y->size()});
   auto w_sums = tmp0.cast(get_dtype<Tcu>(), this->ctx_, true)->pointer<Tcu>();
-  auto u_vals = tmp1.cast(get_dtype<float>(), 
-                          this->ctx_, true)->pointer<float>();
+  auto u_vals =
+      tmp1.cast(get_dtype<float>(), this->ctx_, true)->pointer<float>();
 
   // Generate random choices for each output sample point.
   curand_generate_rand<float>(curand_generator_, 0, 1, u_vals, y->size());
@@ -168,8 +168,8 @@ void RandomChoiceCuda<T>::sample_without_replace(const Variables &inputs,
   NdArray tmp2(Shape_t{y->size()});
   auto w_data = tmp0.cast(get_dtype<Tcu>(), this->ctx_, true)->pointer<Tcu>();
   auto w_sums = tmp1.cast(get_dtype<Tcu>(), this->ctx_, true)->pointer<Tcu>();
-  auto u_vals = tmp2.cast(get_dtype<float>(),
-                          this->ctx_, true)->pointer<float>();
+  auto u_vals =
+      tmp2.cast(get_dtype<float>(), this->ctx_, true)->pointer<float>();
 
   // Copy the weight data to writable memory where we can remove a
   // category (by nulling it's weight) after each round.

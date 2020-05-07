@@ -116,7 +116,6 @@ void DeconvolutionCuda<T>::backward_impl(const Variables &inputs,
     col_array.reshape(Shape_t{this->row_col_ * this->col_col_ * this->group_},
                       true);
     col = col_array.cast(get_dtype<Tc>(), this->ctx_, true)->pointer<Tc>();
-
   }
   if (propagate_down[0]) {
     w = inputs[1]->get_data_pointer<Tc>(this->ctx_);

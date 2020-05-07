@@ -104,8 +104,8 @@ inline int cuda_get_reduction_blocks(int reduction_size) {
 }
 
 template <typename T>
-std::pair<NdArrayPtr, T *>
-cuda_get_reduction_buffer(int reduction_size, const Context &ctx) {
+std::pair<NdArrayPtr, T *> cuda_get_reduction_buffer(int reduction_size,
+                                                     const Context &ctx) {
   const int blocks = cuda_get_reduction_blocks(reduction_size);
   NdArrayPtr arr_block = make_shared<NdArray>(Shape_t{blocks});
   T *block = arr_block->cast(get_dtype<T>(), ctx, true)->pointer<T>();

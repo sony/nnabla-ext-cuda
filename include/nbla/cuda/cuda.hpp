@@ -17,6 +17,7 @@
 #ifndef __NBLA_CUDA_CUDA_HPP__
 #define __NBLA_CUDA_CUDA_HPP__
 
+#include <nbla/backend_base.hpp>
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/defs.hpp>
 #include <nbla/cuda/init.hpp>
@@ -24,7 +25,6 @@
 #include <nbla/exception.hpp>
 #include <nbla/memory/allocator.hpp>
 #include <nbla/singleton_manager.hpp>
-#include <nbla/backend_base.hpp>
 
 #include <mutex>
 #include <unordered_map>

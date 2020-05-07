@@ -159,7 +159,8 @@ void PReLUCuda<T>::backward_impl(const Variables &inputs,
       if (insize >= 1024) {
         blocks = min(NBLA_CUDA_GET_BLOCKS(insize), /*max blocks*/ 1024);
         arr_buff2.reshape(Shape_t{blocks}, true);
-        buff2 = arr_buff2.cast(get_dtype<Tc>(), this->ctx_, true)->pointer<Tc>();
+        buff2 =
+            arr_buff2.cast(get_dtype<Tc>(), this->ctx_, true)->pointer<Tc>();
         kernel_reduce_per_block<Tc, false><<<blocks, NBLA_CUDA_NUM_THREADS>>>(
             insize, buff, buff2);
       }

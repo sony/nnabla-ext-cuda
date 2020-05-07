@@ -22,8 +22,8 @@
 #include <nbla/array.hpp>
 #include <nbla/common.hpp>
 #include <nbla/cuda/defs.hpp>
-#include <nbla/memory/memory.hpp>
 #include <nbla/memory/cpu_memory.hpp>
+#include <nbla/memory/memory.hpp>
 
 namespace nbla {
 

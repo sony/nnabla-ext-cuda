@@ -139,6 +139,8 @@ def get_cpu_include_dir():
     print("CPU Include directory:", cpu_include_dir)
 
     return cpu_include_dir
+
+
 def get_cpu_cython_path():
     from six.moves.configparser import ConfigParser
 
@@ -363,12 +365,12 @@ if __name__ == '__main__':
     pkg_info, cfg = get_setup_config(root_dir)
 
     # Cythonize
-    ext_modules = cythonize(cfg.ext_modules, 
-                            include_path=[get_cpu_cython_path()], 
+    ext_modules = cythonize(cfg.ext_modules,
+                            include_path=[get_cpu_cython_path()],
                             compiler_directives={
-                            "embedsignature": True,
-                            "c_string_type": 'str',
-                            "c_string_encoding": "ascii"})
+                                "embedsignature": True,
+                                "c_string_type": 'str',
+                                "c_string_encoding": "ascii"})
 
     # Setup
     setup(

@@ -25,6 +25,5 @@
 namespace nbla {
 
 void my_cudaMemset(void *devPtr, int value, size_t count);
-
 }
 #endif

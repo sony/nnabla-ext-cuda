@@ -20,6 +20,7 @@ class WavenetConfig(object):
     speaker_dims = 32
     dilations = [1]
 
+
 class DataConfig(object):
     duration = 16000
     q_bit_len = 256

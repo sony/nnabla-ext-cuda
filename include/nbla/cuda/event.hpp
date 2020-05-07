@@ -15,9 +15,9 @@
 #ifndef __NBLA_CUDA_EVENT_HPP__
 #define __NBLA_CUDA_EVENT_HPP__
 
-#include <nbla/event.hpp>
 #include <nbla/array.hpp>
 #include <nbla/cpu.hpp>
+#include <nbla/event.hpp>
 
 #include <cuda_runtime.h>
 
@@ -25,7 +25,7 @@ namespace nbla {
 
 class CudaEvent : public Event {
   cudaEvent_t raw_event_; // Event
-  ArrayPtr src_; // Source of memory copy
+  ArrayPtr src_;          // Source of memory copy
 
 public:
   CudaEvent(cudaEvent_t event, ArrayPtr &src);
@@ -37,12 +37,11 @@ public:
                           const int async_flags = AsyncFlag::NONE) override;
 
 private:
-  // Checker of CPU array class 
+  // Checker of CPU array class
   inline bool is_cpu_context(const Context ctx) {
     auto cpu_array_classes = SingletonManager::get<Cpu>()->array_classes();
-    
-    return std::find(cpu_array_classes.begin(),
-                     cpu_array_classes.end(),
+
+    return std::find(cpu_array_classes.begin(), cpu_array_classes.end(),
                      ctx.array_class) != cpu_array_classes.end();
   }
 };

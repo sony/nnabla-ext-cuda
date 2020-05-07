@@ -301,9 +301,9 @@ void BatchNormalizationCudaCudnn<T>::backward_impl_batch(
   NdArray prop_down_workspace;
   if (prop_down_workspace_size) {
     prop_down_workspace.reshape({static_cast<Size_t>(prop_down_workspace_size)},
-                                 true);
-    prop_down_buf = prop_down_workspace.cast(dtypes::BYTE, this->ctx_, 
-                                             true)->pointer<void>();
+                                true);
+    prop_down_buf = prop_down_workspace.cast(dtypes::BYTE, this->ctx_, true)
+                        ->pointer<void>();
   }
 
   Tw *dx = propagate_down[0]

@@ -78,9 +78,10 @@ void CudaMemory::merge_prev_impl(Memory *from) { ptr_ = from->pointer(); }
 // CudaUnifiedMemory implementation
 // ----------------------------------------------------------------------
 CudaUnifiedMemory::CudaUnifiedMemory(size_t bytes, const string &device_id)
-  : CudaMemory(bytes, device_id) {}
-CudaUnifiedMemory::CudaUnifiedMemory(size_t bytes, const string &device_id, void *ptr)
-  : CudaUnifiedMemory(bytes, device_id) {
+    : CudaMemory(bytes, device_id) {}
+CudaUnifiedMemory::CudaUnifiedMemory(size_t bytes, const string &device_id,
+                                     void *ptr)
+    : CudaUnifiedMemory(bytes, device_id) {
   ptr_ = ptr;
 }
 
@@ -88,8 +89,7 @@ bool CudaUnifiedMemory::alloc_impl() {
   cuda_set_device(device_num_);
   try {
     NBLA_CUDA_CHECK(cudaMallocManaged(&ptr_, this->bytes()));
-  }
-  catch (...) {
+  } catch (...) {
     return false;
   }
   DEBUG_LOG("%s: %zu at %p (%d)\n", __func__, this->bytes(), ptr_, device_num_);
@@ -102,23 +102,24 @@ bool CudaUnifiedMemory::alloc_impl() {
 shared_ptr<Memory> CudaUnifiedMemory::divide_impl(size_t second_start) {
   constexpr int memory_alignment = 512;
   NBLA_FORCE_ASSERT(second_start % memory_alignment == 0,
-    "CUDA memory should be aligned with 512 bytes. Given %zu.",
-    second_start);
+                    "CUDA memory should be aligned with 512 bytes. Given %zu.",
+                    second_start);
   size_t out_bytes = this->bytes() - second_start;
   void *out_ptr = (void *)((uint8_t *)ptr_ + second_start);
   // Explisit type specification of CudaUnifiedMemory
   return shared_ptr<Memory>(
-    new CudaUnifiedMemory(out_bytes, this->device_id(), out_ptr));
+      new CudaUnifiedMemory(out_bytes, this->device_id(), out_ptr));
 }
-
 
 // ----------------------------------------------------------------------
 // CudaPinnedHostMemory implementation
 // ----------------------------------------------------------------------
-CudaPinnedHostMemory::CudaPinnedHostMemory(size_t bytes, const string &device_id)
-  : CpuMemory(bytes, device_id) {}
-CudaPinnedHostMemory::CudaPinnedHostMemory(size_t bytes, const string &device_id, void *ptr)
-  : CpuMemory(bytes, device_id) {
+CudaPinnedHostMemory::CudaPinnedHostMemory(size_t bytes,
+                                           const string &device_id)
+    : CpuMemory(bytes, device_id) {}
+CudaPinnedHostMemory::CudaPinnedHostMemory(size_t bytes,
+                                           const string &device_id, void *ptr)
+    : CpuMemory(bytes, device_id) {
   ptr_ = ptr;
 }
 
@@ -127,8 +128,8 @@ CudaPinnedHostMemory::~CudaPinnedHostMemory() {
     return;
   }
   NBLA_FORCE_ASSERT(!prev(),
-    "Trying to free memory which has a prev (allocated "
-    "by another memory and split previously).");
+                    "Trying to free memory which has a prev (allocated "
+                    "by another memory and split previously).");
   DEBUG_LOG("%s: %zu at %p\n", __func__, this->bytes(), ptr_);
   NBLA_CUDA_CHECK(cudaFreeHost(ptr_));
   ptr_ = nullptr; // To avoid double free
@@ -136,10 +137,8 @@ CudaPinnedHostMemory::~CudaPinnedHostMemory() {
 
 bool CudaPinnedHostMemory::alloc_impl() {
   try {
-    NBLA_CUDA_CHECK(cudaHostAlloc(&ptr_, this->bytes(),
-                                  cudaHostAllocDefault));
-  }
-  catch (...) {
+    NBLA_CUDA_CHECK(cudaHostAlloc(&ptr_, this->bytes(), cudaHostAllocDefault));
+  } catch (...) {
     return false;
   }
   DEBUG_LOG("%s: %zu at %p\n", __func__, this->bytes(), ptr_);
@@ -159,6 +158,6 @@ shared_ptr<Memory> CudaPinnedHostMemory::divide_impl(size_t second_start) {
   void *out_ptr = (void *)((uint8_t *)ptr_ + second_start);
   // Explisit type specification of CudaPinnedHostMemory
   return shared_ptr<Memory>(
-    new CudaPinnedHostMemory(out_bytes, this->device_id(), out_ptr));
+      new CudaPinnedHostMemory(out_bytes, this->device_id(), out_ptr));
 }
 }

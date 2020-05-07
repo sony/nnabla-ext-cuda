@@ -95,8 +95,8 @@ void DeconvolutionCudaCudnn<T>::forward_impl(const Variables &inputs,
   void *workspace{nullptr};
   if (workspace_size) {
     workspace_arr.reshape({static_cast<Size_t>(workspace_size)}, true);
-    workspace = workspace_arr.cast(dtypes::BYTE, 
-                                   this->ctx_, true)->pointer<void>();
+    workspace =
+        workspace_arr.cast(dtypes::BYTE, this->ctx_, true)->pointer<void>();
   }
 #if CUDNN_VERSION >= 7000
   NBLA_CUDNN_CHECK(cudnnConvolutionBackwardData(
@@ -157,8 +157,8 @@ void DeconvolutionCudaCudnn<T>::backward_impl(
   void *workspace{nullptr};
   if (workspace_size) {
     workspace_arr.reshape({static_cast<Size_t>(workspace_size)}, true);
-    workspace = workspace_arr.cast(dtypes::BYTE,
-                                   this->ctx_, true)->pointer<void>();
+    workspace =
+        workspace_arr.cast(dtypes::BYTE, this->ctx_, true)->pointer<void>();
   }
 
 #if CUDNN_VERSION >= 7000

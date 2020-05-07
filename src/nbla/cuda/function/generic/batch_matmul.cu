@@ -131,11 +131,10 @@ __global__ void kernel_set_batch_pointers(int size, int stride, const T **ptr,
 
 // A macro that creates an array of pointers of matrices.
 #define NBLA_GET_BATCH_POINTERS(PTR, NAME, CONST)                              \
-  NdArray list_##PTR(Shape_t{static_cast<Size_t>                               \
-                             (sizeof(Tc *) * this->samples_)});                \
-  CONST Tc **dev_list_##PTR                                                    \
-    = reinterpret_cast<CONST Tc **>                                            \
-      (list_##PTR.cast(dtypes::BYTE, this->ctx_, true)->pointer<void>());      \
+  NdArray list_##PTR(                                                          \
+      Shape_t{static_cast<Size_t>(sizeof(Tc *) * this->samples_)});            \
+  CONST Tc **dev_list_##PTR = reinterpret_cast<CONST Tc **>(                   \
+      list_##PTR.cast(dtypes::BYTE, this->ctx_, true)->pointer<void>());       \
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_set_batch_pointers, this->samples_,    \
                                  this->offset_##NAME##_,                       \
                                  (const T **)dev_list_##PTR, (const T *)PTR)

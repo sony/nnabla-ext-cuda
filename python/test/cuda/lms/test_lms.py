@@ -61,7 +61,7 @@ def create_network(batch_size, num_dilations, learning_rate):
     t = nn.Variable(shape=(batch_size, data_config.duration, 1))
 
     loss = F.mean(F.softmax_cross_entropy(pred, t))
-    #loss.visit(PrintFunc())
+    # loss.visit(PrintFunc())
 
     # Create Solver.
     solver = S.Adam(learning_rate)
@@ -88,27 +88,27 @@ class GetVariableSizeFunc(object):
             self.max_size = total_size
 
     def get_max_size_as_float(self):
-        return self.max_size * 4.0 # computed as 4 byte float
+        return self.max_size * 4.0  # computed as 4 byte float
 
 
-@pytest.mark.parametrize("type_config, device_id, batch_size, num_dilations, "\
+@pytest.mark.parametrize("type_config, device_id, batch_size, num_dilations, "
                          "learning_rate, max_iter, gpu_memory_size, max_prefetch_bytes, cast_prefetch",
                          [('float', '0', batch_size, num_dilations, learning_rate, 2, mem_size, mem_size * 1.5, False),
-                          ('float', '0', batch_size, num_dilations, learning_rate, 2, mem_size, mem_size * 1.5, True),
-                          ('half', '0', batch_size, num_dilations, learning_rate, 2, mem_size, mem_size * 1.5, False),
+                          ('float', '0', batch_size, num_dilations,
+                           learning_rate, 2, mem_size, mem_size * 1.5, True),
+                          ('half', '0', batch_size, num_dilations,
+                           learning_rate, 2, mem_size, mem_size * 1.5, False),
                           ('half', '0', batch_size, num_dilations, learning_rate, 2, mem_size, mem_size * 1.5, True)])
-
-
 @pytest.mark.skipif(skip_test, reason='Out of GPU memory by the variables used in a single function.')
-def test_lms(type_config, device_id, batch_size, num_dilations, 
+def test_lms(type_config, device_id, batch_size, num_dilations,
              learning_rate, max_iter, gpu_memory_size, max_prefetch_bytes, cast_prefetch):
 
     #import time
-    #time.sleep(10)
-    
+    # time.sleep(10)
+
     # Use pinned host memory
     cuda_init.prefer_cpu_pinned_array()
- 
+
     # Set context.
     from nnabla.ext_utils import get_extension_context
     cpu_ctx = get_extension_context('cpu',
@@ -127,9 +127,11 @@ def test_lms(type_config, device_id, batch_size, num_dilations,
         # Init inputs
         np.random.seed(seed=32)
         for i in range(max_iter):
-            x0 += [np.random.randint(0, 256, size=(batch_size, data_config.duration, 1))]
-            t0 += [np.random.randint(0, 256, size=(batch_size, data_config.duration, 1))]
-        
+            x0 += [np.random.randint(0, 256,
+                                     size=(batch_size, data_config.duration, 1))]
+            t0 += [np.random.randint(0, 256,
+                                     size=(batch_size, data_config.duration, 1))]
+
         initial_param1 = []
         initial_param2 = []
 
@@ -138,7 +140,8 @@ def test_lms(type_config, device_id, batch_size, num_dilations,
         ###############################
         with nn.parameter_scope('network1'):
             # Create network
-            x, t, loss, solver = create_network(batch_size, num_dilations, learning_rate)
+            x, t, loss, solver = create_network(
+                batch_size, num_dilations, learning_rate)
 
             # Store the initial parameter
             nn.save_parameters(tf.name)
@@ -167,7 +170,8 @@ def test_lms(type_config, device_id, batch_size, num_dilations,
         ###############################
         with nn.parameter_scope('network2'):
             # Create network
-            x, t, loss, solver = create_network(batch_size, num_dilations, learning_rate)
+            x, t, loss, solver = create_network(
+                batch_size, num_dilations, learning_rate)
 
             # Load the initial parameter
             nn.load_parameters(tf.name)
@@ -175,7 +179,7 @@ def test_lms(type_config, device_id, batch_size, num_dilations,
                 initial_param2.append(p.d)
 
             # Create a scheduler
-            scheduler = lms.SwapInOutScheduler(cpu_ctx, gpu_ctx, gpu_memory_size, 
+            scheduler = lms.SwapInOutScheduler(cpu_ctx, gpu_ctx, gpu_memory_size,
                                                max_prefetch_bytes, cast_prefetch)
 
             # Training loop.
@@ -187,8 +191,8 @@ def test_lms(type_config, device_id, batch_size, num_dilations,
                 t.d = t0[i]
 
                 solver.zero_grad()
-                
-                loss.forward(clear_no_need_grad=True, 
+
+                loss.forward(clear_no_need_grad=True,
                              function_pre_hook=scheduler.function_pre_hook,
                              function_post_hook=scheduler.function_post_hook)
                 loss.backward(clear_buffer=True,
@@ -196,7 +200,7 @@ def test_lms(type_config, device_id, batch_size, num_dilations,
                               function_post_hook=scheduler.function_post_hook)
                 solver.update(update_pre_hook=scheduler.update_pre_hook,
                               update_post_hook=scheduler.update_post_hook)
-                
+
                 # Finalize the scheduler
                 scheduler.end_scheduling()
 
@@ -216,7 +220,7 @@ def test_lms(type_config, device_id, batch_size, num_dilations,
 
         with nn.parameter_scope('network2'):
             param2 = nn.get_parameters(grad_only=False)
-        
+
         for (k1, p1), (k2, p2) in zip(param1.items(), param2.items()):
             assert np.allclose(p1.d, p2.d, atol=1e-3)
 

@@ -78,8 +78,8 @@ void SumCudaCudnn<T>::forward_impl(const Variables &inputs,
   void *workspace{nullptr};
   if (this->workspace_size_) {
     workspace_arr.reshape({static_cast<Size_t>(this->workspace_size_)}, true);
-    workspace = workspace_arr.cast(dtypes::BYTE,
-                                   this->ctx_, true)->pointer<void>();
+    workspace =
+        workspace_arr.cast(dtypes::BYTE, this->ctx_, true)->pointer<void>();
   }
 
   auto x_data = inputs[0]->get_data_pointer<Tcu>(this->ctx_);

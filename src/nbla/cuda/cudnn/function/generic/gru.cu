@@ -403,8 +403,8 @@ void GRUCudaCudnn<T>::setup_impl(const Variables &inputs,
   size_t dropout_stateSize;
   NBLA_CUDNN_CHECK(cudnnDropoutGetStatesSize(cudnn_handle, &dropout_stateSize));
   state_array_.reshape(Shape_t{static_cast<Size_t>(dropout_stateSize)}, true);
-  void *state_ptr = state_array_.cast(dtypes::BYTE,
-                                      this->ctx_, true)->pointer<void>();
+  void *state_ptr =
+      state_array_.cast(dtypes::BYTE, this->ctx_, true)->pointer<void>();
   std::random_device seed_gen;
   std::default_random_engine engine(seed_gen());
   std::uniform_int_distribution<> dist(0, 999);
@@ -455,8 +455,8 @@ void GRUCudaCudnn<T>::setup_impl(const Variables &inputs,
   // Temporary buffer. This is used only for getting address offsets of matrix
   // and biases from the head of the params pointer.
   NdArray params_array(Shape_t{static_cast<Size_t>(params_size_in_bytes_)});
-  Tcu *params = params_array.cast(dtypes::BYTE,
-                                  this->ctx_, true)->pointer<Tcu>();
+  Tcu *params =
+      params_array.cast(dtypes::BYTE, this->ctx_, true)->pointer<Tcu>();
 
   weight_offsets_.clear();
   bias_offsets_.clear();
@@ -559,27 +559,26 @@ void GRUCudaCudnn<T>::forward_impl_training(const Variables &inputs,
   NdArray mem_workspace;
   if (workspace_size_) {
     mem_workspace.reshape({static_cast<Size_t>(workspace_size_)}, true);
-    mem_buff = mem_workspace.cast(dtypes::BYTE,
-                                  this->ctx_, true)->pointer<void>();
+    mem_buff =
+        mem_workspace.cast(dtypes::BYTE, this->ctx_, true)->pointer<void>();
   }
   if (mem_reservespace_.array()->get_num_arrays() > 0) {
     NBLA_CHECK(mem_reservespace_.size() == reserve_size_, error_code::value,
                "reserve_size_ is inconsistent with the previously set "
                "reservespace size.");
-  }
-  else {
+  } else {
     mem_reservespace_.reshape({static_cast<Size_t>(reserve_size_)}, true);
   }
-  void *mem_reserve_buff
-    = mem_reservespace_.cast(dtypes::BYTE, this->ctx_, true)->pointer<void>();
+  void *mem_reserve_buff =
+      mem_reservespace_.cast(dtypes::BYTE, this->ctx_, true)->pointer<void>();
 
   auto alpha = get_cudnn_scalar_arg<T>(1);
   auto beta = get_cudnn_scalar_arg<T>(0);
   NBLA_CUDNN_CHECK(cudnnRNNForwardTraining(
       cudnn_handle, rnn_desc_.desc, seq_len_, x_desc_->data(), x, h_desc_.desc,
       h, c_x_desc_.desc, NULL, params_desc_.desc, params, y_desc_->data(), y,
-      h_n_desc_.desc, h_n, c_y_desc_.desc, NULL, mem_buff,
-      workspace_size_, mem_reserve_buff, reserve_size_));
+      h_n_desc_.desc, h_n, c_y_desc_.desc, NULL, mem_buff, workspace_size_,
+      mem_reserve_buff, reserve_size_));
 }
 
 template <typename T>
@@ -620,8 +619,8 @@ void GRUCudaCudnn<T>::forward_impl_inference(const Variables &inputs,
   NdArray mem_workspace;
   if (workspace_size_) {
     mem_workspace.reshape({static_cast<Size_t>(workspace_size_)}, true);
-    mem_buff = mem_workspace.cast(dtypes::BYTE,
-                                  this->ctx_, true)->pointer<void>();
+    mem_buff =
+        mem_workspace.cast(dtypes::BYTE, this->ctx_, true)->pointer<void>();
   }
 
   NBLA_CUDNN_CHECK(cudnnRNNForwardInference(
@@ -726,12 +725,12 @@ void GRUCudaCudnn<T>::backward_impl(const Variables &inputs,
   NdArray mem_workspace;
   if (workspace_size_) {
     mem_workspace.reshape({static_cast<Size_t>(workspace_size_)}, true);
-    mem_buff = mem_workspace.cast(dtypes::BYTE,
-                                  this->ctx_, true)->pointer<void>();
+    mem_buff =
+        mem_workspace.cast(dtypes::BYTE, this->ctx_, true)->pointer<void>();
   }
 
-  void *mem_reserve_buff
-    = mem_reservespace_.cast(dtypes::BYTE, this->ctx_, true)->pointer<void>();
+  void *mem_reserve_buff =
+      mem_reservespace_.cast(dtypes::BYTE, this->ctx_, true)->pointer<void>();
 
   NdArray mem_x_accum;
   NdArray mem_h_accum;
@@ -741,14 +740,12 @@ void GRUCudaCudnn<T>::backward_impl(const Variables &inputs,
   if (!propagate_down[0] || accum[0]) {
     mem_x_accum.reshape({static_cast<Size_t>(inputs[0]->size() * sizeof(Tcu))},
                         true);
-    dx_tmp = mem_x_accum.cast(dtypes::BYTE,
-                              this->ctx_, true)->pointer<Tcu>();
+    dx_tmp = mem_x_accum.cast(dtypes::BYTE, this->ctx_, true)->pointer<Tcu>();
   }
   if (!propagate_down[1] || accum[1]) {
     mem_h_accum.reshape({static_cast<Size_t>(inputs[1]->size() * sizeof(Tcu))},
-                         true);
-    dh_tmp = mem_h_accum.cast(dtypes::BYTE,
-                              this->ctx_, true)->pointer<Tcu>();
+                        true);
+    dh_tmp = mem_h_accum.cast(dtypes::BYTE, this->ctx_, true)->pointer<Tcu>();
   }
 
   NBLA_CUDNN_CHECK(cudnnRNNBackwardData(
@@ -771,9 +768,8 @@ void GRUCudaCudnn<T>::backward_impl(const Variables &inputs,
       (inputs.size() == 5 && propagate_down[4])) {
     NBLA_CUDNN_CHECK(cudnnRNNBackwardWeights(
         cudnn_handle, rnn_desc_.desc, seq_len_, x_desc_->data(), x,
-        h_desc_.desc, h, y_desc_->data(), y, mem_buff,
-        workspace_size_, params_desc_.desc, g_params,
-        mem_reserve_buff, reserve_size_));
+        h_desc_.desc, h, y_desc_->data(), y, mem_buff, workspace_size_,
+        params_desc_.desc, g_params, mem_reserve_buff, reserve_size_));
   }
 
   bool w_init_accum = false;

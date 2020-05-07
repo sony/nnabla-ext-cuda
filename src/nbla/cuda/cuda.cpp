@@ -30,7 +30,7 @@ Cuda::Cuda()
       unified_allocator_(
           make_shared<CachingAllocatorWithBuckets<CudaUnifiedMemory>>()),
       pinned_allocator_(
-          make_shared<CachingAllocatorWithBuckets<CudaPinnedHostMemory>>()){}
+          make_shared<CachingAllocatorWithBuckets<CudaPinnedHostMemory>>()) {}
 
 Cuda::~Cuda() {
   for (auto handle : this->cublas_handles_) {
@@ -52,7 +52,7 @@ Cuda::~Cuda() {
       NBLA_CUDA_CHECK(cudaStreamDestroy(*(stream.second)));
     }
   }
-  
+
   if (stream_HtoD != 0) {
     NBLA_CUDA_CHECK(cudaStreamDestroy(stream_HtoD));
   }
@@ -148,8 +148,10 @@ void Cuda::create_lms_streams(int device) {
 
   cuda_set_device(device);
 
-  NBLA_CUDA_CHECK(cudaStreamCreateWithFlags(&stream_HtoD, cudaStreamNonBlocking));
-  NBLA_CUDA_CHECK(cudaStreamCreateWithFlags(&stream_DtoH, cudaStreamNonBlocking));
+  NBLA_CUDA_CHECK(
+      cudaStreamCreateWithFlags(&stream_HtoD, cudaStreamNonBlocking));
+  NBLA_CUDA_CHECK(
+      cudaStreamCreateWithFlags(&stream_DtoH, cudaStreamNonBlocking));
 }
 
 shared_ptr<cudaStream_t> Cuda::get_stream(unsigned int flags,

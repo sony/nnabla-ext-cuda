@@ -18,7 +18,6 @@
 namespace nbla {
 
 void stop_null_stream_until_flag_set(bool *d_flag);
-
 }
 
 #endif

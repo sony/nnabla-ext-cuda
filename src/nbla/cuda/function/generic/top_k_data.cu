@@ -87,8 +87,7 @@ void TopKDataCuda<T>::setup_impl(const Variables &inputs,
 
   if (this->k_ > 1024) {
     this->buffer_.reshape(Shape_t{this->ss_}, true);
-  }
-  else {
+  } else {
     this->buffer_.reshape(Shape_t{static_cast<Size_t>(sizeof(Buffer<Tcu>))},
                           true);
   }
@@ -118,8 +117,9 @@ void TopKDataCuda<T>::forward_impl(const Variables &inputs,
     // he expected use case. The code could be splitting the input
     // into a smaller partition of the k-th largest values before
     // sorting.
-    auto buffer_raw = this->buffer_.cast(get_dtype<unsigned int>(), this->ctx_,
-                                         true)->pointer<unsigned int>();
+    auto buffer_raw =
+        this->buffer_.cast(get_dtype<unsigned int>(), this->ctx_, true)
+            ->pointer<unsigned int>();
     auto buffer_ptr = thrust::device_pointer_cast(buffer_raw);
 
     for (int s = 0; s < this->ns_; s++) {
@@ -149,7 +149,7 @@ void TopKDataCuda<T>::forward_impl(const Variables &inputs,
     }
   } else {
     auto buffer = this->buffer_.cast(get_dtype<char>(), this->ctx_, true)
-                                     ->pointer<Buffer<Tcu>>();
+                      ->pointer<Buffer<Tcu>>();
 
     for (int s = 0; s < this->ns_; s++) {
       if (this->abs_) {

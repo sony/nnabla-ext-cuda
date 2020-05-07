@@ -33,9 +33,8 @@ __global__ void kernel_set_batch_pointers(int batchSize, int n, const T **ptr,
 // A macro that creates an array of pointers of matrices.
 #define NBLA_GET_BATCH_POINTERS(PTR, NAME, BATCH, CONST)                       \
   NdArray list_##PTR(Shape_t{static_cast<Size_t>(sizeof(Tc *) * BATCH)});      \
-  CONST Tc **dev_list_##NAME =                                                 \
-      reinterpret_cast<CONST Tc **>                                            \
-      (list_##PTR.cast(dtypes::BYTE, this->ctx_, true)->pointer<void>());      \
+  CONST Tc **dev_list_##NAME = reinterpret_cast<CONST Tc **>(                  \
+      list_##PTR.cast(dtypes::BYTE, this->ctx_, true)->pointer<void>());       \
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_set_batch_pointers, BATCH, dim_,       \
                                  (const T **)dev_list_##NAME, (const T *)PTR)
 
@@ -65,15 +64,16 @@ void BatchInvCuda<T>::forward_impl(const Variables &inputs,
   int *info_ptr = info.cast(dtypes::INT, this->ctx_, true)->pointer<int>();
   ArrayPtr lu_arr = lu.cast_sp(get_dtype<Tc>(), this->ctx_, true);
 
-  lu_arr->copy_from(inputs[0]->data()->cast(get_dtype<Tc>(), this->ctx_, false));
+  lu_arr->copy_from(
+      inputs[0]->data()->cast(get_dtype<Tc>(), this->ctx_, false));
 
   Tc *lu_ptr = lu_arr->pointer<Tc>();
   NBLA_GET_BATCH_POINTERS(lu_ptr, lu, batch_size_, ) // dev_list_lu
   NBLA_GET_BATCH_POINTERS(y, y, batch_size_, );      // dev_list_y
 
   // LU factorization
-  cuda_getrf_batched<Tc>(this->device_, dim_, dev_list_lu, pivot_ptr,
-                         info_ptr, batch_size_);
+  cuda_getrf_batched<Tc>(this->device_, dim_, dev_list_lu, pivot_ptr, info_ptr,
+                         batch_size_);
 
   // matrix inversion
   cuda_getri_batched<Tc>(this->device_, dim_, (const Tc **)dev_list_lu,
