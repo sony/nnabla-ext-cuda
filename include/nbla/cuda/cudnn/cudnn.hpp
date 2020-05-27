@@ -334,9 +334,12 @@ struct NBLA_CUDA_API CudnnConvResource {
   size_t workspace_size() const;
 
 private:
-  void find_forward_algorithm(int workspace_limit, bool deterministic);
-  void find_backward_data_algorithm(int workspace_limit, bool deterministic);
-  void find_backward_filter_algorithm(int workspace_limit, bool deterministic);
+  void find_forward_algorithm(int workspace_limit, bool deterministic,
+                              bool heuristic);
+  void find_backward_data_algorithm(int workspace_limit, bool deterministic,
+                                    bool heuristic);
+  void find_backward_filter_algorithm(int workspace_limit, bool deterministic,
+                                      bool heuristic);
   void get_forward_algorithm(int workspace_limit);
   void get_backward_data_algorithm(int workspace_limit);
   void get_backward_filter_algorithm(int workspace_limit);
@@ -395,11 +398,29 @@ public:
    */
   void set_deterministic_option(bool value);
 
+  /* Get an option for choosing algorithms by hiristic or exhaustive search.
+
+   True requests to get the alogorithm by a heuristic.
+
+   @note The default value is false. The default value is overwritten if an
+         environment variable NNABLA_CUDNN_ALGORITHM_BY_HEURISTIC is specified.
+ */
+  bool get_heuristic_option();
+
+  /* Set an option for choosing algorithms by hiristic or exhaustive search.
+
+    True requests to get the alogorithm by a heuristic.
+
+     @param[in] Option value.
+   */
+  void set_heuristic_option(bool value);
+
 protected:
   unordered_map<int, unordered_map<cudaStream_t, shared_ptr<cudnnHandle_t>>>
       handles_;
   int workspace_limit_{0};           ///< Workspace limit in bytes.
   bool deterministic_option_{false}; ///< Choose deterministic algorithms
+  bool heuristic_option_{false};     ///< Choose algorithm by a heuristic.
 
 private:
   friend SingletonManager;
