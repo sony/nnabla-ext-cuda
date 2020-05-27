@@ -30,9 +30,10 @@ public:
   explicit DeconvolutionCuda(const Context &ctx, int base_axis,
                              const vector<int> &pad, const vector<int> &stride,
                              const vector<int> &dilation, int group,
-                             bool channel_last)
+                             bool channel_last,
+                             const vector<int> &output_padding)
       : Deconvolution<T>(ctx, base_axis, pad, stride, dilation, group,
-                         channel_last),
+                         channel_last, output_padding),
         device_(std::stoi(ctx.device_id)) {}
   virtual ~DeconvolutionCuda() {}
   virtual string name() { return "DeconvolutionCuda"; }
