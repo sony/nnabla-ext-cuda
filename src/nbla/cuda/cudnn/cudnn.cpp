@@ -233,11 +233,13 @@ inline bool check_determinism(bool required, cudnnDeterminism_t determinism) {
 }
 
 void CudnnConvResource::find_forward_algorithm(int workspace_limit,
-                                               bool deterministic) {
+                                               bool deterministic,
+                                               bool heuristic) {
   auto cudnn_handle_manager = SingletonManager::get<CudnnHandleManager>();
   auto cudnn_handle = cudnn_handle_manager->handle(device);
   auto get_max_count = cudnnGetConvolutionForwardAlgorithmMaxCount;
-  auto find_algorithm = cudnnFindConvolutionForwardAlgorithm;
+  auto find_algorithm = heuristic ? cudnnGetConvolutionForwardAlgorithm_v7
+                                  : cudnnFindConvolutionForwardAlgorithm;
   auto get_workspace = cudnnGetConvolutionForwardWorkspaceSize;
   int max_results, num_results;
   size_t workspace_size;
@@ -291,11 +293,13 @@ void CudnnConvResource::find_forward_algorithm(int workspace_limit,
 }
 
 void CudnnConvResource::find_backward_data_algorithm(int workspace_limit,
-                                                     bool deterministic) {
+                                                     bool deterministic,
+                                                     bool heuristic) {
   auto cudnn_handle_manager = SingletonManager::get<CudnnHandleManager>();
   auto cudnn_handle = cudnn_handle_manager->handle(device);
   auto get_max_count = cudnnGetConvolutionBackwardDataAlgorithmMaxCount;
-  auto find_algorithm = cudnnFindConvolutionBackwardDataAlgorithm;
+  auto find_algorithm = heuristic ? cudnnGetConvolutionBackwardDataAlgorithm_v7
+                                  : cudnnFindConvolutionBackwardDataAlgorithm;
   auto get_workspace = cudnnGetConvolutionBackwardDataWorkspaceSize;
   int max_results, num_results;
   size_t workspace_size;
@@ -349,11 +353,14 @@ void CudnnConvResource::find_backward_data_algorithm(int workspace_limit,
 }
 
 void CudnnConvResource::find_backward_filter_algorithm(int workspace_limit,
-                                                       bool deterministic) {
+                                                       bool deterministic,
+                                                       bool heuristic) {
   auto cudnn_handle_manager = SingletonManager::get<CudnnHandleManager>();
   auto cudnn_handle = cudnn_handle_manager->handle(device);
   auto get_max_count = cudnnGetConvolutionBackwardFilterAlgorithmMaxCount;
-  auto find_algorithm = cudnnFindConvolutionBackwardFilterAlgorithm;
+  auto find_algorithm = heuristic
+                            ? cudnnGetConvolutionBackwardFilterAlgorithm_v7
+                            : cudnnFindConvolutionBackwardFilterAlgorithm;
   auto get_workspace = cudnnGetConvolutionBackwardFilterWorkspaceSize;
   int max_results, num_results;
   size_t workspace_size;
@@ -482,11 +489,13 @@ void CudnnConvResource::find_best_algorithms() {
   auto cudnn_handle_manager = SingletonManager::get<CudnnHandleManager>();
   auto workspace_limit = cudnn_handle_manager->get_workspace_limit_in_bytes();
   bool deterministic = cudnn_handle_manager->get_deterministic_option();
+  bool heuristic = cudnn_handle_manager->get_heuristic_option();
 
 #if CUDNN_VERSION >= 3000
-  this->find_forward_algorithm(workspace_limit, deterministic);
-  this->find_backward_data_algorithm(workspace_limit, deterministic);
-  this->find_backward_filter_algorithm(workspace_limit, deterministic);
+  this->find_forward_algorithm(workspace_limit, deterministic, heuristic);
+  this->find_backward_data_algorithm(workspace_limit, deterministic, heuristic);
+  this->find_backward_filter_algorithm(workspace_limit, deterministic,
+                                       heuristic);
 #else
   if (deterministic) {
     std::cout << "Note that cuDNN version 2 and earlier do not provide means "
@@ -742,6 +751,34 @@ bool CudnnHandleManager::get_deterministic_option() {
 
 void CudnnHandleManager::set_deterministic_option(bool value) {
   this->deterministic_option_ = value;
+}
+
+bool CudnnHandleManager::get_heuristic_option() {
+  static bool called = false;
+  static std::mutex mtx;
+  std::lock_guard<std::mutex> lock(mtx);
+  if (!called) {
+    // Read NNABLA_CUDNN_ALGORITHM_BY_HEURISTIC preference from
+    // environment. Default is `false` if the environment variable is
+    // not present. If present, then any value other than `0`
+    // (including an empty string) implies `true`.
+    const char *e = std::getenv("NNABLA_CUDNN_ALGORITHM_BY_HEURISTIC");
+    if (!e) {
+      this->heuristic_option_ = false;
+    } else {
+      try {
+        this->heuristic_option_ = bool(std::stoi(e) != 0);
+      } catch (std::exception &exc) {
+        this->heuristic_option_ = true;
+      }
+    }
+    called = true;
+  }
+  return heuristic_option_;
+}
+
+void CudnnHandleManager::set_heuristic_option(bool value) {
+  this->heuristic_option_ = value;
 }
 
 void CudnnHandleManager::set_workspace_limit_in_bytes(int bytes) {
