@@ -30,6 +30,12 @@ int cuda_get_device() {
   return current_device;
 }
 
+std::vector<size_t> cuda_mem_get_info() {
+  size_t mf, mt;
+  cudaMemGetInfo(&mf, &mt);
+  return std::vector<size_t>{mf, mt};
+}
+
 cudaDeviceProp cuda_get_current_device_properties() {
   cudaDeviceProp prop;
   int device = cuda_get_device(); // Note: Assuming device is properly set.

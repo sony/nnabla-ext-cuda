@@ -21,6 +21,7 @@
 #include <nbla/array/cpu_array.hpp>
 #include <nbla/cuda/defs.hpp>
 #include <nbla/synced_array.hpp>
+#include <cuda.h>
 
 namespace nbla {
 
@@ -101,5 +102,25 @@ public:
   virtual ~CudaCachedHostArray();
   static Context filter_context(const Context &ctx);
 };
+
+#if CUDA_VERSION >= 10020
+/** Array allocated on CUDA device with virtual memory management obtained by
+ * Cuda::virtual_caching_allocator().
+ */
+class CudaCachedVirtualArray : public CudaArray {
+public:
+  /** Constructor
+
+  @param size Length of array.
+  @param dtype Data type.
+  @param ctx Context.
+  */
+  explicit CudaCachedVirtualArray(const Size_t size, dtypes dtype,
+                               const Context &ctx);
+  virtual ~CudaCachedVirtualArray();
+  static Context filter_context(const Context &ctx);
+};
+#endif //CUDA_VERSION >= 10020
+
 }
 #endif

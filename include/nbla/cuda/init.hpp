@@ -36,6 +36,20 @@ NBLA_CUDA_API void init_cuda();
 */
 NBLA_CUDA_API void clear_cuda_memory_cache();
 
+/** Clear all CUDA memory cache
+*/
+NBLA_CUDA_API void clear_cuda_virtual_memory_cache();
+
+/**
+ * Print CUDA memory cache map.
+ */
+NBLA_CUDA_API void print_cuda_memory_cache_map();
+
+/**
+ * Print CUDA memory cache map.
+ */
+NBLA_CUDA_API void print_cuda_virtual_memory_cache_map();
+
 /** Get CUDA array classes.
 */
 NBLA_CUDA_API vector<string> cuda_array_classes();
@@ -55,10 +69,6 @@ NBLA_CUDA_API int cuda_get_device_count();
 /** get available devices.
  */
 NBLA_CUDA_API vector<string> cuda_get_devices();
-
-/** Get free and total device memory size.
- */
-NBLA_CUDA_API vector<size_t> cuda_mem_get_info();
 
 /** cudaStream wrapper functions.
 */

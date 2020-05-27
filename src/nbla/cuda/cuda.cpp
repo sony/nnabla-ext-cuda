@@ -17,8 +17,10 @@
 #include <nbla/singleton_manager-internal.hpp>
 
 #include <nbla/cuda/memory/cuda_memory.hpp>
+#include <nbla/cuda/memory/cuda_virtual_memory.hpp>
 
 #include <nbla/memory/caching_allocator_with_buckets.hpp>
+#include <nbla/memory/virtual_caching_allocator.hpp>
 #include <nbla/memory/naive_allocator.hpp>
 
 namespace nbla {
@@ -30,7 +32,13 @@ Cuda::Cuda()
       unified_allocator_(
           make_shared<CachingAllocatorWithBuckets<CudaUnifiedMemory>>()),
       pinned_allocator_(
-          make_shared<CachingAllocatorWithBuckets<CudaPinnedHostMemory>>()) {}
+          make_shared<CachingAllocatorWithBuckets<CudaPinnedHostMemory>>())
+#if CUDA_VERSION >= 10020
+      ,virtual_caching_allocator_(
+          make_shared<VirtualCachingAllocator<CudaPhysicalMemory, CudaVirtualMemory>>()
+#endif //CUDA_VERSION >= 10020
+          ){
+}
 
 Cuda::~Cuda() {
   for (auto handle : this->cublas_handles_) {
@@ -222,6 +230,9 @@ shared_ptr<Allocator> Cuda::caching_allocator() { return caching_allocator_; }
 shared_ptr<Allocator> Cuda::naive_allocator() { return naive_allocator_; }
 shared_ptr<Allocator> Cuda::unified_allocator() { return unified_allocator_; }
 shared_ptr<Allocator> Cuda::pinned_allocator() { return pinned_allocator_; }
+#if CUDA_VERSION >= 10020
+shared_ptr<Allocator> Cuda::virtual_caching_allocator() { return virtual_caching_allocator_; }
+#endif //CUDA_VERSION >= 10020
 
 void Cuda::free_unused_host_caches() {
   pinned_allocator_->free_unused_caches();

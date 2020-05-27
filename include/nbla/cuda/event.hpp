@@ -23,11 +23,31 @@
 
 namespace nbla {
 
+/** Flags which can be used to create cudaEvent.
+*   - cudaEventDefault 0x00
+*   - cudaEventBlockingSync 0x01
+*   - cudaEventDisableTiming 0x02
+*   - cudaEventInterprocess 0x04
+*/
+enum CudaEventFlag {
+  Default = cudaEventDefault,
+  BlockingSync = cudaEventBlockingSync,
+  DisableTiming = cudaEventDisableTiming,
+  Interprocess = cudaEventInterprocess,
+};
+
 class CudaEvent : public Event {
   cudaEvent_t raw_event_; // Event
-  ArrayPtr src_;          // Source of memory copy
+  ArrayPtr src_{nullptr};          // Source of memory copy
 
 public:
+  // disable copy & move
+  CudaEvent(const CudaEvent&) = delete;
+  CudaEvent(CudaEvent&&) = delete;
+  CudaEvent& operator=(const CudaEvent&) = delete;
+  CudaEvent& operator=(CudaEvent&&) = delete;
+
+  CudaEvent(CudaEventFlag flag);
   CudaEvent(cudaEvent_t event, ArrayPtr &src);
   CudaEvent(cudaEvent_t event, ArrayPtr &&src);
   virtual ~CudaEvent();
@@ -35,6 +55,12 @@ public:
 
   virtual void wait_event(const Context ctx,
                           const int async_flags = AsyncFlag::NONE) override;
+
+  void record(cudaStream_t stream = 0);
+
+  void sync();
+
+  cudaError_t query();
 
 private:
   // Checker of CPU array class

@@ -27,12 +27,14 @@ from libcpp cimport bool
 cdef extern from "nbla/cuda/init.hpp" namespace "nbla":
     void init_cuda() except+
     void clear_cuda_memory_cache() except+
+    void clear_cuda_virtual_memory_cache() except+
+    void print_cuda_memory_cache_map() except+
+    void print_cuda_virtual_memory_cache_map() except+
     vector[string] cuda_array_classes() except +
     void _cuda_set_array_classes(const vector[string] & a) except +
     void cuda_device_synchronize(const string & device) except +
     int cuda_get_device_count() except +
     vector[string] cuda_get_devices() except +
-    vector[size_t] cuda_mem_get_info() except +
     shared_ptr[void] cuda_create_stream(int device_id) except +
     void* cuda_stream_shared_to_void(shared_ptr[void]) except +
     void print_stream_flag(shared_ptr[void]) except +
@@ -48,6 +50,8 @@ cdef extern from "nbla/cuda/init.hpp" namespace "nbla":
     float cuda_event_elapsed_time(shared_ptr[void], shared_ptr[void]) except +
     void cuda_event_record(shared_ptr[void]) except +
 
+cdef extern from "nbla/cuda/common.hpp" namespace "nbla":
+    vector[size_t] cuda_mem_get_info() except +
 
 logger.info('Initializing CUDA extension...')
 try:
@@ -62,6 +66,17 @@ def clear_memory_cache():
     """Clear memory cache for all devices."""
     clear_cuda_memory_cache()
 
+def clear_virtual_memory_cache():
+    """Clear memory cache for all devices."""
+    clear_cuda_virtual_memory_cache()
+
+def print_memory_cache_map():
+    """Dump cuda memory cache map."""
+    print_cuda_memory_cache_map()
+
+def print_virtual_memory_cache_map():
+    """Dump cuda memory cache map."""
+    print_cuda_virtual_memory_cache_map()
 
 ###############################################################################
 # Array preference API
@@ -92,11 +107,22 @@ def prefer_cpu_pinned_array():
     ccpu_init._cpu_set_array_classes(a)
 
 
+def prefer_cuda_cached_array():
+    a = cuda_array_classes()
+    a = sorted(a, key=lambda x: (x != 'CudaCachedArray'))
+    _cuda_set_array_classes(a)
+
+
 def prefer_unified_array():
     a = cuda_array_classes()
     a = sorted(a, key=lambda x: (x != 'CudaCachedUnifiedArray'))
     _cuda_set_array_classes(a)
 
+
+def prefer_cuda_virtual_array():
+    a = cuda_array_classes()
+    a = sorted(a, key=lambda x: (x != 'CudaCachedVirtualArray'))
+    _cuda_set_array_classes(a)
 
 # Initialize preference according to CPU cache preference.
 tmp = cpu_init._cached_array_preferred()

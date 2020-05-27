@@ -88,6 +88,10 @@ public:
    */
   shared_ptr<Allocator> pinned_allocator();
 
+  /** Get a caching virtual-memory allocator.
+ */
+  shared_ptr<Allocator> virtual_caching_allocator();
+
   /** Free all unused host memory caches
   */
   void free_unused_host_caches();
@@ -127,13 +131,16 @@ protected:
 
   /*
     NOTE: Allocators must be retained as shared_ptr in order to be passed to a
-    CachedMemory instance to prevernt destroying allocators before destroying
+    CachedMemory instance to prevent destroying allocators before destroying
     memory.
    */
   shared_ptr<Allocator> naive_allocator_;
   shared_ptr<Allocator> caching_allocator_;
   shared_ptr<Allocator> unified_allocator_;
   shared_ptr<Allocator> pinned_allocator_;
+#if CUDA_VERSION >= 10020
+  shared_ptr<Allocator> virtual_caching_allocator_;
+#endif //CUDA_VERSION >= 10020
 
   // stream pool -> <device, <id, stream>>
   unordered_map<int, unordered_map<int, shared_ptr<cudaStream_t>>> streams_;

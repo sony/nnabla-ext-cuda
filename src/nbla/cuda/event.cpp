@@ -17,6 +17,10 @@
 
 namespace nbla {
 
+CudaEvent::CudaEvent(CudaEventFlag flag) : raw_event_() {
+  cudaEventCreateWithFlags(&raw_event_, flag);
+}
+
 CudaEvent::CudaEvent(cudaEvent_t event, ArrayPtr &src)
     : raw_event_(event), src_(src) {}
 
@@ -38,4 +42,15 @@ void CudaEvent::wait_event(const Context ctx, const int async_flags) {
     NBLA_CUDA_CHECK(cudaStreamSynchronize(0));
   }
 }
+
+void CudaEvent::record(cudaStream_t stream) {
+  NBLA_CUDA_CHECK(cudaEventRecord(raw_event_, stream));
+}
+
+void CudaEvent::sync() {
+  NBLA_CUDA_CHECK(cudaEventSynchronize(raw_event_));
+}
+
+cudaError_t CudaEvent::query() { return cudaEventQuery(raw_event_); }
+
 }

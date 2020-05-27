@@ -28,6 +28,8 @@
 #include <memory>
 #include <vector>
 
+#include <nbla/cuda/memory/cuda_virtual_memory.hpp>
+
 namespace nbla {
 
 using std::vector;
@@ -276,5 +278,22 @@ CudaCachedHostArray::~CudaCachedHostArray() {}
 Context CudaCachedHostArray::filter_context(const Context &ctx) {
   return Context({}, "CudaCachedHostArray", "");
 }
+
+#if CUDA_VERSION >= 10020
+/////////////////////////////////////
+// CudaCachedVirtualArray implementation
+/////////////////////////////////////
+CudaCachedVirtualArray::CudaCachedVirtualArray(const Size_t size, dtypes dtype,
+                                               const Context &ctx)
+        : CudaArray(size, dtype, ctx,
+                    SingletonManager::get<Cuda>()->virtual_caching_allocator()->alloc(
+                            Array::size_as_bytes(size, dtype), ctx.device_id)) {}
+
+CudaCachedVirtualArray::~CudaCachedVirtualArray() {}
+
+Context CudaCachedVirtualArray::filter_context(const Context &ctx) {
+  return Context({}, "CudaCachedVirtualArray", ctx.device_id);
+}
+#endif //CUDA_VERSION >= 10020
 
 } // End of namespace nbla
