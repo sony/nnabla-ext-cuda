@@ -6,8 +6,8 @@ Distributed execution is only supported on Linux. We tested it on Ubuntu 16.04 L
 
 In addition to [requirements of NNabla without distributed execution](build.md), the build system requires:
 
-* Multiple NVidia CUDA-capable GPUs
-* [NCCL](https://developer.nvidia.com/nccl): NVidia's multi-GPU and multi-node collective communication library optimized for their GPUs.
+* Multiple NVIDIA CUDA-capable GPUs
+* [NCCL](https://developer.nvidia.com/nccl): NVIDIA's multi-GPU and multi-node collective communication library optimized for their GPUs.
 * Open MPI
 
 ### NCCL
