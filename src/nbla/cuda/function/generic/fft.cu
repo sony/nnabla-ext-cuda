@@ -1,4 +1,4 @@
-// Copyright (c) 2017 Sony Corporation. All Rights Reserved.
+// Copyright (c) 2017-2020 Sony Corporation. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,20 +22,20 @@
 namespace nbla {
 
 template <typename T> FFTCuda<T>::~FFTCuda() {
-  cufftDestroy(plan_forward_);
-  cufftDestroy(plan_backward_);
+  NBLA_CUFFT_CHECK(cufftDestroy(plan_forward_));
+  NBLA_CUFFT_CHECK(cufftDestroy(plan_backward_));
 }
 
 template <typename T>
 void FFTCuda<T>::setup_impl(const Variables &inputs, const Variables &outputs) {
   cuda_set_device(this->device_);
   FFT<T>::setup_impl(inputs, outputs);
-  cufftCreate(&plan_forward_);
-  cufftCreate(&plan_backward_);
 
   // Compute scale and store the original shape (i.e, n)
   Shape_t ishape(inputs[0]->shape());
   Size_t base_axis_input = ishape.size() - 1 - this->signal_ndim_;
+  signal_size_ = 1;
+  n_.clear();
   for (int i = 0; i < this->signal_ndim_; i++) {
     signal_size_ *= ishape[base_axis_input + i];
     n_.push_back(ishape[base_axis_input + i]);
