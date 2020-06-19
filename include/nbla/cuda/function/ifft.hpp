@@ -1,4 +1,4 @@
-// Copyright (c) 2017 Sony Corporation. All Rights Reserved.
+// Copyright (c) 2017-2020 Sony Corporation. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 #include <cufft.h>
 #include <cufftXt.h>
 #include <nbla/cuda/cuda.hpp>
+#include <nbla/cuda/function/utils/fft.hpp>
 #include <nbla/function/ifft.hpp>
 
 namespace nbla {
@@ -28,7 +29,10 @@ public:
 
   explicit IFFTCuda(const Context &ctx, int signal_ndim, bool normalized)
       : IFFT<T>(ctx, signal_ndim, normalized), signal_size_(1),
-        device_(std::stoi(ctx.device_id)) {}
+        device_(std::stoi(ctx.device_id)) {
+    NBLA_CUFFT_CHECK(cufftCreate(&plan_forward_));
+    NBLA_CUFFT_CHECK(cufftCreate(&plan_backward_));
+  }
   virtual ~IFFTCuda();
   virtual string name() { return "IFFTCuda"; }
   virtual vector<string> allowed_array_classes() {
