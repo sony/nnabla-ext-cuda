@@ -65,32 +65,12 @@ nnabla-ext-cuda-cpplib:
 		-DNNABLA_DIR=$(NNABLA_DIRECTORY) \
 		-DPYTHON_VERSION_MAJOR=$(PYTHON_VERSION_MAJOR) \
 		-DPYTHON_VERSION_MINOR=$(PYTHON_VERSION_MINOR) \
+		-DMULTIGPU_SUFFIX=$(MULTIGPU_SUFFIX) \
+		-DWITH_NCCL=$(WITH_NCCL) \
 		$(CMAKE_OPTS) \
 		$(NNABLA_EXT_CUDA_DIRECTORY)
 	$(MAKE) -C $(BUILD_EXT_CUDA_DIRECTORY_CPPLIB) -j$(PARALLEL_BUILD_NUM)
 	@cd $(BUILD_EXT_CUDA_DIRECTORY_CPPLIB) && cpack -G ZIP
-
-.PHONY: nnabla-ext-cuda-cpplib-multi-gpu
-nnabla-ext-cuda-cpplib-multi-gpu:
-	mkdir -p $(BUILD_EXT_CUDA_DIRECTORY_CPPLIB_MULTI_GPU)
-	cd $(BUILD_EXT_CUDA_DIRECTORY_CPPLIB_MULTI_GPU) \
-	&& cmake \
-		-D CUDA_SELECT_NVCC_ARCH_ARG:STRING="Common" \
-		-DBUILD_CPP_LIB=ON \
-		-DBUILD_CPP_UTILS=ON \
-		-DBUILD_PYTHON_PACKAGE=OFF \
-		-DBUILD_TEST=ON \
-		-DCPPLIB_LIBRARY=$(BUILD_DIRECTORY_CPPLIB)/lib/libnnabla$(LIB_NAME_SUFFIX).so \
-	        -DEXT_CUDA_LIB_NAME_SUFFIX=$(EXT_CUDA_LIB_NAME_SUFFIX) \
-	        -DLIB_NAME_SUFFIX=$(LIB_NAME_SUFFIX) \
-		-DNNABLA_DIR=$(NNABLA_DIRECTORY) \
-		-DPYTHON_VERSION_MAJOR=$(PYTHON_VERSION_MAJOR) \
-		-DPYTHON_VERSION_MINOR=$(PYTHON_VERSION_MINOR) \
-		-DWITH_NCCL=ON \
-		$(CMAKE_OPTS) \
-		$(NNABLA_EXT_CUDA_DIRECTORY)
-	$(MAKE) -C $(BUILD_EXT_CUDA_DIRECTORY_CPPLIB_MULTI_GPU) -j$(PARALLEL_BUILD_NUM)
-	@cd $(BUILD_EXT_CUDA_DIRECTORY_CPPLIB_MULTI_GPU) && cpack -G ZIP
 
 ########################################################################################################################
 # wheel
@@ -120,48 +100,16 @@ nnabla-ext-cuda-wheel-local: nnabla-install \
 		-DNNABLA_DIR=$(NNABLA_DIRECTORY) \
 		-DPYTHON_VERSION_MAJOR=$(PYTHON_VERSION_MAJOR) \
 		-DPYTHON_VERSION_MINOR=$(PYTHON_VERSION_MINOR) \
+		-DMULTIGPU_SUFFIX=$(MULTIGPU_SUFFIX) \
+		-DWITH_NCCL=$(WITH_NCCL) \
+                -DWHEEL_SUFFIX=$(WHEEL_SUFFIX) \
 		$(CMAKE_OPTS) \
 		$(NNABLA_EXT_CUDA_DIRECTORY) \
 	&& $(MAKE) -C $(BUILD_EXT_CUDA_DIRECTORY_WHEEL) wheel
 
-.PHONY: nnabla-ext-cuda-wheel-multi-gpu
-nnabla-ext-cuda-wheel-multi-gpu: \
-			nnabla-cpplib \
-			nnabla-wheel \
-			nnabla-ext-cuda-cpplib-multi-gpu \
-			nnabla-ext-cuda-wheel-multi-gpu-only
-
-.PHONY: nnabla-ext-cuda-wheel-multi-gpu-only
-nnabla-ext-cuda-wheel-multi-gpu-only: nnabla-install
-	mkdir -p $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_MULTI_GPU)
-	cd $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_MULTI_GPU) \
-	&& cmake \
-		-DBUILD_CPP_LIB=OFF \
-		-DBUILD_PYTHON_PACKAGE=ON \
-		-DCPPLIB_BUILD_DIR=$(BUILD_DIRECTORY_CPPLIB) \
-		-DCPPLIB_CUDA_LIBRARY=$(BUILD_EXT_CUDA_DIRECTORY_CPPLIB_MULTI_GPU)/lib/libnnabla_cuda$(EXT_CUDA_LIB_NAME_SUFFIX).so \
-		-DCPPLIB_LIBRARY=$(BUILD_DIRECTORY_CPPLIB)/lib/libnnabla$(LIB_NAME_SUFFIX).so \
-		-DMAKE_MANYLINUX_WHEEL=$(MAKE_MANYLINUX_WHEEL) \
-		-DMULTIGPU_SUFFIX=_nccl2 \
-		-DNNABLA_DIR=$(NNABLA_DIRECTORY) \
-		-DPYTHON_VERSION_MAJOR=$(PYTHON_VERSION_MAJOR) \
-		-DPYTHON_VERSION_MINOR=$(PYTHON_VERSION_MINOR) \
-		-DWHEEL_SUFFIX=$(WHEEL_SUFFIX) \
-		-DWITH_NCCL=ON \
-	        -DEXT_CUDA_LIB_NAME_SUFFIX=$(EXT_CUDA_LIB_NAME_SUFFIX) \
-	        -DLIB_NAME_SUFFIX=$(LIB_NAME_SUFFIX) \
-		$(CMAKE_OPTS) \
-		$(NNABLA_EXT_CUDA_DIRECTORY)
-	$(MAKE) -C $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_MULTI_GPU) wheel
-
 .PHONY: nnabla-ext-cuda-install
 nnabla-ext-cuda-install:
 	pip install --force-reinstall --no-deps $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/*-$(INSTALL_WHEEL_ARCH)*.whl
-
-.PHONY: nnabla-ext-cuda-multi-gpu-install
-nnabla-ext-cuda-multi-gpu-install:
-	pip install --force-reinstall --no-deps $(BUILD_DIRECTORY_WHEEL)/dist/*.whl
-	pip install --force-reinstall --no-deps $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_MULTI_GPU)/dist/*.whl
 
 ########################################################################################################################
 # Shell (for rapid development)
@@ -187,13 +135,13 @@ nnabla-ext-cuda-test-local: nnabla-install nnabla-ext-cuda-install
 	&& $(NNABLA_DIRECTORY)/build-tools/make/pytest.sh $(NNABLA_EXT_CUDA_DIRECTORY)/python/test
 
 .PHONY: nnabla-ext-cuda-multi-gpu-test-local
-nnabla-ext-cuda-multi-gpu-test-local: nnabla-ext-cuda-multi-gpu-install
-	cd $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_MULTI_GPU) \
+nnabla-ext-cuda-multi-gpu-test-local: nnabla-install nnabla-ext-cuda-install
+	cd $(BUILD_EXT_CUDA_DIRECTORY_WHEEL) \
 	&& PYTHONPATH=$(NNABLA_EXT_CUDA_DIRECTORY)/python/test:$(NNABLA_DIRECTORY)/python/test \
 		mpiexec -q -n 2 $(NNABLA_DIRECTORY)/build-tools/make/pytest.sh \
 			--test-communicator \
 			--communicator-gpus=0,1 \
 			$(NNABLA_DIRECTORY)/python/test/communicator
-	cd $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_MULTI_GPU) \
+	cd $(BUILD_EXT_CUDA_DIRECTORY_WHEEL) \
 	&& $(NNABLA_DIRECTORY)/build-tools/make/pytest.sh $(NNABLA_DIRECTORY)/python/test \
 	&& $(NNABLA_DIRECTORY)/build-tools/make/pytest.sh $(NNABLA_EXT_CUDA_DIRECTORY)/python/test
