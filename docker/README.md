@@ -1,6 +1,6 @@
 # NNabla CUDA extension Dockers
 
-All docker files are based on NVidia docker images
+All docker files are based on NVIDIA docker images
 that run by nvidia-docker command.
 
 ## Image Tags Hosted on DockerHub
