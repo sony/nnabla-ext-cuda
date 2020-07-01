@@ -400,4 +400,8 @@ float cuda_event_elapsed_time(shared_ptr<void> event_s, shared_ptr<void> event_e
 
 }
 
+void set_cuda_vma_chunk_size(size_t size, int chunk_type) {
+  SingletonManager::get<Cuda>()->set_vma_chunk_size(size, chunk_type);
+}
+
 }

@@ -49,6 +49,7 @@ cdef extern from "nbla/cuda/init.hpp" namespace "nbla":
     void cuda_event_synchronize(shared_ptr[void]) nogil except +
     float cuda_event_elapsed_time(shared_ptr[void], shared_ptr[void]) except +
     void cuda_event_record(shared_ptr[void]) except +
+    void set_cuda_vma_chunk_size(size_t size, int chunk_type) except +
 
 cdef extern from "nbla/cuda/common.hpp" namespace "nbla":
     vector[size_t] cuda_mem_get_info() except +
@@ -258,3 +259,10 @@ cdef class StreamEventHandler:
     def default_stream_synchronize(self):
         with nogil:
             cuda_nullstream_synchronize()
+
+###############################################################################
+# CudaVirtualMemoryAllocator
+###############################################################################
+
+def set_cuda_virtual_memory_chunk_size(size, chunk_type):
+    set_cuda_vma_chunk_size(size, chunk_type)

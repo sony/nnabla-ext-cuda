@@ -162,6 +162,16 @@ void Cuda::create_lms_streams(int device) {
       cudaStreamCreateWithFlags(&stream_DtoH, cudaStreamNonBlocking));
 }
 
+#if CUDA_VERSION >= 10020
+void Cuda::set_vma_chunk_size(size_t size, int chunk_type) {
+  std::dynamic_pointer_cast<VirtualCachingAllocatorBase>(virtual_caching_allocator_)->set_chunk_size(size, chunk_type);
+}
+#else
+// dummy
+void Cuda::set_vma_chunk_size(size_t size, int chunk_type) {}
+#endif
+
+
 shared_ptr<cudaStream_t> Cuda::get_stream(unsigned int flags,
                                           CudaStreamId streamId, int device) {
   if (device < 0) {

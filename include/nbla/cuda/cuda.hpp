@@ -118,6 +118,13 @@ public:
    */
   void create_lms_streams(int device = -1);
 
+  /** Change a chunk size of virtual memory allocator.
+   *  As chunk_type, following values can be used:
+   *   - 0 = small
+   *   - 1 = large
+   */
+  void set_vma_chunk_size(size_t size, int chunk_type);
+
 protected:
   std::mutex mtx_cublas_;
   std::mutex mtx_curand_;
