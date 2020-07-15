@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <nbla/cuda/array/cuda_dlpack_array.hpp>
 #include <nbla/cuda/array/cuda_array.cuh>
+#include <nbla/cuda/array/cuda_dlpack_array.hpp>
 
 namespace nbla {
 NBLA_DEFINE_FUNC_COPY_FROM(CudaDlpackArray, cuda_array_copy, cuda);

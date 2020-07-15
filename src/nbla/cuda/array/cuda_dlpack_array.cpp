@@ -19,7 +19,7 @@ namespace nbla {
 
 CudaDlpackArray::CudaDlpackArray(const Size_t size, dtypes dtype,
                                  const Context &ctx)
-  : DlpackArray(size, dtype, ctx) {}
+    : DlpackArray(size, dtype, ctx) {}
 
 CudaDlpackArray::~CudaDlpackArray() {}
 
@@ -30,6 +30,6 @@ Context CudaDlpackArray::filter_context(const Context &ctx) {
 void CudaDlpackArray::zero() {
   cuda_set_device(device_);
   NBLA_CUDA_CHECK(cudaMemset(this->pointer<void>(), 0,
-                  this->size() * sizeof_dtype(this->dtype_)));
+                             this->size() * sizeof_dtype(this->dtype_)));
 }
 } // End of namespace nbla
