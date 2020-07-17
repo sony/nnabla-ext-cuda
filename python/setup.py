@@ -138,6 +138,16 @@ def cuda_config(root_dir, cuda_lib, ext_opts, lib_dirs):
     shutil.copyfile(cuda_lib.path, cuda_lib_out)
     package_data = {cuda_pkg: [cuda_lib.file_name]}
 
+    nnabla_ext_cuda_root = os.path.abspath(os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), '..'))
+    os.makedirs(os.path.join(path_cuda_pkg, 'doc/third_party'), exist_ok=True)
+    for fn in ['LICENSE',
+               'NOTICE.md',
+               os.path.join('third_party', 'LICENSES.md')]:
+        shutil.copyfile(os.path.join(nnabla_ext_cuda_root, fn),
+                        os.path.join(path_cuda_pkg, 'doc', fn))
+        package_data["nnabla_ext.cuda"].append(os.path.join('doc', fn))
+
     if lib_dirs is not None:
         if sys.platform.startswith('linux'):
             out = subprocess.check_output(['ldd', cuda_lib_out])
