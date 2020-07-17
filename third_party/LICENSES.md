@@ -1,6 +1,6 @@
 # LICENCES
 
-`Neural Network Libraries CUDA extension` depends on following open source softwares.
+`Neural Network Libraries CUDA extension` depends on the following open source software packages.
 
 * [Eigen](#eigen)
 * [LAPACK](#lapack)
