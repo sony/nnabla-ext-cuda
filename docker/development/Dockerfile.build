@@ -139,7 +139,7 @@ RUN umask 0 \
         && [ "x$ARCH_SUFFIX" = "x" ] \
         && pip install --extra-index-url https://developer.download.nvidia.com/compute/redist/cuda/${CUDA_VERSION_MAJOR_MINOR} nvidia-dali==0.14.0 \
         || echo "Skip DALI installation (CUDA=$CUDA_VERSION_MAJOR_MINOR ARCH=$ARCH_SUFFIX)" ) \
-    && ( [ "$CUDA_VERSION_MAJOR_MINOR" = "10.1" ] && conda install pytorch cudatoolkit=10.1 -c pytorch && echo "PyTorch is installed" || echo "Skip PyTorch installation" ) \
+    && ( [ "$CUDA_VERSION_MAJOR_MINOR" = "10.2" ] && conda install pytorch cudatoolkit=10.2 -c pytorch && echo "PyTorch is installed" || echo "Skip PyTorch installation" ) \
     && conda clean -y --all \
     && cd / \
     && rm -rf /tmp/*
