@@ -188,7 +188,7 @@ if(BUILD_CPP_LIB)
     ${PROJECT_SOURCE_DIR}/include
     ${NNABLA_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/eigen-3.3.5
-    ${NNABLA_DIR}/third_party/dlpack/include)
+    ${NNABLA_DIR}/include/third_party/)
   include_directories(${NBLA_INCLUDE_DIRS};${PROJECT_BINARY_DIR})
   
   ###############################################################################

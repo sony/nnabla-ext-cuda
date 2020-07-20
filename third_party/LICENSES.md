@@ -444,6 +444,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ## [DLPack](https://github.com/dmlc/dlpack/)
 
+The CUDA extention is built on [sony/nnabla](https://github.com/sony/nnabla/),
+and it contains a copy of `dlpack.h` which is provided under the following license.
+
 ```
                                  Apache License
                            Version 2.0, January 2004
