@@ -64,4 +64,35 @@ void init_cudnn() {
 
   is_initialized = true;
 }
+
+/**
+Set conv algo to blacklist.
+*/
+void set_conv_fwd_algo_blacklist(int id) {
+  SingletonManager::get<CudnnHandleManager>()->set_conv_algo_blacklist(id, ConvOpType::FWD);
+};
+
+void set_conv_bwd_data_algo_blacklist(int id) {
+  SingletonManager::get<CudnnHandleManager>()->set_conv_algo_blacklist(id, ConvOpType::BWD_DATA);
+};
+
+void set_conv_bwd_filter_algo_blacklist(int id) {
+  SingletonManager::get<CudnnHandleManager>()->set_conv_algo_blacklist(id, ConvOpType::BWD_FILTER);
+};
+
+/**
+Unset conv algo to blacklist.
+*/
+void unset_conv_fwd_algo_blacklist(int id) {
+    SingletonManager::get<CudnnHandleManager>()->unset_conv_algo_blacklist(id, ConvOpType::FWD);
+};
+
+NBLA_CUDA_API void unset_conv_bwd_data_algo_blacklist(int id) {
+    SingletonManager::get<CudnnHandleManager>()->unset_conv_algo_blacklist(id, ConvOpType::BWD_DATA);
+};
+
+NBLA_CUDA_API void unset_conv_bwd_filter_algo_blacklist(int id){
+    SingletonManager::get<CudnnHandleManager>()->unset_conv_algo_blacklist(id, ConvOpType::BWD_FILTER);
+};
+
 }

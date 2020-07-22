@@ -34,6 +34,15 @@ from nnabla_ext.cuda import (
     synchronize,
 )
 
+from nnabla_ext.cudnn.init import (
+    set_conv_fwd_algo_blacklist,
+    set_conv_bwd_data_algo_blacklist,
+    set_conv_bwd_filter_algo_blacklist,
+    unset_conv_fwd_algo_blacklist,
+    unset_conv_bwd_data_algo_blacklist,
+    unset_conv_bwd_filter_algo_blacklist
+)
+
 
 def context(device_id='0', type_config='float', *kw):
     """CUDNN context"""
