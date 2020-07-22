@@ -261,3 +261,9 @@ Add2:
 #   float: [float]
 # Sink:
 #   float: [float]
+AffineGrid:
+  float: [float]
+  half: [Half]
+WarpByGrid:
+  float: [float]
+  half: [Half]
