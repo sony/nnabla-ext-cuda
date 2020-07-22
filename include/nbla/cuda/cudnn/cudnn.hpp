@@ -340,9 +340,11 @@ private:
                                     bool heuristic);
   void find_backward_filter_algorithm(int workspace_limit, bool deterministic,
                                       bool heuristic);
+#if CUDNN_VERSION < 3000
   void get_forward_algorithm(int workspace_limit);
   void get_backward_data_algorithm(int workspace_limit);
   void get_backward_filter_algorithm(int workspace_limit);
+#endif
   void find_best_algorithms();
 };
 

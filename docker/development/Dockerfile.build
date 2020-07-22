@@ -61,10 +61,10 @@ RUN mkdir /tmp/deps \
     && rm -rf /tmp/*
 
 ############################################################# cmake
-ARG CMAKEVER=3.14.3
+ARG CMAKEVER=3.18.4
 RUN mkdir /tmp/deps \
     && cd /tmp/deps \
-    && yum install -y cmake3 \
+    && yum install -y cmake3 openssl-devel \
     && curl -L https://github.com/Kitware/CMake/releases/download/v${CMAKEVER}/cmake-${CMAKEVER}.tar.gz -o cmake-${CMAKEVER}.tar.gz \
     && tar xf cmake-${CMAKEVER}.tar.gz \
     && cd cmake-${CMAKEVER} \
