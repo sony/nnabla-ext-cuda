@@ -25,9 +25,11 @@
 #include <nbla/cuda/cuda.hpp>
 #include <nbla/cuda/common.hpp>
 #include <nbla/array_registry.hpp>
+#include <nbla/utils/dlpack_array_registry.hpp>
 #include <nbla/function_registry.hpp>
 #include <nbla/array/cpu_array.hpp>
 #include <nbla/cuda/array/cuda_array.hpp>
+#include <nbla/cuda/array/cuda_dlpack_array.hpp>
 % for name, snake_name, _ in function_list:
 % if name in function_types:
 #include <nbla/cuda/function/${snake_name}.hpp>
@@ -70,6 +72,9 @@ void init_cuda() {
                                    synchronizer_cpu_array_cuda_array);
   NBLA_REGISTER_ARRAY_SYNCHRONIZER(CudaArray, CpuCachedArray,
                                    synchronizer_cuda_array_cpu_array);
+  // one-way
+  NBLA_REGISTER_ARRAY_SYNCHRONIZER(CpuDlpackArray, CudaArray,
+                                   synchronizer_cpu_array_cuda_array);
 
   // CudaCachedArray
   NBLA_REGISTER_ARRAY_CREATOR(CudaCachedArray);
@@ -86,6 +91,30 @@ void init_cuda() {
                                    synchronizer_default);
   NBLA_REGISTER_ARRAY_SYNCHRONIZER(CudaArray, CudaCachedArray,
                                    synchronizer_default);
+  // one-way
+  NBLA_REGISTER_ARRAY_SYNCHRONIZER(CpuDlpackArray, CudaCachedArray,
+                                   synchronizer_cpu_array_cuda_array);
+
+  // CudaDlpackArray
+  NBLA_REGISTER_ARRAY_CREATOR(CudaDlpackArray);
+  SingletonManager::get<Cuda>()->register_array_class("CudaDlpackArray");
+  NBLA_REGISTER_DLPACK_DEVICE_TYPE_TO_CONTEXT(kDLGPU, cuda, CudaDlpackArray);
+  NBLA_REGISTER_ARRAY_TO_DLPACK_DEVICE_TYPE(CudaArray, kDLGPU);
+  NBLA_REGISTER_ARRAY_TO_DLPACK_DEVICE_TYPE(CudaCachedArray, kDLGPU);
+  // DlpackArray can be convert one-way.
+  NBLA_REGISTER_ARRAY_SYNCHRONIZER(CudaDlpackArray, CpuArray,
+                                   synchronizer_cuda_array_cpu_array);
+  NBLA_REGISTER_ARRAY_SYNCHRONIZER(CudaDlpackArray, CpuCachedArray,
+                                   synchronizer_cuda_array_cpu_array);
+  NBLA_REGISTER_ARRAY_SYNCHRONIZER(CudaDlpackArray, CudaArray,
+                                   synchronizer_default);
+  NBLA_REGISTER_ARRAY_SYNCHRONIZER(CudaDlpackArray, CudaCachedArray,
+                                   synchronizer_default);
+
+  // Array group registration
+  NBLA_REGISTER_ARRAY_GROUP(CudaArray, cuda);
+  NBLA_REGISTER_ARRAY_GROUP(CudaCachedArray, cuda);
+  NBLA_REGISTER_ARRAY_GROUP(CudaDlpackArray, cuda);
 
   // Function registration
 % for name, _, arg_types in function_list:

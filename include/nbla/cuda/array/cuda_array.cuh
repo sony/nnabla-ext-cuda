@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef __NBLA_CUDA_H_ARRAY_HPP__
+#define __NBLA_CUDA_H_ARRAY_HPP__
+
 #include <nbla/cuda/array/cuda_array.hpp>
 #include <nbla/cuda/common.hpp>
 
@@ -95,3 +98,4 @@ NBLA_DISABLE_TYPE(cuda_array_copy, cuda_fill, bool);
 NBLA_DEFINE_FUNC_COPY_FROM(CudaArray, cuda_array_copy, cuda);
 NBLA_DEFINE_FUNC_FILL(CudaArray, cuda_fill, cuda);
 }
+#endif
