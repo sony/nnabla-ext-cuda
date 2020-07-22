@@ -15,13 +15,209 @@
 #include <nbla/array.hpp>
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/function/max_pooling_backward.hpp>
-#include <nbla/cuda/utils/nd_index.hpp>
+#include <nbla/cuda/utils/atomic_add.cuh>
+#include <nbla/cuda/utils/nd_index.cuh>
 #include <nbla/variable.hpp>
 
 #include <thrust/device_ptr.h>
 #include <thrust/device_vector.h>
 
 namespace nbla {
+
+namespace max_pooling_backward {
+
+template <typename T> __global__ void kernel_zeroing(int size, T *x) {
+  NBLA_CUDA_KERNEL_LOOP(idx, size) { x[idx] = T(0); }
+}
+
+template <typename T, bool channel_last = false>
+__global__ void kernel_max_pooling_2d_forward(
+    int y_isize, int x_isize, T *dx, const T *dy, const T *x, int Cx, int Hx,
+    int Wx, int2 xstride, int By, int Cy, int Hy, int Wy, int2 ystride,
+    int wkernel, int hkernel, int wstride, int hstride, int wpad, int hpad) {
+  NBLA_CUDA_KERNEL_LOOP(yidx, y_isize) {
+    auto ynd_index = device_flat_to_3d(yidx, ystride);
+    auto c = channel_last ? ynd_index.z : ynd_index.x;
+    auto h = channel_last ? ynd_index.x : ynd_index.y;
+    auto w = channel_last ? ynd_index.y : ynd_index.z;
+    for (auto b = 0; b < By; ++b) {
+      auto dx_b = dx + b * x_isize;
+      auto x_b = x + b * x_isize;
+      auto dy_b = dy + b * y_isize;
+      // region
+      auto hi_pool_start = h * hstride - hpad;
+      auto wi_pool_start = w * wstride - wpad;
+      auto hi_pool_end = min(hi_pool_start + hkernel, Hx);
+      auto wi_pool_end = min(wi_pool_start + wkernel, Wx);
+      hi_pool_start = max(hi_pool_start, 0);
+      wi_pool_start = max(wi_pool_start, 0);
+      // pool
+      auto xnd_idx = channel_last ? make_int3(hi_pool_start, wi_pool_start, c)
+                                  : make_int3(c, hi_pool_start, wi_pool_start);
+      auto max_idx = device_3d_to_flat(xnd_idx, xstride);
+      auto max_val = x_b[max_idx];
+      for (auto rh = hi_pool_start; rh < hi_pool_end; ++rh) {
+        for (auto rw = wi_pool_start; rw < wi_pool_end; ++rw) {
+          xnd_idx = channel_last ? make_int3(rh, rw, c) : make_int3(c, rh, rw);
+          auto xidx = device_3d_to_flat(xnd_idx, xstride);
+          auto x_bidx = x_b[xidx];
+          if (max_val < x_bidx) {
+            max_val = x_bidx;
+            max_idx = xidx;
+          }
+        }
+      }
+      atomic_add(dx_b + max_idx, dy_b[yidx]);
+    }
+  }
+}
+
+template <typename T, bool channel_last = false>
+__global__ void kernel_max_pooling_3d_forward(
+    int y_isize, int x_isize, T *dx, const T *dy, const T *x, int Cx, int Dx,
+    int Hx, int Wx, int3 xstride, int By, int Cy, int Dy, int Hy, int Wy,
+    int3 ystride, int wkernel, int hkernel, int dkernel, int wstride,
+    int hstride, int dstride, int wpad, int hpad, int dpad) {
+  NBLA_CUDA_KERNEL_LOOP(yidx, y_isize) {
+    auto ynd_index = device_flat_to_4d(yidx, ystride);
+    auto c = channel_last ? ynd_index.w : ynd_index.x;
+    auto d = channel_last ? ynd_index.x : ynd_index.y;
+    auto h = channel_last ? ynd_index.y : ynd_index.z;
+    auto w = channel_last ? ynd_index.z : ynd_index.w;
+    for (auto b = 0; b < By; ++b) {
+      auto dx_b = dx + b * x_isize;
+      auto x_b = x + b * x_isize;
+      auto dy_b = dy + b * y_isize;
+      // region
+      auto di_pool_start = d * dstride - dpad;
+      auto hi_pool_start = h * hstride - hpad;
+      auto wi_pool_start = w * wstride - wpad;
+      auto di_pool_end = min(di_pool_start + dkernel, Dx);
+      auto hi_pool_end = min(hi_pool_start + hkernel, Hx);
+      auto wi_pool_end = min(wi_pool_start + wkernel, Wx);
+      di_pool_start = max(di_pool_start, 0);
+      hi_pool_start = max(hi_pool_start, 0);
+      wi_pool_start = max(wi_pool_start, 0);
+      // pool
+      auto xnd_idx =
+          channel_last
+              ? make_int4(di_pool_start, hi_pool_start, wi_pool_start, c)
+              : make_int4(c, di_pool_start, hi_pool_start, wi_pool_start);
+      auto max_idx = device_4d_to_flat(xnd_idx, xstride);
+      auto max_val = x_b[max_idx];
+      for (auto rd = di_pool_start; rd < di_pool_end; ++rd) {
+        for (auto rh = hi_pool_start; rh < hi_pool_end; ++rh) {
+          for (auto rw = wi_pool_start; rw < wi_pool_end; ++rw) {
+            xnd_idx = channel_last ? make_int4(rd, rh, rw, c)
+                                   : make_int4(c, rd, rh, rw);
+            auto xidx = device_4d_to_flat(xnd_idx, xstride);
+            auto x_bidx = x_b[xidx];
+            if (max_val < x_bidx) {
+              max_val = x_bidx;
+              max_idx = xidx;
+            }
+          }
+        }
+      }
+      atomic_add(dx_b + max_idx, dy_b[yidx]);
+    }
+  }
+}
+
+template <typename T, bool accum = false, bool channel_last = false>
+__global__ void kernel_max_pooling_2d_backward(
+    int y_isize, int x_isize, T *gdy, const T *gdx, const T *x, int Cx, int Hx,
+    int Wx, int2 xstride, int By, int Cy, int Hy, int Wy, int2 ystride,
+    int wkernel, int hkernel, int wstride, int hstride, int wpad, int hpad) {
+  NBLA_CUDA_KERNEL_LOOP(yidx, y_isize) {
+    auto ynd_index = device_flat_to_3d(yidx, ystride);
+    auto c = channel_last ? ynd_index.z : ynd_index.x;
+    auto h = channel_last ? ynd_index.x : ynd_index.y;
+    auto w = channel_last ? ynd_index.y : ynd_index.z;
+    for (auto b = 0; b < By; ++b) {
+      auto gdx_b = gdx + b * x_isize;
+      auto x_b = x + b * x_isize;
+      auto gdy_b = gdy + b * y_isize;
+      // region
+      auto hi_pool_start = h * hstride - hpad;
+      auto wi_pool_start = w * wstride - wpad;
+      auto hi_pool_end = min(hi_pool_start + hkernel, Hx);
+      auto wi_pool_end = min(wi_pool_start + wkernel, Wx);
+      hi_pool_start = max(hi_pool_start, 0);
+      wi_pool_start = max(wi_pool_start, 0);
+      // pool
+      auto xnd_idx = channel_last ? make_int3(hi_pool_start, wi_pool_start, c)
+                                  : make_int3(c, hi_pool_start, wi_pool_start);
+      auto max_idx = device_3d_to_flat(xnd_idx, xstride);
+      auto max_val = x_b[max_idx];
+      for (auto rh = hi_pool_start; rh < hi_pool_end; ++rh) {
+        for (auto rw = wi_pool_start; rw < wi_pool_end; ++rw) {
+          xnd_idx = channel_last ? make_int3(rh, rw, c) : make_int3(c, rh, rw);
+          auto xidx = device_3d_to_flat(xnd_idx, xstride);
+          auto x_bidx = x_b[xidx];
+          if (max_val < x_bidx) {
+            max_val = x_bidx;
+            max_idx = xidx;
+          }
+        }
+      }
+      gdy_b[yidx] = accum ? gdy_b[yidx] + gdx_b[max_idx] : gdx_b[max_idx];
+    }
+  }
+}
+
+template <typename T, bool accum = false, bool channel_last = false>
+__global__ void kernel_max_pooling_3d_backward(
+    int y_isize, int x_isize, T *gdy, const T *gdx, const T *x, int Cx, int Dx,
+    int Hx, int Wx, int3 xstride, int By, int Cy, int Dy, int Hy, int Wy,
+    int3 ystride, int wkernel, int hkernel, int dkernel, int wstride,
+    int hstride, int dstride, int wpad, int hpad, int dpad) {
+  NBLA_CUDA_KERNEL_LOOP(yidx, y_isize) {
+    auto ynd_index = device_flat_to_4d(yidx, ystride);
+    auto c = channel_last ? ynd_index.w : ynd_index.x;
+    auto d = channel_last ? ynd_index.x : ynd_index.y;
+    auto h = channel_last ? ynd_index.y : ynd_index.z;
+    auto w = channel_last ? ynd_index.z : ynd_index.w;
+    for (auto b = 0; b < By; ++b) {
+      auto gdx_b = gdx + b * x_isize;
+      auto x_b = x + b * x_isize;
+      auto gdy_b = gdy + b * y_isize;
+      // region
+      auto di_pool_start = d * dstride - dpad;
+      auto hi_pool_start = h * hstride - hpad;
+      auto wi_pool_start = w * wstride - wpad;
+      auto di_pool_end = min(di_pool_start + dkernel, Dx);
+      auto hi_pool_end = min(hi_pool_start + hkernel, Hx);
+      auto wi_pool_end = min(wi_pool_start + wkernel, Wx);
+      di_pool_start = max(di_pool_start, 0);
+      hi_pool_start = max(hi_pool_start, 0);
+      wi_pool_start = max(wi_pool_start, 0);
+      // pool
+      auto xnd_idx =
+          channel_last
+              ? make_int4(di_pool_start, hi_pool_start, wi_pool_start, c)
+              : make_int4(c, di_pool_start, hi_pool_start, wi_pool_start);
+      auto max_idx = device_4d_to_flat(xnd_idx, xstride);
+      auto max_val = x_b[max_idx];
+      for (auto rd = di_pool_start; rd < di_pool_end; ++rd) {
+        for (auto rh = hi_pool_start; rh < hi_pool_end; ++rh) {
+          for (auto rw = wi_pool_start; rw < wi_pool_end; ++rw) {
+            xnd_idx = channel_last ? make_int4(rd, rh, rw, c)
+                                   : make_int4(c, rd, rh, rw);
+            auto xidx = device_4d_to_flat(xnd_idx, xstride);
+            auto x_bidx = x_b[xidx];
+            if (max_val < x_bidx) {
+              max_val = x_bidx;
+              max_idx = xidx;
+            }
+          }
+        }
+      }
+      gdy_b[yidx] = accum ? gdy_b[yidx] + gdx_b[max_idx] : gdx_b[max_idx];
+    }
+  }
+}
+}
 
 template <typename T>
 void MaxPoolingBackwardCuda<T>::setup_impl(const Variables &inputs,
@@ -34,109 +230,87 @@ template <typename T>
 void MaxPoolingBackwardCuda<T>::forward_impl(const Variables &inputs,
                                              const Variables &outputs) {
   cuda_set_device(this->device_);
-  NBLA_ERROR(error_code::not_implemented,
-             "Do not call MaxPoolingBackward::forward. \n"
-             "This is the temporal function to support the double backward of "
-             "the max pooling. \n"
-             "Directly call the backward method.");
-}
+  // inputs[0]  : dy
+  // inputs[1]  : x
+  // outputs[0] : dx
+  // dx = df(dy, x)
 
-// TODO: Optimize
-template <typename T, int NDIM, bool accum = true>
-__global__ void kernel_max_pooling_2d_double_backward(
-    const Size_t y_size, const T *x, const T *g_dx, T *g_dy,
-    const int64_t *x_shape, const int64_t *x_stride, const int64_t *y_stride,
-    const int *kernel, const int *stride, const int *pad,
-    const bool channel_last) {
-  auto hdim = channel_last ? NDIM - 3 : NDIM - 2;
-  auto wdim = channel_last ? NDIM - 2 : NDIM - 1;
-  NBLA_CUDA_KERNEL_LOOP(idx, y_size) {
-    // 1. NdIndex
-    NdIndex<NDIM> nd_index = device_flat2nd<NDIM>(idx, y_stride);
+  auto sdim = this->kernel_.size();
+  auto yshape = inputs[0]->shape();
+  auto xshape = inputs[1]->shape();
+  int ndim = xshape.size();
+  // data
+  auto dy = inputs[0]->get_data_pointer<Tcu>(this->ctx_);
+  auto x = inputs[1]->get_data_pointer<Tcu>(this->ctx_);
+  auto dx = outputs[0]->cast_data_and_get_pointer<Tcu>(this->ctx_, false);
+  // zeroing
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(max_pooling_backward::kernel_zeroing,
+                                 outputs[0]->size(), dx);
+  if (sdim == 2) {
+    // pool params
+    int hstride = this->stride_[0];
+    int wstride = this->stride_[1];
+    int hpad = this->pad_[0];
+    int wpad = this->pad_[1];
+    int hkernel = this->kernel_[0];
+    int wkernel = this->kernel_[1];
+    int Cx = this->channel_last_ ? xshape[ndim - 1] : xshape[ndim - 3];
+    int Hx = this->channel_last_ ? xshape[ndim - 3] : xshape[ndim - 2];
+    int Wx = this->channel_last_ ? xshape[ndim - 2] : xshape[ndim - 1];
+    int Cy = this->channel_last_ ? yshape[ndim - 1] : yshape[ndim - 3];
+    int Hy = this->channel_last_ ? yshape[ndim - 3] : yshape[ndim - 2];
+    int Wy = this->channel_last_ ? yshape[ndim - 2] : yshape[ndim - 1];
+    int By = inputs[0]->size() / (Cy * Hy * Wy);
+    auto y_isize = Cy * Hy * Wy;
+    auto x_isize = Cx * Hx * Wx;
+    auto ystride =
+        this->channel_last_ ? make_int2(Wy * Cy, Cy) : make_int2(Hy * Wy, Wy);
+    auto xstride =
+        this->channel_last_ ? make_int2(Wx * Cx, Cx) : make_int2(Hx * Wx, Wx);
+    // pool
+    auto forward =
+        this->channel_last_
+            ? max_pooling_backward::kernel_max_pooling_2d_forward<Tcu, true>
+            : max_pooling_backward::kernel_max_pooling_2d_forward<Tcu, false>;
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
+        forward, y_isize, x_isize, dx, dy, x, Cx, Hx, Wx, xstride, By, Cy, Hy,
+        Wy, ystride, wkernel, hkernel, wstride, hstride, wpad, hpad);
 
-    // 2. Create pool indices
-    int64_t h0 = nd_index.nd_idx[hdim];
-    int64_t w0 = nd_index.nd_idx[wdim];
-    auto pool_h_start = max(h0 * stride[0] - pad[0], (int64_t)0);
-    auto pool_h_end = min(h0 * stride[0] + kernel[0] - pad[0], x_shape[hdim]);
-    auto pool_w_start = max(w0 * stride[1] - pad[1], (int64_t)0);
-    auto pool_w_end = min(w0 * stride[1] + kernel[1] - pad[1], x_shape[wdim]);
-
-    // 3. Initial value
-    nd_index.nd_idx[hdim] = pool_h_start;
-    nd_index.nd_idx[wdim] = pool_w_start;
-    auto max_idx = device_nd2flat<NDIM>(nd_index, x_stride);
-    auto max_val = x[max_idx];
-
-    // 4. Find max index
-    for (int h = pool_h_start; h < pool_h_end; h++) {
-      for (int w = pool_w_start; w < pool_w_end; w++) {
-        nd_index.nd_idx[hdim] = h;
-        nd_index.nd_idx[wdim] = w;
-        auto idx_r = device_nd2flat<NDIM>(nd_index, x_stride);
-        auto val = x[idx_r];
-        if (val > max_val) {
-          max_val = val;
-          max_idx = idx_r;
-        }
-      }
-    }
-
-    // 5. Double backward is table look-up with max index
-    g_dy[idx] = accum ? g_dy[idx] + g_dx[max_idx] : g_dx[max_idx];
-  }
-}
-
-template <typename T, int NDIM, bool accum = true>
-__global__ void kernel_max_pooling_3d_double_backward(
-    const Size_t y_size, const T *x, const T *g_dx, T *g_dy,
-    const int64_t *x_shape, const int64_t *x_stride, const int64_t *y_stride,
-    const int *kernel, const int *stride, const int *pad,
-    const bool channel_last) {
-  auto ddim = channel_last ? NDIM - 4 : NDIM - 3;
-  auto hdim = channel_last ? NDIM - 3 : NDIM - 2;
-  auto wdim = channel_last ? NDIM - 2 : NDIM - 1;
-  NBLA_CUDA_KERNEL_LOOP(idx, y_size) {
-    // 1. NdIndex
-    NdIndex<NDIM> nd_index = device_flat2nd<NDIM>(idx, y_stride);
-
-    // 2. Create pool indices
-    int64_t d0 = nd_index.nd_idx[ddim];
-    int64_t h0 = nd_index.nd_idx[hdim];
-    int64_t w0 = nd_index.nd_idx[wdim];
-    auto pool_d_start = max(d0 * stride[0] - pad[0], (int64_t)0);
-    auto pool_d_end = min(d0 * stride[0] + kernel[0] - pad[0], x_shape[ddim]);
-    auto pool_h_start = max(h0 * stride[1] - pad[1], (int64_t)0);
-    auto pool_h_end = min(h0 * stride[1] + kernel[1] - pad[1], x_shape[hdim]);
-    auto pool_w_start = max(w0 * stride[2] - pad[2], (int64_t)0);
-    auto pool_w_end = min(w0 * stride[2] + kernel[2] - pad[2], x_shape[wdim]);
-
-    // 3. Initial value
-    nd_index.nd_idx[ddim] = pool_d_start;
-    nd_index.nd_idx[hdim] = pool_h_start;
-    nd_index.nd_idx[wdim] = pool_w_start;
-    auto max_idx = device_nd2flat<NDIM>(nd_index, x_stride);
-    auto max_val = x[max_idx];
-
-    // 4. Find max index
-    for (int d = pool_d_start; d < pool_d_end; d++) {
-      for (int h = pool_h_start; h < pool_h_end; h++) {
-        for (int w = pool_w_start; w < pool_w_end; w++) {
-          nd_index.nd_idx[ddim] = d;
-          nd_index.nd_idx[hdim] = h;
-          nd_index.nd_idx[wdim] = w;
-          auto idx_r = device_nd2flat<NDIM>(nd_index, x_stride);
-          auto val = x[idx_r];
-          if (val > max_val) {
-            max_val = val;
-            max_idx = idx_r;
-          }
-        }
-      }
-    }
-
-    // 5. Double backward is table look-up with max index
-    g_dy[idx] = accum ? g_dy[idx] + g_dx[max_idx] : g_dx[max_idx];
+  } else if (sdim == 3) {
+    // pool params
+    int dstride = this->stride_[0];
+    int hstride = this->stride_[1];
+    int wstride = this->stride_[2];
+    int dpad = this->pad_[0];
+    int hpad = this->pad_[1];
+    int wpad = this->pad_[2];
+    int dkernel = this->kernel_[0];
+    int hkernel = this->kernel_[1];
+    int wkernel = this->kernel_[2];
+    int Cx = this->channel_last_ ? xshape[ndim - 1] : xshape[ndim - 4];
+    int Dx = this->channel_last_ ? xshape[ndim - 4] : xshape[ndim - 3];
+    int Hx = this->channel_last_ ? xshape[ndim - 3] : xshape[ndim - 2];
+    int Wx = this->channel_last_ ? xshape[ndim - 2] : xshape[ndim - 1];
+    int Cy = this->channel_last_ ? yshape[ndim - 1] : yshape[ndim - 4];
+    int Dy = this->channel_last_ ? yshape[ndim - 4] : yshape[ndim - 3];
+    int Hy = this->channel_last_ ? yshape[ndim - 3] : yshape[ndim - 2];
+    int Wy = this->channel_last_ ? yshape[ndim - 2] : yshape[ndim - 1];
+    int By = inputs[0]->size() / (Cy * Dy * Hy * Wy);
+    auto y_isize = Cy * Dy * Hy * Wy;
+    auto x_isize = Cx * Dx * Hx * Wx;
+    auto ystride = this->channel_last_ ? make_int3(Hy * Wy * Cy, Wy * Cy, Cy)
+                                       : make_int3(Dy * Hy * Wy, Hy * Wy, Wy);
+    auto xstride = this->channel_last_ ? make_int3(Hx * Wx * Cx, Wx * Cx, Cx)
+                                       : make_int3(Dx * Hx * Wx, Hx * Wx, Wx);
+    // pool
+    auto forward =
+        this->channel_last_
+            ? max_pooling_backward::kernel_max_pooling_3d_forward<Tcu, true>
+            : max_pooling_backward::kernel_max_pooling_3d_forward<Tcu, false>;
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(forward, y_isize, x_isize, dx, dy, x, Cx, Dx,
+                                   Hx, Wx, xstride, By, Cy, Dy, Hy, Wy, ystride,
+                                   wkernel, hkernel, dkernel, wstride, hstride,
+                                   dstride, wpad, hpad, dpad);
   }
 }
 
@@ -148,109 +322,95 @@ void MaxPoolingBackwardCuda<T>::backward_impl(
     return;
   }
   cuda_set_device(this->device_);
+  auto sdim = this->kernel_.size();
+  auto yshape = inputs[0]->shape();
+  auto xshape = inputs[1]->shape();
+  int ndim = xshape.size();
+  // data
+  auto gdy = inputs[0]->cast_grad_and_get_pointer<Tcu>(this->ctx_, !accum[0]);
+  auto x = inputs[1]->get_data_pointer<Tcu>(this->ctx_);
+  auto gdx = outputs[0]->get_grad_pointer<Tcu>(this->ctx_);
 
-  if (propagate_down[0]) {
-    if (!accum[0]) {
-      inputs[0]->grad()->zero();
-    }
-  }
-  if (propagate_down[1]) {
-    auto y_size = inputs[1]->size();
-    const Tcu *x = inputs[0]->get_data_pointer<Tcu>(this->ctx_);
-    const Tcu *g_dx = outputs[0]->get_grad_pointer<Tcu>(this->ctx_);
-    Tcu *g_dy = inputs[1]->cast_grad_and_get_pointer<Tcu>(this->ctx_);
-    thrust::device_vector<int64_t> d_vec_x_shape(inputs[0]->shape());
-    thrust::device_vector<int64_t> d_vec_x_stride(inputs[0]->strides());
-    thrust::device_vector<int64_t> d_vec_y_stride(inputs[1]->strides());
-    thrust::device_vector<int> d_vec_kernel(this->kernel_);
-    thrust::device_vector<int> d_vec_stride(this->stride_);
-    thrust::device_vector<int> d_vec_pad(this->pad_);
-    auto x_shape = thrust::raw_pointer_cast(d_vec_x_shape.data());
-    auto x_stride = thrust::raw_pointer_cast(d_vec_x_stride.data());
-    auto y_stride = thrust::raw_pointer_cast(d_vec_y_stride.data());
-    auto kernel = thrust::raw_pointer_cast(d_vec_kernel.data());
-    auto stride = thrust::raw_pointer_cast(d_vec_stride.data());
-    auto pad = thrust::raw_pointer_cast(d_vec_pad.data());
-    auto channel_last = this->channel_last_;
-
-    auto ndim = inputs[0]->shape().size();
-    if (this->kernel_.size() == 2) {
-      if (ndim == 4) {
-        if (accum[1]) {
-          NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-              (kernel_max_pooling_2d_double_backward<Tcu, 4, true>), y_size, x,
-              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad,
-              channel_last);
-        } else {
-          NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-              (kernel_max_pooling_2d_double_backward<Tcu, 4, false>), y_size, x,
-              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad,
-              channel_last);
-        }
-      } else if (ndim == 5) {
-        if (accum[1]) {
-          NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-              (kernel_max_pooling_2d_double_backward<Tcu, 5, true>), y_size, x,
-              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad,
-              channel_last);
-        } else {
-          NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-              (kernel_max_pooling_2d_double_backward<Tcu, 5, false>), y_size, x,
-              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad,
-              channel_last);
-        }
-      } else if (ndim == 6) {
-        if (accum[1]) {
-          NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-              (kernel_max_pooling_2d_double_backward<Tcu, 6, true>), y_size, x,
-              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad,
-              channel_last);
-        } else {
-          NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-              (kernel_max_pooling_2d_double_backward<Tcu, 6, false>), y_size, x,
-              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad,
-              channel_last);
-        }
-      }
-    } else if (this->kernel_.size() == 3) {
-      if (ndim == 5) {
-        if (accum[1]) {
-          NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-              (kernel_max_pooling_3d_double_backward<Tcu, 5, true>), y_size, x,
-              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad,
-              channel_last);
-        } else {
-          NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-              (kernel_max_pooling_3d_double_backward<Tcu, 5, false>), y_size, x,
-              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad,
-              channel_last);
-        }
-      } else if (ndim == 6) {
-        if (accum[1]) {
-          NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-              (kernel_max_pooling_3d_double_backward<Tcu, 6, true>), y_size, x,
-              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad,
-              channel_last);
-        } else {
-          NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-              (kernel_max_pooling_3d_double_backward<Tcu, 6, false>), y_size, x,
-              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad,
-              channel_last);
-        }
-      } else if (ndim == 7) {
-        if (accum[1]) {
-          NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-              (kernel_max_pooling_3d_double_backward<Tcu, 7, true>), y_size, x,
-              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad,
-              channel_last);
-        } else {
-          NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-              (kernel_max_pooling_3d_double_backward<Tcu, 7, false>), y_size, x,
-              g_dx, g_dy, x_shape, x_stride, y_stride, kernel, stride, pad,
-              channel_last);
-        }
-      }
-    }
+  if (sdim == 2) {
+    // pool params
+    int hstride = this->stride_[0];
+    int wstride = this->stride_[1];
+    int hpad = this->pad_[0];
+    int wpad = this->pad_[1];
+    int hkernel = this->kernel_[0];
+    int wkernel = this->kernel_[1];
+    int Cx = this->channel_last_ ? xshape[ndim - 1] : xshape[ndim - 3];
+    int Hx = this->channel_last_ ? xshape[ndim - 3] : xshape[ndim - 2];
+    int Wx = this->channel_last_ ? xshape[ndim - 2] : xshape[ndim - 1];
+    int Cy = this->channel_last_ ? yshape[ndim - 1] : yshape[ndim - 3];
+    int Hy = this->channel_last_ ? yshape[ndim - 3] : yshape[ndim - 2];
+    int Wy = this->channel_last_ ? yshape[ndim - 2] : yshape[ndim - 1];
+    int By = inputs[0]->size() / (Cy * Hy * Wy);
+    auto y_isize = Cy * Hy * Wy;
+    auto x_isize = Cx * Hx * Wx;
+    auto ystride =
+        this->channel_last_ ? make_int2(Wy * Cy, Cy) : make_int2(Hy * Wy, Wy);
+    auto xstride =
+        this->channel_last_ ? make_int2(Wx * Cx, Cx) : make_int2(Hx * Wx, Wx);
+    // pool
+    auto backward =
+        accum[0]
+            ? this->channel_last_
+                  ? max_pooling_backward::kernel_max_pooling_2d_backward<
+                        Tcu, true, true>
+                  : max_pooling_backward::kernel_max_pooling_2d_backward<
+                        Tcu, true, false>
+            : this->channel_last_
+                  ? max_pooling_backward::kernel_max_pooling_2d_backward<
+                        Tcu, false, true>
+                  : max_pooling_backward::kernel_max_pooling_2d_backward<
+                        Tcu, false, false>;
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
+        backward, y_isize, x_isize, gdy, gdx, x, Cx, Hx, Wx, xstride, By, Cy,
+        Hy, Wy, ystride, wkernel, hkernel, wstride, hstride, wpad, hpad);
+  } else if (sdim == 3) {
+    // pool params
+    int dstride = this->stride_[0];
+    int hstride = this->stride_[1];
+    int wstride = this->stride_[2];
+    int dpad = this->pad_[0];
+    int hpad = this->pad_[1];
+    int wpad = this->pad_[2];
+    int dkernel = this->kernel_[0];
+    int hkernel = this->kernel_[1];
+    int wkernel = this->kernel_[2];
+    int Cx = this->channel_last_ ? xshape[ndim - 1] : xshape[ndim - 4];
+    int Dx = this->channel_last_ ? xshape[ndim - 4] : xshape[ndim - 3];
+    int Hx = this->channel_last_ ? xshape[ndim - 3] : xshape[ndim - 2];
+    int Wx = this->channel_last_ ? xshape[ndim - 2] : xshape[ndim - 1];
+    int Cy = this->channel_last_ ? yshape[ndim - 1] : yshape[ndim - 4];
+    int Dy = this->channel_last_ ? yshape[ndim - 4] : yshape[ndim - 3];
+    int Hy = this->channel_last_ ? yshape[ndim - 3] : yshape[ndim - 2];
+    int Wy = this->channel_last_ ? yshape[ndim - 2] : yshape[ndim - 1];
+    int By = inputs[0]->size() / (Cy * Dy * Hy * Wy);
+    auto y_isize = Cy * Dy * Hy * Wy;
+    auto x_isize = Cx * Dx * Hx * Wx;
+    auto ystride = this->channel_last_ ? make_int3(Hy * Wy * Cy, Wy * Cy, Cy)
+                                       : make_int3(Dy * Hy * Wy, Hy * Wy, Wy);
+    auto xstride = this->channel_last_ ? make_int3(Hx * Wx * Cx, Wx * Cx, Cx)
+                                       : make_int3(Dx * Hx * Wx, Hx * Wx, Wx);
+    // pool
+    auto backward =
+        accum[0]
+            ? this->channel_last_
+                  ? max_pooling_backward::kernel_max_pooling_3d_backward<
+                        Tcu, true, true>
+                  : max_pooling_backward::kernel_max_pooling_3d_backward<
+                        Tcu, true, false>
+            : this->channel_last_
+                  ? max_pooling_backward::kernel_max_pooling_3d_backward<
+                        Tcu, false, true>
+                  : max_pooling_backward::kernel_max_pooling_3d_backward<
+                        Tcu, false, false>;
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(backward, y_isize, x_isize, gdy, gdx, x, Cx,
+                                   Dx, Hx, Wx, xstride, By, Cy, Dy, Hy, Wy,
+                                   ystride, wkernel, hkernel, dkernel, wstride,
+                                   hstride, dstride, wpad, hpad, dpad);
   }
 }
 }
