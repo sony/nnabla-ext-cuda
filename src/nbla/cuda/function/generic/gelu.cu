@@ -27,11 +27,12 @@ namespace nbla {
 NBLA_DEFINE_TRANSFORM_UNARY_CUDA(
     GELU, x / 2 * (1 + std::tanh((std::sqrt((T)(2 / M_PI)) *
                                   (x + (T)0.044715 * std::pow(x, (T)3))))),
-    (T)0.5 +
-        ((T)0.398942 * x + (T)0.0535161 * std::pow(x, (T)3)) *
-            std::pow(1 / cosh((T)0.797885 * x +
-                              (T)0.0356774 * std::pow(x, (T)3)),
-                     (T)2) +
-        (T)0.5 * std::tanh((T)0.797885 * x + (T)0.0356774 * std::pow(x, (T)3)),
+    dy *(0.5 * (1 + std::tanh(std::sqrt((T)(2 / M_PI)) *
+                              (x + (T)0.044715 * std::pow(x, T(3))))) +
+         0.5 * x *
+             (1 - std::pow(std::tanh(std::sqrt((T)(2 / M_PI)) *
+                                     (x + (T)0.044715 * std::pow(x, T(3)))),
+                           T(2))) *
+             std::sqrt((T)(2 / M_PI)) * (1 + 0.134145 * std::pow(x, T(2)))),
     false);
 }
