@@ -115,6 +115,9 @@ public:
   @param dtype Data type.
   @param ctx Context.
   */
+
+  shared_ptr<Allocator> select_allocator(const Size_t size, const string& device_id);
+
   explicit CudaCachedVirtualArray(const Size_t size, dtypes dtype,
                                const Context &ctx);
   virtual ~CudaCachedVirtualArray();

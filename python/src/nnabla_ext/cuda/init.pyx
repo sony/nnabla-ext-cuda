@@ -30,6 +30,12 @@ cdef extern from "nbla/cuda/init.hpp" namespace "nbla":
     void clear_cuda_virtual_memory_cache() except+
     void print_cuda_memory_cache_map() except+
     void print_cuda_virtual_memory_cache_map() except+
+    size_t get_cuda_caching_allocator_fragmentation_bytes(const string& device_id) except +
+    size_t get_cuda_caching_allocator_max_available_bytes(const string& device_id) except +
+    vector[int] get_cuda_cached_memory_used_counts(const string& device_id) except +
+    size_t get_cuda_virtual_caching_allocator_fragmentation_bytes(const string& device_id) except +
+    size_t get_cuda_virtual_caching_allocator_max_available_bytes(const string& device_id) except +
+    vector[int] get_cuda_virtual_memory_used_counts(const string& device_id) except +
     vector[string] cuda_array_classes() except +
     void _cuda_set_array_classes(const vector[string] & a) except +
     void cuda_device_synchronize(const string & device) except +
@@ -78,6 +84,30 @@ def print_memory_cache_map():
 def print_virtual_memory_cache_map():
     """Dump cuda memory cache map."""
     print_cuda_virtual_memory_cache_map()
+
+def get_caching_allocator_fragmentation_bytes(str device_id):
+    """Get total cuda cached memory size"""
+    return get_cuda_caching_allocator_fragmentation_bytes(device_id)
+
+def get_caching_allocator_max_available_bytes(str device_id):
+    """Get total cuda cached memory size"""
+    return get_cuda_caching_allocator_max_available_bytes(device_id)
+
+def get_cached_memory_used_counts(str device_id):
+    """Get max cuda cached memory size"""
+    return get_cuda_cached_memory_used_counts(device_id)
+
+def get_virtual_caching_allocator_fragmentation_bytes(str device_id):
+    """Get max cuda cached memory size"""
+    return get_cuda_virtual_caching_allocator_fragmentation_bytes(device_id)
+
+def get_virtual_caching_allocator_max_available_bytes(str device_id):
+    """Get total cuda cached memory size"""
+    return get_cuda_virtual_caching_allocator_max_available_bytes(device_id)
+
+def get_virtual_memory_used_counts(str device_id):
+    """Get total cuda cached memory size"""
+    return get_cuda_virtual_memory_used_counts(device_id)
 
 ###############################################################################
 # Array preference API

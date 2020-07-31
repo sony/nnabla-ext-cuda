@@ -37,7 +37,7 @@ namespace nbla {
     prev_ctx = ctx;
   }
 
-  CUmemAllocationProp get_mem_allocation_prop(int device_id) {
+  CUmemAllocationProp& get_mem_allocation_prop(int device_id) {
     static unordered_map<int, CUmemAllocationProp> prop_map;
 
     if (prop_map.find(device_id) != prop_map.end()) return prop_map[device_id];
@@ -48,9 +48,7 @@ namespace nbla {
     prop.location.id = device_id;
     prop.win32HandleMetaData = NULL; // need to change on win32?
 
-    prop_map[device_id] = prop;
-
-    return prop;
+    return prop_map[device_id] = prop;
   }
 
   CUmemAccessDesc get_mem_access_desc(int device_id) {
@@ -104,17 +102,20 @@ namespace nbla {
   size_t CudaPhysicalMemory::alloc() {
     if (allocated_) return bytes_;
 
+    int dev_id = std::stoi(device_id_);
+
+    // make sure to set ctx.
+    set_device_primary_ctx(dev_id);
+
+    // Member bytes_ are updated by rounded bytes.
+    bytes_ = round_up_by_chunk(bytes_, dev_id);
+
     try {
-      int dev_id = std::stoi(device_id_);
-
-      // make sure to set ctx.
-      set_device_primary_ctx(dev_id);
-
-      // Member bytes_ are updated by rounded bytes.
-      bytes_ = round_up_by_chunk(bytes_, dev_id);
+      static uint64_t count = 0;
+      count++;
 
       // allocate physical memory
-      auto prop = get_mem_allocation_prop(dev_id);
+      auto &prop = get_mem_allocation_prop(dev_id);
       NBLA_CUDA_DRIVER_CHECK(cuMemCreate(&handle_, bytes_, &prop, 0ULL));
 
       allocated_ = true; // physical memory allocation is performed only once.
@@ -164,6 +165,8 @@ namespace nbla {
     dev_ptr_ = 0ULL;
   }
 
+  using std::cout;
+  using std::endl;
   void CudaVirtualMemory::bind_impl() {
     // Calling bind_impl() more than once is prohibited, raise.
     // todo: support growing memory.

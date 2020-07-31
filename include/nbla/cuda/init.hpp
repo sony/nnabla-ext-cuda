@@ -35,20 +35,34 @@ NBLA_CUDA_API void init_cuda();
 /** Clear all CUDA memory cache
 */
 NBLA_CUDA_API void clear_cuda_memory_cache();
-
-/** Clear all CUDA memory cache
-*/
-NBLA_CUDA_API void clear_cuda_virtual_memory_cache();
-
 /**
  * Print CUDA memory cache map.
  */
 NBLA_CUDA_API void print_cuda_memory_cache_map();
 
 /**
+ * APIs for cache map analysis
+ */
+NBLA_CUDA_API size_t get_cuda_caching_allocator_fragmentation_bytes(const string& device_id);
+NBLA_CUDA_API size_t get_cuda_caching_allocator_max_available_bytes(const string& device_id);
+NBLA_CUDA_API vector<int> get_cuda_cached_memory_used_counts(const string& device_id);
+
+/**
  * Print CUDA memory cache map.
  */
 NBLA_CUDA_API void print_cuda_virtual_memory_cache_map();
+
+/**
+ * Clear all CUDA memory cache
+ */
+NBLA_CUDA_API void clear_cuda_virtual_memory_cache();
+
+/**
+ * APIs for cache map analysis
+ */
+NBLA_CUDA_API size_t get_cuda_virtual_caching_allocator_fragmentation_bytes(const string& device_id);
+NBLA_CUDA_API size_t get_cuda_virtual_caching_allocator_max_available_bytes(const string& device_id);
+NBLA_CUDA_API vector<int> get_cuda_virtual_memory_used_counts(const string& device_id);
 
 /** Get CUDA array classes.
 */

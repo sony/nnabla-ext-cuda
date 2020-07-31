@@ -37,7 +37,7 @@ namespace nbla {
   // ----------------------------------------------------------------------
   void set_device_primary_ctx(int device_id);
 
-  CUmemAllocationProp get_mem_allocation_prop(int device_id);
+  CUmemAllocationProp& get_mem_allocation_prop(int device_id);
 
   CUmemAccessDesc get_mem_access_desc(int device_id);
 

@@ -82,6 +82,7 @@ void init_cuda() {
   // one-way
   NBLA_REGISTER_ARRAY_SYNCHRONIZER(CpuDlpackArray, CudaArray,
                                    synchronizer_cpu_array_cuda_array);
+  NBLA_REGISTER_ARRAY_GROUP(CudaArray, cuda);
 
   // CudaCachedArray
   NBLA_REGISTER_ARRAY_CREATOR(CudaCachedArray);
@@ -101,6 +102,7 @@ void init_cuda() {
   // one-way
   NBLA_REGISTER_ARRAY_SYNCHRONIZER(CpuDlpackArray, CudaCachedArray,
                                    synchronizer_cpu_array_cuda_array);
+  NBLA_REGISTER_ARRAY_GROUP(CudaCachedArray, cuda);
 
   // CudaDlpackArray
   NBLA_REGISTER_ARRAY_CREATOR(CudaDlpackArray);
@@ -117,10 +119,6 @@ void init_cuda() {
                                    synchronizer_default);
   NBLA_REGISTER_ARRAY_SYNCHRONIZER(CudaDlpackArray, CudaCachedArray,
                                    synchronizer_default);
-
-  // Array group registration
-  NBLA_REGISTER_ARRAY_GROUP(CudaArray, cuda);
-  NBLA_REGISTER_ARRAY_GROUP(CudaCachedArray, cuda);
   NBLA_REGISTER_ARRAY_GROUP(CudaDlpackArray, cuda);
 
   // CudaCachedUnifuedArray
@@ -142,6 +140,7 @@ void init_cuda() {
                                    synchronizer_default);
   NBLA_REGISTER_ARRAY_SYNCHRONIZER(CudaCachedUnifiedArray, CudaCachedArray,
                                    synchronizer_default);
+  NBLA_REGISTER_ARRAY_GROUP(CudaCachedUnifiedArray, cuda);
 
   // CudaCachedHostArray
   NBLA_REGISTER_ARRAY_CREATOR(CudaCachedHostArray);
@@ -166,6 +165,7 @@ void init_cuda() {
                                    synchronizer_cuda_array_cpu_array);
   NBLA_REGISTER_ARRAY_SYNCHRONIZER(CudaCachedHostArray, CudaCachedUnifiedArray,
                                    synchronizer_cpu_array_cuda_array);
+  NBLA_REGISTER_ARRAY_GROUP(CudaCachedHostArray, cpu);
 
   // CudaCachedVirtualArray
 #if CUDA_VERSION >= 10020
@@ -195,6 +195,7 @@ void init_cuda() {
                                    synchronizer_cpu_array_cuda_array);
   NBLA_REGISTER_ARRAY_SYNCHRONIZER(CudaCachedVirtualArray, CudaCachedHostArray,
                                    synchronizer_cuda_array_cpu_array);
+  NBLA_REGISTER_ARRAY_GROUP(CudaCachedVirtualArray, cuda);
 #endif //CUDA_VERSION >= 10020
 
   // Function registration
@@ -247,17 +248,43 @@ void clear_cuda_memory_cache() {
   SingletonManager::get<Cuda>()->caching_allocator()->free_unused_caches();
 }
 
-void clear_cuda_virtual_memory_cache() {
-  SingletonManager::get<Cuda>()->virtual_caching_allocator()->free_unused_caches();
-}
-
 void print_cuda_memory_cache_map() {
   SingletonManager::get<Cuda>()->caching_allocator()->print_memory_cache_map();
+}
+
+size_t get_cuda_caching_allocator_fragmentation_bytes(const string& device_id) {
+  return SingletonManager::get<Cuda>()->caching_allocator()->get_fragmentation_bytes(device_id);
+}
+
+size_t get_cuda_caching_allocator_max_available_bytes(const string& device_id) {
+  return SingletonManager::get<Cuda>()->caching_allocator()->get_max_available_bytes(device_id);
+}
+
+vector<int> get_cuda_cached_memory_used_counts(const string& device_id) {
+  return SingletonManager::get<Cuda>()->caching_allocator()->get_used_memory_counts(device_id);
+}
+
+#if CUDA_VERSION >= 10020
+void clear_cuda_virtual_memory_cache() {
+  SingletonManager::get<Cuda>()->virtual_caching_allocator()->free_unused_caches();
 }
 
 void print_cuda_virtual_memory_cache_map() {
   SingletonManager::get<Cuda>()->virtual_caching_allocator()->print_memory_cache_map();
 }
+
+size_t get_cuda_virtual_caching_allocator_fragmentation_bytes(const string& device_id) {
+  return SingletonManager::get<Cuda>()->virtual_caching_allocator()->get_fragmentation_bytes(device_id);
+}
+
+size_t get_cuda_virtual_caching_allocator_max_available_bytes(const string& device_id) {
+  return SingletonManager::get<Cuda>()->virtual_caching_allocator()->get_max_available_bytes(device_id);
+}
+
+vector<int> get_cuda_virtual_memory_used_counts(const string& device_id) {
+  return SingletonManager::get<Cuda>()->virtual_caching_allocator()->get_used_memory_counts(device_id);
+}
+#endif
 
 /** Get CUDA array classes.
 */
