@@ -274,14 +274,10 @@ def get_setup_config(root_dir):
     package_data.update(utils_ext.package_data)
     ext_modules += utils_ext.ext_modules
 
-    cuda_version = ''
+    cuda_version = ''.join(__cuda_version__.split('.')) + \
+        '_' + __cudnn_version__.split('.')[0]
     if 'WHL_NO_CUDA_SUFFIX' in os.environ and os.environ['WHL_NO_CUDA_SUFFIX'] == 'True':
         cuda_version = ''
-    elif 'CUDA_VERSION_MAJOR' in os.environ:
-        cuda_version = os.environ['CUDA_VERSION_MAJOR'] + \
-            os.environ['CUDA_VERSION_MINOR']
-    elif 'CUDAVER' in os.environ:
-        cuda_version = os.environ['CUDAVER']
 
     if 'MULTI_GPU_SUFFIX' in os.environ:
         cuda_version += os.environ['MULTI_GPU_SUFFIX']

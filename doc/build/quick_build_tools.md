@@ -22,10 +22,10 @@ $ make bwd-cpplib
 
 Prepare to specify CUDA, cuDNN, and python version.
 ```
-$ export PYTHON_VERSION_MAJOR=2
-$ export PYTHON_VERSION_MINOR=7
-$ export CUDA_VERSION_MAJOR=9
-$ export CUDA_VERSION_MINOR=0
+$ export PYTHON_VERSION_MAJOR=3
+$ export PYTHON_VERSION_MINOR=6
+$ export CUDA_VERSION_MAJOR=10
+$ export CUDA_VERSION_MINOR=2
 $ export CUDNN_VERSION=7
 ```
 
@@ -36,29 +36,10 @@ $ make all
 
 Or you can specify every time.
 ```
-$ make PYTHON_VERSION_MAJOR=2 PYTHON_VERSION_MINOR=7 CUDA_VERSION_MAJOR=9 CUDA_VERSION_MINOR=0 CUDNN_VERSION=7 all
+$ make PYTHON_VERSION_MAJOR=3 PYTHON_VERSION_MINOR=6 CUDA_VERSION_MAJOR=10 CUDA_VERSION_MINOR=0 CUDNN_VERSION=7 all
 ```
 
 ## Windows
 
-Install CUDA8.0, CUDA9.0, CUDA9.1 from following site.
+Now, this section is same as [Build CUDA extension on Windows](build_windows.md)
 
-- CUDA
- - https://developer.nvidia.com/cuda-toolkit-archive
-
-
-Get several versions of cuDNN from following site. (Registration required)
-- cuDNN
- - https://developer.nvidia.com/rdp/cudnn-download
-
-Make sure that set `CUDNN_PATH` variable. 
-
-### Build cpplib
-```
-> call build-tools\msvc\build_cpplib.bat
-```
-
-### Build wheel
-```
-> call build-tools\msvc\build_wheel.bat
-```

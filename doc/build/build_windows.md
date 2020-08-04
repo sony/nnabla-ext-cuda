@@ -2,80 +2,41 @@
 
 ## Prerequisites
 
-In addition to NNabla's requirements, CUDA extension requires CUDA setup has done on your system. If you don't have CUDA on your system, follow the procedure described below.
+At first, clone [nnabla](https://github.com/sony/nnabla) and [nnabla-ext-cuda](https://github.com/sony/nnabla-ext-cuda) into same folder.
+
+Then, install CUDA9.0, CUDA10.0 or CUDA10.2 from following site.
+- CUDA
+ - https://developer.nvidia.com/cuda-toolkit-archive
+
+Get several versions of cuDNN from following site. (Registration required)
+- cuDNN
+ - https://developer.nvidia.com/rdp/cudnn-download
+
+Make sure that set `CUDNN_PATH` variable. 
+
+Before building nnabla-ext cuda, build nnabla with [Instruction](https://github.com/sony/nnabla/doc/build/build_windows.md).
 
 
-Download and install CUDA and cuDNN library (both runtime library and development library). Please follow the instruction in the document provided by NVIDIA. Do NOT see any instruction provided by any third party. They are often incorrect or based on old instructions, that could destroy your system.
+### Build cpplib
 
-* [CUDA toolkit](https://developer.nvidia.com/cuda-downloads)
-* [cuDNN library](https://developer.nvidia.com/rdp/cudnn-download) (Registration required)
+You can build cpplib for nnabla-ext-cuda with following command.
 
-## Build
-
-You needs to [build nnabla](build.md) before build nnabla-ext-cuda.
-
-Open a command prompt, and make sure you are in the conda environment you've created in NNabla's build.
-
-```bat
-> activate nnabla
-(nnabla) >
+``` cmd
+build-tools\msvc\build_cpplib.bat CUDA_VERSION CUDNN_VERSION
 ```
 
-The following will build and create a NNabla CUDA extension Python package (`pip` requires `sudo` if it's on your system's Python).
+Tested version
 
-```bat
-(nnabla) > git clone https://github.com/sony/nnabla-ext-cuda
-(nnabla) > cd nnabla-ext-cuda
-(nnabla) > mkdir build
-(nnabla) > cd build
+    CUDA: 9.0 10.0 10.2
+    cuDNN: 7
+
+### Build wheel
+```
+build-tools\msvc\build_wheel.bat PYTHON_VERSION CUDA_VERSION CUDNN_VERSION
 ```
 
-You have to let CMake to know where the source and library of NNabla are located by the following options.
+Tested version
 
-- `NNABLA_DIR`: Root folder of NNabla source code.
-- `CPPLIB_LIBRARY`: Path to `libnnabla.dll`
-
-```bat
-(nnabla) > cmake -G "Visual Studio 14 Win64" -DNNABLA_DIR=..\..\nnabla -DCPPLIB_LIBRARY=..\..\nnabla\build\bin\Release\nnabla.dll ..
-(nnabla) > msbuild ALL_BUILD.vcxproj /p:Configuration=Release
-```
-
-You can optionally turn off Python package build by passing `-DBUILD_PYTHON_PACKAGE=OFF` to `cmake`.
-To install a Python package:
-
-```bat
-(nnabla) > cd dist
-(nnabla) > pip uninstall -y nnabla-ext-cuda
-(nnabla) > pip install nnabla_ext_cuda-<package version>-<package-arch>.whl
-```
-
-You can use C++ library (`nnabla_cuda.dll`) in your C++ application by combining with nnabla [C++ utility library](https://github.com/sony/nnabla/tree/master/doc/build/build_cpp_utils_windows.md), by passing include path (`include/`) and the library to your build system.
-
-## Unit test
-
-For unit testing, some additional requirements should be installed.
-
-```bat
-(nnabla) > pip install pytest
-```
-
-Then run:
-```bat
-(nnabla) > set PYTHONPATH={{PATH TO nnabla-ext-cuda}}\python\test;%PYTHONPATH%
-(nnabla) > py.test nnabla\python\test
-```
-
-Deactivate.
-
-```bat
-(nnabla) > deactivate
-```
-
-## FAQ
-
-* Q. The compiled library and executable run on a compiled PC, but it does not work on another PC.
-  * If the installed GPU is different between build PC and target PC, try the following cmake option when you build nnabla-ext-cuda.
-
-```bat
-> cmake -G "Visual Studio 14 Win64" -D CUDA_SELECT_NVCC_ARCH_ARG:STRING="All" ..\
-```
+    PYTHON: 3.6 3.7 3.8
+    CUDA: 9.0 10.0 10.2
+    cuDNN: 7

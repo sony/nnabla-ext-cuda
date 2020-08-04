@@ -58,6 +58,7 @@ docker_image_build_cuda:
 			(cd $(NNABLA_EXT_CUDA_DIRECTORY) && docker build $(DOCKER_BUILD_ARGS) \
 				--build-arg CUDA_VERSION_MAJOR=$(CUDA_VERSION_MAJOR) \
 				--build-arg CUDA_VERSION_MINOR=$(CUDA_VERSION_MINOR) \
+				--build-arg CUDNN_VERSION=$(CUDNN_VERSION) \
 				--build-arg ARCH_SUFFIX=$(ARCH_SUFFIX) \
 				--build-arg PYTHON_VERSION_MAJOR=$(PYTHON_VERSION_MAJOR) \
 				--build-arg PYTHON_VERSION_MINOR=$(PYTHON_VERSION_MINOR) \
@@ -68,6 +69,7 @@ docker_image_build_cuda:
 			(cd $(NNABLA_EXT_CUDA_DIRECTORY) && docker build $(DOCKER_BUILD_ARGS)\
 				--build-arg CUDA_VERSION_MAJOR=$(CUDA_VERSION_MAJOR) \
 				--build-arg CUDA_VERSION_MINOR=$(CUDA_VERSION_MINOR) \
+				--build-arg CUDNN_VERSION=$(CUDNN_VERSION) \
 				--build-arg ARCH_SUFFIX=$(ARCH_SUFFIX) \
 		                --build-arg MPIVER=$(OMPI_VERSION) \
 				--build-arg PYTHON_VERSION_MAJOR=$(PYTHON_VERSION_MAJOR) \
