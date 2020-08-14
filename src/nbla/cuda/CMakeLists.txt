@@ -100,6 +100,7 @@ set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};${ARCH_FLAGS}")
 
 file(GLOB CPP_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
   ./*.cpp
+  communicator/*.cpp
   memory/*.cpp
   array/*.cpp
   cudnn/*.cpp
