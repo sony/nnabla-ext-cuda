@@ -289,7 +289,7 @@ MultiProcessDataParallelCommunicatorNccl<T>::get_modified_arrays(
 template <typename T>
 MultiProcessDataParallelCommunicatorNccl<
     T>::MultiProcessDataParallelCommunicatorNccl(const Context &ctx)
-    : MultiProcessDataParallelCommunicator<T>(ctx) {}
+    : MultiProcessDataParallelCommunicator<T>(ctx), watch_dog_() {}
 
 template <typename T>
 MultiProcessDataParallelCommunicatorNccl<
@@ -308,6 +308,8 @@ MultiProcessDataParallelCommunicatorNccl<
 }
 
 template <typename T> void MultiProcessDataParallelCommunicatorNccl<T>::init() {
+  Watchdog::WatchdogLock lck(
+      watch_dog_); // check if this function is finished within 10s.
   Communicator::init();
   Mpi::get(); // Make sure MPI singleton is initialized.
   this->mpi_comms_["world"] = make_shared<MpiCommWrapper>();
@@ -656,6 +658,7 @@ template <typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::all_reduce(
     const vector<NdArrayPtr> &ndarray_list, bool division, bool inplace,
     const string &group) {
+  Watchdog::WatchdogLock lck(watch_dog_, all_reduce_timeout_);
   if (!this->find_self(group)) {
     NBLA_ERROR(error_code::value, "self (rank=%d) is not included in %s.",
                this->rank_, group.c_str());
@@ -699,6 +702,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::all_reduce(
 template <typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::all_reduce(
     NdArrayPtr ndarray, bool division, bool inplace, const string &group) {
+  Watchdog::WatchdogLock lck(watch_dog_, all_reduce_timeout_);
   if (!this->find_self(group)) {
     NBLA_ERROR(error_code::value, "self (rank=%d) is not included in %s.",
                this->rank_, group.c_str());
@@ -920,6 +924,14 @@ MultiProcessDataParallelCommunicatorNccl<T>::all_reduce_callback(
                                         ndarray_list.end());
   return make_shared<AllReduceCallback>(*this, group, pack_size, division,
                                         gpu_memory, device_ptrs);
+}
+
+template <typename T>
+CommunicatorBackwardCallbackPtr
+MultiProcessDataParallelCommunicatorNccl<T>::all_reduce_callback(
+    NdArrayPtr ndarray, size_t pack_size, bool division, const string &group) {
+  /* Not implemented here, only for removing warning... */
+  return nullptr;
 }
 
 template <typename T>
