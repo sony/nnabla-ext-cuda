@@ -12,28 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM nvidia/cuda:10.0-cudnn7-runtime-ubuntu18.04
+FROM nvidia/cuda:9.0-cudnn7-runtime-ubuntu16.04
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
        bzip2 \
        ca-certificates \
        curl \
+       openmpi-bin \
+       python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
-RUN umask 0 \
-    && mkdir -p /tmp/deps \
-    && cd /tmp/deps \
-    && curl -L https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -o Miniconda3-latest-Linux-x86_64.sh \
-    && bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/miniconda3 \
-    && rm -rf Miniconda3-latest-Linux-x86_64.sh \
-    && PATH=/opt/miniconda3/bin:$PATH \
-    && conda install python=3.7 \
-    && conda install pip wheel opencv \
-    && conda clean -y --all \
-    && cd / \
-    && rm -rf /tmp/*
+RUN pip3 install -U pip
+RUN pip3 install -U setuptools
 
-ENV PATH /opt/miniconda3/bin:$PATH
 
-RUN pip install -U nnabla-ext-cuda100
+RUN pip3 install -U nnabla-ext-cuda90-nccl2-mpi1.10.2
+
+# Prepare default user
+RUN useradd -m nnabla
+RUN chown -R nnabla:nnabla /home/nnabla
+
+USER nnabla
+WORKDIR /home/nnabla
+CMD [ "/bin/bash" ]

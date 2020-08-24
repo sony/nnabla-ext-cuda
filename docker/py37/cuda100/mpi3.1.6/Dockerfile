@@ -12,6 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+FROM ubuntu:18.04 as openmpi
+
+RUN apt-get update
+RUN apt-get install -y --no-install-recommends \
+        build-essential \
+        curl \
+        gfortran
+
+RUN apt-get install -y --no-install-recommends ca-certificates
+
+RUN mkdir /tmp/openmpi
+RUN curl https://download.open-mpi.org/release/open-mpi/v3.1/openmpi-3.1.6.tar.bz2 -o /tmp/openmpi/openmpi-3.1.6.tar.bz2
+RUN tar Cxvf /tmp/openmpi /tmp/openmpi/openmpi-3.1.6.tar.bz2
+RUN cd tmp/openmpi/openmpi-3.1.6 && ./configure --prefix=/opt/openmpi CC=gcc CXX=g++ F77=gfortran FC=gfortran && make && make install
+
 FROM nvidia/cuda:10.0-cudnn7-runtime-ubuntu18.04
 
 RUN apt-get update \
@@ -19,6 +34,7 @@ RUN apt-get update \
        bzip2 \
        ca-certificates \
        curl \
+       openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
 RUN umask 0 \
@@ -36,4 +52,16 @@ RUN umask 0 \
 
 ENV PATH /opt/miniconda3/bin:$PATH
 
-RUN pip install -U nnabla-ext-cuda100
+COPY --from=openmpi /opt/openmpi /opt/openmpi
+ENV PATH /opt/openmpi/bin:$PATH
+ENV LD_LIBRARY_PATH /opt/openmpi/lib:$LD_LIBRARY_PATH
+
+RUN pip3 install -U nnabla-ext-cuda100-nccl2-mpi3.1.6
+
+# Prepare default user
+RUN useradd -m nnabla
+RUN chown -R nnabla:nnabla /home/nnabla
+
+USER nnabla
+WORKDIR /home/nnabla
+CMD [ "/bin/bash" ]

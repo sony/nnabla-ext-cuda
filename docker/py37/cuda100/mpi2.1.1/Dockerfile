@@ -19,6 +19,8 @@ RUN apt-get update \
        bzip2 \
        ca-certificates \
        curl \
+       openmpi-bin \
+       openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
 RUN umask 0 \
@@ -36,4 +38,12 @@ RUN umask 0 \
 
 ENV PATH /opt/miniconda3/bin:$PATH
 
-RUN pip install -U nnabla-ext-cuda100
+RUN pip3 install -U nnabla-ext-cuda100-nccl2-mpi2.1.1
+
+# Prepare default user
+RUN useradd -m nnabla
+RUN chown -R nnabla:nnabla /home/nnabla
+
+USER nnabla
+WORKDIR /home/nnabla
+CMD [ "/bin/bash" ]
