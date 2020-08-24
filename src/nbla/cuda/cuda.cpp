@@ -76,7 +76,8 @@ std::shared_ptr<cudaEvent_t> Cuda::cuda_event(unsigned int flags, int device) {
   auto all_events = this->cuda_unused_events_.find(device);
   if (all_events == this->cuda_unused_events_.end()) {
     /* Insert an empty set if there is no set corresponding to the device. */
-    this->cuda_unused_events_.insert({device, {}});
+    this->cuda_unused_events_.insert(
+        {device, unordered_map<unsigned int, vector<cudaEvent_t>>()});
     all_events = this->cuda_unused_events_.find(device);
   }
 
@@ -108,7 +109,8 @@ std::shared_ptr<cudaEvent_t> Cuda::cuda_event(unsigned int flags, int device) {
         std::lock_guard<decltype(this->mtx_event_)> lock(this->mtx_event_);
         auto all_events = this->cuda_unused_events_.find(device);
         if (all_events == this->cuda_unused_events_.end()) {
-          this->cuda_unused_events_.insert({device, {}});
+          this->cuda_unused_events_.insert(
+              {device, unordered_map<unsigned int, vector<cudaEvent_t>>()});
           all_events = this->cuda_unused_events_.find(device);
         }
 
