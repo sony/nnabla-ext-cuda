@@ -60,7 +60,7 @@ template <typename T>
 class NBLA_API MultiProcessDataParallelCommunicatorNccl
     : public MultiProcessDataParallelCommunicator<T> {
 protected:
-  int all_reduce_timeout_ = 30; // timeout=3s
+  int all_reduce_timeout_ = 100; // timeout=10s
   Watchdog watch_dog_;
   int device_id_;
 
