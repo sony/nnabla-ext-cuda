@@ -17,6 +17,7 @@
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/function/batch_matmul.hpp>
 #include <nbla/cuda/math.hpp>
+#include <nbla/imperative.hpp>
 #include <nbla/variable.hpp>
 
 namespace nbla {
@@ -34,8 +35,21 @@ template <typename T>
 void BatchMatmulCuda<T>::forward_impl(const Variables &inputs,
                                       const Variables &outputs) {
   cuda_set_device(this->device_);
-  const Tc *a = inputs[0]->get_data_pointer<Tc>(this->ctx_);
-  const Tc *b = inputs[1]->get_data_pointer<Tc>(this->ctx_);
+  auto _get_data = [this](Variable *v) {
+    return v->get_data_pointer<Tc>(this->ctx_);
+  };
+  // Broadcast
+  Variable a_broadcast;
+  Variable b_broadcast;
+  if (this->f_broadcast_a_)
+    execute(this->f_broadcast_a_, {inputs[0]}, {&a_broadcast});
+  if (this->f_broadcast_b_)
+    execute(this->f_broadcast_b_, {inputs[1]}, {&b_broadcast});
+  // BMM
+  const Tc *a =
+      this->f_broadcast_a_ ? _get_data(&a_broadcast) : _get_data(inputs[0]);
+  const Tc *b =
+      this->f_broadcast_b_ ? _get_data(&b_broadcast) : _get_data(inputs[1]);
   Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
   cuda_gemm_strided_batched<Tc>(this->device_, y, true, a, this->col_a_,
                                 this->row_a_, !this->transpose_a_, b,
@@ -51,22 +65,56 @@ void BatchMatmulCuda<T>::backward_impl(const Variables &inputs,
   if (!(propagate_down[0] || propagate_down[1])) {
     return;
   }
+  auto _get_data = [this](Variable *v) {
+    return v->get_data_pointer<Tc>(this->ctx_);
+  };
+  auto _cast_grad = [this](Variable *v, bool wo) {
+    return v->cast_grad_and_get_pointer<Tc>(this->ctx_, wo);
+  };
   const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
   if (propagate_down[0]) {
-    const Tc *b = inputs[1]->get_data_pointer<Tc>(this->ctx_);
-    Tc *da = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_, !accum[0]);
+    // Broadcast
+    Variable a_broadcast;
+    Variable b_broadcast;
+    if (this->f_broadcast_a_)
+      execute(this->f_broadcast_a_, {inputs[0]}, {&a_broadcast});
+    if (this->f_broadcast_b_)
+      execute(this->f_broadcast_b_, {inputs[1]}, {&b_broadcast});
+    // BMM backward
+    const Tc *b =
+        this->f_broadcast_b_ ? _get_data(&b_broadcast) : _get_data(inputs[1]);
+    Tc *da = this->f_broadcast_a_ ? _cast_grad(&a_broadcast, true)
+                                  : _cast_grad(inputs[0], !accum[0]);
     cuda_gemm_strided_batched<Tc>(
         this->device_, da, !this->transpose_a_, dy, this->col_y_, this->row_y_,
         true, b, this->col_b_, this->row_b_, this->transpose_b_, 1,
-        (accum[0] ? 1 : 0), this->samples_);
+        ((accum[0] && !this->f_broadcast_a_) ? 1 : 0), this->samples_);
+    // Broadcast backward
+    if (this->f_broadcast_a_)
+      nbla::backward(this->f_broadcast_a_, {inputs[0]}, {&a_broadcast}, {true},
+                     {accum[0]});
   }
   if (propagate_down[1]) {
-    const Tc *a = inputs[0]->get_data_pointer<Tc>(this->ctx_);
-    Tc *db = inputs[1]->cast_grad_and_get_pointer<Tc>(this->ctx_, !accum[1]);
+    // Broadcast
+    Variable a_broadcast;
+    Variable b_broadcast;
+    if (this->f_broadcast_a_)
+      execute(this->f_broadcast_a_, {inputs[0]}, {&a_broadcast});
+    if (this->f_broadcast_b_)
+      execute(this->f_broadcast_b_, {inputs[1]}, {&b_broadcast});
+    // BMM backward
+    const Tc *a =
+        this->f_broadcast_a_ ? _get_data(&a_broadcast) : _get_data(inputs[0]);
+    Tc *db = this->f_broadcast_b_ ? _cast_grad(&b_broadcast, true)
+                                  : _cast_grad(inputs[1], !accum[1]);
     cuda_gemm_strided_batched<Tc>(
         this->device_, db, !this->transpose_b_, a, this->col_a_, this->row_a_,
         this->transpose_a_, dy, this->col_y_, this->row_y_, true, 1,
-        (accum[1] ? 1 : 0), this->samples_);
+        ((accum[1] && !this->f_broadcast_b_) ? 1 : 0), this->samples_);
+    // Broadcast backward
+    if (this->f_broadcast_b_)
+      nbla::backward(this->f_broadcast_b_, {inputs[1]}, {&b_broadcast}, {true},
+                     {accum[1]});
   }
 }
 
