@@ -79,18 +79,19 @@ __global__ void kernel_transform_binary_grad1(int size, const T *dy,
 template <typename T, typename BinaryOp>
 void forward_impl_transform_binary(const Variables &inputs,
                                    const Variables &outputs, Context &ctx,
-                                   Function *f_bc0, Variable *o_bc0,
-                                   Function *f_bc1, Variable *o_bc1,
+                                   FunctionPtr f_bc0, FunctionPtr f_bc1,
                                    BinaryOp op) {
   auto _get = [&ctx](Variable *v) { return v->get_data_pointer<T>(ctx); };
-  if (f_bc0) {
-    f_bc0->forward(Variables{inputs[0]}, Variables{o_bc0});
-  }
-  if (f_bc1) {
-    f_bc1->forward(Variables{inputs[1]}, Variables{o_bc1});
-  }
-  const T *x0 = _get(f_bc0 ? o_bc0 : inputs[0]);
-  const T *x1 = _get(f_bc1 ? o_bc1 : inputs[1]);
+  // Broadcast
+  Variable o_bc0;
+  Variable o_bc1;
+  if (f_bc0)
+    execute(f_bc0, {inputs[0]}, {&o_bc0});
+  if (f_bc1)
+    execute(f_bc1, {inputs[1]}, {&o_bc1});
+  // Binary transform
+  const T *x0 = _get(f_bc0 ? (&o_bc0) : inputs[0]);
+  const T *x1 = _get(f_bc1 ? (&o_bc1) : inputs[1]);
   T *y = outputs[0]->cast_data_and_get_pointer<T>(ctx, true);
   int size = outputs[0]->size();
   cuda_set_device(std::stoi(ctx.device_id));
@@ -102,8 +103,7 @@ void backward_impl_transform_binary(const Variables &inputs,
                                     const Variables &outputs,
                                     const vector<bool> &propagate_down,
                                     const vector<bool> &accum, Context &ctx,
-                                    Function *f_bc0, Variable *o_bc0,
-                                    Function *f_bc1, Variable *o_bc1,
+                                    FunctionPtr f_bc0, FunctionPtr f_bc1,
                                     BinaryOp op) {
   if (!(propagate_down[0] || propagate_down[1]))
     return;
@@ -113,13 +113,22 @@ void backward_impl_transform_binary(const Variables &inputs,
     return v->cast_grad_and_get_pointer<T>(ctx, wo);
   };
   const T *dy = outputs[0]->get_grad_pointer<T>(ctx);
-  const T *x0 = _get_data(f_bc0 ? o_bc0 : inputs[0]);
-  const T *x1 = _get_data(f_bc1 ? o_bc1 : inputs[1]);
   const T *y = _get_data(outputs[0]);
   size_t size = outputs[0]->size();
   if (propagate_down[0]) {
+    // Broadcast
+    Variable o_bc0;
+    Variable o_bc1;
+    if (f_bc0)
+      execute(f_bc0, {inputs[0]}, {&o_bc0});
+    if (f_bc1)
+      execute(f_bc1, {inputs[1]}, {&o_bc1});
+    // Binary transform backward
+    const T *x0 = _get_data(f_bc0 ? (&o_bc0) : inputs[0]);
+    const T *x1 = _get_data(f_bc1 ? (&o_bc1) : inputs[1]);
     op.verify_g0();
-    T *dx0 = f_bc0 ? _cast_grad(o_bc0, true) : _cast_grad(inputs[0], !accum[0]);
+    T *dx0 =
+        f_bc0 ? _cast_grad(&o_bc0, true) : _cast_grad(inputs[0], !accum[0]);
     if ((!f_bc0) && accum[0]) {
       NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
           (kernel_transform_binary_grad0<T, BinaryOp, true>), size, dy, x0, x1,
@@ -129,14 +138,24 @@ void backward_impl_transform_binary(const Variables &inputs,
           (kernel_transform_binary_grad0<T, BinaryOp, false>), size, dy, x0, x1,
           y, dx0, op);
     }
-    if (f_bc0) {
-      f_bc0->backward(Variables{inputs[0]}, Variables{o_bc0}, {true},
-                      {accum[0]});
-    }
+    // Broadcast backward
+    if (f_bc0)
+      nbla::backward(f_bc0, Variables{inputs[0]}, {&o_bc0}, {true}, {accum[0]});
   }
   if (propagate_down[1]) {
+    // Broadcast
+    Variable o_bc0;
+    Variable o_bc1;
+    if (f_bc0)
+      execute(f_bc0, {inputs[0]}, {&o_bc0});
+    if (f_bc1)
+      execute(f_bc1, {inputs[1]}, {&o_bc1});
+    // Binary transform backward
+    const T *x0 = _get_data(f_bc0 ? (&o_bc0) : inputs[0]);
+    const T *x1 = _get_data(f_bc1 ? (&o_bc1) : inputs[1]);
     op.verify_g1();
-    T *dx1 = f_bc1 ? _cast_grad(o_bc1, true) : _cast_grad(inputs[1], !accum[1]);
+    T *dx1 =
+        f_bc1 ? _cast_grad(&o_bc1, true) : _cast_grad(inputs[1], !accum[1]);
     if ((!f_bc1) && accum[1]) {
       NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
           (kernel_transform_binary_grad1<T, BinaryOp, true>), size, dy, x0, x1,
@@ -146,9 +165,9 @@ void backward_impl_transform_binary(const Variables &inputs,
           (kernel_transform_binary_grad1<T, BinaryOp, false>), size, dy, x0, x1,
           y, dx1, op);
     }
+    // Broadcast backward
     if (f_bc1) {
-      f_bc1->backward(Variables{inputs[1]}, Variables{o_bc1}, {true},
-                      {accum[1]});
+      nbla::backward(f_bc1, Variables{inputs[1]}, {&o_bc1}, {true}, {accum[1]});
     }
   }
 }
@@ -175,8 +194,7 @@ void backward_impl_transform_binary(const Variables &inputs,
   void NAME##Cuda<T>::forward_impl(const Variables &inputs,                    \
                                    const Variables &outputs) {                 \
     forward_impl_transform_binary<typename CudaType<T>::type>(                 \
-        inputs, outputs, this->ctx_, this->f_bc0_.get(), this->o_bc0_.get(),   \
-        this->f_bc1_.get(), this->o_bc1_.get(),                                \
+        inputs, outputs, this->ctx_, this->f_bc0_, this->f_bc1_,               \
         NAME##BinaryOpCuda(this->args_));                                      \
   }                                                                            \
                                                                                \
@@ -185,9 +203,8 @@ void backward_impl_transform_binary(const Variables &inputs,
       const Variables &inputs, const Variables &outputs,                       \
       const vector<bool> &propagate_down, const vector<bool> &accum) {         \
     backward_impl_transform_binary<typename CudaType<T>::type>(                \
-        inputs, outputs, propagate_down, accum, this->ctx_,                    \
-        this->f_bc0_.get(), this->o_bc0_.get(), this->f_bc1_.get(),            \
-        this->o_bc1_.get(), NAME##BinaryOpCuda(this->args_));                  \
+        inputs, outputs, propagate_down, accum, this->ctx_, this->f_bc0_,      \
+        this->f_bc1_, NAME##BinaryOpCuda(this->args_));                        \
   }
 
 // ----------------------------------------------------------------------------
