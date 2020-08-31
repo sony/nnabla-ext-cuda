@@ -97,6 +97,9 @@ BatchNormalization:
 SyncBatchNormalization:
   float: [float]
   half: [Half]
+WeightNormalization:
+  float: [float]
+  half: [Half]
 MeanSubtraction:
   float: [float]
   half: [Half]
