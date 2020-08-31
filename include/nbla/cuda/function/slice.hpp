@@ -19,16 +19,16 @@
 
 #include <nbla/cuda/cuda.hpp>
 #include <nbla/function/slice.hpp>
+#include <nbla/utils/nd_index.hpp>
+
 namespace nbla {
 /** @copydoc Slice
 */
 
 template <typename T> class SliceCuda : public Slice<T> {
 protected:
-  Variable addr_table_;
-
 public:
-  typedef typename CudaType<T>::type Tc;
+  typedef typename CudaType<T>::type Tcu;
 
   explicit SliceCuda(const Context &ctx, const vector<int> &start,
                      const vector<int> &stop, const vector<int> &step)

@@ -12,37 +12,318 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////
-/* UNDER REVIEW.
-
-   NOTE: cudaMemcpy and kernel execution bat setup_impl.
-*/
-////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////
-
 #include <nbla/array.hpp>
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/function/slice.hpp>
 #include <nbla/cuda/math.hpp>
+#include <nbla/cuda/utils/nd_index.cuh>
+#include <nbla/cuda/utils/nd_index.hpp>
 #include <nbla/variable.hpp>
 
 namespace nbla {
 
-__global__ void kernel_slice_create_table(const int num, const int dim,
-                                          int *addr_table_buf,
-                                          const int *shape_info_buf) {
-  NBLA_CUDA_KERNEL_LOOP(idx, num) {
-    int addr = 0;
-    for (int id = 0; id < dim; id++) {
-      const int shape_info_offset = id * 5;
-      const int o = (idx / shape_info_buf[shape_info_offset + 1]) // stride_y
-                    % shape_info_buf[shape_info_offset];          // shape_y
-      const int i = shape_info_buf[shape_info_offset + 3]         // start
-                    + o * shape_info_buf[shape_info_offset + 4];  // step
-      addr += i * shape_info_buf[shape_info_offset + 2];          // stride_x
+// 1d slice
+template <typename T>
+__global__ void kernel_slice_1d_forward(const int size, const T *x, T *y,
+                                        const int start, const int step) {
+  NBLA_CUDA_KERNEL_LOOP(idx, size) { y[idx] = x[start + idx * step]; }
+}
+
+template <typename T, bool accum>
+__global__ void kernel_slice_1d_backward(const int size, const T *dy, T *dx,
+                                         const int start, const int step) {
+  NBLA_CUDA_KERNEL_LOOP(idx, size) {
+    dx[start + idx * step] = accum ? dx[start + idx * step] + dy[idx] : dy[idx];
+  }
+}
+
+template <typename T>
+void slice_1d_forward(const T *x_data, T *y_data, Size_t ndim, Size_t ysize,
+                      const Shape_t &xshape, const Shape_t &yshape,
+                      const Shape_t &xstrides, const Shape_t &ystrides,
+                      const vector<int> &start, const vector<int> &step) {
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_slice_1d_forward, ysize, x_data, y_data,
+                                 start[0], step[0]);
+}
+
+template <typename T, bool accum>
+void slice_1d_backward(const T *y_grad, T *x_grad, Size_t ndim, Size_t ysize,
+                       const Shape_t &xshape, const Shape_t &yshape,
+                       const Shape_t &xstrides, const Shape_t &ystrides,
+                       const vector<int> &start, const vector<int> &step) {
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_slice_1d_backward<T, accum>), ysize,
+                                 y_grad, x_grad, start[0], step[0]);
+}
+
+// 2d slice
+template <typename T>
+__global__ void kernel_slice_2d_forward(const int size, const T *x, T *y,
+                                        const int xstrides, const int ystrides,
+                                        const int2 start, const int2 step) {
+  NBLA_CUDA_KERNEL_LOOP(yidx, size) {
+    auto nd_yidx = device_flat_to_2d(yidx, ystrides);
+    auto nd_xidx =
+        make_int2(start.x + nd_yidx.x * step.x, start.y + nd_yidx.y * step.y);
+    auto xidx = device_2d_to_flat(nd_xidx, xstrides);
+    y[yidx] = x[xidx];
+  }
+}
+
+template <typename T, bool accum>
+__global__ void kernel_slice_2d_backward(const int size, const T *dy, T *dx,
+                                         const int xstrides, const int ystrides,
+                                         const int2 start, const int2 step) {
+  NBLA_CUDA_KERNEL_LOOP(yidx, size) {
+    auto nd_yidx = device_flat_to_2d(yidx, ystrides);
+    auto nd_xidx =
+        make_int2(start.x + nd_yidx.x * step.x, start.y + nd_yidx.y * step.y);
+    auto xidx = device_2d_to_flat(nd_xidx, xstrides);
+    dx[xidx] = accum ? dy[yidx] + dx[xidx] : dy[yidx];
+  }
+}
+
+template <typename T>
+void slice_2d_forward(const T *x_data, T *y_data, Size_t ndim, Size_t ysize,
+                      const Shape_t &xshape, const Shape_t &yshape,
+                      const Shape_t &xstrides, const Shape_t &ystrides,
+                      const vector<int> &start, const vector<int> &step) {
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_slice_2d_forward, ysize, x_data, y_data,
+                                 xstrides[0], ystrides[0], to_int2(start),
+                                 to_int2(step));
+}
+
+template <typename T, bool accum>
+void slice_2d_backward(const T *y_grad, T *x_grad, Size_t ndim, Size_t ysize,
+                       const Shape_t &xshape, const Shape_t &yshape,
+                       const Shape_t &xstrides, const Shape_t &ystrides,
+                       const vector<int> &start, const vector<int> &step) {
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_slice_2d_backward<T, accum>), ysize,
+                                 y_grad, x_grad, xstrides[0], ystrides[0],
+                                 to_int2(start), to_int2(step));
+}
+
+// 3d slice
+template <typename T>
+__global__ void kernel_slice_3d_forward(const int size, const T *x, T *y,
+                                        const int2 xstrides,
+                                        const int2 ystrides, const int3 start,
+                                        const int3 step) {
+  NBLA_CUDA_KERNEL_LOOP(yidx, size) {
+    auto nd_yidx = device_flat_to_3d(yidx, ystrides);
+    auto nd_xidx =
+        make_int3(start.x + nd_yidx.x * step.x, start.y + nd_yidx.y * step.y,
+                  start.z + nd_yidx.z * step.z);
+    auto xidx = device_3d_to_flat(nd_xidx, xstrides);
+    y[yidx] = x[xidx];
+  }
+}
+
+template <typename T, bool accum>
+__global__ void kernel_slice_3d_backward(const int size, const T *dy, T *dx,
+                                         const int2 xstrides,
+                                         const int2 ystrides, const int3 start,
+                                         const int3 step) {
+  NBLA_CUDA_KERNEL_LOOP(yidx, size) {
+    auto nd_yidx = device_flat_to_3d(yidx, ystrides);
+    auto nd_xidx =
+        make_int3(start.x + nd_yidx.x * step.x, start.y + nd_yidx.y * step.y,
+                  start.z + nd_yidx.z * step.z);
+    auto xidx = device_3d_to_flat(nd_xidx, xstrides);
+    dx[xidx] = accum ? dy[yidx] + dx[xidx] : dy[yidx];
+  }
+}
+
+template <typename T>
+void slice_3d_forward(const T *x_data, T *y_data, Size_t ndim, Size_t ysize,
+                      const Shape_t &xshape, const Shape_t &yshape,
+                      const Shape_t &xstrides, const Shape_t &ystrides,
+                      const vector<int> &start, const vector<int> &step) {
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_slice_3d_forward, ysize, x_data, y_data,
+                                 to_int2(xstrides), to_int2(ystrides),
+                                 to_int3(start), to_int3(step));
+}
+
+template <typename T, bool accum>
+void slice_3d_backward(const T *y_grad, T *x_grad, Size_t ndim, Size_t ysize,
+                       const Shape_t &xshape, const Shape_t &yshape,
+                       const Shape_t &xstrides, const Shape_t &ystrides,
+                       const vector<int> &start, const vector<int> &step) {
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
+      (kernel_slice_3d_backward<T, accum>), ysize, y_grad, x_grad,
+      to_int2(xstrides), to_int2(ystrides), to_int3(start), to_int3(step));
+}
+
+// 4d slice
+template <typename T>
+__global__ void kernel_slice_4d_forward(const int size, const T *x, T *y,
+                                        const int3 xstrides,
+                                        const int3 ystrides, const int4 start,
+                                        const int4 step) {
+  NBLA_CUDA_KERNEL_LOOP(yidx, size) {
+    auto nd_yidx = device_flat_to_4d(yidx, ystrides);
+    auto nd_xidx =
+        make_int4(start.x + nd_yidx.x * step.x, start.y + nd_yidx.y * step.y,
+                  start.z + nd_yidx.z * step.z, start.w + nd_yidx.w * step.w);
+    auto xidx = device_4d_to_flat(nd_xidx, xstrides);
+    y[yidx] = x[xidx];
+  }
+}
+
+template <typename T, bool accum>
+__global__ void kernel_slice_4d_backward(const int size, const T *dy, T *dx,
+                                         const int3 xstrides,
+                                         const int3 ystrides, const int4 start,
+                                         const int4 step) {
+  NBLA_CUDA_KERNEL_LOOP(yidx, size) {
+    auto nd_yidx = device_flat_to_4d(yidx, ystrides);
+    auto nd_xidx =
+        make_int4(start.x + nd_yidx.x * step.x, start.y + nd_yidx.y * step.y,
+                  start.z + nd_yidx.z * step.z, start.w + nd_yidx.w * step.w);
+    auto xidx = device_4d_to_flat(nd_xidx, xstrides);
+    dx[xidx] = accum ? dy[yidx] + dx[xidx] : dy[yidx];
+  }
+}
+
+template <typename T>
+void slice_4d_forward(const T *x_data, T *y_data, Size_t ndim, Size_t ysize,
+                      const Shape_t &xshape, const Shape_t &yshape,
+                      const Shape_t &xstrides, const Shape_t &ystrides,
+                      const vector<int> &start, const vector<int> &step) {
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_slice_4d_forward, ysize, x_data, y_data,
+                                 to_int3(xstrides), to_int3(ystrides),
+                                 to_int4(start), to_int4(step));
+}
+
+template <typename T, bool accum>
+void slice_4d_backward(const T *y_grad, T *x_grad, Size_t ndim, Size_t ysize,
+                       const Shape_t &xshape, const Shape_t &yshape,
+                       const Shape_t &xstrides, const Shape_t &ystrides,
+                       const vector<int> &start, const vector<int> &step) {
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
+      (kernel_slice_4d_backward<T, accum>), ysize, y_grad, x_grad,
+      to_int3(xstrides), to_int3(ystrides), to_int4(start), to_int4(step));
+}
+
+// nd slice with template
+template <typename T, int NDIM>
+__global__ void kernel_slice_nd_forward(const int size, const T *x, T *y,
+                                        const NdIndex<NDIM> xstrides,
+                                        const NdIndex<NDIM> ystrides,
+                                        const NdIndex<NDIM> start,
+                                        const NdIndex<NDIM> step) {
+  NBLA_CUDA_KERNEL_LOOP(yidx, size) {
+    auto nd_yidx = device_flat_to_nd(yidx, ystrides);
+    NdIndex<NDIM> nd_xidx;
+    for (int i = 0; i < NDIM; i++) {
+      nd_xidx.nd_idx[i] = start.nd_idx[i] + nd_yidx.nd_idx[i] * step.nd_idx[i];
     }
-    addr_table_buf[idx] = addr;
+    auto xidx = device_nd_to_flat(nd_xidx, xstrides);
+    y[yidx] = x[xidx];
+  }
+}
+
+template <typename T, int NDIM>
+void slice_nd_forward(const T *x_data, T *y_data, Size_t ndim, Size_t ysize,
+                      const Shape_t &xshape, const Shape_t &yshape,
+                      const Shape_t &xstrides, const Shape_t &ystrides,
+                      const vector<int> &start, const vector<int> &step) {
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
+      (kernel_slice_nd_forward<T, NDIM>), ysize, x_data, y_data,
+      to_nd_index<NDIM>(xstrides), to_nd_index<NDIM>(ystrides),
+      to_nd_index<NDIM>(start), to_nd_index<NDIM>(step));
+}
+
+template <typename T, int NDIM, bool accum>
+__global__ void kernel_slice_nd_backward(const int size, const T *dy, T *dx,
+                                         const NdIndex<NDIM> xstrides,
+                                         const NdIndex<NDIM> ystrides,
+                                         const NdIndex<NDIM> start,
+                                         const NdIndex<NDIM> step) {
+  NBLA_CUDA_KERNEL_LOOP(yidx, size) {
+    auto nd_yidx = device_flat_to_nd(yidx, ystrides);
+    NdIndex<NDIM> nd_xidx;
+    for (int i = 0; i < NDIM; i++) {
+      nd_xidx.nd_idx[i] = start.nd_idx[i] + nd_yidx.nd_idx[i] * step.nd_idx[i];
+    }
+    auto xidx = device_nd_to_flat(nd_xidx, xstrides);
+    dx[xidx] = accum ? dy[yidx] + dx[xidx] : dy[yidx];
+  }
+}
+
+template <typename T, int NDIM, bool accum>
+void slice_nd_backward(const T *y_grad, T *x_grad, Size_t ndim, Size_t ysize,
+                       const Shape_t &xshape, const Shape_t &yshape,
+                       const Shape_t &xstrides, const Shape_t &ystrides,
+                       const vector<int> &start, const vector<int> &step) {
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
+      (kernel_slice_nd_backward<T, NDIM, accum>), ysize, y_grad, x_grad,
+      to_nd_index<NDIM>(xstrides), to_nd_index<NDIM>(ystrides),
+      to_nd_index<NDIM>(start), to_nd_index<NDIM>(step));
+}
+
+// nd slice in general
+template <typename T>
+void slice_nd_forward_loop(const T *x_data, T *y_data, Size_t ndim,
+                           Size_t ysize, const Shape_t &xshape,
+                           const Shape_t &yshape, const Shape_t &xstrides,
+                           const Shape_t &ystrides, const vector<int> &start,
+                           const vector<int> &step) {
+  // (D_1, ..., D_N) -> (D1 * ...* D_{N-1}, D_N) -> (O, I) ->
+  // o -> nd_index_y -> nd_index_x -> x_idx -> slice_1d for each x_idx
+  auto inner_size = yshape[ndim - 1];
+  auto outer_size = ysize / inner_size;
+  Shape_t outer_shape(yshape.begin(), yshape.end() - 1);
+  auto outer_strides = ndi::strides(outer_shape);
+  auto start_n = start[ndim - 1];
+  auto step_n = step[ndim - 1];
+  for (Size_t o = 0; o < outer_size; o++) {
+    auto nd_yidx = ndi::flat2nd(o, outer_strides);
+    Shape_t nd_xidx(ndim);
+    for (Size_t d = 0; d < ndim - 1; d++) {
+      auto iy = nd_yidx[d];
+      auto ix = start[d] + iy * step[d];
+      nd_xidx[d] = ix;
+    }
+    nd_xidx[ndim - 1] = 0;
+    auto x_idx = ndi::nd2flat(nd_xidx, xstrides);
+    auto y_idx = o * inner_size;
+    auto x_o = x_data + x_idx;
+    auto y_o = y_data + y_idx;
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_slice_1d_forward, inner_size, x_o,
+                                   y_o, start_n, step_n);
+  }
+}
+
+template <typename T, bool accum>
+void slice_nd_backward_loop(const T *y_grad, T *x_grad, Size_t ndim,
+                            Size_t ysize, const Shape_t &xshape,
+                            const Shape_t &yshape, const Shape_t &xstrides,
+                            const Shape_t &ystrides, const vector<int> &start,
+                            const vector<int> &step) {
+  // (D_1, ..., D_N) -> (D1 * ...* D_{N-1}, D_N) -> (O, I) ->
+  // o -> nd_index_y -> nd_index_x -> x_idx -> slice_1d for each x_idx
+  auto inner_size = yshape[ndim - 1];
+  auto outer_size = ysize / inner_size;
+  Shape_t outer_shape(yshape.begin(), yshape.end() - 1);
+  auto outer_strides = ndi::strides(outer_shape);
+  auto start_n = start[ndim - 1];
+  auto step_n = step[ndim - 1];
+  for (Size_t o = 0; o < outer_size; o++) {
+    auto nd_yidx = ndi::flat2nd(o, outer_strides);
+    Shape_t nd_xidx(ndim);
+    for (Size_t d = 0; d < ndim - 1; d++) {
+      auto iy = nd_yidx[d];
+      auto ix = start[d] + iy * step[d];
+      nd_xidx[d] = ix;
+    }
+    nd_xidx[ndim - 1] = 0;
+    auto x_idx = ndi::nd2flat(nd_xidx, xstrides);
+    auto y_idx = o * inner_size;
+    auto dx_o = x_grad + x_idx;
+    auto dy_o = y_grad + y_idx;
+    auto kernel = kernel_slice_1d_backward<T, accum>;
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel, inner_size, dy_o, dx_o, start_n,
+                                   step_n);
   }
 }
 
@@ -50,48 +331,8 @@ template <typename T>
 void SliceCuda<T>::setup_impl(const Variables &inputs,
                               const Variables &outputs) {
   Slice<T>::setup_impl(inputs, outputs);
-
   if (outputs[0]->size() == 0)
     return;
-
-  // Prepare address table
-  const Shape_t shape_y = outputs[0]->shape();
-  const Shape_t stride_y = outputs[0]->strides();
-
-  const Shape_t stride_x = inputs[0]->strides();
-  size_t size = outputs[0]->size();
-  this->addr_table_.reshape(shape_y, true);
-  const int shape_info_size = shape_y.size() * 5;
-  // out_size, out_stride, in_stride, start, step
-  int *shape_info = new int[shape_info_size];
-  for (int i = 0; i < shape_y.size(); i++) {
-    shape_info[i * 5] = shape_y[i];
-    shape_info[i * 5 + 1] = stride_y[i];
-    shape_info[i * 5 + 2] = stride_x[i];
-    shape_info[i * 5 + 3] = this->start_[0][i];
-    shape_info[i * 5 + 4] = this->step_[0][i];
-  }
-  Shape_t shape_info_shape;
-  shape_info_shape.push_back(shape_info_size);
-  Variable shape_info_variable;
-  shape_info_variable.reshape(shape_info_shape, true);
-  int *shape_info_buf =
-      shape_info_variable.cast_data_and_get_pointer<int>(this->ctx_, true);
-  cudaMemcpy(shape_info_buf, shape_info, sizeof(int) * shape_info_size,
-             cudaMemcpyHostToDevice);
-  delete[] shape_info;
-  Variable *addr_table_ = &this->addr_table_;
-  int *addr_table_buf =
-      addr_table_->cast_data_and_get_pointer<int>(this->ctx_, true);
-  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_slice_create_table, size,
-                                 shape_y.size(), addr_table_buf,
-                                 shape_info_buf);
-}
-
-template <typename T>
-__global__ void kernel_slice_forward(const int num, T *y, const T *x,
-                                     const int *addr_table_buf) {
-  NBLA_CUDA_KERNEL_LOOP(idx, num) { y[idx] = x[addr_table_buf[idx]]; }
 }
 
 template <typename T>
@@ -102,19 +343,44 @@ void SliceCuda<T>::forward_impl(const Variables &inputs,
 
   cuda_set_device(std::stoi(this->ctx_.device_id));
 
-  const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
-  const int *addr_table_buf =
-      addr_table_.template get_data_pointer<int>(this->ctx_);
-  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
-  size_t size = outputs[0]->size();
-  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_slice_forward, size, y, x,
-                                 addr_table_buf);
-}
+  auto x = inputs[0];
+  auto y = outputs[0];
+  auto start = this->start_[0];
+  auto step = this->step_[0];
+  auto xshape = x->shape();
+  auto yshape = y->shape();
+  auto xstrides = x->strides();
+  auto ystrides = y->strides();
+  auto ndim = x->ndim();
+  auto ysize = y->size();
+  auto x_data = x->get_data_pointer<Tcu>(this->ctx_);
+  auto y_data = y->cast_data_and_get_pointer<Tcu>(this->ctx_);
 
-template <typename T>
-__global__ void kernel_slice_backward(const int num, T *dx, const T *dy,
-                                      const int *addr_table_buf) {
-  NBLA_CUDA_KERNEL_LOOP(idx, num) { dx[addr_table_buf[idx]] += dy[idx]; }
+  if (ndim == 1) {
+    slice_1d_forward(x_data, y_data, ndim, ysize, xshape, yshape, xstrides,
+                     ystrides, start, step);
+  } else if (ndim == 2) {
+    slice_2d_forward(x_data, y_data, ndim, ysize, xshape, yshape, xstrides,
+                     ystrides, start, step);
+  } else if (ndim == 3) {
+    slice_3d_forward(x_data, y_data, ndim, ysize, xshape, yshape, xstrides,
+                     ystrides, start, step);
+  } else if (ndim == 4) {
+    slice_4d_forward(x_data, y_data, ndim, ysize, xshape, yshape, xstrides,
+                     ystrides, start, step);
+  } else if (ndim == 5) {
+    slice_nd_forward<Tcu, 5>(x_data, y_data, ndim, ysize, xshape, yshape,
+                             xstrides, ystrides, start, step);
+  } else if (ndim == 6) {
+    slice_nd_forward<Tcu, 6>(x_data, y_data, ndim, ysize, xshape, yshape,
+                             xstrides, ystrides, start, step);
+  } else if (ndim == 7) {
+    slice_nd_forward<Tcu, 7>(x_data, y_data, ndim, ysize, xshape, yshape,
+                             xstrides, ystrides, start, step);
+  } else {
+    slice_nd_forward_loop(x_data, y_data, ndim, ysize, xshape, yshape, xstrides,
+                          ystrides, start, step);
+  }
 }
 
 template <typename T>
@@ -129,14 +395,60 @@ void SliceCuda<T>::backward_impl(const Variables &inputs,
     return;
 
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  if (!accum[0])
-    inputs[0]->grad()->zero(); // TODO: optimize?
-  Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_, false);
-  const int *addr_table_buf =
-      this->addr_table_.template get_data_pointer<int>(this->ctx_);
-  const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
-  size_t size = outputs[0]->size();
-  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_slice_backward, size, dx, dy,
-                                 addr_table_buf);
+
+  auto x = inputs[0];
+  auto y = outputs[0];
+  auto start = this->start_[0];
+  auto step = this->step_[0];
+  auto xshape = x->shape();
+  auto yshape = y->shape();
+  auto xstrides = x->strides();
+  auto ystrides = y->strides();
+  auto ndim = x->ndim();
+  auto ysize = y->size();
+  auto x_grad = x->cast_grad_and_get_pointer<Tcu>(this->ctx_);
+  auto y_grad = y->get_grad_pointer<Tcu>(this->ctx_);
+
+  if (ndim == 1) {
+    auto slice =
+        accum[0] ? slice_1d_backward<Tcu, true> : slice_1d_backward<Tcu, false>;
+    slice(y_grad, x_grad, ndim, ysize, xshape, yshape, xstrides, ystrides,
+          start, step);
+  } else if (ndim == 2) {
+    auto slice =
+        accum[0] ? slice_2d_backward<Tcu, true> : slice_2d_backward<Tcu, false>;
+    slice(y_grad, x_grad, ndim, ysize, xshape, yshape, xstrides, ystrides,
+          start, step);
+  } else if (ndim == 3) {
+    auto slice =
+        accum[0] ? slice_3d_backward<Tcu, true> : slice_3d_backward<Tcu, false>;
+    slice(y_grad, x_grad, ndim, ysize, xshape, yshape, xstrides, ystrides,
+          start, step);
+  } else if (ndim == 4) {
+    auto slice =
+        accum[0] ? slice_4d_backward<Tcu, true> : slice_4d_backward<Tcu, false>;
+    slice(y_grad, x_grad, ndim, ysize, xshape, yshape, xstrides, ystrides,
+          start, step);
+  } else if (ndim == 5) {
+    auto slice = accum[0] ? slice_nd_backward<Tcu, 5, true>
+                          : slice_nd_backward<Tcu, 5, false>;
+    slice(y_grad, x_grad, ndim, ysize, xshape, yshape, xstrides, ystrides,
+          start, step);
+  } else if (ndim == 6) {
+    auto slice = accum[0] ? slice_nd_backward<Tcu, 6, true>
+                          : slice_nd_backward<Tcu, 6, false>;
+    slice(y_grad, x_grad, ndim, ysize, xshape, yshape, xstrides, ystrides,
+          start, step);
+  } else if (ndim == 7) {
+    auto slice = accum[0] ? slice_nd_backward<Tcu, 7, true>
+                          : slice_nd_backward<Tcu, 7, false>;
+    slice(y_grad, x_grad, ndim, ysize, xshape, yshape, xstrides, ystrides,
+          start, step);
+  } else {
+    auto slice = accum[0] ? slice_nd_backward_loop<Tcu, true>
+                          : slice_nd_backward_loop<Tcu, false>;
+    slice(y_grad, x_grad, ndim, ysize, xshape, yshape, xstrides, ystrides,
+          start, step);
+  }
 }
 }
