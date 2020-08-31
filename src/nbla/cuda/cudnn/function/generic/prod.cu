@@ -92,16 +92,5 @@ void ProdCudaCudnn<T>::forward_impl(const Variables &inputs,
                                      this->y_desc_, y_data));
 }
 
-template <typename T>
-void ProdCudaCudnn<T>::backward_impl(const Variables &inputs,
-                                     const Variables &outputs,
-                                     const vector<bool> &propagate_down,
-                                     const vector<bool> &accum) {
-  if (propagate_down[0] && this->f_transpose_) {
-    this->f_transpose_->forward(inputs, Variables{this->o_transpose_.get()});
-  }
-  ProdCuda<T>::backward_impl(inputs, outputs, propagate_down, accum);
-}
-
 } // namespace nbla
 #endif // CUDNN_VERSION >= 6000
