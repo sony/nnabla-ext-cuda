@@ -15,6 +15,8 @@
 #ifndef __NBLA_CUDA_UTILS_ND_INDEX_HPP__
 #define __NBLA_CUDA_UTILS_ND_INDEX_HPP__
 
+#include <nbla/common.hpp>
+
 namespace nbla {
 
 template <int NDIM> struct NdIndex { int64_t nd_idx[NDIM]; };
@@ -37,6 +39,36 @@ __device__ int64_t device_nd2flat(NdIndex<NDIM> &nd_index,
     idx += stride[i] * nd_index.nd_idx[i];
   }
   return idx;
+}
+
+template <int NDIM>
+__device__ NdIndex<NDIM> device_flat_to_nd(int64_t idx,
+                                           const NdIndex<NDIM> strides) {
+  NdIndex<NDIM> nd_index;
+  for (int i = 0; i < NDIM; i++) {
+    nd_index.nd_idx[i] = idx / strides.nd_idx[i];
+    idx -= nd_index.nd_idx[i] * strides.nd_idx[i];
+  }
+  return nd_index;
+}
+
+template <int NDIM>
+__device__ int64_t device_nd_to_flat(NdIndex<NDIM> &nd_index,
+                                     const NdIndex<NDIM> strides) {
+  auto idx = 0;
+  for (int i = 0; i < NDIM; i++) {
+    idx += strides.nd_idx[i] * nd_index.nd_idx[i];
+  }
+  return idx;
+}
+
+template <int NDIM, typename T>
+__host__ NdIndex<NDIM> to_nd_index(const T &vec) {
+  NdIndex<NDIM> nd_index;
+  for (int i = 0; i < NDIM; i++) {
+    nd_index.nd_idx[i] = vec[i];
+  }
+  return nd_index;
 }
 }
 
