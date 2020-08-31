@@ -549,3 +549,9 @@ WarpByGrid:
 PatchCorrelation:
   float: [float]
   half: [Half]
+PackPaddedSequence:
+  float: [float]
+  half: [Half]
+PadPackedSequence:
+  float: [float]
+  half: [Half]
