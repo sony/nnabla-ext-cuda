@@ -29,6 +29,7 @@
 #include <vector>
 
 #include <nbla/cuda/memory/cuda_virtual_memory.hpp>
+#include <nbla/memory/virtual_caching_allocator.hpp>
 
 namespace nbla {
 
@@ -285,26 +286,34 @@ Context CudaCachedHostArray::filter_context(const Context &ctx) {
 /////////////////////////////////////
 
 shared_ptr<Allocator>
-CudaCachedVirtualArray::select_allocator(const Size_t size, const string& device_id) {
+CudaCachedVirtualArray::select_allocator(const Size_t size,
+                                         const string &device_id) {
   auto cuda = SingletonManager::get<Cuda>();
 
-  size_t min_chunk_size = get_allocation_granularity(stoi(device_id));
+  // size_t min_chunk_size = get_allocation_granularity(stoi(device_id));
+  size_t min_chunk_size =
+      std::dynamic_pointer_cast<VirtualCachingAllocatorBase>(
+          cuda->virtual_caching_allocator())
+          ->chunk_size_;
 
-  return size < min_chunk_size ? cuda->caching_allocator() : cuda->virtual_caching_allocator();
+  return size <= min_chunk_size ? cuda->caching_allocator()
+                                : cuda->virtual_caching_allocator();
 }
 
 CudaCachedVirtualArray::CudaCachedVirtualArray(const Size_t size, dtypes dtype,
                                                const Context &ctx)
-        : CudaArray(size, dtype, ctx,
-                    select_allocator(size, ctx.device_id)->alloc(
-//                    SingletonManager::get<Cuda>()->virtual_caching_allocator()->alloc(
-                            Array::size_as_bytes(size, dtype), ctx.device_id)) {}
+    : CudaArray(
+          size, dtype, ctx,
+          select_allocator(size, ctx.device_id)
+              ->alloc(
+                  //                    SingletonManager::get<Cuda>()->virtual_caching_allocator()->alloc(
+                  Array::size_as_bytes(size, dtype), ctx.device_id)) {}
 
 CudaCachedVirtualArray::~CudaCachedVirtualArray() {}
 
 Context CudaCachedVirtualArray::filter_context(const Context &ctx) {
   return Context({}, "CudaCachedVirtualArray", ctx.device_id);
 }
-#endif //CUDA_VERSION >= 10020
+#endif // CUDA_VERSION >= 10020
 
 } // End of namespace nbla

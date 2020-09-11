@@ -47,10 +47,7 @@ void CudaEvent::record(cudaStream_t stream) {
   NBLA_CUDA_CHECK(cudaEventRecord(raw_event_, stream));
 }
 
-void CudaEvent::sync() {
-  NBLA_CUDA_CHECK(cudaEventSynchronize(raw_event_));
-}
+void CudaEvent::sync() { NBLA_CUDA_CHECK(cudaEventSynchronize(raw_event_)); }
 
 cudaError_t CudaEvent::query() { return cudaEventQuery(raw_event_); }
-
 }

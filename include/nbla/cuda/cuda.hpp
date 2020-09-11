@@ -147,7 +147,7 @@ protected:
   shared_ptr<Allocator> pinned_allocator_;
 #if CUDA_VERSION >= 10020
   shared_ptr<Allocator> virtual_caching_allocator_;
-#endif //CUDA_VERSION >= 10020
+#endif // CUDA_VERSION >= 10020
 
   // stream pool -> <device, <id, stream>>
   unordered_map<int, unordered_map<int, shared_ptr<cudaStream_t>>> streams_;

@@ -66,11 +66,12 @@ Check CUDA driver error.
 #define NBLA_CUDA_DRIVER_CHECK(condition)                                      \
   {                                                                            \
     CUresult status = (condition);                                             \
-    if (status != CUDA_SUCCESS) {\
+    if (status != CUDA_SUCCESS) {                                              \
       const char *err_name, *err_str;                                          \
       cuGetErrorName(status, &err_name);                                       \
       cuGetErrorString(status, &err_str);                                      \
-      printf("(%s) failed with \"%s\" (%s).\n", #condition, err_str, err_name);\
+      printf("(%s) failed with \"%s\" (%s).\n", #condition, err_str,           \
+             err_name);                                                        \
       NBLA_ERROR(error_code::target_specific, "(%s) failed with \"%s\" (%s).", \
                  #condition, err_str, err_name);                               \
     }                                                                          \

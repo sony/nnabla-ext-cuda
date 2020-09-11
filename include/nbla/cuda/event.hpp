@@ -38,14 +38,14 @@ enum CudaEventFlag {
 
 class CudaEvent : public Event {
   cudaEvent_t raw_event_; // Event
-  ArrayPtr src_{nullptr};          // Source of memory copy
+  ArrayPtr src_{nullptr}; // Source of memory copy
 
 public:
   // disable copy & move
-  CudaEvent(const CudaEvent&) = delete;
-  CudaEvent(CudaEvent&&) = delete;
-  CudaEvent& operator=(const CudaEvent&) = delete;
-  CudaEvent& operator=(CudaEvent&&) = delete;
+  CudaEvent(const CudaEvent &) = delete;
+  CudaEvent(CudaEvent &&) = delete;
+  CudaEvent &operator=(const CudaEvent &) = delete;
+  CudaEvent &operator=(CudaEvent &&) = delete;
 
   CudaEvent(CudaEventFlag flag);
   CudaEvent(cudaEvent_t event, ArrayPtr &src);

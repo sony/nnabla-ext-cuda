@@ -17,11 +17,11 @@
 
 #include <memory>
 
+#include <cuda.h>
 #include <nbla/array.hpp>
 #include <nbla/array/cpu_array.hpp>
 #include <nbla/cuda/defs.hpp>
 #include <nbla/synced_array.hpp>
-#include <cuda.h>
 
 namespace nbla {
 
@@ -116,14 +116,14 @@ public:
   @param ctx Context.
   */
 
-  shared_ptr<Allocator> select_allocator(const Size_t size, const string& device_id);
+  shared_ptr<Allocator> select_allocator(const Size_t size,
+                                         const string &device_id);
 
   explicit CudaCachedVirtualArray(const Size_t size, dtypes dtype,
-                               const Context &ctx);
+                                  const Context &ctx);
   virtual ~CudaCachedVirtualArray();
   static Context filter_context(const Context &ctx);
 };
-#endif //CUDA_VERSION >= 10020
-
+#endif // CUDA_VERSION >= 10020
 }
 #endif

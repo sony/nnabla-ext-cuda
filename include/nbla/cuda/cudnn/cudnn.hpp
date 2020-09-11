@@ -33,8 +33,8 @@
 #include <map>
 #include <memory>
 #include <numeric>
-#include <unordered_map>
 #include <set>
+#include <unordered_map>
 
 namespace nbla {
 
@@ -426,10 +426,12 @@ public:
      @param[in] Option value.
    */
   void set_heuristic_option(bool value);
-  
+
   /* Set an id on conv_fwd_algo_blacklist_.
-   * All algorithms registered this blacklist will be ignored in CudnnConvResource::find_forward_algorithm.
-   * Passed id must be in the range of [0, cudnnConvolutionFwdAlgo_t::CUDNN_CONVOLUTION_FWD_ALGO_COUNT).
+   * All algorithms registered this blacklist will be ignored in
+   * CudnnConvResource::find_forward_algorithm.
+   * Passed id must be in the range of [0,
+   * cudnnConvolutionFwdAlgo_t::CUDNN_CONVOLUTION_FWD_ALGO_COUNT).
    * If the passed id exceeds this range, this function will raise ValueError.
    *
    * @param[in] Algorithm index.
@@ -444,13 +446,13 @@ public:
    */
   void unset_conv_algo_blacklist(int id, ConvOpType op);
 
-  /* Check whether a passed id of algorithm is registered on conv_fwd_algo_blacklist_ or not
+  /* Check whether a passed id of algorithm is registered on
+   * conv_fwd_algo_blacklist_ or not
    *
    * @param[in] Algorithm index.
    * @param[in] Operation index.
    */
   bool check_conv_algo_blacklist(int id, ConvOpType op);
-
 
 protected:
   unordered_map<int, unordered_map<cudaStream_t, shared_ptr<cudnnHandle_t>>>

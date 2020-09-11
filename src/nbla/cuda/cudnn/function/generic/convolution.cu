@@ -91,18 +91,18 @@ void ConvolutionCudaCudnn<T>::setup_impl(const Variables &inputs,
                      this->stride_,
                      this->dilation_};
 
-//  auto &rsc = SingletonManager::get<CudnnHandleManager>()->conv_resource;
-//  auto it = rsc.find(desc);
-//  if (it != rsc.end()) {
-//    // Found a previously created one.
-//    // std::cout << "Found previously created one: " << desc << std::endl;
-//    rsc_ = it->second;
-//    return;
-//  }
+  //  auto &rsc = SingletonManager::get<CudnnHandleManager>()->conv_resource;
+  //  auto it = rsc.find(desc);
+  //  if (it != rsc.end()) {
+  //    // Found a previously created one.
+  //    // std::cout << "Found previously created one: " << desc << std::endl;
+  //    rsc_ = it->second;
+  //    return;
+  //  }
   // Create a new resource.
   // This will search a best algorithm given config.
   rsc_ = make_shared<CudnnConvResource>(desc);
-//  rsc.insert({desc, rsc_}); // Register the created resource to global.
+  //  rsc.insert({desc, rsc_}); // Register the created resource to global.
 }
 
 template <class T>
@@ -120,6 +120,10 @@ void ConvolutionCudaCudnn<T>::forward_impl(const Variables &inputs,
   }
   auto workspace_size = rsc_->workspace_size();
   NdArray workspace_arr;
+  // std::cout << "workspace ptr: " << workspace_arr.synced_array_ptr();
+  // std::cout << " use_count: " << workspace_arr.array().use_count() <<
+  // std::endl;
+
   void *workspace{nullptr};
   if (workspace_size) {
     workspace_arr.reshape({static_cast<Size_t>(workspace_size)}, true);
