@@ -19,7 +19,7 @@ namespace nbla {
 
 class Watchdog {
 private:
-  static const int TIMEOUT_TICKS = 100;    // default timeout is 10s
+  static const int TIMEOUT_TICKS = 600;    // default timeout is 60s
   static const int TICK = 100;             // 100 ms each tick
   static const int STOP_WATCH_DOG = -1000; // arbitrary negative value
   static const int EXIT_WATCH_DOG = 1;     // exit flag
