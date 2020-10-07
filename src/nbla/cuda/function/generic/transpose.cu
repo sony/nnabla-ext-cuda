@@ -101,12 +101,12 @@ template <typename T, bool accum = false>
 __global__ void transpose_nd(const int size, const T *src, T *dst,
                              const TransposeStrides<int> *strides,
                              const int ndim) {
-  NBLA_CUDA_KERNEL_LOOP(idx, size) {
-    int src_index = 0, dst_index = idx;
+  NBLA_CUDA_KERNEL_LOOP(dst_index, size) {
+    int src_index = 0, tmp_index = dst_index;
     for (int axis = 0; axis < ndim; axis++) {
-      const auto k = idx / strides[axis].ostride;
+      const auto k = tmp_index / strides[axis].ostride;
       src_index += k * strides[axis].tstride;
-      idx -= k * strides[axis].ostride;
+      tmp_index -= k * strides[axis].ostride;
     }
     dst[dst_index] = accum ? dst[dst_index] + src[src_index] : src[src_index];
   }
