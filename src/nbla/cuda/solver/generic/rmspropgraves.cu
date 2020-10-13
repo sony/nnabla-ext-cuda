@@ -22,14 +22,15 @@
 namespace nbla {
 
 template <typename T>
-__global__ void kernel_rmspropgraves_update(const int num, T *data, const T *grad,
-                                            T *n, T *g, T *d, const float lr,
-                                            const float decay, const float momentum,
-                                            const float eps) {
+__global__ void
+kernel_rmspropgraves_update(const int num, T *data, const T *grad, T *n, T *g,
+                            T *d, const float lr, const float decay,
+                            const float momentum, const float eps) {
   NBLA_CUDA_KERNEL_LOOP(idx, num) {
     n[idx] = decay * n[idx] + (1 - decay) * grad[idx] * grad[idx];
     g[idx] = decay * g[idx] + (1 - decay) * grad[idx];
-    d[idx] = (momentum) * d[idx] - lr * grad[idx] / (sqrt(n[idx] - g[idx] * g[idx] + eps));
+    d[idx] = (momentum)*d[idx] -
+             lr * grad[idx] / (sqrt(n[idx] - g[idx] * g[idx] + eps));
     data[idx] += d[idx];
   }
 }
