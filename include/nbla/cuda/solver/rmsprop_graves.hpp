@@ -16,17 +16,17 @@
 #define __NBLA_CUDA_SOLVER_RMSPROPGRAVES_HPP__
 
 #include <nbla/cuda/cuda.hpp>
-#include <nbla/solver/rmspropgraves.hpp>
+#include <nbla/solver/rmsprop_graves.hpp>
 
 namespace nbla {
 
-template <typename T> class RMSpropgravesCuda : public RMSpropgraves<T> {
+template <typename T> class RMSpropGravesCuda : public RMSpropGraves<T> {
 public:
-  explicit RMSpropgravesCuda(const Context &ctx, float lr, float decay,
+  explicit RMSpropGravesCuda(const Context &ctx, float lr, float decay,
                              float momentum, float eps)
-      : RMSpropgraves<T>(ctx, lr, decay, momentum, eps) {}
-  virtual ~RMSpropgravesCuda() {}
-  virtual string name() { return "RMSpropgravesCuda"; }
+      : RMSpropGraves<T>(ctx, lr, decay, momentum, eps) {}
+  virtual ~RMSpropGravesCuda() {}
+  virtual string name() { return "RMSpropGravesCuda"; }
   virtual vector<string> allowed_array_classes() {
     return SingletonManager::get<Cuda>()->array_classes();
   }
