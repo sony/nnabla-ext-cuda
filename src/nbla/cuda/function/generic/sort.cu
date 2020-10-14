@@ -31,17 +31,27 @@ namespace nbla {
 
 namespace sort_impl {
 
-template <typename T> struct Compare {
+template <typename T> struct CompareGreater {
   const T *data;
   const size_t stride;
-  const bool reverse;
 
-  __host__ __device__ Compare(const T *data, const size_t stride,
-                              const bool reverse)
-      : data(data), stride(stride), reverse(reverse) {}
+  __host__ __device__ CompareGreater(const T *data, const size_t stride)
+      : data(data), stride(stride) {}
 
   __host__ __device__ bool operator()(size_t i1, size_t i2) const {
-    return data[i1 * stride] < data[i2 * stride] != reverse;
+    return data[i1 * stride] > data[i2 * stride];
+  }
+};
+
+template <typename T> struct CompareLess {
+  const T *data;
+  const size_t stride;
+
+  __host__ __device__ CompareLess(const T *data, const size_t stride)
+      : data(data), stride(stride) {}
+
+  __host__ __device__ bool operator()(size_t i1, size_t i2) const {
+    return data[i1 * stride] < data[i2 * stride];
   }
 };
 
@@ -114,8 +124,15 @@ void SortCuda<T>::forward_impl(const Variables &inputs,
     while (inner_x_raw < outer_x_raw + this->inner_size) {
       auto size = temp_index_var.size();
       NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(make_sequence, size, temp_index_raw);
-      (void)sort(thrust::cuda::par.on(0), temp_index_ptr, temp_index_ptr + size,
-                 Compare<Tcu>(inner_x_raw, stride, this->reverse));
+      if (this->reverse) {
+        (void)sort(thrust::cuda::par.on(0), temp_index_ptr,
+                   temp_index_ptr + size,
+                   CompareGreater<Tcu>(inner_x_raw, stride));
+      } else {
+        (void)sort(thrust::cuda::par.on(0), temp_index_ptr,
+                   temp_index_ptr + size,
+                   CompareLess<Tcu>(inner_x_raw, stride));
+      }
       NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(copy_index, shape[this->axis], stride,
                                      temp_index_raw, inner_i_raw);
       inner_x_raw++;
