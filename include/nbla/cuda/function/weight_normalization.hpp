@@ -12,29 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/** Slice
- */
-#ifndef __NBLA_CUDA_FUNCTION_SLICE_HPP__
-#define __NBLA_CUDA_FUNCTION_SLICE_HPP__
+#ifndef NBLA_CUDA_FUNCTION_WEIGHT_NORMALIZATION_HPP
+#define NBLA_CUDA_FUNCTION_WEIGHT_NORMALIZATION_HPP
 
+#include <nbla/cuda/array/cuda_array.hpp>
 #include <nbla/cuda/cuda.hpp>
-#include <nbla/function/slice.hpp>
-#include <nbla/utils/nd_index.hpp>
+#include <nbla/function/transpose.hpp>
+#include <nbla/function/weight_normalization.hpp>
+#include <nbla/imperative.hpp>
 
 namespace nbla {
-/** @copydoc Slice
-*/
 
-template <typename T> class SliceCuda : public Slice<T> {
-protected:
+template <typename T>
+class WeightNormalizationCuda : public WeightNormalization<T> {
 public:
   typedef typename CudaType<T>::type Tcu;
 
-  explicit SliceCuda(const Context &ctx, const vector<int> &start,
-                     const vector<int> &stop, const vector<int> &step)
-      : Slice<T>(ctx, start, stop, step), device_(std::stoi(ctx.device_id)) {}
-  virtual ~SliceCuda() {}
-  virtual string name() { return "SliceCuda"; }
+  FunctionPtr f_sum_{nullptr};
+
+  explicit WeightNormalizationCuda(const Context &ctx, int dim, float eps)
+      : WeightNormalization<T>(ctx, dim, eps),
+        device_(std::stoi(ctx.device_id)) {}
+  virtual ~WeightNormalizationCuda() {}
+  virtual string name() { return "WeightNormalizationCuda"; }
   virtual vector<string> allowed_array_classes() {
     return SingletonManager::get<Cuda>()->array_classes();
   }
@@ -48,5 +48,4 @@ protected:
                              const vector<bool> &accum);
 };
 }
-
 #endif

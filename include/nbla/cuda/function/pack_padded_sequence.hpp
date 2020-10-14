@@ -12,35 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/** Slice
- */
-#ifndef __NBLA_CUDA_FUNCTION_SLICE_HPP__
-#define __NBLA_CUDA_FUNCTION_SLICE_HPP__
+#ifndef NBLA_CUDA_FUNCTION_PACK_PADDED_SEQUENCE_HPP
+#define NBLA_CUDA_FUNCTION_PACK_PADDED_SEQUENCE_HPP
 
+#include <nbla/cuda/array/cuda_array.hpp>
+#include <nbla/cuda/common.hpp>
 #include <nbla/cuda/cuda.hpp>
-#include <nbla/function/slice.hpp>
-#include <nbla/utils/nd_index.hpp>
+#include <nbla/function/pack_padded_sequence.hpp>
 
 namespace nbla {
-/** @copydoc Slice
-*/
 
-template <typename T> class SliceCuda : public Slice<T> {
-protected:
+template <typename T>
+class PackPaddedSequenceCuda : public PackPaddedSequence<T> {
 public:
   typedef typename CudaType<T>::type Tcu;
 
-  explicit SliceCuda(const Context &ctx, const vector<int> &start,
-                     const vector<int> &stop, const vector<int> &step)
-      : Slice<T>(ctx, start, stop, step), device_(std::stoi(ctx.device_id)) {}
-  virtual ~SliceCuda() {}
-  virtual string name() { return "SliceCuda"; }
+  explicit PackPaddedSequenceCuda(const Context &ctx, bool batch_first)
+      : PackPaddedSequence<T>(ctx, batch_first),
+        device_(std::stoi(ctx.device_id)) {}
+  virtual ~PackPaddedSequenceCuda() {}
+  virtual string name() { return "PackPaddedSequenceCuda"; }
   virtual vector<string> allowed_array_classes() {
     return SingletonManager::get<Cuda>()->array_classes();
   }
 
 protected:
   int device_;
+  FunctionPtr f_transpose_ = nullptr;
+
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,
@@ -48,5 +47,4 @@ protected:
                              const vector<bool> &accum);
 };
 }
-
 #endif

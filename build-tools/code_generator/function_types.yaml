@@ -97,6 +97,9 @@ BatchNormalization:
 SyncBatchNormalization:
   float: [float]
   half: [Half]
+WeightNormalization:
+  float: [float]
+  half: [Half]
 MeanSubtraction:
   float: [float]
   half: [Half]
@@ -522,6 +525,9 @@ IFFT:
 Prune:
   float: [float]
 #  half: [Half] # since segfault with Half
+Gather:
+  float: [float]
+  half: [Half]
 GatherNd:
   float: [float]
   half: [Half]
@@ -541,5 +547,11 @@ WarpByGrid:
   float: [float]
   half: [Half]
 PatchCorrelation:
+  float: [float]
+  half: [Half]
+PackPaddedSequence:
+  float: [float]
+  half: [Half]
+PadPackedSequence:
   float: [float]
   half: [Half]

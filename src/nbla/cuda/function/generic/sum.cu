@@ -15,20 +15,9 @@
 #include <nbla/cuda/array/cuda_array.hpp>
 #include <nbla/cuda/function/sum.hpp>
 #include <nbla/cuda/math.hpp>
-#include <nbla/cuda/utils/block_reduce.cuh>
+#include <nbla/cuda/utils/reduce.cuh>
 
 namespace nbla {
-
-template <typename T>
-__global__ void kernel_reduce_per_block(const int N, const T *x, T *buff) {
-  typedef typename CudaTypeForceFloat<T>::type AccT;
-  AccT thread_data = 0;
-  NBLA_CUDA_KERNEL_LOOP(i, N) { thread_data += (AccT)x[i]; }
-  thread_data = blockReduceSum(thread_data);
-  if (threadIdx.x == 0) {
-    buff[blockIdx.x] = thread_data;
-  }
-}
 
 template <typename T>
 void SumCuda<T>::forward_impl_reduce(const T *x_, T *y_, int outer_size,

@@ -16,6 +16,22 @@
 #define __NBLA_CUDA_UTILS_ND_INDEX_CUH__
 
 /***
+    From vector To int
+ ***/
+
+template <typename T> __host__ int2 to_int2(const std::vector<T> &vec) {
+  return make_int2(int(vec[0]), int(vec[1]));
+}
+
+template <typename T> __host__ int3 to_int3(const std::vector<T> &vec) {
+  return make_int3(vec[0], vec[1], vec[2]);
+}
+
+template <typename T> __host__ int4 to_int4(const std::vector<T> &vec) {
+  return make_int4(vec[0], vec[1], vec[2], vec[3]);
+}
+
+/***
     ND-index to Flat-index functions
  ***/
 __forceinline__ __device__ int device_2d_to_flat(int2 nd_index, int stride) {

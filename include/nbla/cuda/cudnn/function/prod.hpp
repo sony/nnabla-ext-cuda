@@ -58,9 +58,6 @@ protected:
 
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
-  virtual void backward_impl(const Variables &inputs, const Variables &outputs,
-                             const vector<bool> &propagate_down,
-                             const vector<bool> &accum);
 #endif
 };
 }
