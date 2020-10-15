@@ -21,7 +21,9 @@
 
 namespace nbla {
 
-NBLA_DEFINE_TRANSFORM_BINARY_CUDA(Pow2, std::pow(x0, x1),
-                                  dy *x1 *std::pow(x0, x1 - (T)1),
-                                  dy *std::log(x0) * std::pow(x0, x1));
+NBLA_DEFINE_TRANSFORM_BINARY_CUDA(
+    Pow2, std::pow(x0, x1),
+    dy *x1 *std::pow(inplace ? std::pow(y, 1 / x1) : x0, x1 - (T)1),
+    dy *std::log(inplace ? std::pow(y, 1 / x1) : x0) *
+        std::pow(inplace ? std::pow(y, 1 / x1) : x0, x1));
 }
