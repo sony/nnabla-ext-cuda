@@ -22,12 +22,11 @@
 namespace nbla {
 
 template <typename T>
-__global__ void
-kernel_adabelief_update(const int num, T *theta, T *m, T *s, T *s_max,
-                        const T *g, const float alpha_t, const float beta1,
-                        const float beta2, const float eps,
-                        const float decay_ratio, const bool amsgrad,
-                        const bool weight_decouple, const bool sgd_update) {
+__global__ void kernel_adabelief_update(
+    const int num, T *theta, T *m, T *s, T *s_max, const T *g,
+    const float alpha_t, const float beta1, const float beta2, const float eps,
+    const float decay_ratio, const bool amsgrad, const bool weight_decouple,
+    const bool sgd_update, const float bias_correction2) {
   NBLA_CUDA_KERNEL_LOOP(i, num) {
     // Updating running mean and var.
     m[i] = beta1 * m[i] + (1 - beta1) * g[i];
@@ -37,13 +36,17 @@ kernel_adabelief_update(const int num, T *theta, T *m, T *s, T *s_max,
     }
     if (amsgrad) {
       s_max[i] = max(s_max[i], s[i]);
+      s_max[i] += eps;
+    } else {
+      s[i] += eps;
     }
     // Update parameters.
     if (sgd_update) {
       theta[i] = theta[i] - alpha_t * m[i];
     } else {
       auto s_t = amsgrad ? s_max[i] : s[i];
-      theta[i] = theta[i] - alpha_t * m[i] / (std::sqrt(s_t + eps) + eps);
+      auto denominator = std::sqrt(s_t) / bias_correction2;
+      theta[i] = theta[i] - alpha_t * m[i] / (denominator + eps);
     }
   }
 }
@@ -66,9 +69,11 @@ void AdaBeliefCuda<T>::update_impl(const string &key, VariablePtr param) {
   t = std::min(t + 1, std::numeric_limits<uint32_t>::max() - 1);
   const T beta1_t = std::pow(this->beta1_, t);
   const T beta2_t = std::pow(this->beta2_, t);
-  const T bias_correction = std::sqrt(1 - beta2_t) / (1 - beta1_t);
+  const T bias_correction1 = 1.0 - beta1_t;
+  const T bias_correction2 = std::sqrt(1.0 - beta2_t);
   float r_t = 1.0;
   float rho_t = 0.0;
+
   if (this->rectify_) {
     auto rho_inf = 2.0 / (1.0 - this->beta2_) - 1.0;
     rho_t = rho_inf - 2.0 * t * beta2_t / (1.0 - beta2_t);
@@ -81,13 +86,13 @@ void AdaBeliefCuda<T>::update_impl(const string &key, VariablePtr param) {
   T *theta = param->cast_data_and_get_pointer<T>(this->ctx_);
   const bool sgd_update = (this->rectify_ && rho_t <= 4.0);
   const float alpha_t =
-      sgd_update ? this->alpha_ : this->alpha_ * r_t * bias_correction;
+      sgd_update ? this->alpha_ : this->alpha_ * r_t / bias_correction1;
   const float decay_ratio =
       (this->fixed_decay_) ? this->wd_ : this->wd_ * this->alpha_;
-  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_adabelief_update, size, theta, m, s,
-                                 s_max, g, alpha_t, this->beta1_, this->beta2_,
-                                 this->eps_, decay_ratio, this->amsgrad_,
-                                 this->weight_decouple_, sgd_update);
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
+      kernel_adabelief_update, size, theta, m, s, s_max, g, alpha_t,
+      this->beta1_, this->beta2_, this->eps_, decay_ratio, this->amsgrad_,
+      this->weight_decouple_, sgd_update, bias_correction2);
 }
 NBLA_DEF_WEIGHT_DECAY(AdaBeliefCuda, weight_decay_cuda);
 NBLA_DEF_CLIP_GRAD_BY_NORM(AdaBeliefCuda, clip_grad_by_norm_cuda);
