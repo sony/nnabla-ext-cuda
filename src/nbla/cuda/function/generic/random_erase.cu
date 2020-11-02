@@ -154,9 +154,9 @@ void RandomEraseCuda<T>::setup_impl(const Variables &inputs,
   cuda_set_device(this->device_);
 
   auto shape = inputs[0]->shape();
-  auto H = this->channel_last_ ? shape[this->base_axis_ + 1]
+  auto H = this->channel_last_ ? shape[this->base_axis_]
                                : shape[this->base_axis_ + 1];
-  auto W = this->channel_last_ ? shape[this->base_axis_]
+  auto W = this->channel_last_ ? shape[this->base_axis_ + 1]
                                : shape[this->base_axis_ + 2];
   this->state_ = std::make_shared<NdArray>(
       Shape_t{static_cast<long>(H * W * sizeof(curandState))});
@@ -178,9 +178,9 @@ void RandomEraseCuda<T>::forward_impl(const Variables &inputs,
                       1, std::multiplies<size_t>());
   auto C = this->channel_last_ ? shape[this->base_axis_ + 2]
                                : shape[this->base_axis_];
-  auto H = this->channel_last_ ? shape[this->base_axis_ + 1]
+  auto H = this->channel_last_ ? shape[this->base_axis_]
                                : shape[this->base_axis_ + 1];
-  auto W = this->channel_last_ ? shape[this->base_axis_]
+  auto W = this->channel_last_ ? shape[this->base_axis_ + 1]
                                : shape[this->base_axis_ + 2];
 
   // Generate 5 x N x B (x C), 5 is {prob, Se, re, xe, ye}
@@ -274,9 +274,9 @@ void RandomEraseCuda<T>::backward_impl(const Variables &inputs,
                       1, std::multiplies<size_t>());
   auto C = this->channel_last_ ? shape[this->base_axis_ + 2]
                                : shape[this->base_axis_];
-  auto H = this->channel_last_ ? shape[this->base_axis_ + 1]
+  auto H = this->channel_last_ ? shape[this->base_axis_]
                                : shape[this->base_axis_ + 1];
-  auto W = this->channel_last_ ? shape[this->base_axis_]
+  auto W = this->channel_last_ ? shape[this->base_axis_ + 1]
                                : shape[this->base_axis_ + 2];
   auto dstride = this->channel_last_ ? make_int3(H * W * C, W * C, C)
                                      : make_int3(C * H * W, H * W, W);
