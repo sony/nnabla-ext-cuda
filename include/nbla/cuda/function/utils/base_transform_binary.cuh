@@ -31,13 +31,13 @@ public:
     return 0;
   }
   template <typename T>
-  __forceinline__ __device__ T g0(const T dy, const T x0, const T x1,
-                                  const T y) {
+  __forceinline__ __device__ T g0(const T dy, const T x0, const T x1, const T y,
+                                  const bool inplace) {
     return 0;
   }
   template <typename T>
-  __forceinline__ __device__ T g1(const T dy, const T x0, const T x1,
-                                  const T y) {
+  __forceinline__ __device__ T g1(const T dy, const T x0, const T x1, const T y,
+                                  const bool inplace) {
     return 0;
   }
   __host__ void verify_g0() {
@@ -57,22 +57,22 @@ __global__ void kernel_transform_binary(int size, const T *x0, const T *x1,
 }
 
 template <typename T, typename BinaryOp, bool accum>
-__global__ void kernel_transform_binary_grad0(int size, const T *dy,
-                                              const T *x0, const T *x1,
-                                              const T *y, T *g0, BinaryOp op) {
+__global__ void
+kernel_transform_binary_grad0(int size, const T *dy, const T *x0, const T *x1,
+                              const T *y, T *g0, bool inplace, BinaryOp op) {
   NBLA_CUDA_KERNEL_LOOP(idx, size) {
-    g0[idx] =
-        (accum ? g0[idx] : (T)0) + op.g0(dy[idx], x0[idx], x1[idx], y[idx]);
+    g0[idx] = (accum ? g0[idx] : (T)0) +
+              op.g0(dy[idx], x0[idx], x1[idx], y[idx], inplace);
   }
 }
 
 template <typename T, typename BinaryOp, bool accum>
-__global__ void kernel_transform_binary_grad1(int size, const T *dy,
-                                              const T *x0, const T *x1,
-                                              const T *y, T *g1, BinaryOp op) {
+__global__ void
+kernel_transform_binary_grad1(int size, const T *dy, const T *x0, const T *x1,
+                              const T *y, T *g1, bool inplace, BinaryOp op) {
   NBLA_CUDA_KERNEL_LOOP(idx, size) {
-    g1[idx] =
-        (accum ? g1[idx] : (T)0) + op.g1(dy[idx], x0[idx], x1[idx], y[idx]);
+    g1[idx] = (accum ? g1[idx] : (T)0) +
+              op.g1(dy[idx], x0[idx], x1[idx], y[idx], inplace);
   }
 }
 
@@ -80,7 +80,7 @@ template <typename T, typename BinaryOp>
 void forward_impl_transform_binary(const Variables &inputs,
                                    const Variables &outputs, Context &ctx,
                                    FunctionPtr f_bc0, FunctionPtr f_bc1,
-                                   BinaryOp op) {
+                                   bool inplace, BinaryOp op) {
   auto _get = [&ctx](Variable *v) { return v->get_data_pointer<T>(ctx); };
   // Broadcast
   Variable o_bc0;
@@ -92,7 +92,7 @@ void forward_impl_transform_binary(const Variables &inputs,
   // Binary transform
   const T *x0 = _get(f_bc0 ? (&o_bc0) : inputs[0]);
   const T *x1 = _get(f_bc1 ? (&o_bc1) : inputs[1]);
-  T *y = outputs[0]->cast_data_and_get_pointer<T>(ctx, true);
+  T *y = outputs[0]->cast_data_and_get_pointer<T>(ctx, !inplace);
   int size = outputs[0]->size();
   cuda_set_device(std::stoi(ctx.device_id));
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_transform_binary, size, x0, x1, y, op);
@@ -104,7 +104,7 @@ void backward_impl_transform_binary(const Variables &inputs,
                                     const vector<bool> &propagate_down,
                                     const vector<bool> &accum, Context &ctx,
                                     FunctionPtr f_bc0, FunctionPtr f_bc1,
-                                    BinaryOp op) {
+                                    bool inplace, BinaryOp op) {
   if (!(propagate_down[0] || propagate_down[1]))
     return;
   cuda_set_device(std::stoi(ctx.device_id));
@@ -132,11 +132,11 @@ void backward_impl_transform_binary(const Variables &inputs,
     if ((!f_bc0) && accum[0]) {
       NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
           (kernel_transform_binary_grad0<T, BinaryOp, true>), size, dy, x0, x1,
-          y, dx0, op);
+          y, dx0, inplace, op);
     } else {
       NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
           (kernel_transform_binary_grad0<T, BinaryOp, false>), size, dy, x0, x1,
-          y, dx0, op);
+          y, dx0, inplace, op);
     }
     // Broadcast backward
     if (f_bc0)
@@ -159,11 +159,11 @@ void backward_impl_transform_binary(const Variables &inputs,
     if ((!f_bc1) && accum[1]) {
       NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
           (kernel_transform_binary_grad1<T, BinaryOp, true>), size, dy, x0, x1,
-          y, dx1, op);
+          y, dx1, inplace, op);
     } else {
       NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
           (kernel_transform_binary_grad1<T, BinaryOp, false>), size, dy, x0, x1,
-          y, dx1, op);
+          y, dx1, inplace, op);
     }
     // Broadcast backward
     if (f_bc1) {
@@ -184,7 +184,7 @@ void backward_impl_transform_binary(const Variables &inputs,
 #define NBLA_DEFINE_BINARY_OP_CUDA_BACKWARD(NUM, GOP)                          \
   template <typename T>                                                        \
   __forceinline__ __device__ T g##NUM(const T dy, const T x0, const T x1,      \
-                                      const T y) {                             \
+                                      const T y, const bool inplace) {         \
     return GOP;                                                                \
   }                                                                            \
   __host__ void verify_g##NUM() {}
@@ -195,7 +195,7 @@ void backward_impl_transform_binary(const Variables &inputs,
                                    const Variables &outputs) {                 \
     forward_impl_transform_binary<typename CudaType<T>::type>(                 \
         inputs, outputs, this->ctx_, this->f_bc0_, this->f_bc1_,               \
-        NAME##BinaryOpCuda(this->args_));                                      \
+        this->inplace_, NAME##BinaryOpCuda(this->args_));                      \
   }                                                                            \
                                                                                \
   template <typename T>                                                        \
@@ -204,7 +204,7 @@ void backward_impl_transform_binary(const Variables &inputs,
       const vector<bool> &propagate_down, const vector<bool> &accum) {         \
     backward_impl_transform_binary<typename CudaType<T>::type>(                \
         inputs, outputs, propagate_down, accum, this->ctx_, this->f_bc0_,      \
-        this->f_bc1_, NAME##BinaryOpCuda(this->args_));                        \
+        this->f_bc1_, this->inplace_, NAME##BinaryOpCuda(this->args_));        \
   }
 
 // ----------------------------------------------------------------------------

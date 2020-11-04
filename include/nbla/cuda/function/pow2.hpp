@@ -22,6 +22,6 @@ namespace nbla {
 
 /** @copydoc Pow2
 */
-NBLA_DECLARE_TRANSFORM_BINARY_CUDA(Pow2);
+NBLA_DECLARE_TRANSFORM_BINARY_CUDA_INPLACE(Pow2);
 }
 #endif
