@@ -42,7 +42,10 @@ public:
 protected:
   int device_;
 
-  int warp_size_, max_threads_per_block_;
+  int warp_size_;
+  int forward_kernel_max_threads_per_block_;
+  int backprop_input_max_threads_per_block_;
+  int backprop_weights_max_threads_per_block_;
 
   int input_data_size_;
   int output_data_size_;
