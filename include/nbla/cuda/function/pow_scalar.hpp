@@ -22,6 +22,6 @@ namespace nbla {
 
 /** @copydoc PowScalar
 */
-NBLA_DECLARE_TRANSFORM_UNARY_CUDA_1(PowScalar, double);
+NBLA_DECLARE_TRANSFORM_UNARY_CUDA_1_INPLACE(PowScalar, double);
 }
 #endif

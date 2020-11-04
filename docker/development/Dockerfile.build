@@ -71,7 +71,7 @@ RUN mkdir /tmp/deps \
     && mkdir build \
     && cd build \
     && cmake3 -DBUILD_TESTING=FALSE .. \
-    && make \
+    && make -j8 \
     && make install \
     && yum remove -y cmake3 \
     && yum clean all \
@@ -92,7 +92,7 @@ RUN mkdir /tmp/deps \
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
         -Dprotobuf_BUILD_TESTS=OFF \
         ../cmake \
-    && make \
+    && make -j8 \
     && make install \
     && cd / \
     && rm -rf /tmp/*
