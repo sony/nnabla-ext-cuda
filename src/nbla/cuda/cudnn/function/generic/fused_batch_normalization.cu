@@ -66,6 +66,16 @@ void FusedBatchNormalizationCudaCudnn<T>::setup_impl(const Variables &inputs,
     can_use_bn_ex = false;
   }
 #endif // _WIN32
+  if (can_use_bn_ex) {
+    cudaDeviceProp prop;
+    cudaGetDeviceProperties(&prop, this->device_);
+    if ((prop.major == 5) && (prop.minor == 3)) {
+      NBLA_LOG_WARN("FusedBatchNormalization is not supported by CuDNN on "
+                    "compute archtitecture 5.3 - "
+                    "fallback to composite implementation.")
+      can_use_bn_ex = false;
+    }
+  }
   if (!can_use_bn_ex || outputs.size() == 3) {
     this->fall_back_func_ = make_shared<FusedBatchNormalization<T>>(
         this->ctx_, this->axes_, this->decay_rate_, this->eps_,
