@@ -32,8 +32,8 @@ protected:
   int device_;
 
 public:
-  TransformBinaryCuda(const Context &ctx, Args... args)
-      : BaseTransformBinary<Args...>(ctx, args...),
+  TransformBinaryCuda(const Context &ctx, bool inplace, Args... args)
+      : BaseTransformBinary<Args...>(ctx, inplace, args...),
         device_(std::stoi(ctx.device_id)) {}
   virtual ~TransformBinaryCuda() {}
   virtual vector<dtypes> in_types() {
@@ -64,9 +64,21 @@ protected:                                                                     \
 #define NBLA_DECLARE_TRANSFORM_BINARY_CUDA(NAME)                               \
   template <typename T> class NAME##Cuda : public TransformBinaryCuda<T> {     \
     NBLA_DECLARE_TRANSFORM_BINARY_CUDA_CLASS_COMMON(NAME)                      \
-    explicit NAME##Cuda(const Context &ctx) : TransformBinaryCuda<T>(ctx) {}   \
+    explicit NAME##Cuda(const Context &ctx)                                    \
+        : TransformBinaryCuda<T>(ctx, false) {}                                \
     virtual shared_ptr<Function> copy() const {                                \
       return create_##NAME(this->ctx_);                                        \
+    }                                                                          \
+    NBLA_DECLARE_TRANSFORM_BINARY_CUDA_FORWARD_BACKWARD();                     \
+  }
+
+#define NBLA_DECLARE_TRANSFORM_BINARY_CUDA_INPLACE(NAME)                       \
+  template <typename T> class NAME##Cuda : public TransformBinaryCuda<T> {     \
+    NBLA_DECLARE_TRANSFORM_BINARY_CUDA_CLASS_COMMON(NAME)                      \
+    explicit NAME##Cuda(const Context &ctx, bool inplace)                      \
+        : TransformBinaryCuda<T>(ctx, inplace) {}                              \
+    virtual shared_ptr<Function> copy() const {                                \
+      return create_##NAME(this->ctx_, this->inplace_);                        \
     }                                                                          \
     NBLA_DECLARE_TRANSFORM_BINARY_CUDA_FORWARD_BACKWARD();                     \
   }
@@ -82,7 +94,7 @@ protected:                                                                     \
   NBLA_DECLARE_TRANSFORM_BINARY_CUDA_CLASS_BEGIN_N(NAME, A0) {                 \
     NBLA_DECLARE_TRANSFORM_BINARY_CUDA_CLASS_COMMON(NAME)                      \
     explicit NAME##Cuda(const Context &ctx, const A0 &a0)                      \
-        : TransformBinaryCuda<T, A0>(ctx, a0) {}                               \
+        : TransformBinaryCuda<T, A0>(ctx, false, a0) {}                        \
     virtual shared_ptr<Function> copy() const {                                \
       return create_##NAME(this->ctx_, std::get<0>(this->args_));              \
     }                                                                          \

@@ -32,8 +32,8 @@ void Add2CudaCudnn<T>::setup_impl(const Variables &inputs,
                                   const Variables &outputs) {
   if (inputs[0]->shape() != inputs[1]->shape()) {
     // Trying to fallback to broadcastable Add2.
-    this->fall_back_func_ =
-        std::shared_ptr<Function>(new BcAdd2Cuda<T>(this->ctx_));
+    this->fall_back_func_ = std::shared_ptr<Function>(
+        new BcAdd2Cuda<T>(this->ctx_, this->inplace_));
     this->fall_back_func_->setup(inputs, outputs);
     return;
   }

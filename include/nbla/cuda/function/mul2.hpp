@@ -22,6 +22,6 @@ namespace nbla {
 
 /** @copydoc Mul2
 */
-NBLA_DECLARE_TRANSFORM_BINARY_CUDA(Mul2);
+NBLA_DECLARE_TRANSFORM_BINARY_CUDA_INPLACE(Mul2);
 }
 #endif
