@@ -22,12 +22,12 @@ namespace nbla {
 namespace depthwise_deconvolution_cuda {
 
 template <typename T, int K>
-__global__ void forward_kernel(const T *input_data, T *output_data,
-                               const T *weight_data, const T *bias_data,
-                               const int output_data_size, const int2 sample,
-                               const int2 outmap, const int kernel,
-                               const int stride, const int padding,
-                               const int dilation, const int divisor) {
+__global__ void forward_kernel_1d(const T *input_data, T *output_data,
+                                  const T *weight_data, const T *bias_data,
+                                  const int output_data_size, const int2 sample,
+                                  const int2 outmap, const int kernel,
+                                  const int stride, const int padding,
+                                  const int dilation, const int divisor) {
   // sample/outmap (x, y) == (length, channels)
   // outmap.y == sample.y / divisor
   const auto &sample_channels = sample.y;
@@ -72,12 +72,12 @@ __global__ void forward_kernel(const T *input_data, T *output_data,
 }
 
 template <typename T, int K>
-__global__ void forward_kernel(const T *input_data, T *output_data,
-                               const T *weight_data, const T *bias_data,
-                               const int output_data_size, const int3 sample,
-                               const int3 outmap, const int2 kernel,
-                               const int2 stride, const int2 padding,
-                               const int2 dilation, const int divisor) {
+__global__ void forward_kernel_2d(const T *input_data, T *output_data,
+                                  const T *weight_data, const T *bias_data,
+                                  const int output_data_size, const int3 sample,
+                                  const int3 outmap, const int2 kernel,
+                                  const int2 stride, const int2 padding,
+                                  const int2 dilation, const int divisor) {
   // sample/outmap (x, y, z) == (width, height, channels)
   // outmap.z == sample.z / divisor
   // sample/outmap/kernel size == width * height
@@ -137,10 +137,10 @@ __global__ void forward_kernel(const T *input_data, T *output_data,
 
 template <typename T, int K>
 __global__ void
-backprop_input(T *input_grad, const T *output_grad, const T *weight_data,
-               const int input_data_size, const int2 sample, const int2 outmap,
-               const int kernel, const int stride, const int padding,
-               const int dilation, const int divisor) {
+backprop_input_1d(T *input_grad, const T *output_grad, const T *weight_data,
+                  const int input_data_size, const int2 sample,
+                  const int2 outmap, const int kernel, const int stride,
+                  const int padding, const int dilation, const int divisor) {
   // sample/outmap (x, y) == (length, channels)
   // outmap.y == sample.y / divisor
   const auto &sample_channels = sample.y;
@@ -176,10 +176,10 @@ backprop_input(T *input_grad, const T *output_grad, const T *weight_data,
 
 template <typename T, int K>
 __global__ void
-backprop_input(T *input_grad, const T *output_grad, const T *weight_data,
-               const int input_data_size, const int3 sample, const int3 outmap,
-               const int2 kernel, const int2 stride, const int2 padding,
-               const int2 dilation, const int divisor) {
+backprop_input_2d(T *input_grad, const T *output_grad, const T *weight_data,
+                  const int input_data_size, const int3 sample,
+                  const int3 outmap, const int2 kernel, const int2 stride,
+                  const int2 padding, const int2 dilation, const int divisor) {
   // sample/outmap (x, y, z) == (width, height, channels)
   // outmap.z == sample.z / divisor
   // sample/outmap/kernel size == width * height
@@ -225,10 +225,10 @@ backprop_input(T *input_grad, const T *output_grad, const T *weight_data,
 
 template <typename T>
 __global__ void
-backprop_weights(const T *output_grad, const T *input_data, T *weight_grad,
-                 T *bias_grad, const int batch_size, const int2 sample,
-                 const int2 outmap, const int kernel, const int stride,
-                 const int padding, const int dilation, const int divisor) {
+backprop_weights_1d(const T *output_grad, const T *input_data, T *weight_grad,
+                    T *bias_grad, const int batch_size, const int2 sample,
+                    const int2 outmap, const int kernel, const int stride,
+                    const int padding, const int dilation, const int divisor) {
   const auto &sample_channels = sample.y;
   const auto &outmap_channels = outmap.y;
   const auto &sample_size = sample.x;
@@ -297,11 +297,12 @@ backprop_weights(const T *output_grad, const T *input_data, T *weight_grad,
 }
 
 template <typename T>
-__global__ void
-backprop_weights(const T *output_grad, const T *input_data, T *weight_grad,
-                 T *bias_grad, const int batch_size, const int3 sample,
-                 const int3 outmap, const int2 kernel, const int2 stride,
-                 const int2 padding, const int2 dilation, const int divisor) {
+__global__ void backprop_weights_2d(const T *output_grad, const T *input_data,
+                                    T *weight_grad, T *bias_grad,
+                                    const int batch_size, const int3 sample,
+                                    const int3 outmap, const int2 kernel,
+                                    const int2 stride, const int2 padding,
+                                    const int2 dilation, const int divisor) {
   const auto &sample_channels = sample.z;
   const auto &outmap_channels = outmap.z;
 
@@ -398,6 +399,8 @@ void DepthwiseDeconvolutionCuda<T>::setup_impl(const Variables &inputs,
              "GPU implementation limit reached: output-channels x filter-size "
              "can not be more than 65536."); // see implementation note
 
+  cudaFuncAttributes attr1, attr2, attr3;
+
   if (this->kernel_shape_.size() == 1) {
     sample_1d_ = make_int2(this->sample_shape_[0], this->sample_channels_);
     outmap_1d_ = make_int2(this->outmap_shape_[0], this->outmap_channels_);
@@ -405,6 +408,17 @@ void DepthwiseDeconvolutionCuda<T>::setup_impl(const Variables &inputs,
     stride_1d_ = this->stride_[0];
     padding_1d_ = this->padding_[0];
     dilation_1d_ = this->dilation_[0];
+    if (kernel_1d_ == 3) {
+      NBLA_CUDA_CHECK(cudaFuncGetAttributes(&attr1, forward_kernel_1d<Tc, 3>));
+      NBLA_CUDA_CHECK(cudaFuncGetAttributes(&attr2, backprop_input_1d<Tc, 3>));
+    } else if (kernel_1d_ == 5) {
+      NBLA_CUDA_CHECK(cudaFuncGetAttributes(&attr1, forward_kernel_1d<Tc, 5>));
+      NBLA_CUDA_CHECK(cudaFuncGetAttributes(&attr2, backprop_input_1d<Tc, 5>));
+    } else {
+      NBLA_CUDA_CHECK(cudaFuncGetAttributes(&attr1, forward_kernel_1d<Tc, 0>));
+      NBLA_CUDA_CHECK(cudaFuncGetAttributes(&attr2, backprop_input_1d<Tc, 0>));
+    }
+    NBLA_CUDA_CHECK(cudaFuncGetAttributes(&attr3, backprop_weights_1d<Tc>));
   } else {
     sample_2d_ = make_int3(this->sample_shape_[1], this->sample_shape_[0],
                            this->sample_channels_);
@@ -414,11 +428,25 @@ void DepthwiseDeconvolutionCuda<T>::setup_impl(const Variables &inputs,
     stride_2d_ = make_int2(this->stride_[1], this->stride_[0]);
     padding_2d_ = make_int2(this->padding_[1], this->padding_[0]);
     dilation_2d_ = make_int2(this->dilation_[1], this->dilation_[0]);
+    if ((kernel_2d_.x == 3) && (kernel_2d_.y == 3)) {
+      NBLA_CUDA_CHECK(cudaFuncGetAttributes(&attr1, forward_kernel_2d<Tc, 3>));
+      NBLA_CUDA_CHECK(cudaFuncGetAttributes(&attr2, backprop_input_2d<Tc, 3>));
+    } else if ((kernel_2d_.x == 5) && (kernel_2d_.y == 5)) {
+      NBLA_CUDA_CHECK(cudaFuncGetAttributes(&attr1, forward_kernel_2d<Tc, 5>));
+      NBLA_CUDA_CHECK(cudaFuncGetAttributes(&attr2, backprop_input_2d<Tc, 5>));
+    } else {
+      NBLA_CUDA_CHECK(cudaFuncGetAttributes(&attr1, forward_kernel_2d<Tc, 0>));
+      NBLA_CUDA_CHECK(cudaFuncGetAttributes(&attr2, backprop_input_2d<Tc, 0>));
+    }
+    NBLA_CUDA_CHECK(cudaFuncGetAttributes(&attr3, backprop_weights_2d<Tc>));
   }
+
+  forward_kernel_max_threads_per_block_ = attr1.maxThreadsPerBlock;
+  backprop_input_max_threads_per_block_ = attr2.maxThreadsPerBlock;
+  backprop_weights_max_threads_per_block_ = attr3.maxThreadsPerBlock;
 
   cudaDeviceProp prop;
   cudaGetDeviceProperties(&prop, std::stoi(this->ctx_.device_id));
-  max_threads_per_block_ = prop.maxThreadsPerBlock;
   warp_size_ = prop.warpSize;
 }
 
@@ -438,39 +466,39 @@ void DepthwiseDeconvolutionCuda<T>::forward_impl(const Variables &inputs,
       (bias) ? bias->get_data_pointer<Tc>(this->ctx_) : nullptr;
   Tc *output_data = output->cast_data_and_get_pointer<Tc>(this->ctx_, true);
 
-  const int threads = max_threads_per_block_;
+  const int threads = forward_kernel_max_threads_per_block_;
   const int blocks = (output_data_size_ + threads - 1) / threads;
 
   if (this->kernel_shape_.size() == 1) {
     if (kernel_1d_ == 3) {
-      forward_kernel<Tc, 3><<<blocks, threads>>>(
+      forward_kernel_1d<Tc, 3><<<blocks, threads>>>(
           input_data, output_data, weight_data, bias_data, output_data_size_,
           sample_1d_, outmap_1d_, kernel_1d_, stride_1d_, padding_1d_,
           dilation_1d_, this->divisor_);
     } else if (kernel_1d_ == 5) {
-      forward_kernel<Tc, 5><<<blocks, threads>>>(
+      forward_kernel_1d<Tc, 5><<<blocks, threads>>>(
           input_data, output_data, weight_data, bias_data, output_data_size_,
           sample_1d_, outmap_1d_, kernel_1d_, stride_1d_, padding_1d_,
           dilation_1d_, this->divisor_);
     } else {
-      forward_kernel<Tc, 0><<<blocks, threads>>>(
+      forward_kernel_1d<Tc, 0><<<blocks, threads>>>(
           input_data, output_data, weight_data, bias_data, output_data_size_,
           sample_1d_, outmap_1d_, kernel_1d_, stride_1d_, padding_1d_,
           dilation_1d_, this->divisor_);
     }
   } else {
     if ((kernel_2d_.x == 3) && (kernel_2d_.y == 3)) {
-      forward_kernel<Tc, 3><<<blocks, threads>>>(
+      forward_kernel_2d<Tc, 3><<<blocks, threads>>>(
           input_data, output_data, weight_data, bias_data, output_data_size_,
           sample_2d_, outmap_2d_, kernel_2d_, stride_2d_, padding_2d_,
           dilation_2d_, this->divisor_);
     } else if ((kernel_2d_.x == 5) && (kernel_2d_.y == 5)) {
-      forward_kernel<Tc, 5><<<blocks, threads>>>(
+      forward_kernel_2d<Tc, 5><<<blocks, threads>>>(
           input_data, output_data, weight_data, bias_data, output_data_size_,
           sample_2d_, outmap_2d_, kernel_2d_, stride_2d_, padding_2d_,
           dilation_2d_, this->divisor_);
     } else {
-      forward_kernel<Tc, 0><<<blocks, threads>>>(
+      forward_kernel_2d<Tc, 0><<<blocks, threads>>>(
           input_data, output_data, weight_data, bias_data, output_data_size_,
           sample_2d_, outmap_2d_, kernel_2d_, stride_2d_, padding_2d_,
           dilation_2d_, this->divisor_);
@@ -522,38 +550,38 @@ void DepthwiseDeconvolutionCuda<T>::backward_impl(
   if (input_grad) {
     // Compute the input gradient. Each thread of threads times
     // blocks computes one input gradient value.
-    const int threads = max_threads_per_block_;
+    const int threads = backprop_input_max_threads_per_block_;
     const int blocks = (input_data_size_ + threads - 1) / threads;
     if (this->kernel_shape_.size() == 1) {
       if (kernel_1d_ == 3) {
-        backprop_input<Tc, 3><<<blocks, threads>>>(
+        backprop_input_1d<Tc, 3><<<blocks, threads>>>(
             input_grad, output_grad, weight_data, input_data_size_, sample_1d_,
             outmap_1d_, kernel_1d_, stride_1d_, padding_1d_, dilation_1d_,
             this->divisor_);
       } else if (kernel_1d_ == 5) {
-        backprop_input<Tc, 5><<<blocks, threads>>>(
+        backprop_input_1d<Tc, 5><<<blocks, threads>>>(
             input_grad, output_grad, weight_data, input_data_size_, sample_1d_,
             outmap_1d_, kernel_1d_, stride_1d_, padding_1d_, dilation_1d_,
             this->divisor_);
       } else {
-        backprop_input<Tc, 0><<<blocks, threads>>>(
+        backprop_input_1d<Tc, 0><<<blocks, threads>>>(
             input_grad, output_grad, weight_data, input_data_size_, sample_1d_,
             outmap_1d_, kernel_1d_, stride_1d_, padding_1d_, dilation_1d_,
             this->divisor_);
       }
     } else {
       if ((kernel_2d_.x == 3) && (kernel_2d_.y == 3)) {
-        backprop_input<Tc, 3><<<blocks, threads>>>(
+        backprop_input_2d<Tc, 3><<<blocks, threads>>>(
             input_grad, output_grad, weight_data, input_data_size_, sample_2d_,
             outmap_2d_, kernel_2d_, stride_2d_, padding_2d_, dilation_2d_,
             this->divisor_);
       } else if ((kernel_2d_.x == 5) && (kernel_2d_.y == 5)) {
-        backprop_input<Tc, 5><<<blocks, threads>>>(
+        backprop_input_2d<Tc, 5><<<blocks, threads>>>(
             input_grad, output_grad, weight_data, input_data_size_, sample_2d_,
             outmap_2d_, kernel_2d_, stride_2d_, padding_2d_, dilation_2d_,
             this->divisor_);
       } else {
-        backprop_input<Tc, 0><<<blocks, threads>>>(
+        backprop_input_2d<Tc, 0><<<blocks, threads>>>(
             input_grad, output_grad, weight_data, input_data_size_, sample_2d_,
             outmap_2d_, kernel_2d_, stride_2d_, padding_2d_, dilation_2d_,
             this->divisor_);
@@ -581,12 +609,13 @@ void DepthwiseDeconvolutionCuda<T>::backward_impl(
     // kernel be modified to use blockIdx.x * blockIdx.y for offset
     // calculations.
     const int batch_size = this->batch_size_;
-    const int threads = min(batch_size * warp_size_, max_threads_per_block_);
+    const int max_threads_per_block = backprop_weights_max_threads_per_block_;
+    const int threads = min(batch_size * warp_size_, max_threads_per_block);
     if (this->kernel_shape_.size() == 1) {
       const int kernel_size = kernel_1d_;
       const int sample_channels = sample_1d_.y;
       const int blocks = sample_channels * kernel_size;
-      backprop_weights<Tc><<<blocks, threads>>>(
+      backprop_weights_1d<Tc><<<blocks, threads>>>(
           output_grad, input_data, weight_grad, bias_grad, batch_size,
           sample_1d_, outmap_1d_, kernel_1d_, stride_1d_, padding_1d_,
           dilation_1d_, this->divisor_);
@@ -594,7 +623,7 @@ void DepthwiseDeconvolutionCuda<T>::backward_impl(
       const int kernel_size = kernel_2d_.x * kernel_2d_.y;
       const int sample_channels = sample_2d_.z;
       const int blocks = sample_channels * kernel_size;
-      backprop_weights<Tc><<<blocks, threads>>>(
+      backprop_weights_2d<Tc><<<blocks, threads>>>(
           output_grad, input_data, weight_grad, bias_grad, batch_size,
           sample_2d_, outmap_2d_, kernel_2d_, stride_2d_, padding_2d_,
           dilation_2d_, this->divisor_);
