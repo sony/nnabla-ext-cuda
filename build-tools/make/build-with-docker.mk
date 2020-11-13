@@ -124,8 +124,11 @@ bwd-nnabla-ext-cuda-shell: docker_image_build_cuda
 
 ########################################################################################################################
 # Docker image with current nnabla
-OMPI_BUILD_FLAGS_V3.1.6="--prefix=/opt/openmpi --enable-orterun-prefix-by-default --with-sge "
-OMPI_BUILD_FLAGS_V2.1.6="--prefix=/opt/openmpi --enable-orterun-prefix-by-default --with-sge --enable-mpi-thread-multiple "
+OMPI_BUILD_FLAGS_V1=""
+OMPI_BUILD_FLAGS_V2="--enable-orterun-prefix-by-default --with-sge --enable-mpi-thread-multiple "
+OMPI_BUILD_FLAGS_V3="--enable-orterun-prefix-by-default --with-sge "
+OMPI_BUILD_FLAGS_V4="--enable-orterun-prefix-by-default --with-sge "
+
 .PHONY: docker_image_nnabla_ext_cuda
 docker_image_nnabla_ext_cuda:
 	BASE=nvidia/cuda$(ARCH_SUFFIX):$(CUDA_VERSION_MAJOR).$(CUDA_VERSION_MINOR)-cudnn$(CUDNN_VERSION)-runtime-ubuntu18.04 \
@@ -137,14 +140,12 @@ docker_image_nnabla_ext_cuda:
 		cp docker/runtime/Dockerfile.runtime-mpi$(ARCH_SUFFIX) Dockerfile; \
 	   fi \
 	&& cp $(BUILD_DIRECTORY_WHEEL)/dist/*.whl . \
-	&& echo ADD $(shell basename $(BUILD_DIRECTORY_WHEEL)/dist/*.whl) /tmp/ >>Dockerfile \
-	&& echo RUN pip install /tmp/$(shell basename $(BUILD_DIRECTORY_WHEEL)/dist/*.whl) >>Dockerfile \
 	&& cp $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/*.whl . \
-	&& echo ADD $(shell basename $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/*.whl) /tmp/ >>Dockerfile \
-	&& echo RUN pip install /tmp/$(shell basename $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/*.whl) >>Dockerfile \
-	&& docker build --build-arg BASE=$${BASE} $(DOCKER_BUILD_ARGS) \
+	&& docker build $(DOCKER_BUILD_ARGS) \
+		--build-arg BASE=$${BASE} \
 		--build-arg MPIVER=$(OMPI_VERSION) \
-		--build-arg OMPI_BUILD_FLAGS=${OMPI_BUILD_FLAGS_V$(OMPI_VERSION)} \
+		--build-arg OMPI_BUILD_FLAGS=${OMPI_BUILD_FLAGS_V$(firstword $(subst ., ,$(OMPI_VERSION)))} \
+		--build-arg WHL=$(shell basename $(BUILD_DIRECTORY_WHEEL)/dist/*.whl) \
+		--build-arg WHLCUDA=$(shell basename $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/*.whl) \
 		-t $(DOCKER_IMAGE_NNABLA_EXT_CUDA) . \
-	&& rm -f $(shell basename $(BUILD_DIRECTORY_WHEEL)/dist/*.whl) \
 	&& rm -f Dockerfile
