@@ -124,6 +124,8 @@ bwd-nnabla-ext-cuda-shell: docker_image_build_cuda
 
 ########################################################################################################################
 # Docker image with current nnabla
+OMPI_BUILD_FLAGS_V3.1.6="--prefix=/opt/openmpi --enable-orterun-prefix-by-default --with-sge "
+OMPI_BUILD_FLAGS_V2.1.6="--prefix=/opt/openmpi --enable-orterun-prefix-by-default --with-sge --enable-mpi-thread-multiple "
 .PHONY: docker_image_nnabla_ext_cuda
 docker_image_nnabla_ext_cuda:
 	BASE=nvidia/cuda$(ARCH_SUFFIX):$(CUDA_VERSION_MAJOR).$(CUDA_VERSION_MINOR)-cudnn$(CUDNN_VERSION)-runtime-ubuntu18.04 \
@@ -142,6 +144,7 @@ docker_image_nnabla_ext_cuda:
 	&& echo RUN pip install /tmp/$(shell basename $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/*.whl) >>Dockerfile \
 	&& docker build --build-arg BASE=$${BASE} $(DOCKER_BUILD_ARGS) \
 		--build-arg MPIVER=$(OMPI_VERSION) \
+		--build-arg OMPI_BUILD_FLAGS=${OMPI_BUILD_FLAGS_V$(OMPI_VERSION)} \
 		-t $(DOCKER_IMAGE_NNABLA_EXT_CUDA) . \
 	&& rm -f $(shell basename $(BUILD_DIRECTORY_WHEEL)/dist/*.whl) \
 	&& rm -f Dockerfile

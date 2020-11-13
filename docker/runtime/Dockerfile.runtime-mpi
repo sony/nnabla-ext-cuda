@@ -17,15 +17,17 @@ RUN apt-get update
 RUN apt-get install -y --no-install-recommends \
         build-essential \
         curl \
-        gfortran
+        gfortran \
+        libibverbs-dev
 
 RUN apt-get install -y --no-install-recommends ca-certificates
 
 ARG MPIVER=3.1.6
+ARG OMPI_BUILD_FLAGS
 RUN mkdir /tmp/openmpi
 RUN curl https://download.open-mpi.org/release/open-mpi/v${MPIVER%.*}/openmpi-${MPIVER}.tar.bz2 -o /tmp/openmpi/openmpi-${MPIVER}.tar.bz2
 RUN tar Cxvf /tmp/openmpi /tmp/openmpi/openmpi-${MPIVER}.tar.bz2
-RUN cd tmp/openmpi/openmpi-${MPIVER} && ./configure --prefix=/opt/openmpi CC=gcc CXX=g++ F77=gfortran FC=gfortran && make -j8 && make install
+RUN cd tmp/openmpi/openmpi-${MPIVER} && ./configure ${OMPI_BUILD_FLAGS} CC=gcc CXX=g++ F77=gfortran FC=gfortran && make -j8 && make install
 
 ############################################################
 # Runtime image
