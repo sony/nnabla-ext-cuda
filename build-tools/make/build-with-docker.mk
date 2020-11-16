@@ -145,6 +145,8 @@ docker_image_nnabla_ext_cuda:
 		--build-arg BASE=$${BASE} \
 		--build-arg MPIVER=$(OMPI_VERSION) \
 		--build-arg OMPI_BUILD_FLAGS=${OMPI_BUILD_FLAGS_V$(firstword $(subst ., ,$(OMPI_VERSION)))} \
+		--build-arg CUDA_VERSION_MAJOR=$(CUDA_VERSION_MAJOR) \
+		--build-arg CUDA_VERSION_MINOR=$(CUDA_VERSION_MINOR) \
 		--build-arg WHL=$(shell basename $(BUILD_DIRECTORY_WHEEL)/dist/*.whl) \
 		--build-arg WHLCUDA=$(shell basename $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/*.whl) \
 		-t $(DOCKER_IMAGE_NNABLA_EXT_CUDA) . \

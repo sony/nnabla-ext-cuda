@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM nvidia/cuda:9.0-cudnn7-runtime-ubuntu16.04
+FROM nvidia/cuda:11.0-cudnn8-runtime-ubuntu18.04
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -29,11 +29,15 @@ RUN umask 0 \
     && rm -rf Miniconda3-latest-Linux-x86_64.sh \
     && PATH=/opt/miniconda3/bin:$PATH \
     && conda install python=3.7 \
-    && conda install pip wheel opencv \
+    && conda install pip wheel \
+    && conda install opencv || true \
+    && pip install --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda110 \
+    || echo "Skip DALI installation (CUDA=11.0)" \
     && conda clean -y --all \
     && cd / \
     && rm -rf /tmp/*
 
 ENV PATH /opt/miniconda3/bin:$PATH
 
-RUN pip install -U nnabla-ext-cuda90
+RUN pip install -U nnabla-ext-cuda110
+
