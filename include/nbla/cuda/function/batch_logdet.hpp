@@ -12,22 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef NBLA_CUDA_FUNCTION_BATCH_LOG_DET_HPP
-#define NBLA_CUDA_FUNCTION_BATCH_LOG_DET_HPP
+#ifndef NBLA_CUDA_FUNCTION_BATCH_LOGDET_HPP
+#define NBLA_CUDA_FUNCTION_BATCH_LOGDET_HPP
 
 #include <nbla/cuda/cuda.hpp>
-#include <nbla/function/batch_log_det.hpp>
+#include <nbla/function/batch_logdet.hpp>
 
 namespace nbla {
 
-template <typename T> class BatchLogDetCuda : public BatchLogDet<T> {
+template <typename T> class BatchLogdetCuda : public BatchLogdet<T> {
 public:
   typedef typename CudaType<T>::type Tcu;
 
-  explicit BatchLogDetCuda(const Context &ctx)
-      : BatchLogDet<T>(ctx), device_(std::stoi(ctx.device_id)) {}
-  virtual ~BatchLogDetCuda() {}
-  virtual string name() { return "BatchLogDetCuda"; }
+  explicit BatchLogdetCuda(const Context &ctx)
+      : BatchLogdet<T>(ctx), device_(std::stoi(ctx.device_id)) {}
+  virtual ~BatchLogdetCuda() {}
+  virtual string name() { return "BatchLogdetCuda"; }
   virtual vector<string> allowed_array_classes() {
     return SingletonManager::get<Cuda>()->array_classes();
   }

@@ -14,7 +14,7 @@
 
 #include <nbla/array.hpp>
 #include <nbla/cuda/common.hpp>
-#include <nbla/cuda/function/batch_log_det.hpp>
+#include <nbla/cuda/function/batch_logdet.hpp>
 #include <nbla/variable.hpp>
 
 #include "kernel/batch_det.cu"
@@ -22,16 +22,16 @@
 namespace nbla {
 
 template <typename T>
-void BatchLogDetCuda<T>::setup_impl(const Variables &inputs,
+void BatchLogdetCuda<T>::setup_impl(const Variables &inputs,
                                     const Variables &outputs) {
-  BatchLogDet<T>::setup_impl(inputs, outputs);
+  BatchLogdet<T>::setup_impl(inputs, outputs);
   cuda_set_device(this->device_);
   batch_size_ = inputs[0]->shape()[0];
   dim_ = inputs[0]->shape()[1];
 }
 
 template <typename T>
-void BatchLogDetCuda<T>::forward_impl(const Variables &inputs,
+void BatchLogdetCuda<T>::forward_impl(const Variables &inputs,
                                       const Variables &outputs) {
   cuda_set_device(this->device_);
 
@@ -41,11 +41,11 @@ void BatchLogDetCuda<T>::forward_impl(const Variables &inputs,
 }
 
 template <typename T>
-void BatchLogDetCuda<T>::backward_impl(const Variables &inputs,
+void BatchLogdetCuda<T>::backward_impl(const Variables &inputs,
                                        const Variables &outputs,
                                        const vector<bool> &propagate_down,
                                        const vector<bool> &accum) {
   cuda_set_device(this->device_);
-  BatchLogDet<T>::backward_impl(inputs, outputs, propagate_down, accum);
+  BatchLogdet<T>::backward_impl(inputs, outputs, propagate_down, accum);
 }
 }
