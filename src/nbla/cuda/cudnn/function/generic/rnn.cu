@@ -406,9 +406,10 @@ void RNNCudaCudnn<T>::setup_impl(const Variables &inputs,
 
 // Set RNN descriptor.
 #if CUDNN_VERSION >= 7000
-  NBLA_CUDNN_CHECK(cudnnSetRNNDescriptor_v5(
-      rnn_desc_.desc, hidden_size_, this->num_layers_, dropout_desc_.desc,
-      inputMode, direction, RNNMode, dt));
+  NBLA_CUDNN_CHECK(cudnnSetRNNDescriptor_v6(
+      cudnn_handle, rnn_desc_.desc, hidden_size_, this->num_layers_,
+      dropout_desc_.desc, inputMode, direction, RNNMode,
+      CUDNN_RNN_ALGO_STANDARD, dt));
 #else
   NBLA_CUDNN_CHECK(cudnnSetRNNDescriptor(rnn_desc_.desc, hidden_size_,
                                          this->num_layers_, dropout_desc_.desc,

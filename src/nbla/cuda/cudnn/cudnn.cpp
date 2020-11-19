@@ -413,6 +413,7 @@ void CudnnConvResource::find_backward_filter_algorithm(int workspace_limit,
              workspace_limit, deterministic);
 }
 
+#if CUDNN_VERSION < 3000
 void CudnnConvResource::get_forward_algorithm(int workspace_limit) {
   auto cudnn_handle_manager = SingletonManager::get<CudnnHandleManager>();
   auto cudnn_handle = cudnn_handle_manager->handle(device);
@@ -484,6 +485,7 @@ void CudnnConvResource::get_backward_filter_algorithm(int workspace_limit) {
     this->bwd_filter_workspace_size = 0;
   }
 }
+#endif
 
 void CudnnConvResource::find_best_algorithms() {
   auto cudnn_handle_manager = SingletonManager::get<CudnnHandleManager>();

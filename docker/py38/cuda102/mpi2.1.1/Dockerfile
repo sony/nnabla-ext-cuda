@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM nvidia/cuda:10.2-cudnn7-runtime-ubuntu18.04
+FROM nvidia/cuda:10.2-cudnn8-runtime-ubuntu18.04
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -32,13 +32,16 @@ RUN umask 0 \
     && PATH=/opt/miniconda3/bin:$PATH \
     && conda install python=3.8 \
     && conda install pip wheel \
+    && conda install opencv || true \
+    && pip install --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda102 \
+    || echo "Skip DALI installation (CUDA=10.2)" \
     && conda clean -y --all \
     && cd / \
     && rm -rf /tmp/*
 
 ENV PATH /opt/miniconda3/bin:$PATH
 
-RUN pip3 install -U nnabla-ext-cuda102-nccl2-mpi2.1.1
+RUN pip install -U nnabla-ext-cuda102-nccl2-mpi2.1.1
 
 # Prepare default user
 RUN useradd -m nnabla
@@ -47,3 +50,4 @@ RUN chown -R nnabla:nnabla /home/nnabla
 USER nnabla
 WORKDIR /home/nnabla
 CMD [ "/bin/bash" ]
+

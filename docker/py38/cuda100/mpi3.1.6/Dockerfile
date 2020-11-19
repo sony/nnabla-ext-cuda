@@ -18,14 +18,23 @@ RUN apt-get update
 RUN apt-get install -y --no-install-recommends \
         build-essential \
         curl \
-        gfortran
+        gfortran \
+        libibverbs-dev
 
 RUN apt-get install -y --no-install-recommends ca-certificates
 
 RUN mkdir /tmp/openmpi
 RUN curl https://download.open-mpi.org/release/open-mpi/v3.1/openmpi-3.1.6.tar.bz2 -o /tmp/openmpi/openmpi-3.1.6.tar.bz2
 RUN tar Cxvf /tmp/openmpi /tmp/openmpi/openmpi-3.1.6.tar.bz2
-RUN cd tmp/openmpi/openmpi-3.1.6 && ./configure --prefix=/opt/openmpi CC=gcc CXX=g++ F77=gfortran FC=gfortran && make && make install
+RUN cd tmp/openmpi/openmpi-3.1.6 \
+    && ./configure \
+        --prefix=/opt/openmpi --enable-orterun-prefix-by-default --with-sge \
+        CC=gcc \
+        CXX=g++ \
+        F77=gfortran \
+        FC=gfortran \
+    && make -j8 \
+    && make install
 
 FROM nvidia/cuda:10.0-cudnn7-runtime-ubuntu18.04
 
@@ -46,6 +55,9 @@ RUN umask 0 \
     && PATH=/opt/miniconda3/bin:$PATH \
     && conda install python=3.8 \
     && conda install pip wheel \
+    && conda install opencv || true \
+    && pip install --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda100 \
+    || echo "Skip DALI installation (CUDA=10.0)" \
     && conda clean -y --all \
     && cd / \
     && rm -rf /tmp/*
@@ -56,7 +68,7 @@ COPY --from=openmpi /opt/openmpi /opt/openmpi
 ENV PATH /opt/openmpi/bin:$PATH
 ENV LD_LIBRARY_PATH /opt/openmpi/lib:$LD_LIBRARY_PATH
 
-RUN pip3 install -U nnabla-ext-cuda100-nccl2-mpi3.1.6
+RUN pip install -U nnabla-ext-cuda100-nccl2-mpi3.1.6
 
 # Prepare default user
 RUN useradd -m nnabla
@@ -65,3 +77,4 @@ RUN chown -R nnabla:nnabla /home/nnabla
 USER nnabla
 WORKDIR /home/nnabla
 CMD [ "/bin/bash" ]
+
