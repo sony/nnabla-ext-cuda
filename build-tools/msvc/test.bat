@@ -20,7 +20,7 @@ SETLOCAL
 REM Environment
 CALL %~dp0tools\env.bat %1 %2 %3 || GOTO :error
 
-for /f %%i in ('dir /b /s %nnabla_build_wheel_folder%\dist\*.whl') do set WHL=%%~fi
+for /f %%i in ('dir /b /s %nnabla_build_wheel_folder%\dist\nnabla-*.whl') do set WHL=%%~fi
 IF NOT DEFINED WHL (
    ECHO NNabla wheel is not found.
    exit /b 255

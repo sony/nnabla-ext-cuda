@@ -35,7 +35,7 @@ IF NOT EXIST %nnabla_build_wheel_folder% (
    exit /b 255
 )
 
-for /f %%i in ('dir /b /s %nnabla_build_wheel_folder%\dist\*.whl') do set WHL=%%~fi
+for /f %%i in ('dir /b /s %nnabla_build_wheel_folder%\dist\nnabla-*.whl') do set WHL=%%~fi
 IF NOT DEFINED WHL (
    ECHO NNabla wheel is not found.
    exit /b 255
