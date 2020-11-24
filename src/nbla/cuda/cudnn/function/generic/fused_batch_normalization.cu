@@ -229,6 +229,11 @@ void FusedBatchNormalizationCudaCudnn<T>::backward_impl(
       batch_var->data()->get(DRV_BN_T(), this->ctx_)->const_pointer();
   const Tw *x = inputs[0]->get_data_pointer<Tw>(this->ctx_);
 
+  batch_mean->data()->array()->clear();
+  batch_var->data()->array()->clear();
+  std::cout << "Cudnn fused" << std::endl;
+  std::cout << "clear batch stat" << std::endl;
+
   auto a_data = get_cudnn_scalar_arg<T>(propagate_down[0] ? 1 : 0);
   auto b_data = get_cudnn_scalar_arg<T>(accum[0] && propagate_down[0] ? 1 : 0);
   auto a_param =
@@ -323,6 +328,8 @@ void FusedBatchNormalizationCudaCudnn<T>::backward_impl(
       ));
   // Clear reserved buffer for backward
   reserve_ = nullptr;
+  this->mean_.data()->array()->clear();
+  this->var_.data()->array()->clear();
 }
 #endif
 } // namespace nbla

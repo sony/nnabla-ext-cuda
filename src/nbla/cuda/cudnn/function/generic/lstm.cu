@@ -419,6 +419,7 @@ void LSTMCudaCudnn<T>::setup_impl(const Variables &inputs,
   NBLA_CUDNN_CHECK(cudnnSetDropoutDescriptor(dropout_desc_.desc, cudnn_handle,
                                              this->dropout_, state_ptr,
                                              dropout_stateSize, dist(engine)));
+  state_array_.array()->clear();
 
 // Set RNN descriptor.
 #if CUDNN_VERSION >= 7000
@@ -590,6 +591,8 @@ void LSTMCudaCudnn<T>::forward_impl_training(const Variables &inputs,
       h, c_x_desc_.desc, c, params_desc_.desc, params, y_desc_->data(), y,
       h_n_desc_.desc, h_n, c_y_desc_.desc, c_n, mem_buff, workspace_size_,
       mem_reserve_buff, reserve_size_));
+  
+  // mem_reservespace_.array()->clear();
 }
 
 template <typename T>
@@ -836,5 +839,7 @@ void LSTMCudaCudnn<T>::backward_impl(const Variables &inputs,
   this->copy_params_to_gradients(g_params, g_w_init, g_weight, g_bias,
                                  w_init_accum, w_accum, b_accum,
                                  propagate_down[3], w_prop, b_prop);
+  
+  mem_reservespace_.array()->clear();
 }
 }

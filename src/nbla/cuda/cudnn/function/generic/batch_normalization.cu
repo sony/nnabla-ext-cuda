@@ -358,6 +358,8 @@ void BatchNormalizationCudaCudnn<T>::backward_impl_batch(
         ));
     // Clear reserved buffer for backward
     reserve_ = nullptr;
+    this->mean_.data()->array()->clear();
+    this->var_.data()->array()->clear();
     return;
   }
 #endif
@@ -365,5 +367,7 @@ void BatchNormalizationCudaCudnn<T>::backward_impl_batch(
       cudnn_handle_, mode_, &a_data, &b_data, &a_param, &b_param,
       input_desc_.desc, x, output_desc_.desc, dy, input_desc_.desc, dx,
       bn_scale_bias_mean_var_desc_.desc, gamma, dg, db, eps, m, v));
+  this->mean_.data()->array()->clear();
+  this->var_.data()->array()->clear();
 }
 } // namespace nbla

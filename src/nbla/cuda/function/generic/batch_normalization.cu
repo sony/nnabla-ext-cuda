@@ -184,6 +184,7 @@ void BatchNormalizationCuda<T>::backward_impl_batch(
   if (!(propagate_down[0] || propagate_down[1] || propagate_down[2])) {
     return;
   }
+
   // Check whether it outputs batch mean/var.
   Variable *batch_mean = &this->mean_;
   Variable *batch_var = &this->var_;
@@ -267,6 +268,11 @@ void BatchNormalizationCuda<T>::backward_impl_batch(
         backward_batch_gamma_beta_kernel, this->size1_, this->size2_,
         this->size02_, this->size12_, this->eps_, dy, m, v, x, db, dg);
 #endif
+  
+  if (outputs.size() != 3) {
+    this->mean_.data()->array()->clear();
+    this->var_.data()->array()->clear();  
+  }
   }
 }
 }

@@ -116,7 +116,7 @@ public:
   @param ctx Context.
   */
 
-  shared_ptr<Allocator> select_allocator(const Size_t size,
+  shared_ptr<Allocator> select_allocator(const size_t size,
                                          const string &device_id);
 
   explicit CudaCachedVirtualArray(const Size_t size, dtypes dtype,

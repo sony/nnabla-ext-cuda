@@ -286,7 +286,7 @@ Context CudaCachedHostArray::filter_context(const Context &ctx) {
 /////////////////////////////////////
 
 shared_ptr<Allocator>
-CudaCachedVirtualArray::select_allocator(const Size_t size,
+CudaCachedVirtualArray::select_allocator(const size_t size,
                                          const string &device_id) {
   auto cuda = SingletonManager::get<Cuda>();
 
@@ -304,9 +304,8 @@ CudaCachedVirtualArray::CudaCachedVirtualArray(const Size_t size, dtypes dtype,
                                                const Context &ctx)
     : CudaArray(
           size, dtype, ctx,
-          select_allocator(size, ctx.device_id)
-              ->alloc(
-                  //                    SingletonManager::get<Cuda>()->virtual_caching_allocator()->alloc(
+          // select_allocator(Array::size_as_bytes(size, dtype), ctx.device_id)->alloc(
+        SingletonManager::get<Cuda>()->virtual_caching_allocator()->alloc(
                   Array::size_as_bytes(size, dtype), ctx.device_id)) {}
 
 CudaCachedVirtualArray::~CudaCachedVirtualArray() {}
