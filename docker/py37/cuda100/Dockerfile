@@ -39,5 +39,5 @@ RUN umask 0 \
 
 ENV PATH /opt/miniconda3/bin:$PATH
 
-RUN pip install -U nnabla-ext-cuda100
+RUN pip install -U nnabla-ext-cuda100 nnabla_tf_converter
 

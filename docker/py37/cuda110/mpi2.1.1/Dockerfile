@@ -41,7 +41,7 @@ RUN umask 0 \
 
 ENV PATH /opt/miniconda3/bin:$PATH
 
-RUN pip install -U nnabla-ext-cuda110-nccl2-mpi2.1.1
+RUN pip install -U nnabla-ext-cuda110-nccl2-mpi2.1.1 nnabla_tf_converter
 
 # Prepare default user
 RUN useradd -m nnabla

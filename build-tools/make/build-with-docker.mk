@@ -139,15 +139,14 @@ docker_image_nnabla_ext_cuda:
 	   else \
 		cp docker/runtime/Dockerfile.runtime-mpi$(ARCH_SUFFIX) Dockerfile; \
 	   fi \
-	&& cp $(BUILD_DIRECTORY_WHEEL)/dist/*.whl . \
-	&& cp $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/*.whl . \
+	&& cp $(BUILD_DIRECTORY_WHEEL)/dist/*.whl $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/ \
 	&& docker build $(DOCKER_BUILD_ARGS) \
 		--build-arg BASE=$${BASE} \
 		--build-arg MPIVER=$(OMPI_VERSION) \
 		--build-arg OMPI_BUILD_FLAGS=${OMPI_BUILD_FLAGS_V$(firstword $(subst ., ,$(OMPI_VERSION)))} \
 		--build-arg CUDA_VERSION_MAJOR=$(CUDA_VERSION_MAJOR) \
 		--build-arg CUDA_VERSION_MINOR=$(CUDA_VERSION_MINOR) \
-		--build-arg WHL=$(shell basename $(BUILD_DIRECTORY_WHEEL)/dist/*.whl) \
-		--build-arg WHLCUDA=$(shell basename $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/*.whl) \
+		--build-arg WHL_PATH=$$(echo build_wheel$(BUILD_EXT_CUDA_DIRECTORY_WHEEL_SUFFIX)$(OMPI_SUFFIX)/dist) \
 		-t $(DOCKER_IMAGE_NNABLA_EXT_CUDA) . \
+	&& ls $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/* | grep -v nnabla_ext_cuda | xargs rm -f \
 	&& rm -f Dockerfile

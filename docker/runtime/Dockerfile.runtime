@@ -36,13 +36,9 @@ RUN . /opt/miniconda3/bin/activate \
         || echo "Skip DALI installation (CUDA=${CUDA_VERSION_MAJOR}.${CUDA_VERSION_MINOR})" \
 RUN . /opt/miniconda3/bin/activate && conda clean -y --all
 
-ARG WHL
-ADD $WHL /tmp/
-RUN . /opt/miniconda3/bin/activate && pip install /tmp/$WHL
-
-ARG WHLCUDA
-ADD $WHLCUDA /tmp/
-RUN . /opt/miniconda3/bin/activate && pip install /tmp/$WHLCUDA
+ARG WHL_PATH
+ADD $WHL_PATH/*.whl /tmp/
+RUN . /opt/miniconda3/bin/activate && pip install /tmp/*.whl
 
 ############################################################
 # Runtime image
