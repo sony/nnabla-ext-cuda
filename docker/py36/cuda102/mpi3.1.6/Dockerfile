@@ -56,8 +56,8 @@ RUN umask 0 \
     && conda install python=3.6 \
     && conda install pip wheel \
     && conda install opencv || true \
-    && pip install --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda102 \
-    || echo "Skip DALI installation (CUDA=10.2)" \
+    && pip install --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda100 \
+    || echo "Skip DALI installation (CUDA=10.0)" \
     && conda clean -y --all \
     && cd / \
     && rm -rf /tmp/*
