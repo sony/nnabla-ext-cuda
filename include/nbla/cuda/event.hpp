@@ -63,7 +63,6 @@ public:
   cudaError_t query();
 
 private:
-  // Checker of CPU array class
   inline bool is_cpu_context(const Context ctx) {
     auto cpu_array_classes = SingletonManager::get<Cpu>()->array_classes();
 

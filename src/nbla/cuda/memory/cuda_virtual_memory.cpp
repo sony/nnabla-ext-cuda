@@ -15,7 +15,7 @@
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/memory/cuda_virtual_memory.hpp>
 
-#if CUDA_VERSION >= 10020
+#if CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
 
 namespace nbla {
 
@@ -173,8 +173,6 @@ void CudaVirtualMemory::free_virtual_address() {
   dev_ptr_ = 0ULL;
 }
 
-using std::cout;
-using std::endl;
 void CudaVirtualMemory::bind_impl() {
   // Calling bind_impl() more than once is prohibited, raise.
   // todo: support growing memory.
@@ -289,4 +287,4 @@ DeviceMemoryState CudaVirtualMemory::get_device_memory_state() {
 void CudaVirtualMemory::lock_device_memory() { event_.record(0); }
 }
 
-#endif // CUDA_VERSION >= 10020
+#endif // CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000

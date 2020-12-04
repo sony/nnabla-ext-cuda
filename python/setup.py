@@ -159,6 +159,25 @@ def get_cpu_cython_path():
     return cpu_cython_path
 
 
+def get_cuda_include_dir():
+    from six.moves.configparser import ConfigParser
+
+    # Parse setup.cfg
+    path_cfg = join(dirname(__file__), "setup.cfg")
+    if not isfile(path_cfg):
+        raise ValueError(
+            "`setup.cfg` does not exist. Read installation document and install using CMake.")
+    cfgp = ConfigParser()
+    cfgp.read(path_cfg)
+
+    # Read cpu lib info
+    cuda_include_dir = os.path.join(
+        cfgp.get("cmake", "cuda_toolkit_root_dir"), "include")
+    print("CUDA Include directory:", cuda_include_dir)
+
+    return cuda_include_dir
+
+
 def cuda_config(root_dir, cuda_lib, ext_opts, lib_dirs):
     # With CUDA
     src_dir = join(root_dir, 'src')
@@ -241,7 +260,8 @@ def cuda_config(root_dir, cuda_lib, ext_opts, lib_dirs):
     cuda_ext_opts = copy.deepcopy(ext_opts)
     cuda_ext_opts['libraries'] += [cuda_lib.name]
     cuda_ext_opts['library_dirs'] += [dirname(cuda_lib.path)]
-    cuda_ext_opts['include_dirs'] += [get_cpu_include_dir()]
+    cuda_ext_opts['include_dirs'] += [get_cpu_include_dir(),
+                                      get_cuda_include_dir()]
     ext_modules = [
         Extension(cuda_pkg + '.init',
                   [join(path_cuda_pkg, 'init.pyx')],

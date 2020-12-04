@@ -280,7 +280,7 @@ Context CudaCachedHostArray::filter_context(const Context &ctx) {
   return Context({}, "CudaCachedHostArray", "");
 }
 
-#if CUDA_VERSION >= 10020
+#if CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
 /////////////////////////////////////
 // CudaCachedVirtualArray implementation
 /////////////////////////////////////
@@ -304,15 +304,16 @@ CudaCachedVirtualArray::CudaCachedVirtualArray(const Size_t size, dtypes dtype,
                                                const Context &ctx)
     : CudaArray(
           size, dtype, ctx,
-          // select_allocator(Array::size_as_bytes(size, dtype), ctx.device_id)->alloc(
-        SingletonManager::get<Cuda>()->virtual_caching_allocator()->alloc(
-                  Array::size_as_bytes(size, dtype), ctx.device_id)) {}
+          // select_allocator(Array::size_as_bytes(size, dtype),
+          // ctx.device_id)->alloc(
+          SingletonManager::get<Cuda>()->virtual_caching_allocator()->alloc(
+              Array::size_as_bytes(size, dtype), ctx.device_id)) {}
 
 CudaCachedVirtualArray::~CudaCachedVirtualArray() {}
 
 Context CudaCachedVirtualArray::filter_context(const Context &ctx) {
   return Context({}, "CudaCachedVirtualArray", ctx.device_id);
 }
-#endif // CUDA_VERSION >= 10020
+#endif // CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
 
 } // End of namespace nbla

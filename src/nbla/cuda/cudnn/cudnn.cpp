@@ -828,7 +828,7 @@ void CudnnHandleManager::verify_conv_algo_id(int id, ConvOpType op) {
     NBLA_ERROR(error_code::value, "Unsupported conv op type.");
   }
 
-  NBLA_CHECK((0 <= id && id < algo_count), error_code::value,
+  NBLA_CHECK(0 <= id && id < algo_count, error_code::value,
              "[set_conv_fwd_algo_blacklist] Unsupported id. id must be in the "
              "range of [0, %d)",
              algo_count);
@@ -836,17 +836,17 @@ void CudnnHandleManager::verify_conv_algo_id(int id, ConvOpType op) {
 
 void CudnnHandleManager::set_conv_algo_blacklist(int id, ConvOpType op) {
   verify_conv_algo_id(id, op);
-  conv_algo_blacklists_[op].insert(id);
+  conv_algo_blacklists_[static_cast<size_t>(op)].insert(id);
 }
 
 void CudnnHandleManager::unset_conv_algo_blacklist(int id, ConvOpType op) {
   verify_conv_algo_id(id, op);
-  conv_algo_blacklists_[op].erase(id);
+  conv_algo_blacklists_[static_cast<size_t>(op)].erase(id);
 }
 
 bool CudnnHandleManager::check_conv_algo_blacklist(int id, ConvOpType op) {
   verify_conv_algo_id(id, op);
-  return conv_algo_blacklists_[op].count(id) > 0;
+  return conv_algo_blacklists_[static_cast<size_t>(op)].count(id) > 0;
 }
 
 NBLA_INSTANTIATE_SINGLETON(NBLA_CUDA_API, CudnnHandleManager);

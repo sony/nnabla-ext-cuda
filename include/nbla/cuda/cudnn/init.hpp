@@ -30,7 +30,7 @@ NBLA_CUDA_API void set_conv_bwd_data_algo_blacklist(int id);
 NBLA_CUDA_API void set_conv_bwd_filter_algo_blacklist(int id);
 
 /**
-Unset conv algo to blacklist.
+Unset conv algo from blacklist.
 */
 NBLA_CUDA_API void unset_conv_fwd_algo_blacklist(int id);
 NBLA_CUDA_API void unset_conv_bwd_data_algo_blacklist(int id);

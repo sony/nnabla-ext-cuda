@@ -26,7 +26,10 @@
 #include <nbla/cuda/event.hpp>
 #include <nbla/memory/memory.hpp>
 
-#if CUDA_VERSION >= 10020
+// Todo: avoid including cudnn.h in cuda package.
+#include <cudnn.h>
+
+#if CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
 
 namespace nbla {
 
@@ -120,4 +123,4 @@ protected:
 };
 }
 
-#endif // CUDA_VER >= 10020
+#endif // CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000

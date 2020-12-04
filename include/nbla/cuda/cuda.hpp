@@ -26,6 +26,9 @@
 #include <nbla/memory/allocator.hpp>
 #include <nbla/singleton_manager.hpp>
 
+// Todo: avoid including cudnn.h in cuda package.
+#include <cudnn.h>
+
 #include <mutex>
 #include <unordered_map>
 
@@ -118,12 +121,9 @@ public:
    */
   void create_lms_streams(int device = -1);
 
-  /** Change a chunk size of virtual memory allocator.
-   *  As chunk_type, following values can be used:
-   *   - 0 = small
-   *   - 1 = large
+  /** Change a chunk size of physical memory used in virtual memory allocator.
    */
-  void set_vma_chunk_size(size_t size, int chunk_type);
+  void set_vma_chunk_size(size_t size);
 
 protected:
   std::mutex mtx_cublas_;
@@ -145,9 +145,9 @@ protected:
   shared_ptr<Allocator> caching_allocator_;
   shared_ptr<Allocator> unified_allocator_;
   shared_ptr<Allocator> pinned_allocator_;
-#if CUDA_VERSION >= 10020
+#if CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
   shared_ptr<Allocator> virtual_caching_allocator_;
-#endif // CUDA_VERSION >= 10020
+#endif // CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
 
   // stream pool -> <device, <id, stream>>
   unordered_map<int, unordered_map<int, shared_ptr<cudaStream_t>>> streams_;

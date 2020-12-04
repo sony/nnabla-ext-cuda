@@ -31,6 +31,10 @@
 #include <nbla/cuda/array/cuda_array.hpp>
 #include <nbla/cuda/array/cuda_dlpack_array.hpp>
 #include <nbla/backend_registry.hpp>
+
+// Todo: avoid including cudnn.h in cuda package.
+#include <cudnn.h>
+
 % for name, snake_name, _ in function_list:
 % if name in function_types:
 #include <nbla/cuda/function/${snake_name}.hpp>
@@ -168,7 +172,7 @@ void init_cuda() {
   NBLA_REGISTER_ARRAY_GROUP(CudaCachedHostArray, cpu);
 
   // CudaCachedVirtualArray
-#if CUDA_VERSION >= 10020
+#if CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
   NBLA_REGISTER_ARRAY_CREATOR(CudaCachedVirtualArray);
   SingletonManager::get<Cuda>()->register_array_class("CudaCachedVirtualArray");
   NBLA_REGISTER_ARRAY_SYNCHRONIZER(CpuArray, CudaCachedVirtualArray,
@@ -196,7 +200,7 @@ void init_cuda() {
   NBLA_REGISTER_ARRAY_SYNCHRONIZER(CudaCachedVirtualArray, CudaCachedHostArray,
                                    synchronizer_cuda_array_cpu_array);
   NBLA_REGISTER_ARRAY_GROUP(CudaCachedVirtualArray, cuda);
-#endif //CUDA_VERSION >= 10020
+#endif //CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
 
   // Function registration
 % for name, _, arg_types in function_list:
@@ -264,7 +268,7 @@ vector<int> get_cuda_cached_memory_used_counts(const string& device_id) {
   return SingletonManager::get<Cuda>()->caching_allocator()->get_used_memory_counts(device_id);
 }
 
-#if CUDA_VERSION >= 10020
+#if CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
 void clear_cuda_virtual_memory_cache() {
   SingletonManager::get<Cuda>()->virtual_caching_allocator()->free_unused_caches();
 }
@@ -284,7 +288,18 @@ size_t get_cuda_virtual_caching_allocator_max_available_bytes(const string& devi
 vector<int> get_cuda_virtual_memory_used_counts(const string& device_id) {
   return SingletonManager::get<Cuda>()->virtual_caching_allocator()->get_used_memory_counts(device_id);
 }
-#endif
+#else
+// dummy functions for cython.
+void clear_cuda_virtual_memory_cache() {}
+
+void print_cuda_virtual_memory_cache_map() {}
+
+size_t get_cuda_virtual_caching_allocator_fragmentation_bytes(const string& device_id) {return 0;}
+
+size_t get_cuda_virtual_caching_allocator_max_available_bytes(const string& device_id) {return 0;}
+
+vector<int> get_cuda_virtual_memory_used_counts(const string& device_id) {return {};}
+#endif // CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
 
 /** Get CUDA array classes.
 */
@@ -424,11 +439,10 @@ float cuda_event_elapsed_time(shared_ptr<void> event_s, shared_ptr<void> event_e
   NBLA_CUDA_CHECK(cudaEventElapsedTime(&milliseconds, *event_s_ptr, *event_e_ptr));
 
   return milliseconds;
-
 }
 
-void set_cuda_vma_chunk_size(size_t size, int chunk_type) {
-  SingletonManager::get<Cuda>()->set_vma_chunk_size(size, chunk_type);
+void set_cuda_vma_chunk_size(size_t size) {
+  SingletonManager::get<Cuda>()->set_vma_chunk_size(size);
 }
 
 }

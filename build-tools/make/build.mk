@@ -28,6 +28,8 @@ ifndef NNABLA_BUILD_INCLUDED
   include $(NNABLA_DIRECTORY)/build-tools/make/build.mk
 endif
 
+CUDA_ROOT ?= /usr/local/cuda
+
 ########################################################################################################################
 # cleaning
 .PHONY: nnabla-ext-cuda-clean
@@ -67,6 +69,7 @@ nnabla-ext-cuda-cpplib:
 		-DPYTHON_VERSION_MINOR=$(PYTHON_VERSION_MINOR) \
 		-DMULTIGPU_SUFFIX=$(MULTIGPU_SUFFIX) \
 		-DWITH_NCCL=$(WITH_NCCL) \
+		-DCMAKE_LIBRARY_PATH=$(CUDA_ROOT)/lib64/stubs \
 		$(CMAKE_OPTS) \
 		$(NNABLA_EXT_CUDA_DIRECTORY)
 	$(MAKE) -C $(BUILD_EXT_CUDA_DIRECTORY_CPPLIB) -j$(PARALLEL_BUILD_NUM)
@@ -103,6 +106,7 @@ nnabla-ext-cuda-wheel-local: nnabla-install \
 		-DMULTIGPU_SUFFIX=$(MULTIGPU_SUFFIX) \
 		-DWITH_NCCL=$(WITH_NCCL) \
                 -DWHEEL_SUFFIX=$(WHEEL_SUFFIX) \
+		-DCMAKE_LIBRARY_PATH=$(CUDA_ROOT)/lib64/stubs \
 		$(CMAKE_OPTS) \
 		$(NNABLA_EXT_CUDA_DIRECTORY) \
 	&& $(MAKE) -C $(BUILD_EXT_CUDA_DIRECTORY_WHEEL) wheel

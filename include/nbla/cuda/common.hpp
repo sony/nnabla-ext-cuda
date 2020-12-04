@@ -70,8 +70,6 @@ Check CUDA driver error.
       const char *err_name, *err_str;                                          \
       cuGetErrorName(status, &err_name);                                       \
       cuGetErrorString(status, &err_str);                                      \
-      printf("(%s) failed with \"%s\" (%s).\n", #condition, err_str,           \
-             err_name);                                                        \
       NBLA_ERROR(error_code::target_specific, "(%s) failed with \"%s\" (%s).", \
                  #condition, err_str, err_name);                               \
     }                                                                          \

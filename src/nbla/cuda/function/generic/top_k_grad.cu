@@ -133,7 +133,7 @@ void TopKGradCuda<T>::backward_impl(const Variables &inputs,
     // sorting.
     auto buffer_raw =
         this->buffer_.cast(get_dtype<unsigned int>(), this->ctx_, true)
-            ->pointer<unsigned int>();
+            ->template pointer<unsigned int>();
     auto buffer_ptr = thrust::device_pointer_cast(buffer_raw);
 
     for (int s = 0; s < outer_size; s++) {
@@ -162,7 +162,7 @@ void TopKGradCuda<T>::backward_impl(const Variables &inputs,
     }
   } else {
     auto buffer = this->buffer_.cast(get_dtype<char>(), this->ctx_, true)
-                      ->pointer<Buffer<Tcu>>();
+                      ->template pointer<Buffer<Tcu>>();
 
     for (int s = 0; s < outer_size; s++) {
       if (this->abs_) {

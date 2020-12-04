@@ -55,7 +55,7 @@ cdef extern from "nbla/cuda/init.hpp" namespace "nbla":
     void cuda_event_synchronize(shared_ptr[void]) nogil except +
     float cuda_event_elapsed_time(shared_ptr[void], shared_ptr[void]) except +
     void cuda_event_record(shared_ptr[void]) except +
-    void set_cuda_vma_chunk_size(size_t size, int chunk_type) except +
+    void set_cuda_vma_chunk_size(size_t size) except +
 
 cdef extern from "nbla/cuda/common.hpp" namespace "nbla":
     vector[size_t] cuda_mem_get_info() except +
@@ -70,11 +70,11 @@ except:
 
 
 def clear_memory_cache():
-    """Clear memory cache for all devices."""
+    """Clear memory cache in caching allocator for all devices."""
     clear_cuda_memory_cache()
 
 def clear_virtual_memory_cache():
-    """Clear memory cache for all devices."""
+    """Clear memory cache in virtual caching allocator for all devices."""
     clear_cuda_virtual_memory_cache()
 
 def print_memory_cache_map():
@@ -82,31 +82,31 @@ def print_memory_cache_map():
     print_cuda_memory_cache_map()
 
 def print_virtual_memory_cache_map():
-    """Dump cuda memory cache map."""
+    """Dump cuda virtual memory cache map."""
     print_cuda_virtual_memory_cache_map()
 
 def get_caching_allocator_fragmentation_bytes(str device_id):
-    """Get total cuda cached memory size"""
+    """Get fragmentation size of caching allocator for cudaCachedMemory."""
     return get_cuda_caching_allocator_fragmentation_bytes(device_id)
 
 def get_caching_allocator_max_available_bytes(str device_id):
-    """Get total cuda cached memory size"""
+    """Get maximum available bytes in caching allocator for cudaCachedMemory."""
     return get_cuda_caching_allocator_max_available_bytes(device_id)
 
 def get_cached_memory_used_counts(str device_id):
-    """Get max cuda cached memory size"""
+    """Get # of cuda cached memory which is currently used."""
     return get_cuda_cached_memory_used_counts(device_id)
 
 def get_virtual_caching_allocator_fragmentation_bytes(str device_id):
-    """Get max cuda cached memory size"""
+    """Get fragmentation size of virtual caching allocator for cudaVirtualMemoy."""
     return get_cuda_virtual_caching_allocator_fragmentation_bytes(device_id)
 
 def get_virtual_caching_allocator_max_available_bytes(str device_id):
-    """Get total cuda cached memory size"""
+    """Get maximum available bytes in virtual caching allocator for cudaVirtualMemory."""
     return get_cuda_virtual_caching_allocator_max_available_bytes(device_id)
 
 def get_virtual_memory_used_counts(str device_id):
-    """Get total cuda cached memory size"""
+    """Get # of cuda virtual memory which is currently used."""
     return get_cuda_virtual_memory_used_counts(device_id)
 
 ###############################################################################
@@ -294,5 +294,5 @@ cdef class StreamEventHandler:
 # CudaVirtualMemoryAllocator
 ###############################################################################
 
-def set_cuda_virtual_memory_chunk_size(size, chunk_type):
-    set_cuda_vma_chunk_size(size, chunk_type)
+def set_cuda_virtual_memory_chunk_size(size):
+    set_cuda_vma_chunk_size(size)

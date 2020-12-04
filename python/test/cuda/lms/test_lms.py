@@ -27,6 +27,7 @@ import nnabla_ext.cuda.init as cuda_init
 import nnabla._init as cpu_init
 import nnabla.lms as lms
 import nnabla.ext_utils as ext_utils
+from nnabla.testing import assert_allclose
 
 from model import WaveNet
 from config import data_config, WavenetConfig
@@ -91,6 +92,15 @@ class GetVariableSizeFunc(object):
         return self.max_size * 4.0  # computed as 4 byte float
 
 
+def teardown_function(function):
+    from nnabla import prefer_cached_array
+    prefer_cached_array(True)  # revert setting of cpu array to CachedArray
+
+    import nnabla_ext.cuda.init as cuda_init
+    # revert setting of gpu array to CachedArray
+    cuda_init.prefer_cuda_cached_array()
+
+
 @pytest.mark.parametrize("type_config, device_id, batch_size, num_dilations, "
                          "learning_rate, max_iter, gpu_memory_size, max_prefetch_bytes, cast_prefetch",
                          [('float', '0', batch_size, num_dilations, learning_rate, 2, mem_size, mem_size * 1.5, False),
@@ -100,14 +110,20 @@ class GetVariableSizeFunc(object):
                            learning_rate, 2, mem_size, mem_size * 1.5, False),
                           ('half', '0', batch_size, num_dilations, learning_rate, 2, mem_size, mem_size * 1.5, True)])
 @pytest.mark.skipif(skip_test, reason='Out of GPU memory by the variables used in a single function.')
+@pytest.mark.parametrize("memory", ["virtual", "cached"])
 def test_lms(type_config, device_id, batch_size, num_dilations,
-             learning_rate, max_iter, gpu_memory_size, max_prefetch_bytes, cast_prefetch):
+             learning_rate, max_iter, gpu_memory_size, max_prefetch_bytes, cast_prefetch, memory):
 
-    #import time
-    # time.sleep(10)
+    import nnabla_ext.cuda.init as cuda_init
 
     # Use pinned host memory
     cuda_init.prefer_cpu_pinned_array()
+
+    # Change a type of memory allocator for device
+    if memory == "virtual":
+        cuda_init.prefer_cuda_virtual_array()
+    elif memory == "cached":
+        cuda_init.prefer_cuda_cached_array()
 
     # Set context.
     from nnabla.ext_utils import get_extension_context
@@ -156,9 +172,11 @@ def test_lms(type_config, device_id, batch_size, num_dilations,
                 x.d = x0[i]
                 t.d = t0[i]
 
-                solver.zero_grad()
                 loss.forward(clear_no_need_grad=True)
+
+                solver.zero_grad()
                 loss.backward(clear_buffer=True)
+
                 solver.update()
 
             # Synchronization
@@ -184,25 +202,16 @@ def test_lms(type_config, device_id, batch_size, num_dilations,
 
             # Training loop.
             for i in range(max_iter):
-                # Init the scheduler
-                scheduler.start_scheduling()
+                with scheduler:
+                    x.d = x0[i]
+                    t.d = t0[i]
 
-                x.d = x0[i]
-                t.d = t0[i]
+                    loss.forward(clear_no_need_grad=True)
 
-                solver.zero_grad()
+                    solver.zero_grad()
+                    loss.backward(clear_buffer=True)
 
-                loss.forward(clear_no_need_grad=True,
-                             function_pre_hook=scheduler.function_pre_hook,
-                             function_post_hook=scheduler.function_post_hook)
-                loss.backward(clear_buffer=True,
-                              function_pre_hook=scheduler.function_pre_hook,
-                              function_post_hook=scheduler.function_post_hook)
-                solver.update(update_pre_hook=scheduler.update_pre_hook,
-                              update_post_hook=scheduler.update_post_hook)
-
-                # Finalize the scheduler
-                scheduler.end_scheduling()
+                    solver.update()
 
             # Synchronization
             ext = ext_utils.import_extension_module('cudnn')
@@ -222,7 +231,7 @@ def test_lms(type_config, device_id, batch_size, num_dilations,
             param2 = nn.get_parameters(grad_only=False)
 
         for (k1, p1), (k2, p2) in zip(param1.items(), param2.items()):
-            assert np.allclose(p1.d, p2.d, atol=1e-3)
+            assert_allclose(p1.d, p2.d, atol=2e-3, rtol=2e-3)
 
         # Remove the file
         tf.close()

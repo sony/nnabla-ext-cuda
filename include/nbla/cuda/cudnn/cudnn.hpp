@@ -30,7 +30,6 @@
 
 #include <algorithm>
 #include <iostream>
-#include <map>
 #include <memory>
 #include <numeric>
 #include <set>
@@ -38,7 +37,6 @@
 
 namespace nbla {
 
-using std::map;
 using std::shared_ptr;
 using std::unordered_map;
 using std::hash;
@@ -461,7 +459,7 @@ protected:
   bool deterministic_option_{false}; ///< Choose deterministic algorithms
   bool heuristic_option_{false};     ///< Choose algorithm by a heuristic.
 
-  std::map<ConvOpType, std::set<int>> conv_algo_blacklists_;
+  unordered_map<size_t, std::set<int>> conv_algo_blacklists_;
 
   void verify_conv_algo_id(int id, ConvOpType op);
 

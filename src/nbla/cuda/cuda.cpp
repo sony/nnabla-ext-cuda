@@ -33,13 +33,13 @@ Cuda::Cuda()
           make_shared<CachingAllocatorWithBuckets<CudaUnifiedMemory>>()),
       pinned_allocator_(
           make_shared<CachingAllocatorWithBuckets<CudaPinnedHostMemory>>())
-#if CUDA_VERSION >= 10020
+#if CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
       ,
       virtual_caching_allocator_(
           make_shared<
-              VirtualCachingAllocator<CudaPhysicalMemory, CudaVirtualMemory>>()
-#endif // CUDA_VERSION >= 10020
-              ) {
+              VirtualCachingAllocator<CudaPhysicalMemory, CudaVirtualMemory>>())
+#endif // CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
+{
 }
 
 Cuda::~Cuda() {
@@ -164,16 +164,16 @@ void Cuda::create_lms_streams(int device) {
       cudaStreamCreateWithFlags(&stream_DtoH, cudaStreamNonBlocking));
 }
 
-#if CUDA_VERSION >= 10020
-void Cuda::set_vma_chunk_size(size_t size, int chunk_type) {
+#if CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
+void Cuda::set_vma_chunk_size(size_t size) {
   std::dynamic_pointer_cast<VirtualCachingAllocatorBase>(
       virtual_caching_allocator_)
       ->set_chunk_size(size);
 }
 #else
-// dummy
-void Cuda::set_vma_chunk_size(size_t size, int chunk_type) {}
-#endif
+// dummy for cython
+void Cuda::set_vma_chunk_size(size_t size) {}
+#endif // CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
 
 shared_ptr<cudaStream_t> Cuda::get_stream(unsigned int flags,
                                           CudaStreamId streamId, int device) {
@@ -243,11 +243,11 @@ shared_ptr<Allocator> Cuda::caching_allocator() { return caching_allocator_; }
 shared_ptr<Allocator> Cuda::naive_allocator() { return naive_allocator_; }
 shared_ptr<Allocator> Cuda::unified_allocator() { return unified_allocator_; }
 shared_ptr<Allocator> Cuda::pinned_allocator() { return pinned_allocator_; }
-#if CUDA_VERSION >= 10020
+#if CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
 shared_ptr<Allocator> Cuda::virtual_caching_allocator() {
   return virtual_caching_allocator_;
 }
-#endif // CUDA_VERSION >= 10020
+#endif // CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
 
 void Cuda::free_unused_host_caches() {
   pinned_allocator_->free_unused_caches();

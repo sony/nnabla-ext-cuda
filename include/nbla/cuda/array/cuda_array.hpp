@@ -23,6 +23,9 @@
 #include <nbla/cuda/defs.hpp>
 #include <nbla/synced_array.hpp>
 
+// Todo: avoid including cudnn.h in cuda package.
+#include <cudnn.h>
+
 namespace nbla {
 
 using std::shared_ptr;
@@ -103,7 +106,7 @@ public:
   static Context filter_context(const Context &ctx);
 };
 
-#if CUDA_VERSION >= 10020
+#if CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
 /** Array allocated on CUDA device with virtual memory management obtained by
  * Cuda::virtual_caching_allocator().
  */
@@ -115,15 +118,14 @@ public:
   @param dtype Data type.
   @param ctx Context.
   */
-
-  shared_ptr<Allocator> select_allocator(const size_t size,
-                                         const string &device_id);
-
   explicit CudaCachedVirtualArray(const Size_t size, dtypes dtype,
                                   const Context &ctx);
   virtual ~CudaCachedVirtualArray();
   static Context filter_context(const Context &ctx);
+
+  shared_ptr<Allocator> select_allocator(const size_t size,
+                                         const string &device_id);
 };
-#endif // CUDA_VERSION >= 10020
+#endif // CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
 }
 #endif

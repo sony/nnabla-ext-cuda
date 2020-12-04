@@ -81,7 +81,7 @@ void set_conv_bwd_filter_algo_blacklist(int id) {
 };
 
 /**
-Unset conv algo to blacklist.
+Unset conv algo from blacklist.
 */
 void unset_conv_fwd_algo_blacklist(int id) {
     SingletonManager::get<CudnnHandleManager>()->unset_conv_algo_blacklist(id, ConvOpType::FWD);

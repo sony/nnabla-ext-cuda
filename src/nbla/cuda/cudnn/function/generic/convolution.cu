@@ -120,9 +120,6 @@ void ConvolutionCudaCudnn<T>::forward_impl(const Variables &inputs,
   }
   auto workspace_size = rsc_->workspace_size();
   NdArray workspace_arr;
-  // std::cout << "workspace ptr: " << workspace_arr.synced_array_ptr();
-  // std::cout << " use_count: " << workspace_arr.array().use_count() <<
-  // std::endl;
 
   void *workspace{nullptr};
   if (workspace_size) {
