@@ -274,8 +274,8 @@ def get_setup_config(root_dir):
     package_data.update(utils_ext.package_data)
     ext_modules += utils_ext.ext_modules
 
-    cuda_version = ''.join(__cuda_version__.split('.')) + \
-        '_' + __cudnn_version__.split('.')[0]
+    cuda_version = ''.join(__cuda_version__.split('.'))
+
     if 'WHL_NO_CUDA_SUFFIX' in os.environ and os.environ['WHL_NO_CUDA_SUFFIX'] == 'True':
         cuda_version = ''
 
