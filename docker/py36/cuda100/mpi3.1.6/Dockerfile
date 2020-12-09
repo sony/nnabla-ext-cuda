@@ -68,7 +68,7 @@ COPY --from=openmpi /opt/openmpi /opt/openmpi
 ENV PATH /opt/openmpi/bin:$PATH
 ENV LD_LIBRARY_PATH /opt/openmpi/lib:$LD_LIBRARY_PATH
 
-RUN pip install -U nnabla-ext-cuda100-nccl2-mpi3.1.6 nnabla_tf_converter
+RUN pip install -U nnabla-ext-cuda100-nccl2-mpi3.1.6 nnabla_converter
 
 # Prepare default user
 RUN useradd -m nnabla
