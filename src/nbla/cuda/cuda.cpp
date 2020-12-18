@@ -44,8 +44,10 @@ Cuda::~Cuda() {
   }
 
   for (auto &all_streams : this->streams_) {
-    for (auto &stream : all_streams.second) {
-      NBLA_CUDA_CHECK(cudaStreamDestroy(*(stream.second)));
+    for (auto &tid_stream : all_streams.second) {
+      for (auto &stream : tid_stream.second) {
+        NBLA_CUDA_CHECK(cudaStreamDestroy(*(stream.second)));
+      }
     }
   }
 }
@@ -135,31 +137,41 @@ shared_ptr<cudaStream_t> Cuda::get_stream(unsigned int flags,
     device = cuda_get_device();
   }
 
+  auto tid = std::this_thread::get_id();
+  std::lock_guard<std::mutex> lock(mtx_stream);
+
   int streamIdInt = static_cast<int>(streamId);
+  auto &device_streams = this->streams_[device];
 
-  auto device_streams = this->streams_[device];
-  auto it = device_streams.find(streamIdInt);
+  if (device_streams.find(streamIdInt) != device_streams.end()) {
+    auto &tid_cuda_stream = device_streams[streamIdInt];
 
-  // Stream has already been created.
-  if (it != device_streams.end()) {
-    // check flags
-    auto stream = it->second;
-    unsigned int register_flags;
-    NBLA_CUDA_CHECK(cudaStreamGetFlags(*stream, &register_flags));
-    NBLA_CHECK(flags == register_flags, error_code::value,
-               "flag mismatch. StreamId: %u, flags created before: %u, flags "
-               "requested: %u",
-               streamId, register_flags, flags);
-    return it->second;
+    // Stream has already been created.
+    if (tid_cuda_stream.find(tid) != tid_cuda_stream.end()) {
+      // check flags
+      auto stream = tid_cuda_stream[tid];
+      unsigned int register_flags;
+      NBLA_CUDA_CHECK(cudaStreamGetFlags(*stream, &register_flags));
+      NBLA_CHECK(flags == register_flags, error_code::value,
+                 "flag mismatch. StreamId: %u, flags created before: %u, flags "
+                 "requested: %u",
+                 streamId, register_flags, flags);
+      return stream;
+    } else {
+      auto stream = shared_ptr<cudaStream_t>(new cudaStream_t());
+      NBLA_CUDA_CHECK(cudaStreamCreateWithFlags(stream.get(), flags));
+      device_streams[streamIdInt].insert({tid, stream});
+      return stream;
+    }
+  } else {
+    // Create stream.
+    auto stream = shared_ptr<cudaStream_t>(new cudaStream_t());
+    NBLA_CUDA_CHECK(cudaStreamCreateWithFlags(stream.get(), flags));
+    tid_cuda_stream_t tid_cuda_stream;
+    tid_cuda_stream[tid] = stream;
+    this->streams_[device].insert({streamIdInt, tid_cuda_stream});
+    return stream;
   }
-
-  // Create stream.
-  auto stream = shared_ptr<cudaStream_t>(new cudaStream_t());
-  NBLA_CUDA_CHECK(cudaStreamCreateWithFlags(stream.get(), flags));
-
-  this->streams_[device].insert({streamIdInt, stream});
-
-  return stream;
 }
 
 curandGenerator_t Cuda::curand_generator() {

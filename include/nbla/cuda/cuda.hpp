@@ -26,6 +26,7 @@
 #include <nbla/singleton_manager.hpp>
 
 #include <mutex>
+#include <thread>
 #include <unordered_map>
 
 namespace nbla {
@@ -88,6 +89,7 @@ protected:
   std::mutex mtx_cublas_;
   std::mutex mtx_curand_;
   std::mutex mtx_event_;
+  std::mutex mtx_stream;
   unordered_map<int, cublasHandle_t>
       cublas_handles_; ///< cuBLAS handles for each device.
   unordered_map<int, curandGenerator_t> curand_generators_;
@@ -102,8 +104,10 @@ protected:
    */
   shared_ptr<Allocator> naive_allocator_;
   shared_ptr<Allocator> caching_allocator_;
-  // stream pool -> <device, <id, stream>>
-  unordered_map<int, unordered_map<int, shared_ptr<cudaStream_t>>> streams_;
+  // stream pool -> <device, <id, <t_id, stream>>>
+  typedef unordered_map<std::thread::id, shared_ptr<cudaStream_t>>
+      tid_cuda_stream_t;
+  unordered_map<int, unordered_map<int, tid_cuda_stream_t>> streams_;
 
 private:
   friend SingletonManager;
