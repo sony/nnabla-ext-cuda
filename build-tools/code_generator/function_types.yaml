@@ -343,6 +343,9 @@ BatchInv:
 BatchDet:
   float: [float]
 #  half: [Half]
+BatchLogdet:
+  float: [float]
+#  half: [Half]
 MatrixDiag:
   float: [float]
   half: [Half]
