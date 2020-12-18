@@ -220,7 +220,7 @@ if(BUILD_CPP_LIB)
   
     file(GLOB NBLA_TEST_SOURCES src/nbla/cuda/test/test_*.cpp)
     add_executable(clibtest ${NBLA_TEST_SOURCES})
-    add_dependencies(clibtest ${NBLA_LIBRARY_NAME} ${NBLA_CUDA_LIBRARY_NAME})
+    add_dependencies(clibtest ${NBLA_CUDA_LIBRARY_NAME})
     target_link_libraries(clibtest gtest gtest_main)
   
     add_dependencies(clibtest ${NBLA_CUDA_LIBRARY_NAME})
