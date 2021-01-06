@@ -41,7 +41,9 @@ RUN umask 0 \
 
 ENV PATH /opt/miniconda3/bin:$PATH
 
-RUN pip install -U nnabla-ext-cuda100-nccl2-mpi2.1.1
+
+ARG NNABLA_VER
+RUN pip install nnabla-ext-cuda100-nccl2-mpi2.1.1==${NNABLA_VER}
 
 # Prepare default user
 RUN useradd -m nnabla
