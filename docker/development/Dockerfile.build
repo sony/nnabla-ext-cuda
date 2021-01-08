@@ -149,7 +149,7 @@ RUN umask 0 \
     && . /opt/miniconda3/bin/activate \
     && conda create -n nnabla-build python=${PYVERNAME} \
     && conda activate nnabla-build \
-    && pip install numpy \
+    && pip install numpy pynvml\
     && pip install -U -r /tmp/deps/requirements.txt \
     && pip install --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR} \
        || echo "Skip DALI installation (CUDA=${CUDA_VERSION_MAJOR}.${CUDA_VERSION_MINOR})" \

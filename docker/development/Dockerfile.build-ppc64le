@@ -145,6 +145,7 @@ RUN umask 0 \
     && conda activate nnabla-build \
     && conda update --all -y \
     && conda install numpy scipy scikit-image six \
+    && pip install pynvml \
     && pip install -r /tmp/deps/requirements.txt \
     && conda clean -y --all \
     && cd / \
