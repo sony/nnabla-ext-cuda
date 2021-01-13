@@ -39,5 +39,6 @@ RUN umask 0 \
 
 ENV PATH /opt/miniconda3/bin:$PATH
 
-RUN pip install -U nnabla-ext-cuda110
+ARG NNABLA_VER
+RUN pip install nnabla-ext-cuda110==${NNABLA_VER}
 

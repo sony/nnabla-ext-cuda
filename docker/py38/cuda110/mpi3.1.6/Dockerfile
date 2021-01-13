@@ -68,7 +68,9 @@ COPY --from=openmpi /opt/openmpi /opt/openmpi
 ENV PATH /opt/openmpi/bin:$PATH
 ENV LD_LIBRARY_PATH /opt/openmpi/lib:$LD_LIBRARY_PATH
 
-RUN pip install -U nnabla-ext-cuda110-nccl2-mpi3.1.6
+
+ARG NNABLA_VER
+RUN pip install nnabla-ext-cuda110-nccl2-mpi3.1.6==${NNABLA_VER}
 
 # Prepare default user
 RUN useradd -m nnabla
