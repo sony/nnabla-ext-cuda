@@ -43,9 +43,8 @@ void DeconvolutionCuda<T>::forward_impl(const Variables &inputs,
   cuda_set_device(std::stoi(this->ctx_.device_id));
   const Tc *y = inputs[0]->get_data_pointer<Tc>(this->ctx_);
   const Tc *w = inputs[1]->get_data_pointer<Tc>(this->ctx_);
-  CudaCachedArray col_array(this->row_col_ * this->col_col_ * this->group_,
-                            get_dtype<Tc>(), this->ctx_);
-  Tc *col = col_array.pointer<Tc>();
+  NdArray col_array(Shape_t{this->row_col_ * this->col_col_ * this->group_});
+  Tc *col = col_array.cast(get_dtype<Tc>(), this->ctx_, true)->pointer<Tc>();
   outputs[0]->data()->zero();
   Tc *x = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, false);
   const Tc *b;
@@ -111,13 +110,12 @@ void DeconvolutionCuda<T>::backward_impl(const Variables &inputs,
   const Tc *y;
   const Tc *w;
   Tc *dy, *dw, *db, *col;
-  shared_ptr<CudaCachedArray> col_array;
+  NdArray col_array;
 
   if (propagate_down[0] || propagate_down[1]) {
-    col_array = make_shared<CudaCachedArray>(this->row_col_ * this->col_col_ *
-                                                 this->group_,
-                                             get_dtype<Tc>(), this->ctx_);
-    col = col_array->pointer<Tc>();
+    col_array.reshape(Shape_t{this->row_col_ * this->col_col_ * this->group_},
+                      true);
+    col = col_array.cast(get_dtype<Tc>(), this->ctx_, true)->pointer<Tc>();
   }
   if (propagate_down[0]) {
     w = inputs[1]->get_data_pointer<Tc>(this->ctx_);

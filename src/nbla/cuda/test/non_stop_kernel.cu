@@ -12,29 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef __NBLA_CUDNN_INIT_HPP__
-#define __NBLA_CUDNN_INIT_HPP__
-#include <nbla/cuda/defs.hpp>
+#include "non_stop_kernel.cuh"
 
 namespace nbla {
-/**
-Initialize CUDNN features.
-*/
-NBLA_CUDA_API void init_cudnn();
 
-/**
-Set conv algo to blacklist.
-*/
-NBLA_CUDA_API void set_conv_fwd_algo_blacklist(int id);
-NBLA_CUDA_API void set_conv_bwd_data_algo_blacklist(int id);
-NBLA_CUDA_API void set_conv_bwd_filter_algo_blacklist(int id);
+__device__ int val;
 
-/**
-Unset conv algo from blacklist.
-*/
-NBLA_CUDA_API void unset_conv_fwd_algo_blacklist(int id);
-NBLA_CUDA_API void unset_conv_bwd_data_algo_blacklist(int id);
-NBLA_CUDA_API void unset_conv_bwd_filter_algo_blacklist(int id);
+__global__ void non_stop_kernel(volatile bool *flag) {
+  while (flag[0]) {
+    // Continue until flag turns to false.
+
+    // Do something
+    val++;
+    val %= 100;
+  }
 }
 
-#endif
+void stop_null_stream_until_flag_set(bool *d_flag) {
+  non_stop_kernel<<<1, 1>>>(d_flag);
+}
+}

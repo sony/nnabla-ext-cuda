@@ -16,6 +16,7 @@ from nnabla.logger import logger
 from nnabla import add_available_context
 
 import nnabla._init as cpu_init
+cimport nnabla._init as ccpu_init
 from libcpp.vector cimport vector
 from libcpp.string cimport string
 from libcpp.memory cimport shared_ptr
@@ -26,6 +27,15 @@ from libcpp cimport bool
 cdef extern from "nbla/cuda/init.hpp" namespace "nbla":
     void init_cuda() except+
     void clear_cuda_memory_cache() except+
+    void clear_cuda_virtual_memory_cache() except+
+    void print_cuda_memory_cache_map() except+
+    void print_cuda_virtual_memory_cache_map() except+
+    size_t get_cuda_caching_allocator_fragmentation_bytes(const string& device_id) except +
+    size_t get_cuda_caching_allocator_max_available_bytes(const string& device_id) except +
+    vector[int] get_cuda_cached_memory_used_counts(const string& device_id) except +
+    size_t get_cuda_virtual_caching_allocator_fragmentation_bytes(const string& device_id) except +
+    size_t get_cuda_virtual_caching_allocator_max_available_bytes(const string& device_id) except +
+    vector[int] get_cuda_virtual_memory_used_counts(const string& device_id) except +
     vector[string] cuda_array_classes() except +
     void _cuda_set_array_classes(const vector[string] & a) except +
     void cuda_device_synchronize(const string & device) except +
@@ -45,7 +55,10 @@ cdef extern from "nbla/cuda/init.hpp" namespace "nbla":
     void cuda_event_synchronize(shared_ptr[void]) nogil except +
     float cuda_event_elapsed_time(shared_ptr[void], shared_ptr[void]) except +
     void cuda_event_record(shared_ptr[void]) except +
+    void set_cuda_vma_chunk_size(size_t size) except +
 
+cdef extern from "nbla/cuda/common.hpp" namespace "nbla":
+    vector[size_t] cuda_mem_get_info() except +
 
 logger.info('Initializing CUDA extension...')
 try:
@@ -57,9 +70,44 @@ except:
 
 
 def clear_memory_cache():
-    """Clear memory cache for all devices."""
+    """Clear memory cache in caching allocator for all devices."""
     clear_cuda_memory_cache()
 
+def clear_virtual_memory_cache():
+    """Clear memory cache in virtual caching allocator for all devices."""
+    clear_cuda_virtual_memory_cache()
+
+def print_memory_cache_map():
+    """Dump cuda memory cache map."""
+    print_cuda_memory_cache_map()
+
+def print_virtual_memory_cache_map():
+    """Dump cuda virtual memory cache map."""
+    print_cuda_virtual_memory_cache_map()
+
+def get_caching_allocator_fragmentation_bytes(str device_id):
+    """Get fragmentation size of caching allocator for cudaCachedMemory."""
+    return get_cuda_caching_allocator_fragmentation_bytes(device_id)
+
+def get_caching_allocator_max_available_bytes(str device_id):
+    """Get maximum available bytes in caching allocator for cudaCachedMemory."""
+    return get_cuda_caching_allocator_max_available_bytes(device_id)
+
+def get_cached_memory_used_counts(str device_id):
+    """Get # of cuda cached memory which is currently used."""
+    return get_cuda_cached_memory_used_counts(device_id)
+
+def get_virtual_caching_allocator_fragmentation_bytes(str device_id):
+    """Get fragmentation size of virtual caching allocator for cudaVirtualMemoy."""
+    return get_cuda_virtual_caching_allocator_fragmentation_bytes(device_id)
+
+def get_virtual_caching_allocator_max_available_bytes(str device_id):
+    """Get maximum available bytes in virtual caching allocator for cudaVirtualMemory."""
+    return get_cuda_virtual_caching_allocator_max_available_bytes(device_id)
+
+def get_virtual_memory_used_counts(str device_id):
+    """Get # of cuda virtual memory which is currently used."""
+    return get_cuda_virtual_memory_used_counts(device_id)
 
 ###############################################################################
 # Array preference API
@@ -83,6 +131,29 @@ def reset_array_preference():
 def array_classes():
     return cuda_array_classes()
 
+
+def prefer_cpu_pinned_array():
+    a = ccpu_init._cpu_array_classes()
+    a = sorted(a, key=lambda x: (x != 'CudaCachedHostArray'))
+    ccpu_init._cpu_set_array_classes(a)
+
+
+def prefer_cuda_cached_array():
+    a = cuda_array_classes()
+    a = sorted(a, key=lambda x: (x != 'CudaCachedArray'))
+    _cuda_set_array_classes(a)
+
+
+def prefer_unified_array():
+    a = cuda_array_classes()
+    a = sorted(a, key=lambda x: (x != 'CudaCachedUnifiedArray'))
+    _cuda_set_array_classes(a)
+
+
+def prefer_cuda_virtual_array():
+    a = cuda_array_classes()
+    a = sorted(a, key=lambda x: (x != 'CudaCachedVirtualArray'))
+    _cuda_set_array_classes(a)
 
 # Initialize preference according to CPU cache preference.
 tmp = cpu_init._cached_array_preferred()
@@ -128,6 +199,15 @@ def get_devices():
     """
     return cuda_get_devices()
 
+
+def get_device_memory_size():
+    """Get free and total device memory size.
+
+    Returns:
+        list of free and total device memory size.
+
+    """
+    return cuda_mem_get_info()
 ###############################################################################
 
 
@@ -209,3 +289,10 @@ cdef class StreamEventHandler:
     def default_stream_synchronize(self):
         with nogil:
             cuda_nullstream_synchronize()
+
+###############################################################################
+# CudaVirtualMemoryAllocator
+###############################################################################
+
+def set_cuda_virtual_memory_chunk_size(size):
+    set_cuda_vma_chunk_size(size)

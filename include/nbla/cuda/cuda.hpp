@@ -17,6 +17,7 @@
 #ifndef __NBLA_CUDA_CUDA_HPP__
 #define __NBLA_CUDA_CUDA_HPP__
 
+#include <nbla/backend_base.hpp>
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/defs.hpp>
 #include <nbla/cuda/init.hpp>
@@ -24,6 +25,9 @@
 #include <nbla/exception.hpp>
 #include <nbla/memory/allocator.hpp>
 #include <nbla/singleton_manager.hpp>
+
+// Todo: avoid including cudnn.h in cuda package.
+#include <cudnn.h>
 
 #include <mutex>
 #include <unordered_map>
@@ -40,7 +44,7 @@ enum CudaStreamId { CONVOLUTION_BWD, MAX_COUNT };
 /**
 Singleton class for storing some handles or configs for CUDA Computation.
 */
-class NBLA_CUDA_API Cuda {
+class NBLA_CUDA_API Cuda : public BackendBase {
 
 public:
   ~Cuda();
@@ -79,10 +83,47 @@ public:
    */
   shared_ptr<Allocator> naive_allocator();
 
+  /** Get a caching unified-memory allocator.
+   */
+  shared_ptr<Allocator> unified_allocator();
+
+  /** Get a caching pinned-host-memory allocator.
+   */
+  shared_ptr<Allocator> pinned_allocator();
+
+  /** Get a caching virtual-memory allocator.
+ */
+  shared_ptr<Allocator> virtual_caching_allocator();
+
+  /** Free all unused host memory caches
+  */
+  void free_unused_host_caches();
+
+  /** Synchronize host to device.
+   */
+  void device_synchronize(const string &device);
+
+  /** Synchronize host to default stream of device.
+   */
+  void default_stream_synchronize(const string &device);
+
   /** Get auxilliary stream
    */
   shared_ptr<cudaStream_t> get_stream(unsigned int flag, CudaStreamId streamId,
                                       int device = -1);
+
+  /** Non blockuing streams for data transfer
+   */
+  cudaStream_t stream_HtoD = 0;
+  cudaStream_t stream_DtoH = 0;
+
+  /** Create non blockuing streams for data transfer
+   */
+  void create_lms_streams(int device = -1);
+
+  /** Change a chunk size of physical memory used in virtual memory allocator.
+   */
+  void set_vma_chunk_size(size_t size);
 
 protected:
   std::mutex mtx_cublas_;
@@ -97,11 +138,17 @@ protected:
 
   /*
     NOTE: Allocators must be retained as shared_ptr in order to be passed to a
-    CachedMemory instance to prevernt destroying allocators before destroying
+    CachedMemory instance to prevent destroying allocators before destroying
     memory.
    */
   shared_ptr<Allocator> naive_allocator_;
   shared_ptr<Allocator> caching_allocator_;
+  shared_ptr<Allocator> unified_allocator_;
+  shared_ptr<Allocator> pinned_allocator_;
+#if CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
+  shared_ptr<Allocator> virtual_caching_allocator_;
+#endif // CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
+
   // stream pool -> <device, <id, stream>>
   unordered_map<int, unordered_map<int, shared_ptr<cudaStream_t>>> streams_;
 

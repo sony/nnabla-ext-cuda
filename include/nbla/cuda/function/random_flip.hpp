@@ -47,7 +47,7 @@ public:
 protected:
   curandGenerator_t curand_generator_;
   int device_;
-  shared_ptr<CudaCachedArray> flip_flags_;
+  NdArray flip_flags_;
   NdArray shape_info_buf_;
   NdArray onehot_axses_;
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);

@@ -255,11 +255,12 @@ void PadCuda<T>::setup_impl(const Variables &inputs, const Variables &outputs) {
     h_params.push_back(axis_param);
   }
   auto bytes = h_params.size() * sizeof(AxisParam);
-  auto array = new CudaCachedArray(bytes, get_dtype<char>(), this->ctx_);
-  auto d_params = array->pointer<AxisParam>();
+  this->parameter_memory_.reshape(Shape_t{static_cast<Size_t>(bytes)}, true);
+  auto d_params =
+      this->parameter_memory_.cast(get_dtype<char>(), this->ctx_, true)
+          ->template pointer<AxisParam>();
   NBLA_CUDA_CHECK(
       cudaMemcpy(d_params, h_params.data(), bytes, cudaMemcpyHostToDevice));
-  this->parameter_memory_ = std::unique_ptr<CudaCachedArray>(std::move(array));
 }
 
 template <typename T>
@@ -278,8 +279,9 @@ void PadCuda<T>::forward_impl(const Variables &inputs,
 
   auto threads = 128;
   auto blocks = cuda_get_blocks_by_size(y_var.size());
-  auto shared = this->parameter_memory_->size();
-  auto params = this->parameter_memory_->template pointer<AxisParam>();
+  auto shared = this->parameter_memory_.size();
+  auto params = this->parameter_memory_.get(get_dtype<char>(), this->ctx_)
+                    ->template const_pointer<AxisParam>();
 
   if (this->pad_mode_ == this->PAD_CONSTANT) {
     using pad_constant_impl::pad_forward;
@@ -352,8 +354,9 @@ void PadCuda<T>::backward_impl(const Variables &inputs,
       auto dx = x_var.cast_grad_and_get_pointer<Tcu>(this->ctx_, !accum);
       auto threads = 128;
       auto blocks = cuda_get_blocks_by_size(y_var.size());
-      auto shared = this->parameter_memory_->size();
-      auto params = this->parameter_memory_->template pointer<AxisParam>();
+      auto shared = this->parameter_memory_.size();
+      auto params = this->parameter_memory_.get(get_dtype<char>(), this->ctx_)
+                        ->template const_pointer<AxisParam>();
       void (*kernel)(const Index_t, const Tcu *, Tcu *, const int,
                      const AxisParam *);
       if (ndim == 1) {

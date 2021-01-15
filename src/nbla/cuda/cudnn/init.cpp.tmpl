@@ -27,6 +27,8 @@
 #include <nbla/cuda/cudnn/init.hpp>
 #include <nbla/function_registry.hpp>
 #include <nbla/init.hpp>
+#include <nbla/cuda/init.hpp>
+#include <nbla/backend_registry.hpp>
 % for name, snake_name, _ in function_list:
 % if name in function_types:
 #include <nbla/cuda/cudnn/function/${snake_name}.hpp>
@@ -42,6 +44,9 @@ void init_cudnn() {
   // Init CPU features
   init_cpu();
   init_cuda();
+
+  // Backend registration
+  NBLA_REGISTER_BACKEND("cudnn", []() { return SingletonManager::get<Cuda>(); });
 
   // Function registration
 % for name, _, arg_types in function_list:
@@ -59,4 +64,35 @@ void init_cudnn() {
 
   is_initialized = true;
 }
+
+/**
+Set conv algo to blacklist.
+*/
+void set_conv_fwd_algo_blacklist(int id) {
+  SingletonManager::get<CudnnHandleManager>()->set_conv_algo_blacklist(id, ConvOpType::FWD);
+};
+
+void set_conv_bwd_data_algo_blacklist(int id) {
+  SingletonManager::get<CudnnHandleManager>()->set_conv_algo_blacklist(id, ConvOpType::BWD_DATA);
+};
+
+void set_conv_bwd_filter_algo_blacklist(int id) {
+  SingletonManager::get<CudnnHandleManager>()->set_conv_algo_blacklist(id, ConvOpType::BWD_FILTER);
+};
+
+/**
+Unset conv algo from blacklist.
+*/
+void unset_conv_fwd_algo_blacklist(int id) {
+    SingletonManager::get<CudnnHandleManager>()->unset_conv_algo_blacklist(id, ConvOpType::FWD);
+};
+
+NBLA_CUDA_API void unset_conv_bwd_data_algo_blacklist(int id) {
+    SingletonManager::get<CudnnHandleManager>()->unset_conv_algo_blacklist(id, ConvOpType::BWD_DATA);
+};
+
+NBLA_CUDA_API void unset_conv_bwd_filter_algo_blacklist(int id){
+    SingletonManager::get<CudnnHandleManager>()->unset_conv_algo_blacklist(id, ConvOpType::BWD_FILTER);
+};
+
 }

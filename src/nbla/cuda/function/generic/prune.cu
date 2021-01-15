@@ -75,8 +75,8 @@ void PruneCuda<T>::forward_impl(const Variables &inputs,
   Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
   Size_t size = inputs[0]->size();
   dtypes dtype = get_dtype<Tc>();
-  ArrayPtr array = make_shared<CudaCachedArray>(size, dtype, this->ctx_);
-  auto buffer_ = array->pointer<T>();
+  NdArray array(Shape_t{size});
+  auto buffer_ = array.cast(dtype, this->ctx_, true)->pointer<T>();
 
   // copy
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_abs_copy, size, buffer_, x);

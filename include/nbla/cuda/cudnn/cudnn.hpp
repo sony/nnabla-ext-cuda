@@ -30,14 +30,13 @@
 
 #include <algorithm>
 #include <iostream>
-#include <map>
 #include <memory>
 #include <numeric>
+#include <set>
 #include <unordered_map>
 
 namespace nbla {
 
-using std::map;
 using std::shared_ptr;
 using std::unordered_map;
 using std::hash;
@@ -349,6 +348,15 @@ private:
 };
 
 /**
+Enum for Convolution operation type.
+*/
+enum ConvOpType {
+  FWD = 0,
+  BWD_DATA = 1,
+  BWD_FILTER = 2,
+};
+
+/**
 Singleton class for storing cudnn handle for CUDA CUDNN Computation.
 */
 class NBLA_CUDA_API CudnnHandleManager {
@@ -417,12 +425,43 @@ public:
    */
   void set_heuristic_option(bool value);
 
+  /* Set an id on conv_fwd_algo_blacklist_.
+   * All algorithms registered this blacklist will be ignored in
+   * CudnnConvResource::find_forward_algorithm.
+   * Passed id must be in the range of [0,
+   * cudnnConvolutionFwdAlgo_t::CUDNN_CONVOLUTION_FWD_ALGO_COUNT).
+   * If the passed id exceeds this range, this function will raise ValueError.
+   *
+   * @param[in] Algorithm index.
+   * @param[in] Operation index.
+   */
+  void set_conv_algo_blacklist(int id, ConvOpType op);
+
+  /* Unset an id from conv_fwd_algo_blacklist_.
+   *
+   * @param[in] Algorithm index.
+   * @param[in] Operation index.
+   */
+  void unset_conv_algo_blacklist(int id, ConvOpType op);
+
+  /* Check whether a passed id of algorithm is registered on
+   * conv_fwd_algo_blacklist_ or not
+   *
+   * @param[in] Algorithm index.
+   * @param[in] Operation index.
+   */
+  bool check_conv_algo_blacklist(int id, ConvOpType op);
+
 protected:
   unordered_map<int, unordered_map<cudaStream_t, shared_ptr<cudnnHandle_t>>>
       handles_;
   int workspace_limit_{0};           ///< Workspace limit in bytes.
   bool deterministic_option_{false}; ///< Choose deterministic algorithms
   bool heuristic_option_{false};     ///< Choose algorithm by a heuristic.
+
+  unordered_map<size_t, std::set<int>> conv_algo_blacklists_;
+
+  void verify_conv_algo_id(int id, ConvOpType op);
 
 private:
   friend SingletonManager;

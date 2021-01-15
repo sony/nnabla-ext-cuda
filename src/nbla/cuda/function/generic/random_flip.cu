@@ -78,9 +78,10 @@ template <typename T>
 void RandomFlipCuda<T>::forward_impl(const Variables &inputs,
                                      const Variables &outputs) {
   cuda_set_device(this->device_);
-  this->flip_flags_ = make_shared<CudaCachedArray>(
-      this->size_ * inputs[0]->ndim(), dtypes::INT, this->ctx_);
-  int *flip_flags = this->flip_flags_->template pointer<int>();
+  this->flip_flags_.reshape(
+      Shape_t{static_cast<Size_t>(this->size_ * inputs[0]->ndim())}, true);
+  int *flip_flags = this->flip_flags_.cast(dtypes::INT, this->ctx_, true)
+                        ->template pointer<int>();
   curand_generate_rand<int>(curand_generator_, 0, 255, flip_flags,
                             this->size_ * inputs[0]->ndim());
   const Tcu *x = inputs[0]->get_data_pointer<Tcu>(this->ctx_);
@@ -107,7 +108,8 @@ void RandomFlipCuda<T>::backward_impl(const Variables &inputs,
     return;
   }
   cuda_set_device(this->device_);
-  int *flip_flags = this->flip_flags_->template pointer<int>();
+  int *flip_flags = this->flip_flags_.cast(dtypes::INT, this->ctx_, true)
+                        ->template pointer<int>();
   Tcu *dx = inputs[0]->cast_grad_and_get_pointer<Tcu>(this->ctx_, !accum[0]);
   const Tcu *dy = outputs[0]->get_grad_pointer<Tcu>(this->ctx_);
   size_t size = outputs[0]->size();

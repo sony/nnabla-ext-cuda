@@ -603,9 +603,9 @@ void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division,
     }
   } else { // out-of-place. use a large array.
     Context ctx = this->contexts_[0];
-    shared_ptr<CudaCachedArray> arr_buff = // TODO: address 16 bits also here?
-        make_shared<CudaCachedArray>(this->total_params_, get_dtype<Tc>(), ctx);
-    Tc *buff = arr_buff->pointer<Tc>();
+    // TODO: address 16 bits also here?
+    NdArray arr_buff(Shape_t{this->total_params_});
+    Tc *buff = arr_buff.cast(get_dtype<Tc>(), ctx, true)->pointer<Tc>();
     Tc *buff_start = buff;
     auto func_named_param = this->device_func_named_param_[0];
     Size_t type_size = sizeof(Tc);

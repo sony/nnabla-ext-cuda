@@ -13,33 +13,25 @@
 // limitations under the License.
 
 #include <nbla/cuda/common.hpp>
+#include <nbla/cuda/function/my_cuda_memset.hpp>
+
+#include <device_launch_parameters.h>
 
 namespace nbla {
 
-int cuda_set_device(int device) {
-  int current_device = cuda_get_device();
-  if (current_device != device) {
-    NBLA_CUDA_CHECK(cudaSetDevice(device));
-  }
-  return current_device;
+__global__ void my_cudaMemset_kernel(size_t count,
+                                     unsigned char *devPtr,
+                                     unsigned char value) {
+  NBLA_CUDA_KERNEL_LOOP(idx, count) { devPtr[idx] = value; }
 }
 
-int cuda_get_device() {
-  int current_device;
-  NBLA_CUDA_CHECK(cudaGetDevice(&current_device));
-  return current_device;
+
+void my_cudaMemset(void *devPtr, int value, size_t count) {
+  unsigned char *ptr = static_cast<unsigned char*>(devPtr);
+  unsigned char val = (unsigned char)value;
+
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(my_cudaMemset_kernel,
+                                 count, ptr, val);
 }
 
-std::vector<size_t> cuda_mem_get_info() {
-  size_t mf, mt;
-  cudaMemGetInfo(&mf, &mt);
-  return std::vector<size_t>{mf, mt};
-}
-
-cudaDeviceProp cuda_get_current_device_properties() {
-  cudaDeviceProp prop;
-  int device = cuda_get_device(); // Note: Assuming device is properly set.
-  NBLA_CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
-  return prop;
-}
 }

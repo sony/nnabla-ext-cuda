@@ -32,9 +32,43 @@ Initialize CUDA features.
 */
 NBLA_CUDA_API void init_cuda();
 
-/** Clear all CUDA memory cache
+/** Clear all CUDA memory from cache.
 */
 NBLA_CUDA_API void clear_cuda_memory_cache();
+/**
+ * Print cache map for CUDA cached memory .
+ */
+NBLA_CUDA_API void print_cuda_memory_cache_map();
+
+/**
+ * APIs to analyse cache map in CUDA CachingAllocator.
+ */
+NBLA_CUDA_API size_t
+get_cuda_caching_allocator_fragmentation_bytes(const string &device_id);
+NBLA_CUDA_API size_t
+get_cuda_caching_allocator_max_available_bytes(const string &device_id);
+NBLA_CUDA_API vector<int>
+get_cuda_cached_memory_used_counts(const string &device_id);
+
+/**
+ * Print cache map for CUDA virtual memory.
+ */
+NBLA_CUDA_API void print_cuda_virtual_memory_cache_map();
+
+/**
+ * Clear all CUDA virtual memory from cache.
+ */
+NBLA_CUDA_API void clear_cuda_virtual_memory_cache();
+
+/**
+ * APIs to analyse cache map in CUDA VirtualCachingAllocator.
+ */
+NBLA_CUDA_API size_t
+get_cuda_virtual_caching_allocator_fragmentation_bytes(const string &device_id);
+NBLA_CUDA_API size_t
+get_cuda_virtual_caching_allocator_max_available_bytes(const string &device_id);
+NBLA_CUDA_API vector<int>
+get_cuda_virtual_memory_used_counts(const string &device_id);
 
 /** Get CUDA array classes.
 */
@@ -78,5 +112,8 @@ NBLA_CUDA_API void cuda_event_synchronize(shared_ptr<void> event);
 NBLA_CUDA_API void cuda_event_record(shared_ptr<void> event);
 NBLA_CUDA_API float cuda_event_elapsed_time(shared_ptr<void> event_s,
                                             shared_ptr<void> event_e);
+
+/** Utils for Virtual memory allocator **/
+NBLA_CUDA_API void set_cuda_vma_chunk_size(size_t size);
 }
 #endif

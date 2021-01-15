@@ -4,6 +4,8 @@ compiler=${NBLA_PYTHON_BUILD_EXT_COMPILER}
 [cmake]
 cpu_target_name=${NBLA_LIBRARY_NAME}
 cpu_target_file=${CPPLIB_LIBRARY}
+cpu_include_dir=${NNABLA_DIR}/include
+cpu_cython_path=${NNABLA_DIR}/python/src
 
 cuda_target_name=${NBLA_CUDA_LIBRARY_NAME}
 cuda_target_file_name=$<TARGET_FILE_NAME:${NBLA_CUDA_LIBRARY_NAME}>

@@ -17,8 +17,14 @@
 
 #include <memory>
 
+#include <cuda.h>
 #include <nbla/array.hpp>
+#include <nbla/array/cpu_array.hpp>
 #include <nbla/cuda/defs.hpp>
+#include <nbla/synced_array.hpp>
+
+// Todo: avoid including cudnn.h in cuda package.
+#include <cudnn.h>
 
 namespace nbla {
 
@@ -42,9 +48,13 @@ public:
   static Context filter_context(const Context &ctx);
 };
 
-NBLA_CUDA_API void synchronizer_cuda_array_cpu_array(Array *src, Array *dst);
+NBLA_CUDA_API void
+synchronizer_cuda_array_cpu_array(Array *src, Array *dst,
+                                  const int async_flags = AsyncFlag::NONE);
 
-NBLA_CUDA_API void synchronizer_cpu_array_cuda_array(Array *src, Array *dst);
+NBLA_CUDA_API void
+synchronizer_cpu_array_cuda_array(Array *src, Array *dst,
+                                  const int async_flags = AsyncFlag::NONE);
 
 /** Array allocated on CUDA device with a CudaMemory obtained by
 Cuda::caching_allocator().
@@ -61,5 +71,61 @@ public:
   virtual ~CudaCachedArray();
   static Context filter_context(const Context &ctx);
 };
+
+/** Array allocated on unified memory with a CudaUnifiedMemory obtained by
+Cuda::unified_allocator().
+*/
+class CudaCachedUnifiedArray : public CudaArray {
+public:
+  /** Constructor
+
+  @param size Length of array.
+  @param dtype Data type.
+  @param ctx Context specifies device ID.
+  */
+  explicit CudaCachedUnifiedArray(const Size_t size, dtypes dtype,
+                                  const Context &ctx);
+  virtual ~CudaCachedUnifiedArray();
+  static Context filter_context(const Context &ctx);
+};
+
+/** Array allocated on host with a CudaHostMemory obtained by
+Cuda::pinned_allocator().
+*/
+class CudaCachedHostArray : public CpuArray {
+public:
+  /** Constructor
+
+  @param size Length of array.
+  @param dtype Data type.
+  @param ctx Context.
+  */
+  explicit CudaCachedHostArray(const Size_t size, dtypes dtype,
+                               const Context &ctx);
+  virtual ~CudaCachedHostArray();
+  static Context filter_context(const Context &ctx);
+};
+
+#if CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
+/** Array allocated on CUDA device with virtual memory management obtained by
+ * Cuda::virtual_caching_allocator().
+ */
+class CudaCachedVirtualArray : public CudaArray {
+public:
+  /** Constructor
+
+  @param size Length of array.
+  @param dtype Data type.
+  @param ctx Context.
+  */
+  explicit CudaCachedVirtualArray(const Size_t size, dtypes dtype,
+                                  const Context &ctx);
+  virtual ~CudaCachedVirtualArray();
+  static Context filter_context(const Context &ctx);
+
+  shared_ptr<Allocator> select_allocator(const size_t size,
+                                         const string &device_id);
+};
+#endif // CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
 }
 #endif

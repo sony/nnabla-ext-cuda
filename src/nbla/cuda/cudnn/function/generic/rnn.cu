@@ -394,9 +394,9 @@ void RNNCudaCudnn<T>::setup_impl(const Variables &inputs,
   // Set dropout descriptor
   size_t dropout_stateSize;
   NBLA_CUDNN_CHECK(cudnnDropoutGetStatesSize(cudnn_handle, &dropout_stateSize));
-  state_array_ =
-      make_shared<CudaCachedArray>(dropout_stateSize, dtypes::BYTE, this->ctx_);
-  void *state_ptr = state_array_->pointer<void>();
+  state_array_.reshape(Shape_t{static_cast<Size_t>(dropout_stateSize)}, true);
+  void *state_ptr =
+      state_array_.cast(dtypes::BYTE, this->ctx_, true)->pointer<void>();
   std::random_device seed_gen;
   std::default_random_engine engine(seed_gen());
   std::uniform_int_distribution<> dist(0, 999);
@@ -446,8 +446,9 @@ void RNNCudaCudnn<T>::setup_impl(const Variables &inputs,
 
   // Temporary buffer. This is used only for getting address offsets of matrix
   // and biases from the head of the params pointer.
-  CudaCachedArray params_array(params_size_in_bytes_, dtypes::BYTE, this->ctx_);
-  Tcu *params = params_array.pointer<Tcu>();
+  NdArray params_array(Shape_t{static_cast<Size_t>(params_size_in_bytes_)});
+  Tcu *params =
+      params_array.cast(dtypes::BYTE, this->ctx_, true)->pointer<Tcu>();
 
   weight_offsets_.clear();
   bias_offsets_.clear();
@@ -536,33 +537,37 @@ void RNNCudaCudnn<T>::forward_impl_training(const Variables &inputs,
   }
 
   // Create flattened weight buffer.
-  CudaCachedArray params_array(params_size_in_bytes_, dtypes::BYTE, this->ctx_);
+  NdArray params_array(Shape_t{static_cast<Size_t>(params_size_in_bytes_)});
   params_array.zero(); // Initialize params with 0
-  Tcu *params = params_array.pointer<Tcu>();
+  Tcu *params = params_array.cast(dtypes::BYTE, this->ctx_)->pointer<Tcu>();
 
   this->copy_weight_bias_to_params(params, w_init, weight, bias, weight_exists_,
                                    bias_exists_);
 
-  shared_ptr<CudaCachedArray> mem_workspace{nullptr};
+  void *mem_buff = nullptr;
+  NdArray mem_workspace;
   if (workspace_size_) {
-    mem_workspace.reset(
-        new CudaCachedArray(workspace_size_, dtypes::BYTE, this->ctx_));
+    mem_workspace.reshape({static_cast<Size_t>(workspace_size_)}, true);
+    mem_buff =
+        mem_workspace.cast(dtypes::BYTE, this->ctx_, true)->pointer<void>();
   }
-  if (mem_reservespace_) {
-    NBLA_CHECK(mem_reservespace_->size() == reserve_size_, error_code::value,
+  if (mem_reservespace_.array()->get_num_arrays() > 0) {
+    NBLA_CHECK(mem_reservespace_.size() == reserve_size_, error_code::value,
                "reserve_size_ is inconsistent with the previously set "
                "reservespace size.");
+  } else {
+    mem_reservespace_.reshape({static_cast<Size_t>(reserve_size_)}, true);
   }
-  mem_reservespace_.reset(
-      new CudaCachedArray(reserve_size_, dtypes::BYTE, this->ctx_));
+  void *mem_reserve_buff =
+      mem_reservespace_.cast(dtypes::BYTE, this->ctx_, true)->pointer<void>();
 
   auto alpha = get_cudnn_scalar_arg<T>(1);
   auto beta = get_cudnn_scalar_arg<T>(0);
   NBLA_CUDNN_CHECK(cudnnRNNForwardTraining(
       cudnn_handle, rnn_desc_.desc, seq_len_, x_desc_->data(), x, h_desc_.desc,
       h, c_x_desc_.desc, NULL, params_desc_.desc, params, y_desc_->data(), y,
-      h_n_desc_.desc, h_n, c_y_desc_.desc, NULL, mem_workspace->pointer(),
-      workspace_size_, mem_reservespace_->pointer(), reserve_size_));
+      h_n_desc_.desc, h_n, c_y_desc_.desc, NULL, mem_buff, workspace_size_,
+      mem_reserve_buff, reserve_size_));
 }
 
 template <typename T>
@@ -592,24 +597,25 @@ void RNNCudaCudnn<T>::forward_impl_inference(const Variables &inputs,
   }
 
   // Create flattened weight buffer.
-  CudaCachedArray params_array(params_size_in_bytes_, dtypes::BYTE, this->ctx_);
+  NdArray params_array(Shape_t{static_cast<Size_t>(params_size_in_bytes_)});
   params_array.zero(); // Initialize params with 0
-  Tcu *params = params_array.pointer<Tcu>();
+  Tcu *params = params_array.cast(dtypes::BYTE, this->ctx_)->pointer<Tcu>();
 
   this->copy_weight_bias_to_params(params, w_init, weight, bias, weight_exists_,
                                    bias_exists_);
 
-  shared_ptr<CudaCachedArray> mem_workspace{nullptr};
+  void *mem_buff = nullptr;
+  NdArray mem_workspace;
   if (workspace_size_) {
-    mem_workspace.reset(
-        new CudaCachedArray(workspace_size_, dtypes::BYTE, this->ctx_));
+    mem_workspace.reshape({static_cast<Size_t>(workspace_size_)}, true);
+    mem_buff =
+        mem_workspace.cast(dtypes::BYTE, this->ctx_, true)->pointer<void>();
   }
 
   NBLA_CUDNN_CHECK(cudnnRNNForwardInference(
       cudnn_handle, rnn_desc_.desc, seq_len_, x_desc_->data(), x, h_desc_.desc,
       h, c_x_desc_.desc, NULL, params_desc_.desc, params, y_desc_->data(), y,
-      h_n_desc_.desc, h_n, c_y_desc_.desc, NULL,
-      mem_workspace ? mem_workspace->pointer() : nullptr, workspace_size_));
+      h_n_desc_.desc, h_n, c_y_desc_.desc, NULL, mem_buff, workspace_size_));
 }
 
 template <typename T>
@@ -625,9 +631,9 @@ void RNNCudaCudnn<T>::backward_impl(const Variables &inputs,
 
   NBLA_CHECK(this->training_, error_code::value,
              "Backward is called for training only.");
-  NBLA_CHECK(mem_reservespace_, error_code::value,
+  NBLA_CHECK(mem_reservespace_.array()->get_num_arrays() > 0, error_code::value,
              "Reserve space should be allocated memory space.");
-  NBLA_CHECK(mem_reservespace_->size() == reserve_size_, error_code::value,
+  NBLA_CHECK(mem_reservespace_.size() == reserve_size_, error_code::value,
              "reserve_size_ is inconsistent with the previously set "
              "reservespace size.");
 
@@ -670,13 +676,12 @@ void RNNCudaCudnn<T>::backward_impl(const Variables &inputs,
   Tcu *g_weight{nullptr};
   Tcu *g_bias{nullptr};
 
-  CudaCachedArray params_array(params_size_in_bytes_, dtypes::BYTE, this->ctx_);
-  CudaCachedArray g_params_array(params_size_in_bytes_, dtypes::BYTE,
-                                 this->ctx_);
+  NdArray params_array(Shape_t{static_cast<Size_t>(params_size_in_bytes_)});
+  NdArray g_params_array(Shape_t{static_cast<Size_t>(params_size_in_bytes_)});
   params_array.zero(); // Initialize params with 0
   g_params_array.zero();
-  Tcu *params = params_array.pointer<Tcu>();
-  Tcu *g_params = g_params_array.pointer<Tcu>();
+  Tcu *params = params_array.cast(dtypes::BYTE, this->ctx_)->pointer<Tcu>();
+  Tcu *g_params = g_params_array.cast(dtypes::BYTE, this->ctx_)->pointer<Tcu>();
 
   this->copy_weight_bias_to_params(params, w_init, weight, bias, weight_exists_,
                                    bias_exists_);
@@ -705,26 +710,31 @@ void RNNCudaCudnn<T>::backward_impl(const Variables &inputs,
     g_bias = inputs[4]->cast_grad_and_get_pointer<Tcu>(this->ctx_, !accum[4]);
   }
 
-  shared_ptr<CudaCachedArray> mem_workspace{nullptr};
+  void *mem_buff = nullptr;
+  NdArray mem_workspace;
   if (workspace_size_) {
-    mem_workspace.reset(
-        new CudaCachedArray(workspace_size_, dtypes::BYTE, this->ctx_));
+    mem_workspace.reshape({static_cast<Size_t>(workspace_size_)}, true);
+    mem_buff =
+        mem_workspace.cast(dtypes::BYTE, this->ctx_, true)->pointer<void>();
   }
 
-  shared_ptr<CudaCachedArray> mem_x_accum{nullptr};
-  shared_ptr<CudaCachedArray> mem_h_accum{nullptr};
+  void *mem_reserve_buff =
+      mem_reservespace_.cast(dtypes::BYTE, this->ctx_, true)->pointer<void>();
+
+  NdArray mem_x_accum;
+  NdArray mem_h_accum;
   Tcu *dx_tmp = g_x;
   Tcu *dh_tmp = g_h;
 
   if (!propagate_down[0] || accum[0]) {
-    mem_x_accum.reset(new CudaCachedArray(inputs[0]->size() * sizeof(Tcu),
-                                          dtypes::BYTE, this->ctx_));
-    dx_tmp = mem_x_accum->pointer<Tcu>();
+    mem_x_accum.reshape({static_cast<Size_t>(inputs[0]->size() * sizeof(Tcu))},
+                        true);
+    dx_tmp = mem_x_accum.cast(dtypes::BYTE, this->ctx_, true)->pointer<Tcu>();
   }
   if (!propagate_down[1] || accum[1]) {
-    mem_h_accum.reset(new CudaCachedArray(inputs[1]->size() * sizeof(Tcu),
-                                          dtypes::BYTE, this->ctx_));
-    dh_tmp = mem_h_accum->pointer<Tcu>();
+    mem_h_accum.reshape({static_cast<Size_t>(inputs[1]->size() * sizeof(Tcu))},
+                        true);
+    dh_tmp = mem_h_accum.cast(dtypes::BYTE, this->ctx_, true)->pointer<Tcu>();
   }
 
   NBLA_CUDNN_CHECK(cudnnRNNBackwardData(
@@ -732,8 +742,7 @@ void RNNCudaCudnn<T>::backward_impl(const Variables &inputs,
       y_desc_->data(), g_y, h_n_desc_.desc, g_h_n, c_y_desc_.desc, NULL,
       params_desc_.desc, params, h_desc_.desc, h, c_x_desc_.desc, NULL,
       x_desc_->data(), dx_tmp, h_desc_.desc, dh_tmp, c_x_desc_.desc, NULL,
-      mem_workspace->pointer(), workspace_size_, mem_reservespace_->pointer(),
-      reserve_size_));
+      mem_buff, workspace_size_, mem_reserve_buff, reserve_size_));
 
   if (propagate_down[0] && accum[0]) {
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_accumulate_x_and_h<Tcu>),
@@ -748,9 +757,8 @@ void RNNCudaCudnn<T>::backward_impl(const Variables &inputs,
       (inputs.size() == 5 && propagate_down[4])) {
     NBLA_CUDNN_CHECK(cudnnRNNBackwardWeights(
         cudnn_handle, rnn_desc_.desc, seq_len_, x_desc_->data(), x,
-        h_desc_.desc, h, y_desc_->data(), y, mem_workspace->pointer(),
-        workspace_size_, params_desc_.desc, g_params,
-        mem_reservespace_->pointer(), reserve_size_));
+        h_desc_.desc, h, y_desc_->data(), y, mem_buff, workspace_size_,
+        params_desc_.desc, g_params, mem_reserve_buff, reserve_size_));
   }
 
   bool w_init_accum = false;

@@ -264,6 +264,13 @@ void CudnnConvResource::find_forward_algorithm(int workspace_limit,
 #endif
   for (int i = 0; i < num_results; i++) {
     auto &perf_result = perf_results[i];
+
+    // If algo is registered in blacklist, then skip it.
+    if (cudnn_handle_manager->check_conv_algo_blacklist(perf_result.algo,
+                                                        ConvOpType::FWD)) {
+      continue;
+    }
+
     if (CUDNN_STATUS_SUCCESS == perf_result.status) {
 #if CUDNN_VERSION >= 7000
       NBLA_CUDNN_CHECK(cudnnSetConvolutionMathType(this->conv_desc.desc,
@@ -324,6 +331,13 @@ void CudnnConvResource::find_backward_data_algorithm(int workspace_limit,
 #endif
   for (int i = 0; i < num_results; i++) {
     auto &perf_result = perf_results[i];
+
+    // If algo is registered in blacklist, then skip it.
+    if (cudnn_handle_manager->check_conv_algo_blacklist(perf_result.algo,
+                                                        ConvOpType::BWD_DATA)) {
+      continue;
+    }
+
     if (CUDNN_STATUS_SUCCESS == perf_result.status) {
 #if CUDNN_VERSION >= 7000
       NBLA_CUDNN_CHECK(cudnnSetConvolutionMathType(conv_dgrad_desc.desc,
@@ -385,6 +399,13 @@ void CudnnConvResource::find_backward_filter_algorithm(int workspace_limit,
 #endif
   for (int i = 0; i < num_results; i++) {
     auto &perf_result = perf_results[i];
+
+    // If algo is registered in blacklist, then skip it.
+    if (cudnn_handle_manager->check_conv_algo_blacklist(
+            perf_result.algo, ConvOpType::BWD_FILTER)) {
+      continue;
+    }
+
     if (CUDNN_STATUS_SUCCESS == perf_result.status) {
 #if CUDNN_VERSION >= 7000
       NBLA_CUDNN_CHECK(cudnnSetConvolutionMathType(conv_wgrad_desc.desc,
@@ -785,6 +806,47 @@ void CudnnHandleManager::set_heuristic_option(bool value) {
 
 void CudnnHandleManager::set_workspace_limit_in_bytes(int bytes) {
   workspace_limit_ = bytes;
+}
+
+/* Blacklist operations for convolution algo */
+
+void CudnnHandleManager::verify_conv_algo_id(int id, ConvOpType op) {
+  int algo_count;
+  switch (op) {
+  case ConvOpType::FWD:
+    algo_count = cudnnConvolutionFwdAlgo_t::CUDNN_CONVOLUTION_FWD_ALGO_COUNT;
+    break;
+  case ConvOpType::BWD_DATA:
+    algo_count =
+        cudnnConvolutionBwdDataAlgo_t::CUDNN_CONVOLUTION_BWD_DATA_ALGO_COUNT;
+    break;
+  case ConvOpType::BWD_FILTER:
+    algo_count = cudnnConvolutionBwdFilterAlgo_t::
+        CUDNN_CONVOLUTION_BWD_FILTER_ALGO_COUNT;
+    break;
+  default:
+    NBLA_ERROR(error_code::value, "Unsupported conv op type.");
+  }
+
+  NBLA_CHECK(0 <= id && id < algo_count, error_code::value,
+             "[set_conv_fwd_algo_blacklist] Unsupported id. id must be in the "
+             "range of [0, %d)",
+             algo_count);
+}
+
+void CudnnHandleManager::set_conv_algo_blacklist(int id, ConvOpType op) {
+  verify_conv_algo_id(id, op);
+  conv_algo_blacklists_[static_cast<size_t>(op)].insert(id);
+}
+
+void CudnnHandleManager::unset_conv_algo_blacklist(int id, ConvOpType op) {
+  verify_conv_algo_id(id, op);
+  conv_algo_blacklists_[static_cast<size_t>(op)].erase(id);
+}
+
+bool CudnnHandleManager::check_conv_algo_blacklist(int id, ConvOpType op) {
+  verify_conv_algo_id(id, op);
+  return conv_algo_blacklists_[static_cast<size_t>(op)].count(id) > 0;
 }
 
 NBLA_INSTANTIATE_SINGLETON(NBLA_CUDA_API, CudnnHandleManager);

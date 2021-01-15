@@ -79,12 +79,10 @@ void TopKGradCuda<T>::setup_impl(const Variables &inputs,
   cuda_set_device(this->device_);
 
   if (this->k_ > 1024) {
-    this->buffer_ =
-        make_shared<CudaCachedArray>(outputs[0]->size(this->base_axis_),
-                                     get_dtype<unsigned int>(), this->ctx_);
+    this->buffer_.reshape(Shape_t{outputs[0]->size(this->base_axis_)}, true);
   } else {
-    this->buffer_ = make_shared<CudaCachedArray>(sizeof(Buffer<Tcu>),
-                                                 get_dtype<char>(), this->ctx_);
+    this->buffer_.reshape(Shape_t{static_cast<Size_t>(sizeof(Buffer<Tcu>))},
+                          true);
   }
 }
 
@@ -133,7 +131,9 @@ void TopKGradCuda<T>::backward_impl(const Variables &inputs,
     // he expected use case. The code could be splitting the input
     // into a smaller partition of the k-th largest values before
     // sorting.
-    auto buffer_raw = this->buffer_->template pointer<unsigned int>();
+    auto buffer_raw =
+        this->buffer_.cast(get_dtype<unsigned int>(), this->ctx_, true)
+            ->template pointer<unsigned int>();
     auto buffer_ptr = thrust::device_pointer_cast(buffer_raw);
 
     for (int s = 0; s < outer_size; s++) {
@@ -161,7 +161,8 @@ void TopKGradCuda<T>::backward_impl(const Variables &inputs,
       x_grad += inner_size;
     }
   } else {
-    auto buffer = this->buffer_->template pointer<Buffer<Tcu>>();
+    auto buffer = this->buffer_.cast(get_dtype<char>(), this->ctx_, true)
+                      ->template pointer<Buffer<Tcu>>();
 
     for (int s = 0; s < outer_size; s++) {
       if (this->abs_) {

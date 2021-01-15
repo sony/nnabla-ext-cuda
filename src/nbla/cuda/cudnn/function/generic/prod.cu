@@ -74,12 +74,12 @@ void ProdCudaCudnn<T>::forward_impl(const Variables &inputs,
   auto cudnn_handle_manager = SingletonManager::get<CudnnHandleManager>();
   auto cudnn_handle = cudnn_handle_manager->handle(this->device_);
 
-  unique_ptr<CudaCachedArray> workspace_arr;
+  NdArray workspace_arr;
   void *workspace{nullptr};
   if (this->workspace_size_) {
-    workspace_arr.reset(
-        new CudaCachedArray(this->workspace_size_, dtypes::BYTE, this->ctx_));
-    workspace = workspace_arr->pointer<void>();
+    workspace_arr.reshape({static_cast<Size_t>(this->workspace_size_)}, true);
+    workspace =
+        workspace_arr.cast(dtypes::BYTE, this->ctx_, true)->pointer<void>();
   }
 
   auto x_data = inputs[0]->get_data_pointer<Tcu>(this->ctx_);

@@ -17,6 +17,12 @@ from nnabla import add_available_context
 
 cdef extern from "nbla/cuda/cudnn/init.hpp" namespace "nbla":
     void init_cudnn() except+
+    void c_set_conv_fwd_algo_blacklist "nbla::set_conv_fwd_algo_blacklist"(int idx) nogil except+
+    void c_set_conv_bwd_data_algo_blacklist "nbla::set_conv_bwd_data_algo_blacklist"(int idx) nogil except+
+    void c_set_conv_bwd_filter_algo_blacklist "nbla::set_conv_bwd_filter_algo_blacklist"(int idx) nogil except+
+    void c_unset_conv_fwd_algo_blacklist "nbla::unset_conv_fwd_algo_blacklist"(int idx) nogil except+
+    void c_unset_conv_bwd_data_algo_blacklist "nbla::unset_conv_bwd_data_algo_blacklist"(int idx) nogil except+
+    void c_unset_conv_bwd_filter_algo_blacklist "nbla::unset_conv_bwd_filter_algo_blacklist"(int idx) nogil except+
 
 
 logger.info('Initializing cuDNN extension...')
@@ -26,3 +32,28 @@ try:
 except Exception as e:
     logger.warning(
         'Cudnn initialization failed. Please make sure that the Cudnn is correctly installed. {}'.format(e))
+
+
+def set_conv_fwd_algo_blacklist(int idx):
+    with nogil:
+        c_set_conv_fwd_algo_blacklist(idx)
+
+def set_conv_bwd_data_algo_blacklist(int idx):
+    with nogil:
+        c_set_conv_bwd_data_algo_blacklist(idx)
+
+def set_conv_bwd_filter_algo_blacklist(int idx):
+    with nogil:
+        c_set_conv_bwd_filter_algo_blacklist(idx)
+
+def unset_conv_fwd_algo_blacklist(int idx):
+    with nogil:
+        c_unset_conv_fwd_algo_blacklist(idx)
+
+def unset_conv_bwd_data_algo_blacklist(int idx):
+    with nogil:
+        c_unset_conv_bwd_data_algo_blacklist(idx)
+
+def unset_conv_bwd_filter_algo_blacklist(int idx):
+    with nogil:
+        c_unset_conv_bwd_filter_algo_blacklist(idx)

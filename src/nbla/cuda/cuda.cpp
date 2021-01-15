@@ -17,16 +17,30 @@
 #include <nbla/singleton_manager-internal.hpp>
 
 #include <nbla/cuda/memory/cuda_memory.hpp>
+#include <nbla/cuda/memory/cuda_virtual_memory.hpp>
 
 #include <nbla/memory/caching_allocator_with_buckets.hpp>
 #include <nbla/memory/naive_allocator.hpp>
+#include <nbla/memory/virtual_caching_allocator.hpp>
 
 namespace nbla {
 
 Cuda::Cuda()
     : naive_allocator_(make_shared<NaiveAllocator<CudaMemory>>()),
       caching_allocator_(
-          make_shared<CachingAllocatorWithBuckets<CudaMemory>>()) {}
+          make_shared<CachingAllocatorWithBuckets<CudaMemory>>()),
+      unified_allocator_(
+          make_shared<CachingAllocatorWithBuckets<CudaUnifiedMemory>>()),
+      pinned_allocator_(
+          make_shared<CachingAllocatorWithBuckets<CudaPinnedHostMemory>>())
+#if CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
+      ,
+      virtual_caching_allocator_(
+          make_shared<
+              VirtualCachingAllocator<CudaPhysicalMemory, CudaVirtualMemory>>())
+#endif // CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
+{
+}
 
 Cuda::~Cuda() {
   for (auto handle : this->cublas_handles_) {
@@ -47,6 +61,14 @@ Cuda::~Cuda() {
     for (auto &stream : all_streams.second) {
       NBLA_CUDA_CHECK(cudaStreamDestroy(*(stream.second)));
     }
+  }
+
+  if (stream_HtoD != 0) {
+    NBLA_CUDA_CHECK(cudaStreamDestroy(stream_HtoD));
+  }
+
+  if (stream_DtoH != 0) {
+    NBLA_CUDA_CHECK(cudaStreamDestroy(stream_DtoH));
   }
 }
 
@@ -129,6 +151,30 @@ std::shared_ptr<cudaEvent_t> Cuda::cuda_event(unsigned int flags, int device) {
       });
 }
 
+void Cuda::create_lms_streams(int device) {
+  if (device < 0) {
+    device = cuda_get_device();
+  }
+
+  cuda_set_device(device);
+
+  NBLA_CUDA_CHECK(
+      cudaStreamCreateWithFlags(&stream_HtoD, cudaStreamNonBlocking));
+  NBLA_CUDA_CHECK(
+      cudaStreamCreateWithFlags(&stream_DtoH, cudaStreamNonBlocking));
+}
+
+#if CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
+void Cuda::set_vma_chunk_size(size_t size) {
+  std::dynamic_pointer_cast<VirtualCachingAllocatorBase>(
+      virtual_caching_allocator_)
+      ->set_chunk_size(size);
+}
+#else
+// dummy for cython
+void Cuda::set_vma_chunk_size(size_t size) {}
+#endif // CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
+
 shared_ptr<cudaStream_t> Cuda::get_stream(unsigned int flags,
                                           CudaStreamId streamId, int device) {
   if (device < 0) {
@@ -195,6 +241,26 @@ void Cuda::register_array_class(const string &name) {
 
 shared_ptr<Allocator> Cuda::caching_allocator() { return caching_allocator_; }
 shared_ptr<Allocator> Cuda::naive_allocator() { return naive_allocator_; }
+shared_ptr<Allocator> Cuda::unified_allocator() { return unified_allocator_; }
+shared_ptr<Allocator> Cuda::pinned_allocator() { return pinned_allocator_; }
+#if CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
+shared_ptr<Allocator> Cuda::virtual_caching_allocator() {
+  return virtual_caching_allocator_;
+}
+#endif // CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
+
+void Cuda::free_unused_host_caches() {
+  pinned_allocator_->free_unused_caches();
+  unified_allocator_->free_unused_caches();
+}
+
+void Cuda::device_synchronize(const string &device) {
+  cuda_device_synchronize(device);
+}
+
+void Cuda::default_stream_synchronize(const string &device) {
+  cuda_nullstream_synchronize();
+}
 
 NBLA_INSTANTIATE_SINGLETON(NBLA_CUDA_API, Cuda);
 }
