@@ -210,6 +210,8 @@ def cuda_config(root_dir, cuda_lib, ext_opts, lib_dirs):
                 ls = l.strip().decode('ascii').split()
                 if len(ls) >= 3:
                     libname = ls[0]
+                    if libname == "libcuda.so.1":
+                        continue
                     libfile = ls[2]
 
                     # Copy libraries into WHL file.
