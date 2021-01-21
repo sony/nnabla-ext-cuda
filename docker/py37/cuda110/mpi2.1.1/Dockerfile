@@ -45,6 +45,11 @@ ENV PATH /opt/miniconda3/bin:$PATH
 ARG NNABLA_VER
 RUN pip install nnabla-ext-cuda110-nccl2-mpi2.1.1==${NNABLA_VER} nnabla_converter==${NNABLA_VER}
 
+# Solve nccl error that No space left on device 
+# while creating shared memory segment.
+RUN echo NCCL_SHM_DISABLE=1 >> /etc/nccl.conf
+RUN echo NCCL_P2P_LEVEL=SYS >> /etc/nccl.conf
+
 # Prepare default user
 RUN useradd -m nnabla
 RUN chown -R nnabla:nnabla /home/nnabla

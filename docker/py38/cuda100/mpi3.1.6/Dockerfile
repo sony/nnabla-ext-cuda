@@ -72,6 +72,11 @@ ENV LD_LIBRARY_PATH /opt/openmpi/lib:$LD_LIBRARY_PATH
 ARG NNABLA_VER
 RUN pip install nnabla-ext-cuda100-nccl2-mpi3.1.6==${NNABLA_VER}
 
+# Solve nccl error that No space left on device 
+# while creating shared memory segment.
+RUN echo NCCL_SHM_DISABLE=1 >> /etc/nccl.conf
+RUN echo NCCL_P2P_LEVEL=SYS >> /etc/nccl.conf
+
 # Prepare default user
 RUN useradd -m nnabla
 RUN chown -R nnabla:nnabla /home/nnabla
