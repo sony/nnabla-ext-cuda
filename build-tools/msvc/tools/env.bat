@@ -71,12 +71,12 @@ IF NOT DEFINED CUDNN_PATH (
     )
 )
 
-IF NOT EXIST %CUDNN_PATH% (
+IF NOT EXIST "%CUDNN_PATH%" (
    ECHO CUDNN_PATH ^(%CUDNN_PATH%^) does not found.
    exit /b 255
 )
 
-python %~dp0get-cudnn-version.py %CUDNN_PATH%
+python %~dp0get-cudnn-version.py "%CUDNN_PATH%"
 CALL %~dp0cudnn_version.bat
 DEL %~dp0cudnn_version.bat
 
