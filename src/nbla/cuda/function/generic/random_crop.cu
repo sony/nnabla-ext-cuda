@@ -116,7 +116,10 @@ void RandomCropCuda<T>::forward_impl(const Variables &inputs,
   this->random_values_ = make_shared<CudaCachedArray>(
       this->size_ * this->shape_.size(), dtypes::INT, this->ctx_);
   int *random_values = this->random_values_->template pointer<int>();
-  curand_generate_rand<int>(curand_generator_, 0, 2 ^ 23, random_values,
+  curandGenerator_t &gen =
+      this->seed_ == -1 ? SingletonManager::get<Cuda>()->curand_generator()
+                        : curand_generator_;
+  curand_generate_rand<int>(gen, 0, 2 ^ 23, random_values,
                             this->size_ * this->shape_.size());
   const int *shape_info_gpu =
       this->shape_info_buf_.get(dtypes::INT, this->ctx_)

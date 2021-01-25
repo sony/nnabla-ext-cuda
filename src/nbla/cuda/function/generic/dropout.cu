@@ -54,7 +54,10 @@ void DropoutCuda<T>::forward_impl(const Variables &inputs,
   Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
   Variable &mask = this->mask_;
   float *m = mask.cast_data_and_get_pointer<float>(this->ctx_, true);
-  curand_generate_rand<float>(curand_generator_, 0.0f, 1.0f, m,
+  curandGenerator_t &gen =
+      this->seed_ == -1 ? SingletonManager::get<Cuda>()->curand_generator()
+                        : curand_generator_;
+  curand_generate_rand<float>(gen, 0.0f, 1.0f, m,
                               inputs[0]->size());
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_dropout_forward, inputs[0]->size(),
                                  this->scale_, this->p_, x, y, m);

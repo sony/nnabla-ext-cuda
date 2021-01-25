@@ -39,8 +39,6 @@ public:
     if (this->seed_ != -1) {
       // CURAND_RNG_PSEUDO_DEFAULT is CURAND_RNG_PSEUDO_XORWOW.
       curand_generator_ = curand_create_generator(this->seed_);
-    } else {
-      curand_generator_ = SingletonManager::get<Cuda>()->curand_generator();
     }
   }
   virtual ~DropoutCuda() {

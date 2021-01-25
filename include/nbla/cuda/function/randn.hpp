@@ -36,8 +36,6 @@ public:
         device_(std::stoi(ctx.device_id)) {
     if (this->seed_ != -1) {
       curand_generator_ = curand_create_generator(this->seed_);
-    } else {
-      curand_generator_ = SingletonManager::get<Cuda>()->curand_generator();
     }
   }
   virtual ~RandnCuda() {

@@ -131,7 +131,10 @@ void RandomChoiceCuda<T>::sample_with_replacement(const Variables &inputs,
       tmp1.cast(get_dtype<float>(), this->ctx_, true)->pointer<float>();
 
   // Generate random choices for each output sample point.
-  curand_generate_rand<float>(curand_generator_, 0, 1, u_vals, y->size());
+  curandGenerator_t &gen =
+      this->seed_ == -1 ? SingletonManager::get<Cuda>()->curand_generator()
+                        : curand_generator_;
+  curand_generate_rand<float>(gen, 0, 1, u_vals, y->size());
 
   // Build cumulative sum of weights per population.
   for (int i = 0; i < this->outer_loop_; i++) {
@@ -178,7 +181,10 @@ void RandomChoiceCuda<T>::sample_without_replace(const Variables &inputs,
                  thrust::device_pointer_cast(w_data));
 
   // Generate random choices for each output sample point.
-  curand_generate_rand<float>(curand_generator_, 0, 1, u_vals, y->size());
+  curandGenerator_t &gen =
+      this->seed_ == -1 ? SingletonManager::get<Cuda>()->curand_generator()
+                        : curand_generator_;
+  curand_generate_rand<float>(gen, 0, 1, u_vals, y->size());
 
   // We draw one sample per round (and population) and set the choosen weight
   // to zero, so each round decreases the number of non-zero weights.
