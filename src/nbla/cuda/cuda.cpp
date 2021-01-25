@@ -22,6 +22,7 @@
 #include <nbla/memory/caching_allocator_with_buckets.hpp>
 #include <nbla/memory/naive_allocator.hpp>
 #include <nbla/memory/virtual_caching_allocator.hpp>
+#include <nbla/random_manager.hpp>
 
 namespace nbla {
 
@@ -220,17 +221,29 @@ shared_ptr<cudaStream_t> Cuda::get_stream(unsigned int flags,
   }
 }
 
-curandGenerator_t Cuda::curand_generator() {
+curandGenerator_t &Cuda::curand_generator() {
   // Get current device
   int device = cuda_get_device();
   std::lock_guard<decltype(mtx_curand_)> lock(mtx_curand_);
   // Find device rng
   auto it = this->curand_generators_.find(device);
+  // Get the latest RandomManager states
+  int seed_count = SingletonManager::get<RandomManager>()->get_count();
+  int seed = SingletonManager::get<RandomManager>()->get_seed();
   // Create a new one
   if (it == this->curand_generators_.end()) {
-    curandGenerator_t gen = curand_create_generator();
+    curandGenerator_t gen = curand_create_generator(seed);
     this->curand_generators_.insert({device, gen});
-    return gen;
+    this->seed_counts_.insert({device, seed_count});
+    return this->curand_generators_[device];
+  } else if (this->seed_counts_[it->first] < seed_count) {
+    // Destroy old generator
+    curand_destroy_generator(it->second);
+    // Recreate
+    curandGenerator_t gen = curand_create_generator(seed);
+    this->curand_generators_[device] = gen;
+    this->seed_counts_[device] = seed_count;
+    return this->curand_generators_[device];
   }
   return it->second;
 }

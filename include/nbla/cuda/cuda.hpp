@@ -56,7 +56,7 @@ public:
   std::shared_ptr<cudaEvent_t> cuda_event(unsigned int flags, int device = -1);
 
   /** Get cuRAND global generator **/
-  curandGenerator_t curand_generator();
+  curandGenerator_t &curand_generator();
 
   void curand_set_seed(int seed);
 
@@ -136,7 +136,8 @@ protected:
   unordered_map<int, curandGenerator_t> curand_generators_;
   unordered_map<int, unordered_map<unsigned int, vector<cudaEvent_t>>>
       cuda_unused_events_;
-  vector<string> array_classes_; ///< Available array classes
+  vector<string> array_classes_;        ///< Available array classes
+  unordered_map<int, int> seed_counts_; /// this is used to check seed update
 
   /*
     NOTE: Allocators must be retained as shared_ptr in order to be passed to a
