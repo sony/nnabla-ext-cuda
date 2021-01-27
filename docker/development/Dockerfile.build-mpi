@@ -200,3 +200,10 @@ ENV PATH /opt/miniconda3/envs/nnabla-build/bin:$PATH
 ENV LD_LIBRARY_PATH /opt/miniconda3/envs/nnabla-build/lib:$LD_LIBRARY_PATH
 ENV CC /usr/local/bin/gcc
 ENV CXX /usr/local/bin/g++
+
+####################################################
+# Solve nccl error that No space left on device
+# while creating shared memory segment.
+####################################################
+RUN echo NCCL_SHM_DISABLE=1 >> /etc/nccl.conf
+RUN echo NCCL_P2P_LEVEL=SYS >> /etc/nccl.conf
