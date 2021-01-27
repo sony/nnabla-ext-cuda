@@ -57,8 +57,7 @@ void DropoutCuda<T>::forward_impl(const Variables &inputs,
   curandGenerator_t &gen =
       this->seed_ == -1 ? SingletonManager::get<Cuda>()->curand_generator()
                         : curand_generator_;
-  curand_generate_rand<float>(gen, 0.0f, 1.0f, m,
-                              inputs[0]->size());
+  curand_generate_rand<float>(gen, 0.0f, 1.0f, m, inputs[0]->size());
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_dropout_forward, inputs[0]->size(),
                                  this->scale_, this->p_, x, y, m);
 }

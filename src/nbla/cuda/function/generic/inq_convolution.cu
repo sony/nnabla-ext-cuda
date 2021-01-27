@@ -251,8 +251,9 @@ void INQConvolutionCuda<T, T1>::forward_impl(const Variables &inputs,
         // random selection (we re-use old_weights here to keep the random
         // values)
         curandGenerator_t &gen =
-          this->seed_ == -1 ? SingletonManager::get<Cuda>()->curand_generator()
-                            : curand_generator_;
+            this->seed_ == -1
+                ? SingletonManager::get<Cuda>()->curand_generator()
+                : curand_generator_;
         curand_generate_rand<Tc>(gen, 0.0f, 1.0f, old_weights,
                                  inputs[0]->size());
         NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_random_selection<Tc, T1>),

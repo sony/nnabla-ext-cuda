@@ -194,8 +194,8 @@ void RandomEraseCuda<T>::forward_impl(const Variables &inputs,
   curandGenerator_t &gen =
       this->seed_ == -1 ? SingletonManager::get<Cuda>()->curand_generator()
                         : curand_generator_;
-  curand_generate_rand<float>(gen, 0.0f, 1.0f,
-                              random_coords, this->random_coordinates_->size());
+  curand_generate_rand<float>(gen, 0.0f, 1.0f, random_coords,
+                              this->random_coordinates_->size());
 
   // Create 5 x N x B (x C), 5 is {prob, ye_start, xe_start, ye_end, xe_end}
   // inplace
