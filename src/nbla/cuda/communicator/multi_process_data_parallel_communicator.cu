@@ -658,7 +658,13 @@ template <typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::all_reduce(
     const vector<NdArrayPtr> &ndarray_list, bool division, bool inplace,
     const string &group) {
-  Watchdog::WatchdogLock lck(watch_dog_, all_reduce_timeout_);
+  // If it is rank0, we check all other nodes with strict constraint, for
+  // example,
+  // must be finished within 50s. Otherwise, we loose this constraint to allow
+  // rank0 to do a relative long time operation.
+  int timeout = this->rank_ == 0 ? all_reduce_timeout_
+                                 : all_reduce_timeout_ * TIMES_FOR_OTHER_NODE;
+  Watchdog::WatchdogLock lck(watch_dog_, timeout);
   if (!this->find_self(group)) {
     NBLA_ERROR(error_code::value, "self (rank=%d) is not included in %s.",
                this->rank_, group.c_str());
