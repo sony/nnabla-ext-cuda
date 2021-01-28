@@ -40,8 +40,8 @@ learning_rate = 1e-3
 # Set GPU memory size for test
 # The values below of GPU memory size were based on GeForce 1050 Ti with 4GB memory.
 mem_size = 1e9
-total_mem_size = cuda_init.get_device_memory_size()[1]
-skip_test = (total_mem_size < 3e9)
+free, total = cuda_init.get_device_memory_size()
+skip_test = (free < 3e9)
 
 
 def create_network(batch_size, num_dilations, learning_rate):
@@ -100,6 +100,9 @@ def teardown_function(function):
     # revert setting of gpu array to CachedArray
     cuda_init.prefer_cuda_cached_array()
 
+    cuda_init.clear_memory_cache()
+    cuda_init.clear_virtual_memory_cache()
+
 
 @pytest.mark.parametrize("type_config, device_id, batch_size, num_dilations, "
                          "learning_rate, max_iter, gpu_memory_size, max_prefetch_bytes, cast_prefetch",
@@ -122,6 +125,9 @@ def test_lms(type_config, device_id, batch_size, num_dilations,
     # Change a type of memory allocator for device
     if memory == "virtual":
         cuda_init.prefer_cuda_virtual_array()
+
+        from nnabla_ext.cuda.init import set_cuda_virtual_memory_chunk_size
+        set_cuda_virtual_memory_chunk_size(2 << 20)
     elif memory == "cached":
         cuda_init.prefer_cuda_cached_array()
 
