@@ -412,7 +412,7 @@ public:
 
    True requests to get the alogorithm by a heuristic.
 
-   @note The default value is false. The default value is overwritten if an
+   @note The default value is true. The default value is overwritten if an
          environment variable NNABLA_CUDNN_ALGORITHM_BY_HEURISTIC is specified.
  */
   bool get_heuristic_option();
