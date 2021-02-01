@@ -67,6 +67,21 @@ BatchNormalization:
 FusedBatchNormalization:
   float: [float]
   half: [Half]
+GroupNormalization:
+  float: [float]
+  half: [Half]
+InstanceNormalization:
+  float: [float]
+  half: [Half]
+LayerNormalization:
+  float: [float]
+  half: [Half]
+TensorNormalization:
+  float: [float]
+  half: [Half]
+WeightStandardization:
+  float: [float]
+  half: [Half]
 # MeanSubtraction:
 #   float: [float]
 Sum:
