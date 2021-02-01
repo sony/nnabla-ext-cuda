@@ -63,7 +63,8 @@ public:
       : SyncBatchNormalization<T>(ctx, comm, group, axes, decay_rate, eps,
                                   batch_stat),
         device_(std::stoi(ctx.device_id)),
-        batch_norm_(ctx, axes, decay_rate, eps, batch_stat) {}
+        batch_norm_(ctx, axes, decay_rate, eps, batch_stat,
+                    false /* no_scale */, false /* no_scale */) {}
   virtual ~SyncBatchNormalizationCuda() {}
   virtual string name() override { return "SyncBatchNormalizationCuda"; }
   virtual vector<string> allowed_array_classes() override {

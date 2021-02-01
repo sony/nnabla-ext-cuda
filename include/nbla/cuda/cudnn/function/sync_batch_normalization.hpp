@@ -53,7 +53,8 @@ public:
       : SyncBatchNormalizationCuda<T>(ctx, comm, group, axes, decay_rate, eps,
                                       batch_stat),
         device_(std::stoi(ctx.device_id)),
-        batch_norm_cudnn_(ctx, axes, decay_rate, eps, batch_stat) {
+        batch_norm_cudnn_(ctx, axes, decay_rate, eps, batch_stat,
+                          false /* no_scale */, false /* no_bias */) {
 #if CUDNN_VERSION < 5000
     std::cout << "Falling back to BatchNormalizationCuda since BN does not "
                  "exist in CUDNN_VERSION < 5000."

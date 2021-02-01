@@ -51,8 +51,10 @@ public:
   typedef typename CudaType<T>::type Tw;
 
   BatchNormalizationCudaCudnn(const Context &ctx, const vector<int> axes,
-                              float decay_rate, float eps, bool batch_stat)
-      : BatchNormalizationCuda<T>(ctx, axes, decay_rate, eps, batch_stat),
+                              float decay_rate, float eps, bool batch_stat,
+                              bool no_scale, bool no_bias)
+      : BatchNormalizationCuda<T>(ctx, axes, decay_rate, eps, batch_stat,
+                                  no_scale, no_bias),
         device_(std::stoi(ctx.device_id)) {
 #if CUDNN_VERSION < 5000
     std::cout << "Falling back to BatchNormalizationCuda since BN does not "
