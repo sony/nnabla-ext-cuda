@@ -32,7 +32,6 @@ struct AxisParam {
   } pad;
 };
 
-
 namespace pad_constant_impl {
 
 template <typename T, int DIMENSIONS>
@@ -122,9 +121,9 @@ __inline__ __device__ Index_t reflect_index(Index_t idx, Index_t len) {
 }
 
 template <typename T, int DIMENSIONS>
-__inline__ __device__ void d_pad_reflect_forward(const Index_t y_idx, const T *x, T *y,
-                                         const int ndim,
-                                         const AxisParam *params) {
+__inline__ __device__ void
+d_pad_reflect_forward(const Index_t y_idx, const T *x, T *y, const int ndim,
+                      const AxisParam *params) {
   const int NDIM = DIMENSIONS > 0 ? DIMENSIONS : ndim;
   Index_t y_tmp = y_idx;
   Index_t x_idx = 0;
@@ -140,14 +139,13 @@ __inline__ __device__ void d_pad_reflect_forward(const Index_t y_idx, const T *x
 
     const auto src_axis_reflect_idx = reflect_index(src_axis_idx, src_len - 1);
     x_idx += src_axis_reflect_idx * param.x_stride;
-
   }
   y[y_idx] = x[x_idx];
 }
 
 template <typename T, int DIMENSIONS = 0>
 __global__ void pad_reflect_forward(const Index_t size, const T *x, T *y,
-                            const int ndim, const AxisParam *params) {
+                                    const int ndim, const AxisParam *params) {
   extern __shared__ AxisParam shared[];
   const int NDIM = DIMENSIONS > 0 ? DIMENSIONS : ndim;
   if (threadIdx.x < NDIM * sizeof(AxisParam) / sizeof(int)) {
@@ -161,9 +159,9 @@ __global__ void pad_reflect_forward(const Index_t size, const T *x, T *y,
 }
 
 template <typename T, int DIMENSIONS>
-__inline__ __device__ void d_pad_reflect_backward(const Index_t y_idx, const T *dy,
-                                          T *dx, const int ndim,
-                                          const AxisParam *params) {
+__inline__ __device__ void
+d_pad_reflect_backward(const Index_t y_idx, const T *dy, T *dx, const int ndim,
+                       const AxisParam *params) {
   const int NDIM = DIMENSIONS > 0 ? DIMENSIONS : ndim;
   Index_t y_tmp = y_idx;
   Index_t x_idx = 0;
@@ -185,7 +183,7 @@ __inline__ __device__ void d_pad_reflect_backward(const Index_t y_idx, const T *
 
 template <typename T, int DIMENSIONS = 0>
 __global__ void pad_reflect_backward(const Index_t size, const T *dy, T *dx,
-                             const int ndim, const AxisParam *params) {
+                                     const int ndim, const AxisParam *params) {
   extern __shared__ AxisParam shared[];
   const int NDIM = DIMENSIONS > 0 ? DIMENSIONS : ndim;
   if (threadIdx.x < NDIM * sizeof(AxisParam) / sizeof(int)) {
@@ -203,9 +201,9 @@ __global__ void pad_reflect_backward(const Index_t size, const T *dy, T *dx,
 namespace pad_repeat_impl {
 
 template <typename T, int DIMENSIONS>
-__inline__ __device__ void d_pad_repeat_forward(const Index_t y_idx, const T *x, T *y,
-                                         const int ndim,
-                                         const AxisParam *params) {
+__inline__ __device__ void d_pad_repeat_forward(const Index_t y_idx, const T *x,
+                                                T *y, const int ndim,
+                                                const AxisParam *params) {
   const int NDIM = DIMENSIONS > 0 ? DIMENSIONS : ndim;
   Index_t y_tmp = y_idx;
   Index_t x_idx = 0;
@@ -217,14 +215,16 @@ __inline__ __device__ void d_pad_repeat_forward(const Index_t y_idx, const T *x,
     y_tmp -= axis_idx * param.y_stride;
 
     int src_max_idx = param.y_shape - param.pad.first - param.pad.second - 1;
-    x_idx += min(src_max_idx , max(0, static_cast<int>(axis_idx - param.pad.first))) * param.x_stride;
+    x_idx +=
+        min(src_max_idx, max(0, static_cast<int>(axis_idx - param.pad.first))) *
+        param.x_stride;
   }
   y[y_idx] = x[x_idx];
 }
 
 template <typename T, int DIMENSIONS = 0>
 __global__ void pad_repeat_forward(const Index_t size, const T *x, T *y,
-                            const int ndim, const AxisParam *params) {
+                                   const int ndim, const AxisParam *params) {
   extern __shared__ AxisParam shared[];
   const int NDIM = DIMENSIONS > 0 ? DIMENSIONS : ndim;
   if (threadIdx.x < NDIM * sizeof(AxisParam) / sizeof(int)) {
@@ -238,9 +238,9 @@ __global__ void pad_repeat_forward(const Index_t size, const T *x, T *y,
 }
 
 template <typename T, int DIMENSIONS>
-__inline__ __device__ void d_pad_repeat_backward(const Index_t y_idx, const T *dy,
-                                          T *dx, const int ndim,
-                                          const AxisParam *params) {
+__inline__ __device__ void
+d_pad_repeat_backward(const Index_t y_idx, const T *dy, T *dx, const int ndim,
+                      const AxisParam *params) {
   const int NDIM = DIMENSIONS > 0 ? DIMENSIONS : ndim;
   Index_t y_tmp = y_idx;
   Index_t x_idx = 0;
@@ -252,14 +252,16 @@ __inline__ __device__ void d_pad_repeat_backward(const Index_t y_idx, const T *d
     y_tmp -= axis_idx * param.y_stride;
 
     int dst_max_idx = param.y_shape - param.pad.first - param.pad.second - 1;
-    x_idx += min(dst_max_idx , max(0, static_cast<int>(axis_idx - param.pad.first))) * param.x_stride;
+    x_idx +=
+        min(dst_max_idx, max(0, static_cast<int>(axis_idx - param.pad.first))) *
+        param.x_stride;
   }
   atomic_add(&dx[x_idx], dy[y_idx]);
 }
 
 template <typename T, int DIMENSIONS = 0>
 __global__ void pad_repeat_backward(const Index_t size, const T *dy, T *dx,
-                             const int ndim, const AxisParam *params) {
+                                    const int ndim, const AxisParam *params) {
   extern __shared__ AxisParam shared[];
   const int NDIM = DIMENSIONS > 0 ? DIMENSIONS : ndim;
   if (threadIdx.x < NDIM * sizeof(AxisParam) / sizeof(int)) {
@@ -360,8 +362,7 @@ void PadCuda<T>::forward_impl(const Variables &inputs,
     }
     kernel<<<blocks, threads, shared>>>(y_size, x, y, ndim, params);
     NBLA_CUDA_KERNEL_CHECK();
-  }
-  else if (this->pad_mode_ == this->PAD_REPEAT) {
+  } else if (this->pad_mode_ == this->PAD_REPEAT) {
     using pad_repeat_impl::pad_repeat_forward;
     void (*kernel)(const Index_t, const Tcu *, Tcu *, const int,
                    const AxisParam *);
@@ -447,8 +448,7 @@ void PadCuda<T>::backward_impl(const Variables &inputs,
       }
       kernel<<<blocks, threads, shared>>>(y_var.size(), dy, dx, ndim, params);
       NBLA_CUDA_KERNEL_CHECK();
-    }
-    else if (this->pad_mode_ == this->PAD_REPEAT) {
+    } else if (this->pad_mode_ == this->PAD_REPEAT) {
       using namespace pad_repeat_impl;
       if (!accum) {
         x_var.grad()->zero();
