@@ -55,6 +55,7 @@ if 'WHEEL_SUFFIX' in os.environ:
     whl_suffix += os.environ['WHEEL_SUFFIX']
 
 install_requires = [
+    'pynvml',
     'setuptools',
     'nnabla{}=={}'.format(whl_suffix, __version__),
 ]

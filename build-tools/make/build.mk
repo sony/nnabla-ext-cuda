@@ -149,3 +149,7 @@ nnabla-ext-cuda-multi-gpu-test-local: nnabla-install nnabla-ext-cuda-install
 	cd $(BUILD_EXT_CUDA_DIRECTORY_WHEEL) \
 	&& $(NNABLA_DIRECTORY)/build-tools/make/pytest.sh $(NNABLA_DIRECTORY)/python/test \
 	&& $(NNABLA_DIRECTORY)/build-tools/make/pytest.sh $(NNABLA_EXT_CUDA_DIRECTORY)/python/test
+
+.PHONY: update-gpu-list
+update-gpu-list:
+	python3 ./build-tools/scripts/update_gpu_list.py

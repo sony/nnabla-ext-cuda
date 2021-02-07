@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from __future__ import absolute_import
+from nnabla.variable import Context
 
 import nnabla
 
@@ -23,6 +24,7 @@ from ._version import (
     __author__,
     __email__
 )
+from .incompatibale_gpu_list import incompatible_gpus
 
 
 #
@@ -52,6 +54,45 @@ def load_shared_from_error(err):
             raise err
 
 
+def check_gpu_compatibility():
+    import pynvml
+    import os
+
+    def list_local_gpu():
+        pynvml.nvmlInit()
+        device_count = pynvml.nvmlDeviceGetCount()
+        local_gpus = []
+        for device_index in range(device_count):
+            handle = pynvml.nvmlDeviceGetHandleByIndex(device_index)
+            gpu_name = pynvml.nvmlDeviceGetName(
+                handle).decode('utf-8').lower()
+            local_gpus.append(gpu_name)
+        pynvml.nvmlShutdown()
+        return local_gpus
+
+    def compare_gpu(local_gpus, incompatible_gpu, cuda_ver, cudnn_ver):
+        unusable_gpu = []
+        available_gpu_names = os.environ.get('AVAILABLE_GPU_NAMES')
+        if available_gpu_names is not None:  # GPU in white list is usable
+            available_gpu_names = available_gpu_names.lower().split(',')
+            local_gpus = list(set(local_gpus) - set(available_gpu_names))
+        for gpu in local_gpus:
+            for inc_gpu in incompatible_gpu[(cuda_ver, cudnn_ver)]:
+                if inc_gpu in gpu:  # mark gpu incompatible if it in incompatible gpu list
+                    if gpu not in unusable_gpu:
+                        unusable_gpu.append(gpu)
+                    break
+        if len(unusable_gpu) > 0:
+            raise ValueError("Currnetly, nnabla-ext-cuda{} does not support your {} GPU. It may take a long time to initialize cudnn and can't converge well!\nYou can set environment variable AVAILABLE_GPU_NAMES=\"{}\" to avoid this error.".
+                             format(cuda_ver, ",".join(unusable_gpu), ",".join(unusable_gpu)))
+    cuda_ver = __cuda_version__.replace('.', '')
+    cudnn_ver = __cudnn_version__[0]
+    compare_gpu(list_local_gpu(), incompatible_gpus,
+                cuda_ver, cudnn_ver)
+
+
+check_gpu_compatibility()
+
 retry = 0
 while retry < MAX_RETRY_LOAD_SHARED_LIB:
     retry += 1
@@ -66,8 +107,6 @@ while retry < MAX_RETRY_LOAD_SHARED_LIB:
         retry = MAX_RETRY_LOAD_SHARED_LIB
     except ImportError as err:
         load_shared_from_error(err)
-
-from nnabla.variable import Context
 
 
 def context(device_id=0, type_config='float', **kw):
