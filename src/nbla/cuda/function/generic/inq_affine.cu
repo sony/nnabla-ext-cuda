@@ -147,8 +147,6 @@ void INQAffineCuda<T, T1>::setup_impl(const Variables &inputs,
     if (this->seed_ != -1) {
       // CURAND_RNG_PSEUDO_DEFAULT is CURAND_RNG_PSEUDO_XORWOW.
       curand_generator_ = curand_create_generator(this->seed_);
-    } else {
-      curand_generator_ = SingletonManager::get<Cuda>()->curand_generator();
     }
   }
 
@@ -249,7 +247,11 @@ void INQAffineCuda<T, T1>::forward_impl(const Variables &inputs,
       } else {
         // random selection (we re-use old_weights here to keep the random
         // values)
-        curand_generate_rand<Tc>(curand_generator_, 0.0f, 1.0f, old_weights,
+        curandGenerator_t &gen =
+            this->seed_ == -1
+                ? SingletonManager::get<Cuda>()->curand_generator()
+                : curand_generator_;
+        curand_generate_rand<Tc>(gen, 0.0f, 1.0f, old_weights,
                                  inputs[0]->size());
         NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_random_selection<Tc, T1>),
                                        inputs[1]->size(), indicators,

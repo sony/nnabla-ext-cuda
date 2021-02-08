@@ -17,6 +17,7 @@
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/cudnn/cudnn.hpp>
 #include <nbla/cuda/cudnn/function/gru.hpp>
+#include <nbla/random_manager.hpp>
 #include <nbla/variable.hpp>
 
 #include <array>
@@ -405,12 +406,12 @@ void GRUCudaCudnn<T>::setup_impl(const Variables &inputs,
   state_array_.reshape(Shape_t{static_cast<Size_t>(dropout_stateSize)}, true);
   void *state_ptr =
       state_array_.cast(dtypes::BYTE, this->ctx_, true)->pointer<void>();
-  std::random_device seed_gen;
-  std::default_random_engine engine(seed_gen());
+  std::mt19937 &rgen =
+      SingletonManager::get<RandomManager>()->get_rand_generator();
   std::uniform_int_distribution<> dist(0, 999);
   NBLA_CUDNN_CHECK(cudnnSetDropoutDescriptor(dropout_desc_.desc, cudnn_handle,
                                              this->dropout_, state_ptr,
-                                             dropout_stateSize, dist(engine)));
+                                             dropout_stateSize, dist(rgen)));
 
 // Set RNN descriptor.
 #if CUDNN_VERSION >= 7000

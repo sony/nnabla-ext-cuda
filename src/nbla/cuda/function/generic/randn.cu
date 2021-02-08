@@ -31,8 +31,11 @@ void RandnCuda<T>::forward_impl(const Variables &inputs,
                                 const Variables &outputs) {
   typedef typename CudaTypeForceFloat<T>::type Tc;
   cuda_set_device(device_);
+  curandGenerator_t &gen =
+      this->seed_ == -1 ? SingletonManager::get<Cuda>()->curand_generator()
+                        : curand_generator_;
   Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
-  curand_generate_randn<float>(curand_generator_, this->mu_, this->sigma_, y,
+  curand_generate_randn<float>(gen, this->mu_, this->sigma_, y,
                                outputs[0]->size());
 }
 

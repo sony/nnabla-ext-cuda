@@ -82,7 +82,10 @@ void RandomFlipCuda<T>::forward_impl(const Variables &inputs,
       Shape_t{static_cast<Size_t>(this->size_ * inputs[0]->ndim())}, true);
   int *flip_flags = this->flip_flags_.cast(dtypes::INT, this->ctx_, true)
                         ->template pointer<int>();
-  curand_generate_rand<int>(curand_generator_, 0, 255, flip_flags,
+  curandGenerator_t &gen =
+      this->seed_ == -1 ? SingletonManager::get<Cuda>()->curand_generator()
+                        : curand_generator_;
+  curand_generate_rand<int>(gen, 0, 255, flip_flags,
                             this->size_ * inputs[0]->ndim());
   const Tcu *x = inputs[0]->get_data_pointer<Tcu>(this->ctx_);
   Tcu *y = outputs[0]->cast_data_and_get_pointer<Tcu>(this->ctx_, true);

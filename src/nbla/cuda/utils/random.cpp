@@ -15,6 +15,7 @@
 #include <nbla/cuda/array/cuda_array.hpp>
 #include <nbla/cuda/utils/random.hpp>
 #include <nbla/nd_array.hpp>
+#include <nbla/random_manager.hpp>
 
 #include <random>
 
@@ -24,7 +25,7 @@ curandGenerator_t curand_create_generator(int seed) {
   curandGenerator_t gen;
   NBLA_CURAND_CHECK(curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT));
   if (seed == -1) {
-    seed = std::random_device()();
+    seed = SingletonManager::get<RandomManager>()->get_seed();
   }
   curand_set_seed(gen, seed);
   return gen;

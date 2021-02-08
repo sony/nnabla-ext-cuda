@@ -37,8 +37,6 @@ public:
     cuda_set_device(device_);
     if (this->seed_ != -1) {
       curand_generator_ = curand_create_generator(this->seed_);
-    } else {
-      curand_generator_ = SingletonManager::get<Cuda>()->curand_generator();
     }
   }
   virtual ~RandCuda() {
