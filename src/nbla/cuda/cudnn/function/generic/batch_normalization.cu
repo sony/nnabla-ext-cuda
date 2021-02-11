@@ -41,7 +41,7 @@ void BatchNormalizationCudaCudnn<T>::setup_impl(const Variables &inputs,
     // TODO: Change saved variance to inverse variance like cuDNN
     this->fall_back_func_ = make_shared<BatchNormalizationCuda<T>>(
         this->ctx_, this->axes_, this->decay_rate_, this->eps_,
-        this->batch_stat_);
+        this->batch_stat_, this->no_scale_, this->no_bias_);
     this->fall_back_func_->setup(inputs, outputs);
     return;
   }
@@ -164,11 +164,33 @@ void BatchNormalizationCudaCudnn<T>::forward_impl_batch(
   // Inputs
   const Tw *x = inputs[0]->get_data_pointer<Tw>(this->ctx_);
 
+  // dummy beta, gamma variables
+  Variable beta_dummy, gamma_dummy;
+  const auto param_shape = this->mean_.shape();
+  if (this->no_bias_) {
+    beta_dummy.reshape(param_shape, true);
+    beta_dummy.data()->zero();
+  }
+  if (this->no_scale_) {
+    gamma_dummy.reshape(param_shape, true);
+    gamma_dummy.data()->fill(1.);
+  }
+
   const void *beta =
-      inputs[1]->data()->get(DRV_BN_T(), this->ctx_)->const_pointer();
+      this->no_bias_
+          ? beta_dummy.data()->get(DRV_BN_T(), this->ctx_)->const_pointer()
+          : inputs[this->b_idx_]
+                ->data()
+                ->get(DRV_BN_T(), this->ctx_)
+                ->const_pointer();
 
   const void *gamma =
-      inputs[2]->data()->get(DRV_BN_T(), this->ctx_)->const_pointer();
+      this->no_scale_
+          ? gamma_dummy.data()->get(DRV_BN_T(), this->ctx_)->const_pointer()
+          : inputs[this->g_idx_]
+                ->data()
+                ->get(DRV_BN_T(), this->ctx_)
+                ->const_pointer();
 
   // Output
   Tw *y = outputs[0]->cast_data_and_get_pointer<Tw>(this->ctx_, true);
@@ -179,12 +201,14 @@ void BatchNormalizationCudaCudnn<T>::forward_impl_batch(
                 ->cast(DRV_BN_T(), this->ctx_, true)
                 ->pointer(); // batch var
   // Inputs/Outputs
-  void *rm = inputs[3]
+  void *rm = inputs[this->m_idx_]
                  ->data()
                  ->cast(DRV_BN_T(), this->ctx_)
                  ->pointer(); // running mean
-  void *rv =
-      inputs[4]->data()->cast(DRV_BN_T(), this->ctx_)->pointer(); // running var
+  void *rv = inputs[this->v_idx_]
+                 ->data()
+                 ->cast(DRV_BN_T(), this->ctx_)
+                 ->pointer(); // running var
 
   auto a = get_cudnn_scalar_arg<T>(1);
   auto b = get_cudnn_scalar_arg<T>(0);
@@ -223,17 +247,40 @@ void BatchNormalizationCudaCudnn<T>::forward_impl_batch(
 template <class T>
 void BatchNormalizationCudaCudnn<T>::forward_impl_global(
     const Variables &inputs, const Variables &outputs) {
+  // dummy beta, gamma variables
+  Variable beta_dummy, gamma_dummy;
+  const auto param_shape = this->mean_.shape();
+  if (this->no_bias_) {
+    beta_dummy.reshape(param_shape, true);
+    beta_dummy.data()->zero();
+  }
+  if (this->no_scale_) {
+    gamma_dummy.reshape(param_shape, true);
+    gamma_dummy.data()->fill(1.);
+  }
+
   // Inputs
   const Tw *x = inputs[0]->get_data_pointer<Tw>(this->ctx_);
   const void *beta =
-      inputs[1]->data()->get(DRV_BN_T(), this->ctx_)->const_pointer();
+      this->no_bias_
+          ? beta_dummy.data()->get(DRV_BN_T(), this->ctx_)->const_pointer()
+          : inputs[this->b_idx_]
+                ->data()
+                ->get(DRV_BN_T(), this->ctx_)
+                ->const_pointer();
+
   const void *gamma =
-      inputs[2]->data()->get(DRV_BN_T(), this->ctx_)->const_pointer();
-  const void *rm = inputs[3]
+      this->no_scale_
+          ? gamma_dummy.data()->get(DRV_BN_T(), this->ctx_)->const_pointer()
+          : inputs[this->g_idx_]
+                ->data()
+                ->get(DRV_BN_T(), this->ctx_)
+                ->const_pointer();
+  const void *rm = inputs[this->m_idx_]
                        ->data()
                        ->get(DRV_BN_T(), this->ctx_)
                        ->const_pointer(); // running mean
-  const void *rv = inputs[4]
+  const void *rv = inputs[this->v_idx_]
                        ->data()
                        ->get(DRV_BN_T(), this->ctx_)
                        ->const_pointer(); // running var
@@ -268,6 +315,13 @@ void BatchNormalizationCudaCudnn<T>::backward_impl_batch(
   if (!(propagate_down[0] || propagate_down[1] || propagate_down[2])) {
     return;
   }
+
+  const bool pd_beta = !this->no_bias_ && propagate_down[this->b_idx_];
+  const bool pd_gamma = !this->no_scale_ && propagate_down[this->g_idx_];
+
+  const bool accum_beta = !this->no_bias_ && accum[this->b_idx_];
+  const bool accum_gamma = !this->no_scale_ && accum[this->g_idx_];
+
   // Check whether it outputs batch mean/var.
   Variable *batch_mean = &this->mean_;
   Variable *batch_var = &this->var_;
@@ -281,10 +335,9 @@ void BatchNormalizationCudaCudnn<T>::backward_impl_batch(
 
   auto a_data = get_cudnn_scalar_arg<T>(propagate_down[0] ? 1 : 0);
   auto b_data = get_cudnn_scalar_arg<T>(accum[0] && propagate_down[0] ? 1 : 0);
-  auto a_param =
-      get_cudnn_scalar_arg<T>(propagate_down[1] || propagate_down[2] ? 1 : 0);
+  auto a_param = get_cudnn_scalar_arg<T>(pd_beta || pd_gamma ? 1 : 0);
   auto b_param = a_param;
-  if (!(accum[1] || accum[2])) {
+  if (!(accum_beta || accum_gamma)) {
     b_param = 0;
   }
 
@@ -293,7 +346,7 @@ void BatchNormalizationCudaCudnn<T>::backward_impl_batch(
     prop_down_workspace_size = std::max(
         prop_down_workspace_size, inputs[0]->size() * sizeof_dtype(DRV_BN_T()));
   }
-  if (!propagate_down[1] || !propagate_down[2]) {
+  if (!pd_beta || !pd_gamma) {
     prop_down_workspace_size = std::max(
         prop_down_workspace_size, inputs[1]->size() * sizeof_dtype(DRV_BN_T()));
   }
@@ -310,22 +363,44 @@ void BatchNormalizationCudaCudnn<T>::backward_impl_batch(
                ? inputs[0]->cast_grad_and_get_pointer<Tw>(this->ctx_, !accum[0])
                : (Tw *)prop_down_buf;
 
+  // dummy beta, gamma variables
+  Variable beta_dummy, gamma_dummy;
+  const auto param_shape = this->mean_.shape();
+  if (this->no_bias_) {
+    beta_dummy.reshape(param_shape, true);
+    beta_dummy.data()->zero();
+  }
+  if (this->no_scale_) {
+    gamma_dummy.reshape(param_shape, true);
+    gamma_dummy.data()->fill(1.);
+  }
+
   const void *beta =
-      inputs[1]->data()->get(DRV_BN_T(), this->ctx_)->const_pointer();
+      this->no_bias_
+          ? beta_dummy.data()->get(DRV_BN_T(), this->ctx_)->const_pointer()
+          : inputs[this->b_idx_]
+                ->data()
+                ->get(DRV_BN_T(), this->ctx_)
+                ->const_pointer();
 
   const void *gamma =
-      inputs[2]->data()->get(DRV_BN_T(), this->ctx_)->const_pointer();
+      this->no_scale_
+          ? gamma_dummy.data()->get(DRV_BN_T(), this->ctx_)->const_pointer()
+          : inputs[this->g_idx_]
+                ->data()
+                ->get(DRV_BN_T(), this->ctx_)
+                ->const_pointer();
 
   // Specify write only flag to prevent unnecessary memset.
   const bool param_diff_write = b_param == 0;
-  void *db = propagate_down[1]
-                 ? inputs[1]
+  void *db = pd_beta
+                 ? inputs[this->b_idx_]
                        ->grad()
                        ->cast(DRV_BN_T(), this->ctx_, param_diff_write)
                        ->pointer()
                  : prop_down_buf;
-  void *dg = propagate_down[2]
-                 ? inputs[2]
+  void *dg = pd_gamma
+                 ? inputs[this->g_idx_]
                        ->grad()
                        ->cast(DRV_BN_T(), this->ctx_, param_diff_write)
                        ->pointer()
