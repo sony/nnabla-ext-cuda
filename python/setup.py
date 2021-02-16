@@ -244,10 +244,20 @@ def cuda_config(root_dir, cuda_lib, ext_opts, lib_dirs):
                         for d in lib_dirs:
                             for currentdir, dirs, files in os.walk(d):
                                 if l in files and not copied and l not in libs:
-                                    print('Copying {}'.format(l))
                                     path_in = join(currentdir, l)
-                                    libs = search_dependencies(path_in, libs)
+                                    if l.lower() == 'cudnn64_8.dll':
+                                        for cudnn_lib in files:
+                                            if cudnn_lib.lower != 'cudnn64_8.lib':
+                                                print(
+                                                    'Copying {}'.format(cudnn_lib))
+                                                shutil.copyfile(join(currentdir, cudnn_lib), join(
+                                                    path_cuda_pkg, cudnn_lib))
+                                                libs.append(cudnn_lib)
+                                    else:
+                                        libs = search_dependencies(
+                                            path_in, libs)
                                     path_out = join(path_cuda_pkg, l)
+                                    print('Copying {}'.format(l))
                                     shutil.copyfile(path_in, path_out)
                                     libs.append(l)
                                     copied = True

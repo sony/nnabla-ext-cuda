@@ -83,15 +83,24 @@ def check_gpu_compatibility():
                         unusable_gpu.append(gpu)
                     break
         if len(unusable_gpu) > 0:
-            raise ValueError("Currnetly, nnabla-ext-cuda{} does not support your {} GPU. It may take a long time to initialize cudnn and can't converge well!\nYou can set environment variable AVAILABLE_GPU_NAMES=\"{}\" to avoid this error.".
-                             format(cuda_ver, ",".join(unusable_gpu), ",".join(unusable_gpu)))
+            raise ValueError("Currnetly, nnabla-ext-cuda" + cuda_ver + " does not support your " + ",".join(unusable_gpu) + " GPU." +
+                             " It may take a long time to initialize cudnn and can't converge well!\n" +
+                             "You can set environment variable AVAILABLE_GPU_NAMES=\"" +
+                             ",".join(unusable_gpu) + "\" to avoid this error.")
     cuda_ver = __cuda_version__.replace('.', '')
     cudnn_ver = __cudnn_version__[0]
-    compare_gpu(list_local_gpu(), incompatible_gpus,
-                cuda_ver, cudnn_ver)
+
+    try:
+        local_gpus = list_local_gpu()
+    except:
+        print(
+            "GPU compatibility could not be verified due to a problem getting the GPU list.")
+        return
+    compare_gpu(list_local_gpu(), incompatible_gpus, cuda_ver, cudnn_ver)
 
 
 check_gpu_compatibility()
+
 
 retry = 0
 while retry < MAX_RETRY_LOAD_SHARED_LIB:
