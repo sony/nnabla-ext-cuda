@@ -282,7 +282,7 @@ void CudnnConvResource::find_forward_algorithm(int workspace_limit,
       if (check_workspace_limit(workspace_limit, workspace_size)) {
         if (check_determinism(deterministic, perf_result.determinism)) {
           this->fwd_algo = perf_result.algo;
-          this->fwd_workspace_size = workspace_size;
+          this->fwd_workspace_size_ = workspace_size;
 #if CUDNN_VERSION >= 7000
           NBLA_CUDNN_CHECK(cudnnSetConvolutionMathType(this->conv_desc.desc,
                                                        perf_result.mathType));
@@ -349,7 +349,7 @@ void CudnnConvResource::find_backward_data_algorithm(int workspace_limit,
       if (check_workspace_limit(workspace_limit, workspace_size)) {
         if (check_determinism(deterministic, perf_result.determinism)) {
           this->bwd_data_algo = perf_result.algo;
-          this->bwd_data_workspace_size = workspace_size;
+          this->bwd_data_workspace_size_ = workspace_size;
 #if CUDNN_VERSION >= 7000
           NBLA_CUDNN_CHECK(cudnnSetConvolutionMathType(conv_dgrad_desc.desc,
                                                        perf_result.mathType));
@@ -417,7 +417,7 @@ void CudnnConvResource::find_backward_filter_algorithm(int workspace_limit,
       if (check_workspace_limit(workspace_limit, workspace_size)) {
         if (check_determinism(deterministic, perf_result.determinism)) {
           this->bwd_filter_algo = perf_result.algo;
-          this->bwd_filter_workspace_size = workspace_size;
+          this->bwd_filter_workspace_size_ = workspace_size;
 #if CUDNN_VERSION >= 7000
           NBLA_CUDNN_CHECK(cudnnSetConvolutionMathType(conv_wgrad_desc.desc,
                                                        perf_result.mathType));
@@ -453,9 +453,9 @@ void CudnnConvResource::get_forward_algorithm(int workspace_limit) {
   if (workspace_limit != 0) {
     NBLA_CUDNN_CHECK(get_workspace(cudnn_handle, this->x_desc, this->w_desc,
                                    this->conv_desc.desc, this->y_desc,
-                                   this->fwd_algo, &this->fwd_workspace_size));
+                                   this->fwd_algo, &this->fwd_workspace_size_));
   } else {
-    this->fwd_workspace_size = 0;
+    this->fwd_workspace_size_ = 0;
   }
 }
 
@@ -477,9 +477,9 @@ void CudnnConvResource::get_backward_data_algorithm(int workspace_limit) {
   if (workspace_limit != 0) {
     NBLA_CUDNN_CHECK(get_workspace(
         cudnn_handle, this->w_desc, this->y_desc, this->conv_dgrad_desc.desc,
-        this->x_desc, this->bwd_data_algo, &this->bwd_data_workspace_size));
+        this->x_desc, this->bwd_data_algo, &this->bwd_data_workspace_size_));
   } else {
-    this->bwd_data_workspace_size = 0;
+    this->bwd_data_workspace_size_ = 0;
   }
 }
 
@@ -499,11 +499,12 @@ void CudnnConvResource::get_backward_filter_algorithm(int workspace_limit) {
       cudnn_handle, this->x_desc, this->y_desc, this->conv_wgrad_desc.desc,
       this->w_desc, preference, workspace_limit, &this->bwd_filter_algo));
   if (workspace_limit != 0) {
-    NBLA_CUDNN_CHECK(get_workspace(
-        cudnn_handle, this->x_desc, this->y_desc, this->conv_wgrad_desc.desc,
-        this->w_desc, this->bwd_filter_algo, &this->bwd_filter_workspace_size));
+    NBLA_CUDNN_CHECK(get_workspace(cudnn_handle, this->x_desc, this->y_desc,
+                                   this->conv_wgrad_desc.desc, this->w_desc,
+                                   this->bwd_filter_algo,
+                                   &this->bwd_filter_workspace_size_));
   } else {
-    this->bwd_filter_workspace_size = 0;
+    this->bwd_filter_workspace_size_ = 0;
   }
 }
 #endif
@@ -535,15 +536,27 @@ void CudnnConvResource::find_best_algorithms() {
   printf("fwd_algo %d uses %10lu bytes\n"
          "bwd_data_algo %d uses %10lu bytes\n"
          "bwd_filter_algo %d uses %10lu bytes\n",
-         this->fwd_algo, this->fwd_workspace_size,
-         this->bwd_data_algo, this->bwd_data_workspace_size,
-         this->bwd_filter_algo, this->bwd_filter_workspace_size);
+         this->fwd_algo, this->fwd_workspace_size_,
+         this->bwd_data_algo, this->bwd_data_workspace_size_,
+         this->bwd_filter_algo, this->bwd_filter_workspace_size_);
 #endif
 }
 
-size_t CudnnConvResource::workspace_size() const {
-  return std::max(fwd_workspace_size,
-                  std::max(bwd_filter_workspace_size, bwd_data_workspace_size));
+size_t CudnnConvResource::max_workspace_size() const {
+  return std::max(fwd_workspace_size_, std::max(bwd_filter_workspace_size_,
+                                                bwd_data_workspace_size_));
+}
+
+size_t CudnnConvResource::fwd_workspace_size() const {
+  return fwd_workspace_size_;
+}
+
+size_t CudnnConvResource::bwd_filter_workspace_size() const {
+  return bwd_filter_workspace_size_;
+}
+
+size_t CudnnConvResource::bwd_data_workspace_size() const {
+  return bwd_data_workspace_size_;
 }
 
 ////////////////////////////////////////

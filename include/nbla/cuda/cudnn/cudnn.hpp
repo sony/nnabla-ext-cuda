@@ -320,19 +320,32 @@ struct NBLA_CUDA_API CudnnConvResource {
   cudnnConvolutionBwdFilterAlgo_t
       bwd_filter_algo; ///< Best Backward filter algorithm found.
   cudnnConvolutionBwdDataAlgo_t
-      bwd_data_algo;                ///< Best backward data algorithm found.
-  size_t fwd_workspace_size;        ///< Forward workspace size.
-  size_t bwd_filter_workspace_size; ///< Backward filter workspace size.
-  size_t bwd_data_workspace_size;   ///< Backward data workspace size.
+      bwd_data_algo; ///< Best backward data algorithm found.
 
   CudnnConvResource(const CudnnConvDesc &desc);
   ~CudnnConvResource();
 
   /** Get maximum workspace size.
    */
-  size_t workspace_size() const;
+  size_t max_workspace_size() const;
+
+  /** Get forward workspace size.
+   */
+  size_t fwd_workspace_size() const;
+
+  /** Get backward-filter workspace size.
+   */
+  size_t bwd_filter_workspace_size() const;
+
+  /** Get backward-data workspace size.
+   */
+  size_t bwd_data_workspace_size() const;
 
 private:
+  size_t fwd_workspace_size_;        ///< Forward workspace size.
+  size_t bwd_filter_workspace_size_; ///< Backward filter workspace size.
+  size_t bwd_data_workspace_size_;   ///< Backward data workspace size.
+
   void find_forward_algorithm(int workspace_limit, bool deterministic,
                               bool heuristic);
   void find_backward_data_algorithm(int workspace_limit, bool deterministic,
