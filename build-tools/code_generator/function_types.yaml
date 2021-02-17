@@ -582,3 +582,9 @@ PadPackedSequence:
 Norm:
   float: [float]
   half: [Half]
+STFT:
+  float: [float]
+  half: [Half]
+ISTFT:
+  float: [float]
+  half: [Half]
