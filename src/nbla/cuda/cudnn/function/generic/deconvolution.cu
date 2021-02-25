@@ -90,7 +90,7 @@ void DeconvolutionCudaCudnn<T>::forward_impl(const Variables &inputs,
   if (inputs.size() == 3) {
     b = inputs[2]->get_data_pointer<Tw>(this->ctx_);
   }
-  auto workspace_size = rsc_->workspace_size();
+  const auto workspace_size = rsc_->bwd_data_workspace_size();
   NdArray workspace_arr;
   void *workspace{nullptr};
   if (workspace_size) {
@@ -102,7 +102,7 @@ void DeconvolutionCudaCudnn<T>::forward_impl(const Variables &inputs,
   NBLA_CUDNN_CHECK(cudnnConvolutionBackwardData(
       cudnn_handle_, &alpha, rsc_->w_desc, w, rsc_->y_desc, y,
       rsc_->conv_dgrad_desc.desc, rsc_->bwd_data_algo, workspace,
-      rsc_->bwd_data_workspace_size, &beta, rsc_->x_desc, x));
+      workspace_size, &beta, rsc_->x_desc, x));
   if (inputs.size() == 3) {
     NBLA_CUDNN_CHECK(cudnnAddTensor(cudnn_handle_, &alpha, rsc_->b_desc_deconv,
                                     b, &alpha, rsc_->x_desc, x));
@@ -112,8 +112,7 @@ void DeconvolutionCudaCudnn<T>::forward_impl(const Variables &inputs,
     NBLA_CUDNN_CHECK(cudnnConvolutionBackwardData(
         cudnn_handle_, &alpha, rsc_->w_desc, w + w_offset_ * g, rsc_->y_desc,
         y + y_offset_ * g, rsc_->conv_dgrad_desc.desc, rsc_->bwd_data_algo,
-        workspace, rsc_->bwd_data_workspace_size, &beta, rsc_->x_desc,
-        x + x_offset_ * g));
+        workspace, workspace_size, &beta, rsc_->x_desc, x + x_offset_ * g));
     if (inputs.size() == 3) {
       // TODO: Bias addition should be outside of the loop. In that case,
       // b_desc and y_desc must be whole image descriptor.
@@ -152,7 +151,8 @@ void DeconvolutionCudaCudnn<T>::backward_impl(
   }
   auto alpha = get_cudnn_scalar_arg<T>(1);
 
-  auto workspace_size = rsc_->workspace_size();
+  const auto workspace_size =
+      std::max(rsc_->fwd_workspace_size(), rsc_->bwd_filter_workspace_size());
   NdArray workspace_arr;
   void *workspace{nullptr};
   if (workspace_size) {
@@ -167,14 +167,14 @@ void DeconvolutionCudaCudnn<T>::backward_impl(
     NBLA_CUDNN_CHECK(cudnnConvolutionForward(
         cudnn_handle_, &alpha, rsc_->x_desc, dx, rsc_->w_desc, w,
         rsc_->conv_desc.desc, rsc_->fwd_algo, workspace,
-        rsc_->fwd_workspace_size, &beta, rsc_->y_desc, dy));
+        rsc_->fwd_workspace_size(), &beta, rsc_->y_desc, dy));
   }
   if (propagate_down[1]) {
     auto beta = get_cudnn_scalar_arg<T>(accum[1] ? 1 : 0);
     NBLA_CUDNN_CHECK(cudnnConvolutionBackwardFilter(
         cudnn_handle_, &alpha, rsc_->x_desc, dx, rsc_->y_desc, y,
         rsc_->conv_wgrad_desc.desc, rsc_->bwd_filter_algo, workspace,
-        rsc_->bwd_filter_workspace_size, &beta, rsc_->w_desc, dw));
+        rsc_->bwd_filter_workspace_size(), &beta, rsc_->w_desc, dw));
   }
   if (inputs.size() == 3 && propagate_down[2]) {
     auto beta = get_cudnn_scalar_arg<T>(accum[2] ? 1 : 0);
@@ -190,7 +190,7 @@ void DeconvolutionCudaCudnn<T>::backward_impl(
       NBLA_CUDNN_CHECK(cudnnConvolutionForward(
           cudnn_handle_, &alpha, rsc_->x_desc, dx + x_offset_ * g, rsc_->w_desc,
           w + w_offset_ * g, rsc_->conv_desc.desc, rsc_->fwd_algo, workspace,
-          rsc_->fwd_workspace_size, &beta, rsc_->y_desc, dy + y_offset_ * g));
+          rsc_->fwd_workspace_size(), &beta, rsc_->y_desc, dy + y_offset_ * g));
     }
     if (propagate_down[1]) {
       auto beta = get_cudnn_scalar_arg<T>(accum[1] ? 1 : 0);
@@ -198,7 +198,7 @@ void DeconvolutionCudaCudnn<T>::backward_impl(
       NBLA_CUDNN_CHECK(cudnnConvolutionBackwardFilter(
           cudnn_handle_, &alpha, rsc_->x_desc, dx + x_offset_ * g, rsc_->y_desc,
           y + y_offset_ * g, rsc_->conv_wgrad_desc.desc, rsc_->bwd_filter_algo,
-          workspace, rsc_->bwd_filter_workspace_size, &beta, rsc_->w_desc,
+          workspace, rsc_->bwd_filter_workspace_size(), &beta, rsc_->w_desc,
           dw + w_offset_ * g));
     }
     if (inputs.size() == 3 && propagate_down[2]) {
