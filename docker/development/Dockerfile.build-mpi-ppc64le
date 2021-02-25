@@ -181,8 +181,6 @@ RUN umask 0 \
     && conda create -n nnabla-build python=${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR} \
     && conda activate nnabla-build \
     && conda update --all -y \
-    && conda install -y numpy scipy scikit-image six \
-    && pip install pynvml \
     && pip install -r /tmp/deps/requirements.txt \
     && conda clean -y --all \
     && cd / \
