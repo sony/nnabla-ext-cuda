@@ -794,13 +794,14 @@ bool CudnnHandleManager::get_heuristic_option() {
   static std::mutex mtx;
   std::lock_guard<std::mutex> lock(mtx);
   if (!called) {
-    // Read NNABLA_CUDNN_ALGORITHM_BY_HEURISTIC preference from
-    // environment. Default is `false` if the environment variable is
-    // not present. If present, then any value other than `0`
-    // (including an empty string) implies `true`.
+    // Read NNABLA_CUDNN_ALGORITHM_BY_HEURISTIC preference from environment.
+    // Default is `true` if the environment variable is not present
+    // If present, then any value other than `0` (including an empty string)
+    // implies `true`. The default "true" stems from the large GPU memory usage
+    // when cuDNN finds the best convolution algorithm.
     const char *e = std::getenv("NNABLA_CUDNN_ALGORITHM_BY_HEURISTIC");
     if (!e) {
-      this->heuristic_option_ = false;
+      this->heuristic_option_ = true;
     } else {
       try {
         this->heuristic_option_ = bool(std::stoi(e) != 0);
