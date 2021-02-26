@@ -420,7 +420,6 @@ void LSTMCudaCudnn<T>::setup_impl(const Variables &inputs,
   NBLA_CUDNN_CHECK(cudnnSetDropoutDescriptor(dropout_desc_.desc, cudnn_handle,
                                              this->dropout_, state_ptr,
                                              dropout_stateSize, dist(rgen)));
-  state_array_.array()->clear();
 
 // Set RNN descriptor.
 #if CUDNN_VERSION >= 7000
