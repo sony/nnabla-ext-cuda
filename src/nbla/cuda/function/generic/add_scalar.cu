@@ -19,5 +19,6 @@
 
 namespace nbla {
 
-NBLA_DEFINE_TRANSFORM_UNARY_CUDA_1(AddScalar, x + (T)a0, dy, double, false);
+NBLA_DEFINE_TRANSFORM_UNARY_CUDA_1(AddScalar, x + (T)a0, dy, false, false,
+                                   double);
 }

@@ -21,5 +21,5 @@
 
 namespace nbla {
 
-NBLA_DEFINE_TRANSFORM_UNARY_CUDA(Sinh, sinh(x), dy *cosh(x), false);
+NBLA_DEFINE_TRANSFORM_UNARY_CUDA(Sinh, sinh(x), dy *cosh(x), false, true);
 }

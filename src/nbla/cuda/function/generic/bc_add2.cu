@@ -19,5 +19,6 @@
 
 namespace nbla {
 
-NBLA_DEFINE_TRANSFORM_BINARY_CUDA(BcAdd2, x0 + x1, dy, dy);
+NBLA_DEFINE_TRANSFORM_BINARY_CUDA(BcAdd2, x0 + x1, dy, dy, false, false, false,
+                                  false);
 }

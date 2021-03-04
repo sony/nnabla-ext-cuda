@@ -18,5 +18,5 @@
 namespace nbla {
 
 NBLA_DEFINE_TRANSFORM_UNARY_CUDA_1(ResetNaN, isnan(x) ? (T)a0 : x,
-                                   isnan(x) ? (T)0 : dy, double, false);
+                                   isnan(x) ? (T)0 : dy, false, true, double);
 }

@@ -21,5 +21,6 @@
 
 namespace nbla {
 
-NBLA_DEFINE_TRANSFORM_UNARY_CUDA(ASinh, asinh(x), dy *rsqrt(x *x + 1), false);
+NBLA_DEFINE_TRANSFORM_UNARY_CUDA(ASinh, asinh(x), dy *rsqrt(x *x + 1), false,
+                                 true);
 }

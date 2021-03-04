@@ -20,5 +20,5 @@
 namespace nbla {
 
 NBLA_DEFINE_TRANSFORM_BINARY_CUDA(Maximum2, (x0 > x1) ? x0 : x1, (x0 > x1) * dy,
-                                  (x0 <= x1) * dy);
+                                  (x0 <= x1) * dy, false, false, true, true);
 }
