@@ -24,7 +24,7 @@ from ._version import (
     __author__,
     __email__
 )
-from .incompatibale_gpu_list import incompatible_gpus
+from .incompatible_gpu_list import incompatible_gpus
 
 
 #
