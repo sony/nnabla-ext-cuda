@@ -135,9 +135,10 @@ void DeconvolutionCudaCudnn<T>::backward_impl(
   }
   cuda_set_device(std::stoi(this->ctx_.device_id));
   const Tw *dx = outputs[0]->get_grad_pointer<Tw>(this->ctx_);
-  const Tw *y;
-  const Tw *w;
-  Tw *dy, *dw, *db;
+  const Tw *y = nullptr;
+  const Tw *w = nullptr;
+  Tw *dy, *dw, *db = nullptr;
+
   if (propagate_down[0]) {
     w = inputs[1]->get_data_pointer<Tw>(this->ctx_);
     dy = inputs[0]->cast_grad_and_get_pointer<Tw>(this->ctx_, !accum[0]);
@@ -146,7 +147,7 @@ void DeconvolutionCudaCudnn<T>::backward_impl(
     y = inputs[0]->get_data_pointer<Tw>(this->ctx_);
     dw = inputs[1]->cast_grad_and_get_pointer<Tw>(this->ctx_, !accum[1]);
   }
-  if (propagate_down[2]) {
+  if (inputs.size() == 3 && propagate_down[2]) {
     db = inputs[2]->cast_grad_and_get_pointer<Tw>(this->ctx_, !accum[2]);
   }
   auto alpha = get_cudnn_scalar_arg<T>(1);
