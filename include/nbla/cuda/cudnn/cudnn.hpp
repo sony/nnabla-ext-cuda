@@ -346,16 +346,16 @@ private:
   size_t bwd_filter_workspace_size_; ///< Backward filter workspace size.
   size_t bwd_data_workspace_size_;   ///< Backward data workspace size.
 
-  void find_forward_algorithm(int workspace_limit, bool deterministic,
+  void find_forward_algorithm(Size_t workspace_limit, bool deterministic,
                               bool heuristic);
-  void find_backward_data_algorithm(int workspace_limit, bool deterministic,
+  void find_backward_data_algorithm(Size_t workspace_limit, bool deterministic,
                                     bool heuristic);
-  void find_backward_filter_algorithm(int workspace_limit, bool deterministic,
-                                      bool heuristic);
+  void find_backward_filter_algorithm(Size_t workspace_limit,
+                                      bool deterministic, bool heuristic);
 #if CUDNN_VERSION < 3000
-  void get_forward_algorithm(int workspace_limit);
-  void get_backward_data_algorithm(int workspace_limit);
-  void get_backward_filter_algorithm(int workspace_limit);
+  void get_forward_algorithm(Size_t workspace_limit);
+  void get_backward_data_algorithm(Size_t workspace_limit);
+  void get_backward_filter_algorithm(Size_t workspace_limit);
 #endif
   void find_best_algorithms();
 };
@@ -394,7 +394,7 @@ public:
       @note The default value is -1. The default value is overwritten if an
             environment variable NNABLA_CUDNN_WORKSPACE_LIMIT is specified.
    */
-  int get_workspace_limit_in_bytes();
+  Size_t get_workspace_limit_in_bytes();
 
   /** Set a workspace limit.
 
@@ -402,7 +402,7 @@ public:
 
       @param[in] Limit in bytes.
    */
-  void set_workspace_limit_in_bytes(int bytes);
+  void set_workspace_limit_in_bytes(Size_t bytes);
 
   /* Get option for choosing deterministic algorithms.
 
@@ -468,7 +468,7 @@ public:
 protected:
   unordered_map<int, unordered_map<cudaStream_t, shared_ptr<cudnnHandle_t>>>
       handles_;
-  int workspace_limit_{0};           ///< Workspace limit in bytes.
+  Size_t workspace_limit_{0};        ///< Workspace limit in bytes.
   bool deterministic_option_{false}; ///< Choose deterministic algorithms
   bool heuristic_option_{false};     ///< Choose algorithm by a heuristic.
 
