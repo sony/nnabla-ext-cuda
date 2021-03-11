@@ -81,6 +81,6 @@ fname = os.path.join(basedir, 'skel', 'incompatibale_gpu_list.py.tmpl')
 tmpl = Template(filename=fname)
 lines = tmpl.render(args=incompatible_gpus)
 
-with open("./python/src/nnabla_ext/cuda/incompatibale_gpu_list.py", 'w') as f:
+with open("./python/src/nnabla_ext/cuda/incompatible_gpu_list.py", 'w') as f:
     for l in lines:
         f.write(l)

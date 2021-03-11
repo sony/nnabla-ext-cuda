@@ -24,7 +24,7 @@ from ._version import (
     __author__,
     __email__
 )
-from .incompatibale_gpu_list import incompatible_gpus
+from .incompatible_gpu_list import incompatible_gpus
 
 
 #
@@ -77,7 +77,7 @@ def check_gpu_compatibility():
             available_gpu_names = available_gpu_names.lower().split(',')
             local_gpus = list(set(local_gpus) - set(available_gpu_names))
         for gpu in local_gpus:
-            for inc_gpu in incompatible_gpu[(cuda_ver, cudnn_ver)]:
+            for inc_gpu in incompatible_gpu.get((cuda_ver, cudnn_ver), []):
                 if inc_gpu in gpu:  # mark gpu incompatible if it in incompatible gpu list
                     if gpu not in unusable_gpu:
                         unusable_gpu.append(gpu)

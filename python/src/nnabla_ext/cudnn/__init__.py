@@ -94,7 +94,7 @@ def check_gpu(device_id):
         available_gpu_names = available_gpu_names.lower().split(',')
         if gpu_name in available_gpu_names:
             return
-    for inc_gpu in incompatible_gpus[(cuda_ver, cudnn_ver)]:
+    for inc_gpu in incompatible_gpus.get((cuda_ver, cudnn_ver), []):
         if inc_gpu in gpu_name:  # raise error if GPU is in incompatible gpu list and not in white list
             raise ValueError(
                 "Currently, nnabla-ext-cuda{} does not support your {} GPU.".format(cuda_ver, gpu_name))
