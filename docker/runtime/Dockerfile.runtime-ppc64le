@@ -1,6 +1,14 @@
 ARG BASE
 FROM ${BASE}
 
+ARG PYTHON_VERSION_MAJOR
+ARG PYTHON_VERSION_MINOR
+ENV PYVERNAME=${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}
+
+RUN apt-get update
+RUN apt install -y software-properties-common
+RUN add-apt-repository ppa:deadsnakes/ppa
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         cmake \
@@ -16,24 +24,23 @@ RUN apt-get update \
         make \
         pkg-config \
         wget \
+        python${PYVERNAME} \
     && rm -rf /var/lib/apt/lists/*
 
-################################################## miniconda3
-ARG PYTHON_VERSION_MAJOR
-ARG PYTHON_VERSION_MINOR
-RUN umask 0 \
-    && mkdir -p /tmp/deps \
-    && cd /tmp/deps \
-    && wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-ppc64le.sh \
-    && bash Miniconda3-latest-Linux-ppc64le.sh -b -p /opt/miniconda3 \
-    && rm -rf Miniconda3-latest-Linux-ppc64le.sh \
-    && . /opt/miniconda3/bin/activate \
-    && conda install python=${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR} \
-    && conda update -y --all \
-    && conda install pip wheel opencv \
-    && conda clean -y --all \
-    && cd / \
-    && rm -rf /tmp/*
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       python${PYVERNAME}-distutils || echo "skip install python-distutils" \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-ENV PATH /opt/miniconda3/bin:$PATH
-ENV LD_LIBRARY_PATH /opt/miniconda3/lib:$LD_LIBRARY_PATH
+RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py \
+    && python${PYVERNAME} get-pip.py \
+    && rm get-pip.py
+
+RUN ln -s -f /usr/bin/python${PYVERNAME} /usr/bin/python3
+RUN ln -s -f /usr/bin/python${PYVERNAME} /usr/bin/python
+
+RUN pip install wheel
+RUN pip install opencv-python || true
+
+ENV LD_LIBRARY_PATH /usr/local/lib64:$LD_LIBRARY_PATH
