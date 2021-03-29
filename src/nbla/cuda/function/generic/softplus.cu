@@ -22,6 +22,8 @@
 #include <cmath>
 
 namespace nbla {
-NBLA_DEFINE_TRANSFORM_UNARY_CUDA(SoftPlus, std::log(std::exp(x) + (T)1),
+NBLA_DEFINE_TRANSFORM_UNARY_CUDA(SoftPlus,
+                                 x > (T)0 ? x + std::log(std::exp(-x) + (T)1)
+                                          : std::log(std::exp(x) + (T)1),
                                  dy / ((T)1 + std::exp(-x)), false);
 }
