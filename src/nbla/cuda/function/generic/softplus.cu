@@ -14,16 +14,14 @@
 
 // softplus.cpp
 
-#include <nbla/cuda/array/cuda_array.hpp>
-#include <nbla/cuda/common.hpp>
 #include <nbla/cuda/function/softplus.hpp>
 #include <nbla/cuda/function/utils/base_transform_unary.cuh>
 
 #include <cmath>
 
 namespace nbla {
-NBLA_DEFINE_TRANSFORM_UNARY_CUDA(SoftPlus,
-                                 x > (T)0 ? x + std::log(std::exp(-x) + (T)1)
-                                          : std::log(std::exp(x) + (T)1),
-                                 dy / ((T)1 + std::exp(-x)), false, true);
+NBLA_DEFINE_TRANSFORM_UNARY_CUDA_1(
+    SoftPlus, x > (T)0 ? x + std::log(std::exp(-x * (T)a0) + (T)1) / (T)a0
+                       : (std::log(std::exp(x * (T)a0) + (T)1)) / (T)a0,
+    dy / ((T)1 + std::exp(-(T)a0 * x)), double, false);
 }
