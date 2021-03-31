@@ -91,7 +91,7 @@ include(${NNABLA_DIR}/build-tools/cmake/Utils.cmake)
 # Code generator
 ###############################################################################
 if (MSVC)
-  set(ENV{PYTHONPATH} ${NNABLA_DIR}\\build-tools\\code_generator;$ENV{PYTHONPATH})
+  set(ENV{PYTHONPATH} "${NNABLA_DIR}\\build-tools\\code_generator;${PYTHON_PKG_DIR};$ENV{PYTHONPATH}")
 else()
   set(ENV{PYTHONPATH} ${NNABLA_DIR}/build-tools/code_generator:$ENV{PYTHONPATH})
 endif()

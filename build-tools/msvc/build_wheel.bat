@@ -41,11 +41,8 @@ IF NOT DEFINED WHL (
    exit /b 255
 )
 
-IF EXIST env RD /s /q env
-python -m venv --system-site-packages env || GOTO :error
-CALL env\scripts\activate.bat || GOTO :error
+pip install %WHL% || GOTO :error
 
-pip install --no-deps %WHL% || GOTO :error
 chcp 932
 cmake -G "%generate_target%" ^
       -DBUILD_CPP_LIB=OFF ^
@@ -57,6 +54,7 @@ cmake -G "%generate_target%" ^
       -DLIB_NAME_SUFFIX=%lib_name_suffix% ^
       -DNNABLA_DIR=%nnabla_root% ^
       -DPYTHON_COMMAND_NAME=python ^
+      -DPYTHON_PKG_DIR=%VENV_PYTHON_PKG_DIR% ^
       %nnabla_ext_cuda_root% || GOTO :error
 
 msbuild wheel.vcxproj /p:Configuration=%build_type% /verbosity:minimal || GOTO :error
