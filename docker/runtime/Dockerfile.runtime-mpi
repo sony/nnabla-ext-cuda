@@ -73,7 +73,7 @@ RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py \
 ARG CUDA_VERSION_MAJOR
 ARG CUDA_VERSION_MINOR
 
-RUN ln -s -f /usr/bin/python${PYVERNAME} /usr/bin/python
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python${PYVERNAME} 0
 RUN pip install wheel
 RUN pip install opencv-python || true
 RUN pip install --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda${CUDA_VERSION_MAJOR}0 \
