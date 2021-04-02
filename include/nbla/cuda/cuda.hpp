@@ -129,7 +129,6 @@ public:
 protected:
   std::mutex mtx_cublas_;
   std::mutex mtx_curand_;
-  std::mutex mtx_event_;
   std::mutex mtx_stream;
   unordered_map<int, cublasHandle_t>
       cublas_handles_; ///< cuBLAS handles for each device.
