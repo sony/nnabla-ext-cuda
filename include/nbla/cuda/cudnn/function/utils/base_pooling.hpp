@@ -47,6 +47,7 @@ protected:
   void backward_impl(const Variables &inputs, const Variables &outputs,
                      const vector<bool> &propagate_down,
                      const vector<bool> &accum) override;
+  virtual bool grad_depends_input_data_impl(int i, int j) const { return true; }
   /* Override this to determine cudnnPoolingMode_t fed to API.
    */
   virtual cudnnPoolingMode_t mode() const = 0;

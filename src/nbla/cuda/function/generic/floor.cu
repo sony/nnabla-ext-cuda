@@ -17,5 +17,5 @@
 
 namespace nbla {
 
-NBLA_DEFINE_TRANSFORM_UNARY_CUDA(Floor, floor(x), dy, false);
+NBLA_DEFINE_TRANSFORM_UNARY_CUDA(Floor, floor(x), dy, false, false);
 }

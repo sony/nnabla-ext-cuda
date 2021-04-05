@@ -18,5 +18,5 @@
 namespace nbla {
 
 NBLA_DEFINE_TRANSFORM_UNARY_CUDA_1(ResetInf, isinf(x) ? (T)a0 : x,
-                                   isinf(x) ? (T)0 : dy, double, false);
+                                   isinf(x) ? (T)0 : dy, false, true, double);
 }

@@ -22,5 +22,6 @@
 namespace nbla {
 
 NBLA_DEFINE_TRANSFORM_UNARY_CUDA(BinarySigmoid, (x > (T)0) ? (T)1 : (T)0,
-                                 (abs(x) >= (T)1) ? (T)0 : dy *(T)0.5, false);
+                                 (abs(x) >= (T)1) ? (T)0 : dy *(T)0.5, false,
+                                 true);
 }

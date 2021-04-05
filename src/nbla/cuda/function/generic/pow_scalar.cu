@@ -24,5 +24,5 @@ NBLA_DEFINE_TRANSFORM_UNARY_CUDA_1(
     a0 == 0.5f ? std::sqrt(x) : a0 == -0.5f ? rsqrt(x) : std::pow(x, (T)a0),
     dy *(T)a0 *std::pow((inplace ? std::pow(y, (T)1 / (T)a0) : x),
                         (T)a0 - (T)1),
-    double, false);
+    false, true, double);
 }

@@ -76,6 +76,9 @@ protected:                                                                     \
                                                                                \
   public:                                                                      \
     virtual bool grad_depends_output_data(int i, int o) const;                 \
+                                                                               \
+  protected:                                                                   \
+    virtual bool grad_depends_input_data_impl(int i, int j) const;             \
   }
 
 // ----------------------------------------------------------------------------
@@ -97,6 +100,9 @@ protected:                                                                     \
                                                                                \
   public:                                                                      \
     virtual bool grad_depends_output_data(int i, int o) const;                 \
+                                                                               \
+  protected:                                                                   \
+    virtual bool grad_depends_input_data_impl(int i, int j) const;             \
   }
 
 #define NBLA_DECLARE_TRANSFORM_UNARY_CUDA_1_INPLACE(NAME, A0)                  \
@@ -112,6 +118,9 @@ protected:                                                                     \
                                                                                \
   public:                                                                      \
     virtual bool grad_depends_output_data(int i, int o) const;                 \
+                                                                               \
+  protected:                                                                   \
+    virtual bool grad_depends_input_data_impl(int i, int j) const;             \
   }
 }
 #endif

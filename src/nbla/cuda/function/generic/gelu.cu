@@ -34,5 +34,5 @@ NBLA_DEFINE_TRANSFORM_UNARY_CUDA(
                                      (x + (T)0.044715 * std::pow(x, T(3)))),
                            T(2))) *
              std::sqrt((T)(2 / M_PI)) * (1 + 0.134145 * std::pow(x, T(2)))),
-    false);
+    false, true);
 }

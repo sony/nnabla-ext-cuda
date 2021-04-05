@@ -21,5 +21,5 @@ namespace nbla {
 NBLA_DEFINE_TRANSFORM_UNARY_CUDA(Swish, x / ((T)1 + exp(-x)),
                                  dy *(y +
                                       ((T)1 / ((T)1 + exp(-x))) * ((T)1 - y)),
-                                 true);
+                                 true, true);
 }

@@ -207,6 +207,22 @@ void backward_impl_transform_binary(const Variables &inputs,
         this->f_bc1_, this->inplace_, NAME##BinaryOpCuda(this->args_));        \
   }
 
+#define NBLA_DEFINE_BINARY_GRAD_DEPENDS_OUTPUT_DATA(NAME, DEP_Y_0, DEP_Y_1)    \
+  template <typename T>                                                        \
+  bool NAME##Cuda<T>::grad_depends_output_data(int i, int o) const {           \
+    if (i == 0)                                                                \
+      return DEP_Y_0;                                                          \
+    return DEP_Y_1;                                                            \
+  };
+
+#define NBLA_DEFINE_BINARY_GRAD_DEPENDS_INPUT_DATA(NAME, DEP_X_0, DEP_X_1)     \
+  template <typename T>                                                        \
+  bool NAME##Cuda<T>::grad_depends_input_data_impl(int i, int j) const {       \
+    if (i == 0)                                                                \
+      return DEP_X_0;                                                          \
+    return DEP_X_1;                                                            \
+  };
+
 // ----------------------------------------------------------------------------
 // Zero argument
 // ----------------------------------------------------------------------------
@@ -227,11 +243,16 @@ void backward_impl_transform_binary(const Variables &inputs,
   }
 #define NBLA_DEFINE_TRANSFORM_BINARY_CUDA_NO_GRAD(NAME, OP)                    \
   NBLA_DEFINE_BINARY_OP_CUDA_NO_GRAD(NAME, OP);                                \
-  NBLA_DEFINE_TRANSFORM_BINARY_CUDA_FORWARD_BACKWARD(NAME)
+  NBLA_DEFINE_TRANSFORM_BINARY_CUDA_FORWARD_BACKWARD(NAME)                     \
+  NBLA_DEFINE_BINARY_GRAD_DEPENDS_OUTPUT_DATA(NAME, false, false)              \
+  NBLA_DEFINE_BINARY_GRAD_DEPENDS_INPUT_DATA(NAME, false, false)
 
-#define NBLA_DEFINE_TRANSFORM_BINARY_CUDA(NAME, OP, GOP0, GOP1)                \
+#define NBLA_DEFINE_TRANSFORM_BINARY_CUDA(NAME, OP, GOP0, GOP1, DEP_Y_0,       \
+                                          DEP_Y_1, DEP_X_0, DEP_X_1)           \
   NBLA_DEFINE_BINARY_OP_CUDA(NAME, OP, GOP0, GOP1);                            \
-  NBLA_DEFINE_TRANSFORM_BINARY_CUDA_FORWARD_BACKWARD(NAME)
+  NBLA_DEFINE_TRANSFORM_BINARY_CUDA_FORWARD_BACKWARD(NAME)                     \
+  NBLA_DEFINE_BINARY_GRAD_DEPENDS_OUTPUT_DATA(NAME, DEP_Y_0, DEP_Y_1)          \
+  NBLA_DEFINE_BINARY_GRAD_DEPENDS_INPUT_DATA(NAME, DEP_X_0, DEP_X_1)
 
 // ----------------------------------------------------------------------------
 // One argument
@@ -246,8 +267,12 @@ void backward_impl_transform_binary(const Variables &inputs,
     NBLA_DEFINE_BINARY_OP_CUDA_BACKWARD(0, GOP0)                               \
     NBLA_DEFINE_BINARY_OP_CUDA_BACKWARD(1, GOP1)                               \
   }
-#define NBLA_DEFINE_TRANSFORM_BINARY_CUDA_1(NAME, OP, GOP0, GOP1, A0)          \
+
+#define NBLA_DEFINE_TRANSFORM_BINARY_CUDA_1(NAME, OP, GOP0, GOP1, DEP_Y_0,     \
+                                            DEP_Y_1, DEP_X_0, DEP_X_1, A0)     \
   NBLA_DEFINE_BINARY_OP_CUDA_1(NAME, OP, GOP0, GOP1, A0);                      \
-  NBLA_DEFINE_TRANSFORM_BINARY_CUDA_FORWARD_BACKWARD(NAME)
+  NBLA_DEFINE_TRANSFORM_BINARY_CUDA_FORWARD_BACKWARD(NAME)                     \
+  NBLA_DEFINE_BINARY_GRAD_DEPENDS_OUTPUT_DATA(NAME, DEP_Y_0, DEP_Y_1)          \
+  NBLA_DEFINE_BINARY_GRAD_DEPENDS_INPUT_DATA(NAME, DEP_X_0, DEP_X_1)
 }
 #endif

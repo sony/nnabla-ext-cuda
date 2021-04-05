@@ -70,6 +70,12 @@ protected:                                                                     \
       return create_##NAME(this->ctx_);                                        \
     }                                                                          \
     NBLA_DECLARE_TRANSFORM_BINARY_CUDA_FORWARD_BACKWARD();                     \
+                                                                               \
+  public:                                                                      \
+    virtual bool grad_depends_output_data(int i, int o) const;                 \
+                                                                               \
+  protected:                                                                   \
+    virtual bool grad_depends_input_data_impl(int i, int j) const;             \
   }
 
 #define NBLA_DECLARE_TRANSFORM_BINARY_CUDA_INPLACE(NAME)                       \
@@ -81,6 +87,12 @@ protected:                                                                     \
       return create_##NAME(this->ctx_, this->inplace_);                        \
     }                                                                          \
     NBLA_DECLARE_TRANSFORM_BINARY_CUDA_FORWARD_BACKWARD();                     \
+                                                                               \
+  public:                                                                      \
+    virtual bool grad_depends_output_data(int i, int o) const;                 \
+                                                                               \
+  protected:                                                                   \
+    virtual bool grad_depends_input_data_impl(int i, int j) const;             \
   }
 
 // ----------------------------------------------------------------------------
@@ -99,6 +111,12 @@ protected:                                                                     \
       return create_##NAME(this->ctx_, std::get<0>(this->args_));              \
     }                                                                          \
     NBLA_DECLARE_TRANSFORM_BINARY_CUDA_FORWARD_BACKWARD();                     \
+                                                                               \
+  public:                                                                      \
+    virtual bool grad_depends_output_data(int i, int o) const;                 \
+                                                                               \
+  protected:                                                                   \
+    virtual bool grad_depends_input_data_impl(int i, int j) const;             \
   }
 }
 #endif

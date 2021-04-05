@@ -22,5 +22,5 @@
 namespace nbla {
 
 NBLA_DEFINE_TRANSFORM_UNARY_CUDA(BinaryTanh, (x > (T)0) ? (T)1 : (T)-1,
-                                 (abs(x) >= (T)1) ? (T)0 : dy, false);
+                                 (abs(x) >= (T)1) ? (T)0 : dy, false, true);
 }

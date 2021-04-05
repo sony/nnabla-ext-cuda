@@ -21,5 +21,6 @@
 
 namespace nbla {
 
-NBLA_DEFINE_TRANSFORM_UNARY_CUDA(Tanh, tanh(x), dy *((T)1 - y * y), true);
+NBLA_DEFINE_TRANSFORM_UNARY_CUDA(Tanh, tanh(x), dy *((T)1 - y * y), true,
+                                 false);
 }

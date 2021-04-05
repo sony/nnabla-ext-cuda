@@ -22,6 +22,6 @@
 namespace nbla {
 
 NBLA_DEFINE_TRANSFORM_BINARY_CUDA(SquaredError, (x0 - x1) * (x0 - x1),
-                                  (T)2 * dy * (x0 - x1),
-                                  (T)-2 * dy * (x0 - x1));
+                                  (T)2 * dy * (x0 - x1), (T)-2 * dy * (x0 - x1),
+                                  false, false, true, true);
 }
