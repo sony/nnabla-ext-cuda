@@ -25,18 +25,30 @@ from ._version import (
     __email__
 )
 from .incompatible_gpu_list import incompatible_gpus
-
+import os
+import sys
 
 #
 # Workaround for loading shared library.
 #
+
+# From python3.8, PATH and the current working directory are no longer used to load DLL
+# User must use os.add_dll_directory() to add DLLs directory
+if sys.platform == 'win32':
+    py_ver = str(sys.version_info[0]) + '.' + str(sys.version_info[1])
+    if py_ver >= '3.8':
+        path_env = os.environ.get('PATH')
+        if path_env is not None:
+            path_env = path_env.lower().split(';')
+            for path in path_env:
+                if 'cuda' in path or 'cudnn' in path:
+                    os.add_dll_directory(path)
+
 MAX_RETRY_LOAD_SHARED_LIB = 100
 
 
 def load_shared_from_error(err):
     import ctypes
-    import os
-    import sys
     base = os.path.dirname(__file__)
     es = str(err).split(':')
     if len(es) > 0:

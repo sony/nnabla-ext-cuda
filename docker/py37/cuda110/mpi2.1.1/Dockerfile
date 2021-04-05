@@ -19,33 +19,29 @@ RUN apt-get update \
        bzip2 \
        ca-certificates \
        curl \
+       libglib2.0-0 \
+       libgl1-mesa-glx \
+       python3.7 \
+       python3-pip \
        openmpi-bin \
        openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
-RUN umask 0 \
-    && mkdir -p /tmp/deps \
-    && cd /tmp/deps \
-    && curl -L https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -o Miniconda3-latest-Linux-x86_64.sh \
-    && bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/miniconda3 \
-    && rm -rf Miniconda3-latest-Linux-x86_64.sh \
-    && PATH=/opt/miniconda3/bin:$PATH \
-    && conda install python=3.7 \
-    && conda install pip wheel \
-    && conda install opencv || true \
-    && pip install --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda110 \
-    || echo "Skip DALI installation (CUDA=11.0)" \
-    && conda clean -y --all \
-    && cd / \
-    && rm -rf /tmp/*
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.7 0
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 0
 
-ENV PATH /opt/miniconda3/bin:$PATH
+RUN pip3 install --upgrade pip
+RUN pip install wheel setuptools
+RUN pip install opencv-python || true
+
+RUN pip install --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda110 \
+    || echo "Skip DALI installation (CUDA=11.0)"
 
 
 ARG NNABLA_VER
 RUN pip install nnabla-ext-cuda110-nccl2-mpi2.1.1==${NNABLA_VER} nnabla_converter==${NNABLA_VER}
 
-# Solve nccl error that No space left on device 
+# Solve nccl error that No space left on device
 # while creating shared memory segment.
 RUN echo NCCL_SHM_DISABLE=1 >> /etc/nccl.conf
 RUN echo NCCL_P2P_LEVEL=SYS >> /etc/nccl.conf

@@ -45,6 +45,9 @@ RUN yum install -y \
         libmpc-devel \
         mpfr-devel \
         gmp-devel \
+        openssl-devel \
+        bzip2-devel \
+        libffi-devel \
     && yum group install -y "Development Tools" \
     && yum clean all
 
@@ -130,7 +133,7 @@ RUN mkdir /tmp/deps \
     && cd / \
     && rm -rf /tmp/*
 
-############################################################ miniconda3
+############################################################ build python from source
 ARG PYTHON_VERSION_MAJOR=3
 ARG PYTHON_VERSION_MINOR=6
 ENV PYVERNAME=${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}
@@ -141,24 +144,26 @@ ARG ARCH_SUFFIX
 ARG CUDA_VERSION_MAJOR=10
 ARG CUDA_VERSION_MINOR=0
 ARG CUDNN_VERSION=7
-RUN umask 0 \
-    && cd /tmp/deps \
-    && wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh \
-    && bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/miniconda3 \
-    && rm -rf Miniconda3-latest-Linux-x86_64.sh \
-    && . /opt/miniconda3/bin/activate \
-    && conda create -n nnabla-build python=${PYVERNAME} \
-    && conda activate nnabla-build \
-    && pip install -U -r /tmp/deps/requirements.txt \
-    && pip install --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR} \
-       || echo "Skip DALI installation (CUDA=${CUDA_VERSION_MAJOR}.${CUDA_VERSION_MINOR})" \
-    && conda install pytorch cudatoolkit=${CUDA_VERSION_MAJOR}.${CUDA_VERSION_MINOR} -c pytorch && echo "PyTorch is installed" \
-       || echo "Skip PyTorch installation" \
-    && conda clean -y --all \
-    && cd / \
-    && rm -rf /tmp/*
 
-ENV PATH /opt/miniconda3/envs/nnabla-build/bin:$PATH
-ENV LD_LIBRARY_PATH /opt/miniconda3/envs/nnabla-build/lib:$LD_LIBRARY_PATH
+RUN if [ "${PYVERNAME}" == "3.6" ]; then wget https://www.python.org/ftp/python/3.6.12/Python-3.6.12.tgz; fi \
+	&& if [ "${PYVERNAME}" == "3.7" ]; then wget https://www.python.org/ftp/python/3.7.10/Python-3.7.10.tgz; fi \
+	&& if [ "${PYVERNAME}" == "3.8" ]; then wget https://www.python.org/ftp/python/3.8.8/Python-3.8.8.tgz; fi \
+	&& if [ "${PYVERNAME}" == "3.9" ]; then wget https://www.python.org/ftp/python/3.9.2/Python-3.9.2.tgz; fi \
+	&& tar -xzf Python-${PYVERNAME}*.tgz \
+	&& cd Python-${PYVERNAME}* \
+	&& ./configure --enable-optimizations \
+	&& make altinstall \
+	&& ln -s /usr/local/bin/python${PYVERNAME} /usr/local/bin/python \
+	&& ln -s /usr/local/bin/pip${PYVERNAME} /usr/local/bin/pip \
+	&& pip install -U -r /tmp/deps/requirements.txt \
+	&& pip install --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR} \
+	&& pip install torch==1.7.1+cu${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR} -f https://download.pytorch.org/whl/torch_stable.html && echo "PyTorch is installed" \
+	   || echo "Skip PyTorch installation" \
+	&& cd .. \
+	&& rm -rf Python-${PYVERNAME}* \
+	&& rm -rf /tmp/*
+
+ENV PATH /tmp/.local/bin:$PATH
+ENV LD_LIBRARY_PATH /usr/local/lib64:$LD_LIBRARY_PATH
 ENV CC /usr/local/bin/gcc
 ENV CXX /usr/local/bin/g++

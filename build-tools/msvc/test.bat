@@ -31,14 +31,11 @@ IF NOT DEFINED WHLCUDA (
    exit /b 255
 )
 
-IF EXIST env RD /s /q env
-python -m venv --system-site-packages env || GOTO :error
-CALL env\scripts\activate.bat || GOTO :error
-
 pip install %WHL% || GOTO :error
 pip install --no-deps %WHLCUDA% || GOTO :error
+pip install pytest
 
-SET PYTHONPATH=%nnabla_ext_cuda_root%\python\test;%PYTHONPATH%
+SET PYTHONPATH=%nnabla_ext_cuda_root%\python\test;%VENV%\Lib\site-packages;%PYTHONPATH%
 python -m pytest %nnabla_root%\python\test || GOTO :error
 
 CALL deactivate.bat || GOTO :error
