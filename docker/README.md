@@ -26,7 +26,7 @@ docker build <options> -t <image name>:<tag> <Dockerfile folder>
 
 ## Tutorial image
 
-The image contains nnabla Python (3.5)  with CUDA extension (CUDA8.0 and CUDNN7.1) and [nnabla-examples](https://github.com/nnabla-examples/) repository.
+The image contains nnabla Python (3.5)  with CUDA extension (CUDA8.0 and CUDNN7.1) and [nnabla-examples](https://github.com/sony/nnabla-examples/) repository.
 The following command runs a jupyter server listening 8888 port on the host OS.
 
 ```
