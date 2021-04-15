@@ -24,6 +24,7 @@ RUN apt-get update \
         make \
         pkg-config \
         wget \
+        curl \
         python${PYVERNAME} \
     && rm -rf /var/lib/apt/lists/*
 
