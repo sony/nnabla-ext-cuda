@@ -13,7 +13,7 @@ REM distributed under the License is distributed on an "AS IS" BASIS,
 REM WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 REM See the License for the specific language governing permissions and
 REM limitations under the License.
-REM 
+REM
 
 
 SETLOCAL
@@ -24,7 +24,7 @@ CALL %~dp0tools\env.bat %1 %2 %3 || GOTO :error
 IF NOT EXIST %nnabla_build_folder% (
    ECHO nnabla_build_folder ^(%nnabla_build_folder%^) does not exist.
    exit /b 255
-)   
+)
 
 REM Build CUDA extension wheel
 IF NOT EXIST %nnabla_ext_cuda_build_wheel_folder% MKDIR %nnabla_ext_cuda_build_wheel_folder%
@@ -41,7 +41,7 @@ IF NOT DEFINED WHL (
    exit /b 255
 )
 
-pip install %WHL% || GOTO :error
+pip install %PIP_INS_OPTS% %WHL% || GOTO :error
 
 chcp 932
 cmake -G "%generate_target%" ^

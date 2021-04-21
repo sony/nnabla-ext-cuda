@@ -11,6 +11,11 @@ ARG BASE
 # ABCI:     2.1.6  (20)
 FROM ubuntu:18.04 as openmpi
 
+ARG PIP_INS_OPTS
+ARG PYTHONWARNINGS
+ARG CURL_OPTS
+ARG WGET_OPTS
+
 RUN apt-get update
 RUN apt-get install -y --no-install-recommends \
         build-essential \
@@ -22,7 +27,7 @@ RUN apt-get install -y --no-install-recommends \
 ARG MPIVER=3.1.6
 ARG OMPI_BUILD_FLAGS
 RUN mkdir /tmp/openmpi
-RUN curl https://download.open-mpi.org/release/open-mpi/v${MPIVER%.*}/openmpi-${MPIVER}.tar.bz2 -o /tmp/openmpi/openmpi-${MPIVER}.tar.bz2
+RUN curl ${CURL_OPTS} https://download.open-mpi.org/release/open-mpi/v${MPIVER%.*}/openmpi-${MPIVER}.tar.bz2 -o /tmp/openmpi/openmpi-${MPIVER}.tar.bz2
 RUN tar Cxvf /tmp/openmpi /tmp/openmpi/openmpi-${MPIVER}.tar.bz2
 RUN cd tmp/openmpi/openmpi-${MPIVER} \
     && ./configure \
@@ -39,6 +44,11 @@ RUN cd tmp/openmpi/openmpi-${MPIVER} \
 # Runtime image
 ############################################################
 FROM ${BASE}
+
+ARG PIP_INS_OPTS
+ARG PYTHONWARNINGS
+ARG CURL_OPTS
+ARG WGET_OPTS
 
 ARG PYTHON_VERSION_MAJOR
 ARG PYTHON_VERSION_MINOR
@@ -67,22 +77,22 @@ RUN apt-get update \
        python${PYVERNAME}-distutils || echo "skip install python-distutils" \
     && rm -rf /var/lib/apt/lists/*
 
-RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py \
-    && python${PYVERNAME} get-pip.py \
+RUN curl ${CURL_OPTS} https://bootstrap.pypa.io/get-pip.py -o get-pip.py \
+    && python${PYVERNAME} get-pip.py ${PIP_INS_OPTS} \
     && rm get-pip.py
 
 ARG CUDA_VERSION_MAJOR
 ARG CUDA_VERSION_MINOR
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python${PYVERNAME} 0
-RUN pip install wheel
-RUN pip install opencv-python || true
-RUN pip install --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda${CUDA_VERSION_MAJOR}0 \
+RUN pip install ${PIP_INS_OPTS} wheel
+RUN pip install ${PIP_INS_OPTS} opencv-python || true
+RUN pip install ${PIP_INS_OPTS} --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda${CUDA_VERSION_MAJOR}0 \
     || echo "Skip DALI installation (CUDA=${CUDA_VERSION_MAJOR}.0)"
 
 ARG WHL_PATH
 ADD $WHL_PATH/*.whl /tmp/
-RUN pip install /tmp/*.whl && rm -rf /tmp/*
+RUN pip install ${PIP_INS_OPTS} /tmp/*.whl && rm -rf /tmp/*
 
 ################################################## OpenMPI
 COPY --from=openmpi /opt/openmpi /opt/openmpi

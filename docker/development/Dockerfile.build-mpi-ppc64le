@@ -26,13 +26,20 @@ ARG CUDNN_VERSION=7
 # ABCI:     2.1.6  (20)
 FROM centos:7 as openmpi
 
+ARG PIP_INS_OPTS
+ARG PYTHONWARNINGS
+ARG CURL_OPTS
+ARG WGET_OPTS
+ARG YUM_OPTS
+
 ENV LC_ALL C
 ENV LANG C
 ENV LANGUAGE C
 
-RUN yum install -y \
-    epel-release \
-    yum-utils \
+RUN eval ${YUM_OPTS} \
+    && yum install -y \
+       epel-release \
+       yum-utils \
     && yum install -y \
         curl \
         rpm-build \
@@ -41,24 +48,26 @@ RUN yum install -y \
 
 ARG MPIVER=2.1.6
 RUN mkdir /root/rpmbuild
-RUN cd /root/rpmbuild; curl https://download.open-mpi.org/release/open-mpi/v${MPIVER%.*}/openmpi-${MPIVER}-1.src.rpm -o openmpi-${MPIVER}-1.src.rpm
+RUN cd /root/rpmbuild; curl ${CURL_OPTS} https://download.open-mpi.org/release/open-mpi/v${MPIVER%.*}/openmpi-${MPIVER}-1.src.rpm -o openmpi-${MPIVER}-1.src.rpm
 RUN cd /root/rpmbuild; rpmbuild --rebuild openmpi-${MPIVER}-1.src.rpm
 RUN mv /root/rpmbuild/RPMS/ppc64le/openmpi-${MPIVER}-1.*.rpm /root
 
 FROM nvidia/cuda-ppc64le:${CUDA_VERSION_MAJOR}.${CUDA_VERSION_MINOR}-cudnn${CUDNN_VERSION}-devel-centos7
 
+ARG PIP_INS_OPTS
+ARG PYTHONWARNINGS
+ARG CURL_OPTS
+ARG WGET_OPTS
+ARG YUM_OPTS
+
 ENV LC_ALL C
 ENV LANG C
 ENV LANGUAGE C
 
-ARG CUDA_VERSION_MAJOR=10
-ARG CUDA_VERSION_MINOR=0
-RUN yum install -y https://developer.download.nvidia.com/compute/machine-learning/repos/rhel7/ppc64le/nvidia-machine-learning-repo-rhel7-1.0.0-1.ppc64le.rpm
-RUN yum install -y libnccl-*+cuda${CUDA_VERSION_MAJOR}.${CUDA_VERSION_MINOR} libnccl-devel-*+cuda${CUDA_VERSION_MAJOR}.${CUDA_VERSION_MINOR}
-
-RUN yum install -y \
-    epel-release \
-    yum-utils \
+RUN eval ${YUM_OPTS} \
+    && yum install -y \
+       epel-release \
+       yum-utils \
     && yum install -y \
         curl \
         freetype-devel \
@@ -85,10 +94,24 @@ RUN yum install -y \
     && yum group install -y "Development Tools" \
     && yum clean all
 
+################################################### nvidia
+ARG CUDA_VERSION_MAJOR=10
+ARG CUDA_VERSION_MINOR=0
+
+RUN mkdir /tmp/deps \
+    && cd /tmp/deps \
+    && curl ${CURL_OPTS} -L https://developer.download.nvidia.com/compute/machine-learning/repos/rhel7/ppc64le/nvidia-machine-learning-repo-rhel7-1.0.0-1.ppc64le.rpm -o nvidia-machine-learning-repo-rhel7-1.0.0-1.ppc64le.rpm \
+    && yum install -y ./nvidia-machine-learning-repo-rhel7-1.0.0-1.ppc64le.rpm \
+    && yum clean all \
+    && cd / \
+    && rm -rf /tmp/*
+
+RUN yum install -y libnccl-*+cuda${CUDA_VERSION_MAJOR}.${CUDA_VERSION_MINOR} libnccl-devel-*+cuda${CUDA_VERSION_MAJOR}.${CUDA_VERSION_MINOR}
+
 ################################################### gcc
 RUN mkdir /tmp/deps \
     && cd /tmp/deps \
-    && wget http://ftp.tsukuba.wide.ad.jp/software/gcc/releases/gcc-4.9.2/gcc-4.9.2.tar.bz2 \
+    && wget ${WGET_OPTS} http://ftp.tsukuba.wide.ad.jp/software/gcc/releases/gcc-4.9.2/gcc-4.9.2.tar.bz2 \
     && tar xfj gcc-4.9.2.tar.bz2 \
     && cd gcc-4.9.2 \
     && ./configure --disable-multilib --enable-languages=c,c++ \
@@ -102,7 +125,7 @@ ARG CMAKEVER=3.14.3
 RUN mkdir /tmp/deps \
     && cd /tmp/deps \
     && yum install -y cmake3 \
-    && curl -L https://github.com/Kitware/CMake/releases/download/v${CMAKEVER}/cmake-${CMAKEVER}.tar.gz -o cmake-${CMAKEVER}.tar.gz \
+    && curl ${CURL_OPTS} -L https://github.com/Kitware/CMake/releases/download/v${CMAKEVER}/cmake-${CMAKEVER}.tar.gz -o cmake-${CMAKEVER}.tar.gz \
     && tar xf cmake-${CMAKEVER}.tar.gz \
     && cd cmake-${CMAKEVER} \
     && mkdir build \
@@ -120,7 +143,7 @@ RUN mkdir /tmp/deps \
 ARG PROTOVER=3.10.1
 RUN mkdir /tmp/deps \
     && cd /tmp/deps \
-    && curl -L https://github.com/google/protobuf/archive/v${PROTOVER}.tar.gz -o protobuf-v${PROTOVER}.tar.gz \
+    && curl ${CURL_OPTS} -L https://github.com/google/protobuf/archive/v${PROTOVER}.tar.gz -o protobuf-v${PROTOVER}.tar.gz \
     && tar xvf protobuf-v${PROTOVER}.tar.gz \
     && cd protobuf-${PROTOVER} \
     && mkdir build \
@@ -137,7 +160,7 @@ RUN mkdir /tmp/deps \
 ############################################################ libarchive
 RUN mkdir /tmp/deps \
     && cd /tmp/deps \
-    && curl -L https://www.libarchive.org/downloads/libarchive-3.3.2.tar.gz -o libarchive-3.3.2.tar.gz \
+    && curl ${CURL_OPTS} -L https://www.libarchive.org/downloads/libarchive-3.3.2.tar.gz -o libarchive-3.3.2.tar.gz \
     && tar xfa libarchive-3.3.2.tar.gz \
     && mkdir libarchive-build \
     && cd libarchive-build \
@@ -156,7 +179,7 @@ RUN mkdir /tmp/deps \
 ############################################################ patchelf
 RUN mkdir /tmp/deps \
     && cd /tmp/deps \
-    && wget http://nixos.org/releases/patchelf/patchelf-0.9/patchelf-0.9.tar.bz2 \
+    && wget ${WGET_OPTS} http://nixos.org/releases/patchelf/patchelf-0.9/patchelf-0.9.tar.bz2 \
     && tar xfa patchelf-0.9.tar.bz2 \
     && cd patchelf-0.9 \
     && ./configure \
@@ -175,17 +198,17 @@ ARG PYTHON_VERSION_MINOR=6
 ENV PYVERNAME=${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}
 
 ADD python/requirements.txt /tmp/deps/
-RUN if [ "${PYVERNAME}" == "3.6" ]; then wget https://www.python.org/ftp/python/3.6.12/Python-3.6.12.tgz; fi \
-	&& if [ "${PYVERNAME}" == "3.7" ]; then wget https://www.python.org/ftp/python/3.7.10/Python-3.7.10.tgz; fi \
-	&& if [ "${PYVERNAME}" == "3.8" ]; then wget https://www.python.org/ftp/python/3.8.8/Python-3.8.8.tgz; fi \
-	&& if [ "${PYVERNAME}" == "3.9" ]; then wget https://www.python.org/ftp/python/3.9.2/Python-3.9.2.tgz; fi \
+RUN if [ "${PYVERNAME}" == "3.6" ]; then wget ${WGET_OPTS} https://www.python.org/ftp/python/3.6.12/Python-3.6.12.tgz; fi \
+	&& if [ "${PYVERNAME}" == "3.7" ]; then wget ${WGET_OPTS} https://www.python.org/ftp/python/3.7.10/Python-3.7.10.tgz; fi \
+	&& if [ "${PYVERNAME}" == "3.8" ]; then wget ${WGET_OPTS} https://www.python.org/ftp/python/3.8.8/Python-3.8.8.tgz; fi \
+	&& if [ "${PYVERNAME}" == "3.9" ]; then wget ${WGET_OPTS} https://www.python.org/ftp/python/3.9.2/Python-3.9.2.tgz; fi \
 	&& tar -xzf Python-${PYVERNAME}*.tgz \
 	&& cd Python-${PYVERNAME}* \
 	&& ./configure --enable-optimizations \
 	&& make altinstall \
 	&& ln -s /usr/local/bin/python${PYVERNAME} /usr/local/bin/python \
 	&& ln -s /usr/local/bin/pip${PYVERNAME} /usr/local/bin/pip \
-	&& pip install -U -r /tmp/deps/requirements.txt \
+	&& pip install ${PIP_INS_OPTS} -U -r /tmp/deps/requirements.txt \
 	&& cd .. \
 	&& rm -rf Python-${PYVERNAME}* \
 	&& rm -rf /tmp/*
