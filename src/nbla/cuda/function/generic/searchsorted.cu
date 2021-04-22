@@ -62,7 +62,7 @@ kernel_searchsorted_forward(const int v_size, const int ss_last_dim_,
         break;
       }
 
-      if (!right_ and values[v_idx] == sorted_sequence[start]) {
+      if (!right_ && values[v_idx] == sorted_sequence[start]) {
         i_idx = start;
         break;
       }
@@ -106,5 +106,10 @@ template <typename T>
 void SearchSortedCuda<T>::backward_impl(const Variables &inputs,
                                         const Variables &outputs,
                                         const vector<bool> &propagate_down,
-                                        const vector<bool> &accum) {}
+                                        const vector<bool> &accum) {
+  NBLA_ERROR(error_code::not_implemented,
+             "Do not call backward on SearchSorted. \n"
+             "SearchSorted is a search and lookup function. It is not intended "
+             "to be differentiable");
+}
 }
