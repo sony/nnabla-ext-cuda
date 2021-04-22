@@ -57,6 +57,7 @@ RUN eval ${YUM_OPTS} \
         libffi-devel \
         libsndfile \
         python-backports-lzma \
+        nsight-systems-2021.5.2 \
     && yum group install -y "Development Tools" \
     && yum clean all
 

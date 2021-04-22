@@ -13,19 +13,64 @@
 // limitations under the License.
 
 #include "nbla/cuda/nvtx.hpp"
-
-#include <string>
-
-using std::string;
-
-////////////////////////////////////////
-// Define internal use only functions
-////////////////////////////////////////
-
-#ifdef WITH_NVTX
+#ifndef _WIN32
+#include <dlfcn.h>
 #include <nvToolsExt.h>
+#endif
+#include <string>
 #include <vector>
 
+namespace nbla {
+#ifndef _WIN32
+int (*nvtxInitialize)(const nvtxInitializationAttributes_t *) = nullptr;
+void (*nvtxMarkA)(const char *) = nullptr;
+int (*nvtxRangePushA)(const char *) = nullptr;
+int (*nvtxRangePushEx)(const nvtxEventAttributes_t *) = nullptr;
+int (*nvtxRangePop)(void) = nullptr;
+
+static const char *NVTX_DYNAMIC_LIBRARY = "libnvToolsExt.so";
+static void *nvtx_library_handle = nullptr;
+
+int dl_nvtx_init(void) {
+  dlerror(); // Clear any existing error
+
+  nvtx_library_handle = dlopen(NVTX_DYNAMIC_LIBRARY, RTLD_NOW);
+  if (nvtx_library_handle == nullptr) {
+    return -1;
+  }
+
+  nvtxInitialize = (int (*)(const nvtxInitializationAttributes_t *))dlsym(
+      nvtx_library_handle, "nvtxInitialize");
+  nvtxMarkA = (void (*)(const char *))dlsym(nvtx_library_handle, "nvtxMarkA");
+  nvtxRangePushA =
+      (int (*)(const char *))dlsym(nvtx_library_handle, "nvtxRangePushA");
+  nvtxRangePushEx = (int (*)(const nvtxEventAttributes_t *))dlsym(
+      nvtx_library_handle, "nvtxRangePushEx");
+  nvtxRangePop = (int (*)(void))dlsym(nvtx_library_handle, "nvtxRangePop");
+
+  const char *error = dlerror();
+  if (error != nullptr) {
+    fprintf(stderr, "%s\n", error);
+    dl_nvtx_finish();
+    return -1;
+  }
+  return 0;
+}
+
+int dl_nvtx_finish(void) {
+  if (nvtx_library_handle != nullptr) {
+    nvtxInitialize = nullptr;
+    nvtxMarkA = nullptr;
+    nvtxRangePushA = nullptr;
+    nvtxRangePushEx = nullptr;
+    nvtxRangePop = nullptr;
+    dlclose(nvtx_library_handle);
+    nvtx_library_handle = nullptr;
+  }
+  return 0;
+}
+
+using std::string;
 using std::vector;
 
 const vector<uint32_t> colors = {
@@ -51,45 +96,41 @@ inline void nvtxRangePushWithColorChange(const char *msg) {
   eventAttrib.messageType = NVTX_MESSAGE_TYPE_ASCII;
   eventAttrib.message.ascii = msg;
 
-  nvtxRangePushEx(&eventAttrib);
+  if (nvtxRangePushEx != nullptr) {
+    nvtxRangePushEx(&eventAttrib);
+  }
 }
-
-#else
-
-inline void nvtxMarkA(const char *) {}
-
-//
-// inline void nvtxMarkEx(...) {}
-//
-// inline int nvtxRangeStartA(const char *) { return 0; }
-//
-// inline int nvtxRangeStartEx(...) { return 0; }
-//
-// inline void nvtxRangeEnd(nvtxRangeId_t) {}
-//
-inline void nvtxRangePushA(const char *) {}
-//
-// inline void nvtxRangePushEx(...) {}
-//
-
-inline void nvtxRangePushWithColorChange(const char *) {}
-
-inline void nvtxRangePop() {}
-
-#endif // WITH_NVTX
 
 ////////////////////////////////////////
 // Define functions used by cython
 ////////////////////////////////////////
+void nvtx_mark_A(string msg) {
+  if (nvtxMarkA != nullptr) {
+    nvtxMarkA(msg.c_str());
+  }
+}
 
-namespace nbla {
-void nvtx_mark_A(string msg) { nvtxMarkA(msg.c_str()); };
-
-void nvtx_range_push_A(string msg) { nvtxRangePushA(msg.c_str()); };
+void nvtx_range_push_A(string msg) {
+  if (nvtxRangePushA != nullptr) {
+    nvtxRangePushA(msg.c_str());
+  }
+}
 
 void nvtx_range_push_with_C(string msg) {
   nvtxRangePushWithColorChange(msg.c_str());
 }
 
-void nvtx_range_pop() { nvtxRangePop(); };
+void nvtx_range_pop() {
+  if (nvtxRangePop != nullptr) {
+    nvtxRangePop();
+  }
 }
+#else
+int dl_nvtx_init(void) { return 0; }
+int dl_nvtx_finish(void) { return 0; }
+void nvtx_mark_A(string msg) {}
+void nvtx_range_push_A(string msg) {}
+void nvtx_range_push_with_C(string msg) {}
+void nvtx_range_pop() {}
+#endif
+} // namespace nbla
