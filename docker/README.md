@@ -30,7 +30,7 @@ The image contains nnabla Python (3.5)  with CUDA extension (CUDA8.0 and CUDNN7.
 The following command runs a jupyter server listening 8888 port on the host OS.
 
 ```
-nvidia-docker run -it --rm -p 8888:8888 nnabla/nnabla-ext-cuda:tutorial jupyter notebook --ip=* --allow-root --NotebookApp.token=nnabla
+nvidia-docker run -it --rm -p 8888:8888 nnabla/nnabla-ext-cuda:tutorial jupyter notebook --ip=0.0.0.0 --allow-root --NotebookApp.token=nnabla
 ```
 
 You can connect the jupyter server with your browser by accessing
