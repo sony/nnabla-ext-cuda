@@ -244,6 +244,9 @@ LessEqual:
 Less:
   float: [float]
   half: [Half]
+SearchSorted:
+  float: [float]
+  # half: [Half]
 LogicalAndScalar:
   float: [float]
   half: [Half]
@@ -328,6 +331,9 @@ Cosh:
 Concatenate:
   float: [float]
   half: [Half]
+Meshgrid:
+  float: [float]
+  # half: [Half]
 Split:
   float: [float]
   half: [Half]
