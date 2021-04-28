@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-import requests
+import urllib.request as request
 from html.parser import HTMLParser
 import re
 from mako.template import Template
@@ -21,7 +21,7 @@ import os
 from gpu_info import incompatible_arcs, gpu_compute_capability_to_arc
 
 basedir = os.path.dirname(os.path.abspath(__file__))
-r = requests.get('https://developer.nvidia.com/cuda-gpus', stream=True)
+r = request.urlopen('https://developer.nvidia.com/cuda-gpus')
 
 
 class GetGpuListFromNvidiaSite(HTMLParser):
@@ -65,7 +65,7 @@ class GetGpuListFromNvidiaSite(HTMLParser):
 
 
 parser = GetGpuListFromNvidiaSite()
-parser.feed(''.join([l.decode() for l in r.raw.readlines()]))
+parser.feed(r.read().decode())
 gpus_info = parser.gpu_data
 
 incompatible_gpus = {}
