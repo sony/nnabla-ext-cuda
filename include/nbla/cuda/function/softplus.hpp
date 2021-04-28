@@ -22,6 +22,6 @@ namespace nbla {
 
 /** @copydoc SoftPlus
 */
-NBLA_DECLARE_TRANSFORM_UNARY_CUDA(SoftPlus);
+NBLA_DECLARE_TRANSFORM_UNARY_CUDA_1(SoftPlus, double);
 }
 #endif
