@@ -26,8 +26,8 @@ public:
 
   explicit RoiAlignCuda(const Context &ctx, const vector<int> &output_size,
                         const vector<float> &spatial_scale, int sampling_ratio,
-                        bool aligned, bool channel_last)
-      : RoiAlign<T>(ctx, output_size, spatial_scale, sampling_ratio, aligned,
+                        bool channel_last)
+      : RoiAlign<T>(ctx, output_size, spatial_scale, sampling_ratio,
                     channel_last),
         device_(std::stoi(ctx.device_id)) {}
   virtual ~RoiAlignCuda() {}

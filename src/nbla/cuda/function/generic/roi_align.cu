@@ -21,23 +21,9 @@
 namespace nbla {
 
 namespace {
-template <typename T, bool ALIGNED> struct Box {
+template <typename T> struct Box {
   T batch_index, x1, y1, x2, y2;
 
-  __forceinline__ __device__ void scale_and_shift_if_aligned(float scale_y,
-                                                             float scale_x) {
-    x1 = ALIGNED ? x1 * scale_x - T(0.5) : x1 * scale_x;
-    y1 = ALIGNED ? y1 * scale_y - T(0.5) : y1 * scale_y;
-    x2 = ALIGNED ? x2 * scale_x - T(0.5) : x2 * scale_x;
-    y2 = ALIGNED ? y2 * scale_y - T(0.5) : y2 * scale_y;
-  }
-
-  __forceinline__ __device__ T width() {
-    return ALIGNED ? x2 - x1 : max(x2 - x1, T(1));
-  };
-  __forceinline__ __device__ T height() {
-    return ALIGNED ? y2 - y1 : max(y2 - y1, T(1));
-  };
   __forceinline__ __device__ int index() {
     return max(static_cast<int>(batch_index), 0);
   }
@@ -51,7 +37,7 @@ __forceinline__ __device__ int sampling_grid(const int sampling_ratio,
 }
 }
 
-template <typename T, typename SIZE_T, bool ALIGNED>
+template <typename T, typename SIZE_T>
 __global__ void roi_align_forward_kernel_nchw(
     const SIZE_T size, const T *input_data, const T *boxes_data, T *output_data,
     const SIZE_T channels, const SIZE_T input_rows, const SIZE_T input_cols,
@@ -68,11 +54,14 @@ __global__ void roi_align_forward_kernel_nchw(
     SIZE_T y = index / output_cols;
     SIZE_T x = index - y * output_cols;
 
-    auto roi = *reinterpret_cast<Box<T, ALIGNED> const *>(boxes_data + n * 5);
-    roi.scale_and_shift_if_aligned(spatial_scale_y, spatial_scale_x);
+    auto roi = *reinterpret_cast<Box<T> const *>(boxes_data + n * 5);
+    auto const roi_x1 = static_cast<T>(roi.x1 * spatial_scale_x - 0.5f);
+    auto const roi_y1 = static_cast<T>(roi.y1 * spatial_scale_y - 0.5f);
+    auto const roi_x2 = static_cast<T>(roi.x2 * spatial_scale_x - 0.5f);
+    auto const roi_y2 = static_cast<T>(roi.y2 * spatial_scale_y - 0.5f);
 
-    auto const step_size_x = roi.width() / static_cast<T>(output_cols);
-    auto const step_size_y = roi.height() / static_cast<T>(output_rows);
+    auto const step_size_x = (roi_x2 - roi_x1) / static_cast<T>(output_cols);
+    auto const step_size_y = (roi_y2 - roi_y1) / static_cast<T>(output_rows);
 
     auto const grid_size_x = sampling_grid(sampling_ratio, step_size_x);
     auto const grid_size_y = sampling_grid(sampling_ratio, step_size_y);
@@ -84,8 +73,8 @@ __global__ void roi_align_forward_kernel_nchw(
     auto const half_step_xx = T(0.5) * step_size_xx;
     auto const half_step_yy = T(0.5) * step_size_yy;
 
-    auto const xf = roi.x1 + static_cast<T>(x) * step_size_x + half_step_xx;
-    auto const yf = roi.y1 + static_cast<T>(y) * step_size_y + half_step_yy;
+    auto const xf = roi_x1 + static_cast<T>(x) * step_size_x + half_step_xx;
+    auto const yf = roi_y1 + static_cast<T>(y) * step_size_y + half_step_yy;
 
     auto input_sample_data = input_data + roi.index() * input_stride_n;
     auto input_channel_data = input_sample_data + c * input_stride_c;
@@ -142,7 +131,7 @@ __global__ void roi_align_forward_kernel_nchw(
   }
 }
 
-template <typename T, typename SIZE_T, bool ALIGNED>
+template <typename T, typename SIZE_T>
 __global__ void roi_align_forward_kernel_nhwc(
     const SIZE_T size, const T *input_data, const T *boxes_data, T *output_data,
     const SIZE_T channels, const SIZE_T input_rows, const SIZE_T input_cols,
@@ -156,11 +145,14 @@ __global__ void roi_align_forward_kernel_nhwc(
     SIZE_T y = i / output_cols;
     SIZE_T x = i - y * output_cols;
 
-    auto roi = *reinterpret_cast<Box<T, ALIGNED> const *>(boxes_data + n * 5);
-    roi.scale_and_shift_if_aligned(spatial_scale_y, spatial_scale_x);
+    auto roi = *reinterpret_cast<Box<T> const *>(boxes_data + n * 5);
+    auto const roi_x1 = static_cast<T>(roi.x1 * spatial_scale_x - 0.5f);
+    auto const roi_y1 = static_cast<T>(roi.y1 * spatial_scale_y - 0.5f);
+    auto const roi_x2 = static_cast<T>(roi.x2 * spatial_scale_x - 0.5f);
+    auto const roi_y2 = static_cast<T>(roi.y2 * spatial_scale_y - 0.5f);
 
-    auto const step_size_x = roi.width() / static_cast<T>(output_cols);
-    auto const step_size_y = roi.height() / static_cast<T>(output_rows);
+    auto const step_size_x = (roi_x2 - roi_x1) / static_cast<T>(output_cols);
+    auto const step_size_y = (roi_y2 - roi_y1) / static_cast<T>(output_rows);
 
     auto const grid_size_x = sampling_grid(sampling_ratio, step_size_x);
     auto const grid_size_y = sampling_grid(sampling_ratio, step_size_y);
@@ -172,8 +164,8 @@ __global__ void roi_align_forward_kernel_nhwc(
     auto const half_step_xx = T(0.5) * step_size_xx;
     auto const half_step_yy = T(0.5) * step_size_yy;
 
-    auto const xf = roi.x1 + static_cast<T>(x) * step_size_x + half_step_xx;
-    auto const yf = roi.y1 + static_cast<T>(y) * step_size_y + half_step_yy;
+    auto const xf = roi_x1 + static_cast<T>(x) * step_size_x + half_step_xx;
+    auto const yf = roi_y1 + static_cast<T>(y) * step_size_y + half_step_yy;
 
     auto input_sample_data = input_data + roi.index() * input_stride_n;
     auto output_channel_data = output_data + thread_index * channels;
@@ -239,7 +231,7 @@ __global__ void roi_align_forward_kernel_nhwc(
   }
 }
 
-template <typename T, typename SIZE_T, bool ALIGNED>
+template <typename T, typename SIZE_T>
 __global__ void roi_align_backward_kernel_nchw(
     const SIZE_T size, T *input_grad, const T *boxes_data, const T *output_grad,
     const SIZE_T channels, const SIZE_T input_rows, const SIZE_T input_cols,
@@ -256,11 +248,14 @@ __global__ void roi_align_backward_kernel_nchw(
     SIZE_T y = index / output_cols;
     SIZE_T x = index - y * output_cols;
 
-    auto roi = *reinterpret_cast<Box<T, ALIGNED> const *>(boxes_data + n * 5);
-    roi.scale_and_shift_if_aligned(spatial_scale_y, spatial_scale_x);
+    auto roi = *reinterpret_cast<Box<T> const *>(boxes_data + n * 5);
+    auto const roi_x1 = static_cast<T>(roi.x1 * spatial_scale_x - 0.5f);
+    auto const roi_y1 = static_cast<T>(roi.y1 * spatial_scale_y - 0.5f);
+    auto const roi_x2 = static_cast<T>(roi.x2 * spatial_scale_x - 0.5f);
+    auto const roi_y2 = static_cast<T>(roi.y2 * spatial_scale_y - 0.5f);
 
-    auto const step_size_x = roi.width() / static_cast<T>(output_cols);
-    auto const step_size_y = roi.height() / static_cast<T>(output_rows);
+    auto const step_size_x = (roi_x2 - roi_x1) / static_cast<T>(output_cols);
+    auto const step_size_y = (roi_y2 - roi_y1) / static_cast<T>(output_rows);
 
     auto const grid_size_x = sampling_grid(sampling_ratio, step_size_x);
     auto const grid_size_y = sampling_grid(sampling_ratio, step_size_y);
@@ -272,8 +267,8 @@ __global__ void roi_align_backward_kernel_nchw(
     auto const half_step_xx = T(0.5) * step_size_xx;
     auto const half_step_yy = T(0.5) * step_size_yy;
 
-    auto const xf = roi.x1 + static_cast<T>(x) * step_size_x + half_step_xx;
-    auto const yf = roi.y1 + static_cast<T>(y) * step_size_y + half_step_yy;
+    auto const xf = roi_x1 + static_cast<T>(x) * step_size_x + half_step_xx;
+    auto const yf = roi_y1 + static_cast<T>(y) * step_size_y + half_step_yy;
 
     auto input_sample_grad = input_grad + roi.index() * input_sample_size;
     auto input_channel_grad = input_sample_grad + c * input_channel_size;
@@ -328,7 +323,7 @@ __global__ void roi_align_backward_kernel_nchw(
   }
 }
 
-template <typename T, typename SIZE_T, bool ALIGNED>
+template <typename T, typename SIZE_T>
 __global__ void roi_align_backward_kernel_nhwc(
     const SIZE_T size, T *input_grad, const T *boxes_data, const T *output_grad,
     const SIZE_T channels, const SIZE_T input_rows, const SIZE_T input_cols,
@@ -342,11 +337,14 @@ __global__ void roi_align_backward_kernel_nhwc(
     SIZE_T y = i / output_cols;
     SIZE_T x = i - y * output_cols;
 
-    auto roi = *reinterpret_cast<Box<T, ALIGNED> const *>(boxes_data + n * 5);
-    roi.scale_and_shift_if_aligned(spatial_scale_y, spatial_scale_x);
+    auto roi = *reinterpret_cast<Box<T> const *>(boxes_data + n * 5);
+    auto const roi_x1 = static_cast<T>(roi.x1 * spatial_scale_x - 0.5f);
+    auto const roi_y1 = static_cast<T>(roi.y1 * spatial_scale_y - 0.5f);
+    auto const roi_x2 = static_cast<T>(roi.x2 * spatial_scale_x - 0.5f);
+    auto const roi_y2 = static_cast<T>(roi.y2 * spatial_scale_y - 0.5f);
 
-    auto const step_size_x = roi.width() / static_cast<T>(output_cols);
-    auto const step_size_y = roi.height() / static_cast<T>(output_rows);
+    auto const step_size_x = (roi_x2 - roi_x1) / static_cast<T>(output_cols);
+    auto const step_size_y = (roi_y2 - roi_y1) / static_cast<T>(output_rows);
 
     auto const grid_size_x = sampling_grid(sampling_ratio, step_size_x);
     auto const grid_size_y = sampling_grid(sampling_ratio, step_size_y);
@@ -358,8 +356,8 @@ __global__ void roi_align_backward_kernel_nhwc(
     auto const half_step_xx = T(0.5) * step_size_xx;
     auto const half_step_yy = T(0.5) * step_size_yy;
 
-    auto const xf = roi.x1 + static_cast<T>(x) * step_size_x + half_step_xx;
-    auto const yf = roi.y1 + static_cast<T>(y) * step_size_y + half_step_yy;
+    auto const xf = roi_x1 + static_cast<T>(x) * step_size_x + half_step_xx;
+    auto const yf = roi_y1 + static_cast<T>(y) * step_size_y + half_step_yy;
 
     auto input_sample_grad = input_grad + roi.index() * input_stride_n;
     auto output_channel_grad = output_grad + thread_index * channels;
@@ -450,9 +448,7 @@ void RoiAlignCuda<T>::forward_impl(const Variables &inputs,
     auto nthreads = output->size();
 
     if (output->size() <= INT32_MAX) {
-      auto kernel = this->aligned_
-                        ? roi_align_forward_kernel_nchw<Tcu, int32_t, true>
-                        : roi_align_forward_kernel_nchw<Tcu, int32_t, false>;
+      auto kernel = roi_align_forward_kernel_nchw<Tcu, int32_t>;
 
       NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
           kernel, nthreads, input_data, boxes_data, output_data, channels,
@@ -460,9 +456,7 @@ void RoiAlignCuda<T>::forward_impl(const Variables &inputs,
           output_cols, output_stride_c, output_stride_n, this->sampling_ratio_,
           this->spatial_scale_[0], this->spatial_scale_[1]);
     } else {
-      auto kernel = this->aligned_
-                        ? roi_align_forward_kernel_nchw<Tcu, int64_t, true>
-                        : roi_align_forward_kernel_nchw<Tcu, int64_t, false>;
+      auto kernel = roi_align_forward_kernel_nchw<Tcu, int64_t>;
 
       NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
           kernel, nthreads, input_data, boxes_data, output_data, channels,
@@ -481,9 +475,7 @@ void RoiAlignCuda<T>::forward_impl(const Variables &inputs,
     auto nthreads = output->size() / channels;
 
     if (output->size() <= INT32_MAX) {
-      auto kernel = this->aligned_
-                        ? roi_align_forward_kernel_nhwc<Tcu, int32_t, true>
-                        : roi_align_forward_kernel_nhwc<Tcu, int32_t, false>;
+      auto kernel = roi_align_forward_kernel_nhwc<Tcu, int32_t>;
 
       NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
           kernel, nthreads, input_data, boxes_data, output_data, channels,
@@ -491,9 +483,7 @@ void RoiAlignCuda<T>::forward_impl(const Variables &inputs,
           output_size_xy, this->sampling_ratio_, this->spatial_scale_[0],
           this->spatial_scale_[1]);
     } else {
-      auto kernel = this->aligned_
-                        ? roi_align_forward_kernel_nhwc<Tcu, int64_t, true>
-                        : roi_align_forward_kernel_nhwc<Tcu, int64_t, false>;
+      auto kernel = roi_align_forward_kernel_nhwc<Tcu, int64_t>;
 
       NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
           kernel, nthreads, input_data, boxes_data, output_data, channels,
@@ -536,9 +526,7 @@ void RoiAlignCuda<T>::backward_impl(const Variables &inputs,
     auto nthreads = output->size();
 
     if (output->size() <= INT32_MAX) {
-      auto kernel = this->aligned_
-                        ? roi_align_backward_kernel_nchw<Tcu, int32_t, true>
-                        : roi_align_backward_kernel_nchw<Tcu, int32_t, false>;
+      auto kernel = roi_align_backward_kernel_nchw<Tcu, int32_t>;
 
       NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
           kernel, nthreads, input_grad, boxes_data, output_grad, channels,
@@ -546,9 +534,7 @@ void RoiAlignCuda<T>::backward_impl(const Variables &inputs,
           output_cols, output_stride_c, output_stride_n, this->sampling_ratio_,
           this->spatial_scale_[0], this->spatial_scale_[1]);
     } else {
-      auto kernel = this->aligned_
-                        ? roi_align_backward_kernel_nchw<Tcu, int64_t, true>
-                        : roi_align_backward_kernel_nchw<Tcu, int64_t, false>;
+      auto kernel = roi_align_backward_kernel_nchw<Tcu, int64_t>;
 
       NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
           kernel, nthreads, input_grad, boxes_data, output_grad, channels,
@@ -567,9 +553,7 @@ void RoiAlignCuda<T>::backward_impl(const Variables &inputs,
     auto nthreads = output->size() / channels;
 
     if (output->size() <= INT32_MAX) {
-      auto kernel = this->aligned_
-                        ? roi_align_backward_kernel_nhwc<Tcu, int32_t, true>
-                        : roi_align_backward_kernel_nhwc<Tcu, int32_t, false>;
+      auto kernel = roi_align_backward_kernel_nhwc<Tcu, int32_t>;
 
       NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
           kernel, nthreads, input_grad, boxes_data, output_grad, channels,
@@ -577,9 +561,7 @@ void RoiAlignCuda<T>::backward_impl(const Variables &inputs,
           output_size_xy, this->sampling_ratio_, this->spatial_scale_[0],
           this->spatial_scale_[1]);
     } else {
-      auto kernel = this->aligned_
-                        ? roi_align_backward_kernel_nhwc<Tcu, int64_t, true>
-                        : roi_align_backward_kernel_nhwc<Tcu, int64_t, false>;
+      auto kernel = roi_align_backward_kernel_nhwc<Tcu, int64_t>;
 
       NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
           kernel, nthreads, input_grad, boxes_data, output_grad, channels,
