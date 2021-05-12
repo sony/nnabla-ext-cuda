@@ -163,6 +163,15 @@ void RandomEraseCuda<T>::setup_impl(const Variables &inputs,
   curandState *func_state = this->state_->cast(get_dtype<char>(), this->ctx_)
                                 ->template pointer<curandState>();
   curand_initialize(H * W, this->seed_, 0, func_state);
+
+  output_data_for_recomp_.reshape(outputs[0]->shape(), true);
+}
+
+template <typename T>
+void RandomEraseCuda<T>::setup_recompute_impl(
+    const Variables &inputs, const Variables &outputs,
+    const vector<bool> &need_recompute) {
+  save_output_data_ = true;
 }
 
 template <typename T>
@@ -240,6 +249,20 @@ void RandomEraseCuda<T>::forward_impl(const Variables &inputs,
   if (!this->ste_fine_grained_) {
     this->random_coordinates_ = nullptr;
   }
+
+  // Save output data for recomputation.
+  if (save_output_data_) {
+    save_output_data<Tcu>(this->ctx_, outputs[0], output_data_for_recomp_);
+  }
+}
+
+template <typename T>
+void RandomEraseCuda<T>::recompute_impl(const Variables &inputs,
+                                        const Variables &outputs,
+                                        const vector<bool> &need_recompute) {
+  // Restore output data of previous forward execution.
+  restore_output_data<Tcu>(this->ctx_, output_data_for_recomp_, outputs[0]);
+  save_output_data_ = false;
 }
 
 template <typename T>

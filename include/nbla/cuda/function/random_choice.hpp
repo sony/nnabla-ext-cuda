@@ -47,10 +47,17 @@ public:
 protected:
   int device_;
   curandGenerator_t curand_generator_;
+  bool save_output_data_ = false;
+  NdArray output_data_for_recomp_;
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
+  virtual void setup_recompute_impl(const Variables &inputs,
+                                    const Variables &outputs,
+                                    const vector<bool> &need_recompute);
+  virtual void recompute_impl(const Variables &inputs, const Variables &outputs,
+                              const vector<bool> &need_recompute);
   virtual void sample_with_replacement(const Variables &inputs,
                                        const Variables &outputs);
   virtual void sample_without_replace(const Variables &inputs,

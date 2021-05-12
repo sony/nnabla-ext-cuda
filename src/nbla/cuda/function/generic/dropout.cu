@@ -63,6 +63,19 @@ void DropoutCuda<T>::forward_impl(const Variables &inputs,
 }
 
 template <class T>
+void DropoutCuda<T>::recompute_impl(const Variables &inputs,
+                                    const Variables &outputs,
+                                    const vector<bool> &need_recompute) {
+  cuda_set_device(std::stoi(this->ctx_.device_id));
+  const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
+  Variable &mask = this->mask_;
+  float *m = mask.cast_data_and_get_pointer<float>(this->ctx_, true);
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_dropout_forward, inputs[0]->size(),
+                                 this->scale_, this->p_, x, y, m);
+}
+
+template <class T>
 void DropoutCuda<T>::backward_impl(const Variables &inputs,
                                    const Variables &outputs,
                                    const vector<bool> &propagate_down,

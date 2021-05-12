@@ -27,6 +27,14 @@ void RandnCuda<T>::setup_impl(const Variables &inputs,
 }
 
 template <typename T>
+void RandnCuda<T>::setup_recompute_impl(const Variables &inputs,
+                                        const Variables &outputs,
+                                        const vector<bool> &need_recompute) {
+  save_output_data_ = true;
+  output_data_for_recomp_.reshape(outputs[0]->shape(), true);
+}
+
+template <typename T>
 void RandnCuda<T>::forward_impl(const Variables &inputs,
                                 const Variables &outputs) {
   typedef typename CudaTypeForceFloat<T>::type Tc;
@@ -37,6 +45,21 @@ void RandnCuda<T>::forward_impl(const Variables &inputs,
   Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
   curand_generate_randn<float>(gen, this->mu_, this->sigma_, y,
                                outputs[0]->size());
+
+  // Save output data for recomputation.
+  if (save_output_data_) {
+    save_output_data<Tc>(this->ctx_, outputs[0], output_data_for_recomp_);
+  }
+}
+
+template <typename T>
+void RandnCuda<T>::recompute_impl(const Variables &inputs,
+                                  const Variables &outputs,
+                                  const vector<bool> &need_recompute) {
+  // Restore output data of previous forward execution.
+  typedef typename CudaTypeForceFloat<T>::type Tc;
+  restore_output_data<Tc>(this->ctx_, output_data_for_recomp_, outputs[0]);
+  save_output_data_ = false;
 }
 
 template <typename T>

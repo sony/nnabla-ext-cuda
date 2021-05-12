@@ -18,6 +18,7 @@
 #define __NBLA_CUDA_FUNCTION_IMAGEAUGMENTATION_HPP__
 
 #include <nbla/cuda/cuda.hpp>
+#include <nbla/cuda/utils/random.hpp>
 #include <nbla/function/image_augmentation.hpp>
 namespace nbla {
 /** @copydoc ImageAugmentation

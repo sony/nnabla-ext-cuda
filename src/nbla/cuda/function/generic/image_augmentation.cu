@@ -133,6 +133,15 @@ void ImageAugmentationCuda<T>::setup_impl(const Variables &inputs,
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_prepare_curand, curand_state_len,
                                    (curandStateXORWOW_t *)state, this->seed_);
   }
+
+  output_data_for_recomp_.reshape(outputs[0]->shape(), true);
+}
+
+template <typename T>
+void ImageAugmentationCuda<T>::setup_recompute_impl(
+    const Variables &inputs, const Variables &outputs,
+    const vector<bool> &need_recompute) {
+  save_output_data_ = true;
 }
 
 template <typename T>
@@ -277,6 +286,20 @@ void ImageAugmentationCuda<T>::forward_impl(const Variables &inputs,
       NBLA_CUDA_KERNEL_CHECK();
     }
   }
+
+  // Save output data for recomputation.
+  if (save_output_data_) {
+    save_output_data<Tc>(this->ctx_, outputs[0], output_data_for_recomp_);
+  }
+}
+
+template <typename T>
+void ImageAugmentationCuda<T>::recompute_impl(
+    const Variables &inputs, const Variables &outputs,
+    const vector<bool> &need_recompute) {
+  // Restore output data of previous forward execution.
+  restore_output_data<Tc>(this->ctx_, output_data_for_recomp_, outputs[0]);
+  save_output_data_ = false;
 }
 
 template <typename T>

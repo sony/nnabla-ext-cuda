@@ -24,6 +24,14 @@ template <typename T>
 void RandintCuda<T>::setup_impl(const Variables &inputs,
                                 const Variables &outputs) {
   Randint<T>::setup_impl(inputs, outputs);
+  output_data_for_recomp_.reshape(outputs[0]->shape(), true);
+}
+
+template <typename T>
+void RandintCuda<T>::setup_recompute_impl(const Variables &inputs,
+                                          const Variables &outputs,
+                                          const vector<bool> &need_recompute) {
+  save_output_data_ = true;
 }
 
 template <typename T>
@@ -36,6 +44,20 @@ void RandintCuda<T>::forward_impl(const Variables &inputs,
   int *y = outputs[0]->cast_data_and_get_pointer<int>(this->ctx_, true);
   curand_generate_rand<int>(gen, this->low_, this->high_, y,
                             outputs[0]->size());
+
+  // Save output data for recomputation.
+  if (save_output_data_) {
+    save_output_data<int>(this->ctx_, outputs[0], output_data_for_recomp_);
+  }
+}
+
+template <typename T>
+void RandintCuda<T>::recompute_impl(const Variables &inputs,
+                                    const Variables &outputs,
+                                    const vector<bool> &need_recompute) {
+  // Restore output data of previous forward execution.
+  restore_output_data<int>(this->ctx_, output_data_for_recomp_, outputs[0]);
+  save_output_data_ = false;
 }
 
 template <typename T>
