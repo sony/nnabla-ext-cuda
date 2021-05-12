@@ -62,8 +62,10 @@ __global__ void forward_running_var_to_sq_mean_kernel(const int size, T *v,
 
 template <class T>
 void SyncBatchNormalizationCudaCudnn<T>::forward_impl_batch(
-    const Variables &inputs, const Variables &outputs) {
-  SyncBatchNormalizationCuda<T>::forward_impl_batch(inputs, outputs);
+    const Variables &inputs, const Variables &outputs,
+    const bool update_inputs) {
+  SyncBatchNormalizationCuda<T>::forward_impl_batch(inputs, outputs,
+                                                    update_inputs);
   return;
   // TODO:
   /*
@@ -126,10 +128,12 @@ void SyncBatchNormalizationCudaCudnn<T>::forward_impl_batch(
   this->comm_->all_reduce({batch_mean->data(), batch_var->data()}, false, false,
                           this->group_);
 
-  m = batch_mean->cast_data_and_get_pointer<Tw>(this->ctx_);     // batch mean
-  v = batch_var->cast_data_and_get_pointer<Tw>(this->ctx_);      // batch var
-  Tw *rm = inputs[3]->cast_data_and_get_pointer<Tw>(this->ctx_); // running mean
-  Tw *rv = inputs[4]->cast_data_and_get_pointer<Tw>(this->ctx_); // running var
+  m = batch_mean->cast_data_and_get_pointer<Tw>(this->ctx_); // batch mean
+  v = batch_var->cast_data_and_get_pointer<Tw>(this->ctx_);  // batch var
+  Tw *rm = !update_inputs ? nullptr : inputs[3]->cast_data_and_get_pointer<Tw>(
+                                          this->ctx_); // running mean
+  Tw *rv = !update_inputs ? nullptr : inputs[4]->cast_data_and_get_pointer<Tw>(
+                                          this->ctx_); // running var
   // Calculate running mean and var
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(forward_batch_running_mean_var_kernel,
                                  /* Input */

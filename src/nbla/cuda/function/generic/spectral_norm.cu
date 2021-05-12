@@ -27,10 +27,26 @@ void SpectralNormCuda<T>::setup_impl(const Variables &inputs,
 }
 
 template <typename T>
+void SpectralNormCuda<T>::setup_recompute_impl(
+    const Variables &inputs, const Variables &outputs,
+    const vector<bool> &need_recompute) {
+  cuda_set_device(this->device_);
+  SpectralNorm<T>::setup_recompute_impl(inputs, outputs, need_recompute);
+}
+
+template <typename T>
 void SpectralNormCuda<T>::forward_impl(const Variables &inputs,
                                        const Variables &outputs) {
   cuda_set_device(this->device_);
   SpectralNorm<T>::forward_impl(inputs, outputs);
+}
+
+template <typename T>
+void SpectralNormCuda<T>::recompute_impl(const Variables &inputs,
+                                         const Variables &outputs,
+                                         const vector<bool> &need_recompute) {
+  cuda_set_device(this->device_);
+  SpectralNorm<T>::recompute_impl(inputs, outputs, need_recompute);
 }
 
 template <typename T>

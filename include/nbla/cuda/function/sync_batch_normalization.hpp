@@ -74,7 +74,8 @@ public:
 protected:
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl_batch(const Variables &inputs,
-                                  const Variables &outputs) override;
+                                  const Variables &outputs,
+                                  const bool update_inputs) override;
   virtual void forward_impl_global(const Variables &inputs,
                                    const Variables &outputs) override;
   virtual void backward_impl_batch(const Variables &inputs,

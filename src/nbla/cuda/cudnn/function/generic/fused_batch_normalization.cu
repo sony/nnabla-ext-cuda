@@ -135,8 +135,9 @@ void FusedBatchNormalizationCudaCudnn<T>::setup_impl(const Variables &inputs,
 }
 
 template <class T>
-void FusedBatchNormalizationCudaCudnn<T>::forward_impl(
-    const Variables &inputs, const Variables &outputs) {
+void FusedBatchNormalizationCudaCudnn<T>::fused_batch_norm_forward(
+    const Variables &inputs, const Variables &outputs,
+    const bool update_inputs) {
   NBLA_CHECK(this->batch_stat_, error_code::runtime,
              "If batch_stat is false, this function should not be called.");
   cuda_set_device(std::stoi(this->ctx_.device_id));
@@ -175,12 +176,14 @@ void FusedBatchNormalizationCudaCudnn<T>::forward_impl(
                 ->cast(DRV_BN_T(), this->ctx_, true)
                 ->pointer(); // batch var
   // Inputs/Outputs
-  void *rm = inputs[3]
-                 ->data()
-                 ->cast(DRV_BN_T(), this->ctx_)
-                 ->pointer(); // running mean
-  void *rv =
-      inputs[4]->data()->cast(DRV_BN_T(), this->ctx_)->pointer(); // running var
+  void *rm = !update_inputs ? nullptr : inputs[3]
+                                            ->data()
+                                            ->cast(DRV_BN_T(), this->ctx_)
+                                            ->pointer(); // running mean
+  void *rv = !update_inputs ? nullptr : inputs[4]
+                                            ->data()
+                                            ->cast(DRV_BN_T(), this->ctx_)
+                                            ->pointer(); // running var
 
   auto a = get_cudnn_scalar_arg<T>(1);
   auto b = get_cudnn_scalar_arg<T>(0);
@@ -204,6 +207,19 @@ void FusedBatchNormalizationCudaCudnn<T>::forward_impl(
       reserve_ptr,             /* reserve space pointer */
       reserve_size_            /* reserve space size */
       ));
+}
+
+template <class T>
+void FusedBatchNormalizationCudaCudnn<T>::forward_impl(
+    const Variables &inputs, const Variables &outputs) {
+  fused_batch_norm_forward(inputs, outputs, true /* update_inputs */);
+}
+
+template <class T>
+void FusedBatchNormalizationCudaCudnn<T>::recompute_impl(
+    const Variables &inputs, const Variables &outputs,
+    const vector<bool> &need_recompute) {
+  fused_batch_norm_forward(inputs, outputs, false /* update_inputs */);
 }
 
 template <class T>

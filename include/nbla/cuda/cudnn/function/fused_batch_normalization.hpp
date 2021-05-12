@@ -89,10 +89,15 @@ public:
 protected:
 #if CUDNN_VERSION > 7400
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
+  virtual void fused_batch_norm_forward(const Variables &inputs,
+                                        const Variables &outputs,
+                                        const bool update_inputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
+  virtual void recompute_impl(const Variables &inputs, const Variables &outputs,
+                              const vector<bool> &need_recompute);
 #endif
 };
 } // namespace nbla

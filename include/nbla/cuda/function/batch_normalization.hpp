@@ -71,13 +71,16 @@ protected:
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
   virtual void forward_impl_batch(const Variables &inputs,
-                                  const Variables &outputs);
+                                  const Variables &outputs,
+                                  const bool update_inputs);
   virtual void forward_impl_global(const Variables &inputs,
                                    const Variables &outputs);
   virtual void backward_impl_batch(const Variables &inputs,
                                    const Variables &outputs,
                                    const vector<bool> &propagate_down,
                                    const vector<bool> &accum);
+  virtual void recompute_impl(const Variables &inputs, const Variables &outputs,
+                              const vector<bool> &need_recompute);
 };
 }
 #endif

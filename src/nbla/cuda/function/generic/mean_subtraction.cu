@@ -32,6 +32,14 @@ void MeanSubtractionCuda<T>::forward_impl(const Variables &inputs,
 }
 
 template <typename T>
+void MeanSubtractionCuda<T>::recompute_impl(
+    const Variables &inputs, const Variables &outputs,
+    const vector<bool> &need_recompute) {
+  cuda_set_device(std::stoi(this->ctx_.device_id));
+  forward_impl_global(inputs, outputs);
+}
+
+template <typename T>
 __global__ void kernel_mean_subtraction_inc_t(T *t, const int max) {
   if (t[0] < max) {
     t[0] = t[0] + 1;

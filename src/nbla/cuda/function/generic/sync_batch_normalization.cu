@@ -37,7 +37,8 @@ void SyncBatchNormalizationCuda<T>::setup_impl(const Variables &inputs,
 
 template <class T>
 void SyncBatchNormalizationCuda<T>::forward_impl_batch(
-    const Variables &inputs, const Variables &outputs) {
+    const Variables &inputs, const Variables &outputs,
+    const bool update_inputs) {
   // Check whether it outputs batch mean and var.
   Variable *batch_mean = &this->mean_;
   Variable *batch_var = &this->var_;
@@ -56,8 +57,10 @@ void SyncBatchNormalizationCuda<T>::forward_impl_batch(
   Tc *v =
       batch_var->cast_data_and_get_pointer<Tc>(this->ctx_, true); // batch varf
   // Inputs/Outputs
-  Tc *rm = inputs[3]->cast_data_and_get_pointer<Tc>(this->ctx_); // running mean
-  Tc *rv = inputs[4]->cast_data_and_get_pointer<Tc>(this->ctx_); // running var
+  Tc *rm = !update_inputs ? nullptr : inputs[3]->cast_data_and_get_pointer<Tc>(
+                                          this->ctx_); // running mean
+  Tc *rv = !update_inputs ? nullptr : inputs[4]->cast_data_and_get_pointer<Tc>(
+                                          this->ctx_); // running var
 
   // Calculate mean and squared-mean
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(forward_batch_mean_sqmean_kernel,

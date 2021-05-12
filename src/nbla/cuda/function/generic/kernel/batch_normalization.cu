@@ -97,7 +97,7 @@ void forward_batch_parallel_reduction(
         tmp_mean_buffer_per_block, tmp_variance_buffer_per_block, blocks,
         decay_rate, 1. / N, (float)N / (N - 1),
         /* Output */
-        m + i, v + i, rm + i, rv + i);
+        m + i, v + i, rm ? rm + i : nullptr, rv ? rv + i : nullptr);
   }
 #endif
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(forward_batch_kernel_gamma_beta_trans,
