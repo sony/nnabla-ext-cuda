@@ -100,9 +100,8 @@ __global__ void add_gradient(const size_t size, const size_t w_size,
 } // namespace random_choice_cuda
 
 template <typename T>
-void RandomChoiceCuda<T>::setup_recompute_impl(
-    const Variables &inputs, const Variables &outputs,
-    const vector<bool> &need_recompute) {
+void RandomChoiceCuda<T>::setup_recompute_impl(const Variables &inputs,
+                                               const Variables &outputs) {
   save_output_data_ = true;
   output_data_for_recomp_.reshape(outputs[0]->shape(), true);
 }
@@ -125,8 +124,7 @@ void RandomChoiceCuda<T>::forward_impl(const Variables &inputs,
 
 template <typename T>
 void RandomChoiceCuda<T>::recompute_impl(const Variables &inputs,
-                                         const Variables &outputs,
-                                         const vector<bool> &need_recompute) {
+                                         const Variables &outputs) {
   // Restore output data of previous forward execution.
   restore_output_data<Tcu>(this->ctx_, output_data_for_recomp_, outputs[0]);
   save_output_data_ = false;

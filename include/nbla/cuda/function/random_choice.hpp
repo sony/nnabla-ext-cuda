@@ -54,10 +54,9 @@ protected:
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
   virtual void setup_recompute_impl(const Variables &inputs,
-                                    const Variables &outputs,
-                                    const vector<bool> &need_recompute);
-  virtual void recompute_impl(const Variables &inputs, const Variables &outputs,
-                              const vector<bool> &need_recompute);
+                                    const Variables &outputs);
+  virtual void recompute_impl(const Variables &inputs,
+                              const Variables &outputs);
   virtual void sample_with_replacement(const Variables &inputs,
                                        const Variables &outputs);
   virtual void sample_without_replace(const Variables &inputs,

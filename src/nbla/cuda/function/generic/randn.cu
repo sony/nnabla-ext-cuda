@@ -28,8 +28,7 @@ void RandnCuda<T>::setup_impl(const Variables &inputs,
 
 template <typename T>
 void RandnCuda<T>::setup_recompute_impl(const Variables &inputs,
-                                        const Variables &outputs,
-                                        const vector<bool> &need_recompute) {
+                                        const Variables &outputs) {
   save_output_data_ = true;
   output_data_for_recomp_.reshape(outputs[0]->shape(), true);
 }
@@ -54,8 +53,7 @@ void RandnCuda<T>::forward_impl(const Variables &inputs,
 
 template <typename T>
 void RandnCuda<T>::recompute_impl(const Variables &inputs,
-                                  const Variables &outputs,
-                                  const vector<bool> &need_recompute) {
+                                  const Variables &outputs) {
   // Restore output data of previous forward execution.
   typedef typename CudaTypeForceFloat<T>::type Tc;
   restore_output_data<Tc>(this->ctx_, output_data_for_recomp_, outputs[0]);

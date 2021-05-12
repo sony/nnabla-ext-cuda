@@ -32,9 +32,8 @@ void MeanSubtractionCuda<T>::forward_impl(const Variables &inputs,
 }
 
 template <typename T>
-void MeanSubtractionCuda<T>::recompute_impl(
-    const Variables &inputs, const Variables &outputs,
-    const vector<bool> &need_recompute) {
+void MeanSubtractionCuda<T>::recompute_impl(const Variables &inputs,
+                                            const Variables &outputs) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
   forward_impl_global(inputs, outputs);
 }

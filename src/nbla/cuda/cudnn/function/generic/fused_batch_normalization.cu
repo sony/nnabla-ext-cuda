@@ -217,8 +217,7 @@ void FusedBatchNormalizationCudaCudnn<T>::forward_impl(
 
 template <class T>
 void FusedBatchNormalizationCudaCudnn<T>::recompute_impl(
-    const Variables &inputs, const Variables &outputs,
-    const vector<bool> &need_recompute) {
+    const Variables &inputs, const Variables &outputs) {
   fused_batch_norm_forward(inputs, outputs, false /* update_inputs */);
 }
 

@@ -77,9 +77,8 @@ __global__ void kernel_random_flip(const int num, const int dim, T *y,
 }
 
 template <typename T>
-void RandomFlipCuda<T>::setup_recompute_impl(
-    const Variables &inputs, const Variables &outputs,
-    const vector<bool> &need_recompute) {
+void RandomFlipCuda<T>::setup_recompute_impl(const Variables &inputs,
+                                             const Variables &outputs) {
   save_output_data_ = true;
 }
 
@@ -118,8 +117,7 @@ void RandomFlipCuda<T>::forward_impl(const Variables &inputs,
 
 template <typename T>
 void RandomFlipCuda<T>::recompute_impl(const Variables &inputs,
-                                       const Variables &outputs,
-                                       const vector<bool> &need_recompute) {
+                                       const Variables &outputs) {
   // Restore output data of previous forward execution.
   restore_output_data<Tcu>(this->ctx_, output_data_for_recomp_, outputs[0]);
   save_output_data_ = false;

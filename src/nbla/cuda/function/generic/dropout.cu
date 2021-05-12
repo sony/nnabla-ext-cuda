@@ -64,8 +64,7 @@ void DropoutCuda<T>::forward_impl(const Variables &inputs,
 
 template <class T>
 void DropoutCuda<T>::recompute_impl(const Variables &inputs,
-                                    const Variables &outputs,
-                                    const vector<bool> &need_recompute) {
+                                    const Variables &outputs) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
   const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
   Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);

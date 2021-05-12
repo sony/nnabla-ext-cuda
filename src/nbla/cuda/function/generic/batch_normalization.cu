@@ -94,9 +94,8 @@ void BatchNormalizationCuda<T>::forward_impl(const Variables &inputs,
 }
 
 template <class T>
-void BatchNormalizationCuda<T>::recompute_impl(
-    const Variables &inputs, const Variables &outputs,
-    const vector<bool> &need_recompute) {
+void BatchNormalizationCuda<T>::recompute_impl(const Variables &inputs,
+                                               const Variables &outputs) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
   if (this->batch_stat_) { // Training mode.
     forward_impl_batch(inputs, outputs, false /* update_inputs */);
