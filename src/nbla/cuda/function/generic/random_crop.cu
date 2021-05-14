@@ -119,7 +119,7 @@ void RandomCropCuda<T>::forward_impl(const Variables &inputs,
   curandGenerator_t &gen =
       this->seed_ == -1 ? SingletonManager::get<Cuda>()->curand_generator()
                         : curand_generator_;
-  curand_generate_rand<int>(gen, 0, 2 ^ 23, random_values,
+  curand_generate_rand<int>(gen, 0, 1 << 23, random_values,
                             this->size_ * this->shape_.size());
   const int *shape_info_gpu =
       this->shape_info_buf_.get(dtypes::INT, this->ctx_)
