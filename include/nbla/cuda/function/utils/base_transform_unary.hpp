@@ -105,11 +105,12 @@ protected:                                                                     \
     virtual bool grad_depends_input_data_impl(int i, int j) const;             \
   }
 
-#define NBLA_DECLARE_TRANSFORM_UNARY_CUDA_1_INPLACE(NAME, A0)                  \
+#define NBLA_DECLARE_TRANSFORM_UNARY_CUDA_1_INPLACE(NAME, A0, IGNORE_INPLACE)  \
   NBLA_DECLARE_TRANSFORM_UNARY_CUDA_CLASS_BEGIN_N(NAME, A0) {                  \
     NBLA_DECLARE_TRANSFORM_UNARY_CUDA_CLASS_COMMON(NAME);                      \
     explicit NAME##Cuda(const Context &ctx, const A0 &a0, bool inplace)        \
-        : TransformUnaryCuda<T, A0>(ctx, inplace, a0) {}                       \
+        : TransformUnaryCuda<T, A0>(ctx, (IGNORE_INPLACE) ? false : inplace,   \
+                                    a0) {}                                     \
     virtual shared_ptr<Function> copy() const {                                \
       return create_##NAME(this->ctx_, std::get<0>(this->args_),               \
                            this->inplace_);                                    \

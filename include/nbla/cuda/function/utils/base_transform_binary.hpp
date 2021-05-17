@@ -81,11 +81,11 @@ protected:                                                                     \
     virtual bool grad_depends_input_data_impl(int i, int j) const;             \
   }
 
-#define NBLA_DECLARE_TRANSFORM_BINARY_CUDA_INPLACE(NAME)                       \
+#define NBLA_DECLARE_TRANSFORM_BINARY_CUDA_INPLACE(NAME, IGNORE_INPLACE)       \
   template <typename T> class NAME##Cuda : public TransformBinaryCuda<T> {     \
     NBLA_DECLARE_TRANSFORM_BINARY_CUDA_CLASS_COMMON(NAME)                      \
     explicit NAME##Cuda(const Context &ctx, bool inplace)                      \
-        : TransformBinaryCuda<T>(ctx, inplace) {}                              \
+        : TransformBinaryCuda<T>(ctx, (IGNORE_INPLACE) ? false : inplace) {}   \
     virtual shared_ptr<Function> copy() const {                                \
       return create_##NAME(this->ctx_, this->inplace_);                        \
     }                                                                          \
