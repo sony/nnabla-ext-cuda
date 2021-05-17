@@ -59,6 +59,7 @@ protected:
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
+  virtual bool grad_depends_input_data_impl(int i, int j) const { return true; }
 };
 }
 #endif
