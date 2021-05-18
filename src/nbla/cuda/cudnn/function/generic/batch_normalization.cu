@@ -56,7 +56,8 @@ void BatchNormalizationCudaCudnn<T>::setup_impl(const Variables &inputs,
   mode_ = CUDNN_BATCHNORM_SPATIAL;
   // Channel last is restricted for spatial input
   bool channel_last = this->axes_[0] == inputs[0]->ndim() - 1;
-  if (inputs[0]->ndim() == 2) { // typical 1-d affine output with shape (N, C)
+  if (inputs[0]->ndim() == 2 && H == 1 && W == 1) {
+    // typical 1-d affine output with shape (N, C)
     mode_ = CUDNN_BATCHNORM_PER_ACTIVATION;
     NBLA_CUDNN_CHECK(
         cudnnSetTensor4dDescriptor(input_desc_.desc, CUDNN_TENSOR_NHWC,
