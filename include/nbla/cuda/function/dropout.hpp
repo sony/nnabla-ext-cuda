@@ -58,6 +58,10 @@ protected:
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
+  virtual void recompute_impl(const Variables &inputs,
+                              const Variables &outputs);
+
+  void dropout(const Variables &inputs, const Variables &outputs);
 };
 }
 #endif

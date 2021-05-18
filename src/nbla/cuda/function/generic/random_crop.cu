@@ -45,6 +45,8 @@ void RandomCropCuda<T>::setup_impl(const Variables &inputs,
     shape_info_cpu[i * 5 + 3] = inputs[0]->shape()[i];   // input_shape
     shape_info_cpu[i * 5 + 4] = inputs[0]->strides()[i]; // input_stride
   }
+
+  output_data_for_recomp_.reshape(outputs[0]->shape(), true);
 }
 
 template <typename T, bool is_backward>
@@ -106,6 +108,12 @@ __global__ void kernel_random_crop(const int num, const int dim, T *dst,
 }
 
 template <typename T>
+void RandomCropCuda<T>::setup_recompute_impl(const Variables &inputs,
+                                             const Variables &outputs) {
+  save_output_data_ = true;
+}
+
+template <typename T>
 void RandomCropCuda<T>::forward_impl(const Variables &inputs,
                                      const Variables &outputs) {
   cuda_set_device(this->device_);
@@ -128,6 +136,19 @@ void RandomCropCuda<T>::forward_impl(const Variables &inputs,
                                  inputs[0]->ndim(), y, x, shape_info_gpu,
                                  random_values, this->base_axis_, this->size_,
                                  this->shape_.size(), this->dim_offset_);
+
+  // Save output data for recomputation.
+  if (save_output_data_) {
+    save_output_data<Tcu>(this->ctx_, outputs[0], output_data_for_recomp_);
+  }
+}
+
+template <typename T>
+void RandomCropCuda<T>::recompute_impl(const Variables &inputs,
+                                       const Variables &outputs) {
+  // Restore output data of previous forward execution.
+  restore_output_data<Tcu>(this->ctx_, output_data_for_recomp_, outputs[0]);
+  save_output_data_ = false;
 }
 
 template <typename T>

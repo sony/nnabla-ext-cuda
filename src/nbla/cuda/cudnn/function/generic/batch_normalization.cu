@@ -149,7 +149,18 @@ void BatchNormalizationCudaCudnn<T>::forward_impl(const Variables &inputs,
                                                   const Variables &outputs) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
   if (this->batch_stat_) { // Training mode.
-    forward_impl_batch(inputs, outputs);
+    forward_impl_batch(inputs, outputs, true /* update_inputs */);
+  } else { // Testing mode.
+    forward_impl_global(inputs, outputs);
+  }
+}
+
+template <class T>
+void BatchNormalizationCudaCudnn<T>::recompute_impl(const Variables &inputs,
+                                                    const Variables &outputs) {
+  cuda_set_device(std::stoi(this->ctx_.device_id));
+  if (this->batch_stat_) { // Training mode.
+    forward_impl_batch(inputs, outputs, false /* update_inputs */);
   } else { // Testing mode.
     forward_impl_global(inputs, outputs);
   }
@@ -157,7 +168,8 @@ void BatchNormalizationCudaCudnn<T>::forward_impl(const Variables &inputs,
 
 template <class T>
 void BatchNormalizationCudaCudnn<T>::forward_impl_batch(
-    const Variables &inputs, const Variables &outputs) {
+    const Variables &inputs, const Variables &outputs,
+    const bool update_inputs) {
   // Check whether it outputs batch mean and var.
   Variable *batch_mean = &this->mean_;
   Variable *batch_var = &this->var_;
@@ -202,14 +214,14 @@ void BatchNormalizationCudaCudnn<T>::forward_impl_batch(
                 ->cast(DRV_BN_T(), this->ctx_, true)
                 ->pointer(); // batch var
   // Inputs/Outputs
-  void *rm = inputs[this->m_idx_]
-                 ->data()
-                 ->cast(DRV_BN_T(), this->ctx_)
-                 ->pointer(); // running mean
-  void *rv = inputs[this->v_idx_]
-                 ->data()
-                 ->cast(DRV_BN_T(), this->ctx_)
-                 ->pointer(); // running var
+  void *rm = !update_inputs ? nullptr : inputs[this->m_idx_]
+                                            ->data()
+                                            ->cast(DRV_BN_T(), this->ctx_)
+                                            ->pointer(); // running mean
+  void *rv = !update_inputs ? nullptr : inputs[this->v_idx_]
+                                            ->data()
+                                            ->cast(DRV_BN_T(), this->ctx_)
+                                            ->pointer(); // running var
 
   auto a = get_cudnn_scalar_arg<T>(1);
   auto b = get_cudnn_scalar_arg<T>(0);

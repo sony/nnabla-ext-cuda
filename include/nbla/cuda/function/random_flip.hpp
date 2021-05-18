@@ -48,11 +48,17 @@ protected:
   NdArray flip_flags_;
   NdArray shape_info_buf_;
   NdArray onehot_axses_;
+  bool save_output_data_ = false;
+  NdArray output_data_for_recomp_;
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
+  virtual void setup_recompute_impl(const Variables &inputs,
+                                    const Variables &outputs);
+  virtual void recompute_impl(const Variables &inputs,
+                              const Variables &outputs);
 };
 }
 #endif

@@ -87,7 +87,18 @@ void BatchNormalizationCuda<T>::forward_impl(const Variables &inputs,
                                              const Variables &outputs) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
   if (this->batch_stat_) { // Training mode.
-    forward_impl_batch(inputs, outputs);
+    forward_impl_batch(inputs, outputs, true /* update_inputs */);
+  } else { // Testing mode.
+    forward_impl_global(inputs, outputs);
+  }
+}
+
+template <class T>
+void BatchNormalizationCuda<T>::recompute_impl(const Variables &inputs,
+                                               const Variables &outputs) {
+  cuda_set_device(std::stoi(this->ctx_.device_id));
+  if (this->batch_stat_) { // Training mode.
+    forward_impl_batch(inputs, outputs, false /* update_inputs */);
   } else { // Testing mode.
     forward_impl_global(inputs, outputs);
   }
@@ -95,7 +106,8 @@ void BatchNormalizationCuda<T>::forward_impl(const Variables &inputs,
 
 template <class T>
 void BatchNormalizationCuda<T>::forward_impl_batch(const Variables &inputs,
-                                                   const Variables &outputs) {
+                                                   const Variables &outputs,
+                                                   const bool update_inputs) {
   // Check whether it outputs batch mean and var.
   Variable *batch_mean = &this->mean_;
   Variable *batch_var = &this->var_;
@@ -123,9 +135,11 @@ void BatchNormalizationCuda<T>::forward_impl_batch(const Variables &inputs,
       batch_var->cast_data_and_get_pointer<Tc>(this->ctx_, true); // batch varf
   // Inputs/Outputs
   Tc *rm =
-      inputs[m_idx]->cast_data_and_get_pointer<Tc>(this->ctx_); // running mean
+      !update_inputs ? nullptr : inputs[m_idx]->cast_data_and_get_pointer<Tc>(
+                                     this->ctx_); // running mean
   Tc *rv =
-      inputs[v_idx]->cast_data_and_get_pointer<Tc>(this->ctx_); // running var
+      !update_inputs ? nullptr : inputs[v_idx]->cast_data_and_get_pointer<Tc>(
+                                     this->ctx_); // running var
 
 #ifdef BATCH_NORMALIZATION_USE_PARALLEL_REDUCTION
   const int ndim = inputs[0]->ndim();

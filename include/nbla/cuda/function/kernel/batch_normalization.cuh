@@ -49,10 +49,14 @@ forward_batch_running_mean_var_kernel(const int size1, const int size02,
   NBLA_CUDA_KERNEL_LOOP(i1, size1) {
     m[i1] /= n_procs;
     v[i1] = v[i1] / n_procs - m[i1] * m[i1];
-    rm[i1] = decay_rate * rm[i1] + (1. - decay_rate) * m[i1];
-    rv[i1] = decay_rate * rv[i1] +
-             (1. - decay_rate) * v[i1] * (n_procs * size02) /
-                 ((n_procs * size02) - 1);
+    if (rm) {
+      rm[i1] = decay_rate * rm[i1] + (1. - decay_rate) * m[i1];
+    }
+    if (rv) {
+      rv[i1] = decay_rate * rv[i1] +
+               (1. - decay_rate) * v[i1] * (n_procs * size02) /
+                   ((n_procs * size02) - 1);
+    }
   }
 }
 template <typename T>
@@ -222,9 +226,13 @@ __global__ void forward_batch_mean_variance_kernel(
     tmp_v = tmp_v / size02 - tmp_m * tmp_m;
     v[i1] = tmp_v;
 
-    rm[i1] = decay_rate * rm[i1] + (1. - decay_rate) * tmp_m;
-    rv[i1] =
-        decay_rate * rv[i1] + (1. - decay_rate) * tmp_v * size02 / (size02 - 1);
+    if (rm) {
+      rm[i1] = decay_rate * rm[i1] + (1. - decay_rate) * tmp_m;
+    }
+    if (rv) {
+      rv[i1] = decay_rate * rv[i1] +
+               (1. - decay_rate) * tmp_v * size02 / (size02 - 1);
+    }
   }
 }
 
@@ -284,9 +292,13 @@ __global__ void forward_batch_kernel_mean_variance_postprocess(
     const float variance = mean_variance.y * inv_N - mean * mean;
     m[blockIdx.x] = mean;
     v[blockIdx.x] = variance;
-    rm[blockIdx.x] = decay_rate * rm[blockIdx.x] + (1. - decay_rate) * mean;
-    rv[blockIdx.x] =
-        decay_rate * rv[blockIdx.x] + (1. - decay_rate) * variance * svar;
+    if (rm) {
+      rm[blockIdx.x] = decay_rate * rm[blockIdx.x] + (1. - decay_rate) * mean;
+    }
+    if (rv) {
+      rv[blockIdx.x] =
+          decay_rate * rv[blockIdx.x] + (1. - decay_rate) * variance * svar;
+    }
   }
 }
 

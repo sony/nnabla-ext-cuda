@@ -42,6 +42,8 @@ void RandomFlipCuda<T>::setup_impl(const Variables &inputs,
     auto itr = std::find(this->axes_.begin(), this->axes_.end(), i);
     onehot_axses_cpu[i] = itr != this->axes_.end();
   }
+
+  output_data_for_recomp_.reshape(outputs[0]->shape(), true);
 }
 
 template <typename T, bool accum>
@@ -75,6 +77,12 @@ __global__ void kernel_random_flip(const int num, const int dim, T *y,
 }
 
 template <typename T>
+void RandomFlipCuda<T>::setup_recompute_impl(const Variables &inputs,
+                                             const Variables &outputs) {
+  save_output_data_ = true;
+}
+
+template <typename T>
 void RandomFlipCuda<T>::forward_impl(const Variables &inputs,
                                      const Variables &outputs) {
   cuda_set_device(this->device_);
@@ -100,6 +108,19 @@ void RandomFlipCuda<T>::forward_impl(const Variables &inputs,
                                  inputs[0]->ndim(), y, x, shape_info_gpu,
                                  flip_flags, onehot_axses_gpu, this->base_axis_,
                                  this->size_);
+
+  // Save output data for recomputation.
+  if (save_output_data_) {
+    save_output_data<Tcu>(this->ctx_, outputs[0], output_data_for_recomp_);
+  }
+}
+
+template <typename T>
+void RandomFlipCuda<T>::recompute_impl(const Variables &inputs,
+                                       const Variables &outputs) {
+  // Restore output data of previous forward execution.
+  restore_output_data<Tcu>(this->ctx_, output_data_for_recomp_, outputs[0]);
+  save_output_data_ = false;
 }
 
 template <typename T>
