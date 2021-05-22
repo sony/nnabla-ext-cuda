@@ -1,4 +1,4 @@
-# Copyright (c) 2017 Sony Corporation. All Rights Reserved.
+# Copyright 2018,2019,2020,2021 Sony Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -87,6 +87,16 @@ docker_image_build_cuda:
 bwd-nnabla-ext-cuda-auto-format: docker_image_auto_format
 	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
 	&& docker run $(DOCKER_RUN_OPTS) $(DOCKER_IMAGE_AUTO_FORMAT) make -f build-tools/make/build.mk nnabla-ext-cuda-auto-format
+
+
+##############################################################################
+# Check copyright
+
+.PHONY: bwd-nnabla-ext-cuda-check-copyright
+bwd-nnabla-ext-cuda-check-copyright: docker_image_auto_format
+	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
+	&& docker run $(DOCKER_RUN_OPTS) -v $$(pwd)/..:$$(pwd)/.. $(DOCKER_IMAGE_AUTO_FORMAT) make -f build-tools/make/build.mk nnabla-ext-cuda-check-copyright
+
 
 ########################################################################################################################
 # Build and test
