@@ -43,7 +43,11 @@ template <typename T>
 void DropoutCuda<T>::setup_impl(const Variables &inputs,
                                 const Variables &outputs) {
   outputs[0]->reshape(inputs[0]->shape(), true);
-  this->mask_.reshape(inputs[0]->shape(), true);
+  if (this->output_mask_) {
+    outputs[1]->reshape(inputs[0]->shape(), true);
+  } else {
+    this->mask_.reshape(inputs[0]->shape(), true);
+  }
 }
 
 template <class T>
@@ -52,7 +56,7 @@ void DropoutCuda<T>::forward_impl(const Variables &inputs,
   cuda_set_device(std::stoi(this->ctx_.device_id));
   const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
   Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
-  Variable &mask = this->mask_;
+  Variable &mask = this->output_mask_ ? *outputs[1] : this->mask_;
   float *m = mask.cast_data_and_get_pointer<float>(this->ctx_, true);
   curandGenerator_t &gen =
       this->seed_ == -1 ? SingletonManager::get<Cuda>()->curand_generator()
@@ -68,7 +72,7 @@ void DropoutCuda<T>::recompute_impl(const Variables &inputs,
   cuda_set_device(std::stoi(this->ctx_.device_id));
   const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
   Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
-  Variable &mask = this->mask_;
+  Variable &mask = this->output_mask_ ? *outputs[1] : this->mask_;
   float *m = mask.cast_data_and_get_pointer<float>(this->ctx_, true);
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_dropout_forward, inputs[0]->size(),
                                  this->scale_, this->p_, x, y, m);
@@ -85,7 +89,7 @@ void DropoutCuda<T>::backward_impl(const Variables &inputs,
   cuda_set_device(std::stoi(this->ctx_.device_id));
   Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_, !accum[0]);
   const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
-  Variable &mask = this->mask_;
+  Variable &mask = this->output_mask_ ? *outputs[1] : this->mask_;
   const float *m = mask.get_data_pointer<float>(this->ctx_);
   if (accum[0]) {
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_dropout_backward<Tc, true>),

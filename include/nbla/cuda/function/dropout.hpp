@@ -27,8 +27,9 @@ template <typename T> class DropoutCuda : public Dropout<T> {
 public:
   typedef typename CudaType<T>::type Tc;
 
-  explicit DropoutCuda(const Context &ctx, double p, int seed = -1)
-      : Dropout<T>(ctx, T(p), seed) {
+  explicit DropoutCuda(const Context &ctx, double p, int seed = -1,
+                       bool output_mask = false)
+      : Dropout<T>(ctx, T(p), seed, output_mask) {
     cuda_set_device(std::stoi(ctx.device_id));
     NBLA_CHECK(this->p_ > 0., error_code::value,
                "p must be between 0.0 and 1.0");
