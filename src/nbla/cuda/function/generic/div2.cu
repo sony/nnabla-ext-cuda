@@ -21,7 +21,7 @@
 
 namespace nbla {
 
-NBLA_DEFINE_TRANSFORM_BINARY_CUDA(Div2, x0 / x1, dy / x1,
-                                  dy *(-(inplace ? y *x1 : x0) / (x1 * x1)),
+// Inplacing is obsoleted.
+NBLA_DEFINE_TRANSFORM_BINARY_CUDA(Div2, x0 / x1, dy / x1, dy *(-x0 / (x1 * x1)),
                                   false, false, true, true);
 }
