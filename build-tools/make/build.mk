@@ -1,4 +1,4 @@
-# Copyright (c) 2017 Sony Corporation. All Rights Reserved.
+# Copyright 2018,2019,2020,2021 Sony Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -48,6 +48,13 @@ nnabla-ext-cuda-auto-format:
 		'\./src/nbla/cuda(/cudnn)?/(function|solver)/\w+\.cu' \
 		'\./src/nbla/cuda(/cudnn)?/init.cpp' \
 		'\./python/src/nnabla_ext/(cuda|cudnn)/.*.(cpp|hpp|h|c)'
+
+##############################################################################
+# Check copyright
+.PHONY: nnabla-ext-cuda-check-copyright
+nnabla-ext-cuda-check-copyright:
+	python3 $(NNABLA_DIRECTORY)/build-tools/code_formatter/copyright_checker.py --rootdir=$(NNABLA_EXT_CUDA_DIRECTORY)
+
 
 ########################################################################################################################
 # cpplib
