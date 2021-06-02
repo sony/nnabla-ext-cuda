@@ -96,6 +96,7 @@ struct NBLA_ALIGN(2) HalfCuda {
   HALF_CUDA_PREFIX operator short() const { return (short)(h); }
   HALF_CUDA_PREFIX operator int() const { return (int)(h); }
   HALF_CUDA_PREFIX operator long() const { return (long)((int)h); }
+  HALF_CUDA_PREFIX operator long long() const { return (long long)((int)h); }
   HALF_CUDA_PREFIX operator unsigned short() const {
     return (unsigned short)(h);
   }
@@ -104,7 +105,7 @@ struct NBLA_ALIGN(2) HalfCuda {
     return (unsigned long)((unsigned int)h);
   }
   HALF_CUDA_PREFIX operator unsigned long long() const {
-    return (unsigned long long)((unsigned short)h);
+    return (unsigned long long)((unsigned int)h);
   }
   HALF_CUDA_PREFIX operator bool() const { return (bool)(h); }
   HALF_CUDA_PREFIX operator double() const { return (double)(float(*this)); }
@@ -117,6 +118,9 @@ struct NBLA_ALIGN(2) HalfCuda {
   HALF_CUDA_PREFIX operator short() const { return (short)((float)(*this)); }
   HALF_CUDA_PREFIX operator int() const { return (int)((float)(*this)); }
   HALF_CUDA_PREFIX operator long() const { return (long)((float)(*this)); }
+  HALF_CUDA_PREFIX operator long long() const {
+    return (long long)((float)(*this));
+  }
   HALF_CUDA_PREFIX operator unsigned short() const {
     return (unsigned short)((float)(*this));
   }
