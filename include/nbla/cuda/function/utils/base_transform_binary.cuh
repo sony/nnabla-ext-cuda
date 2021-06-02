@@ -17,6 +17,7 @@
 #ifndef __NBLA_CUDA_FUNCTION_BASE_TRANSFORM_BINARY_CUH__
 #define __NBLA_CUDA_FUNCTION_BASE_TRANSFORM_BINARY_CUH__
 
+#include <nbla/cuda/common.hpp>
 #include <nbla/cuda/function/utils/base_transform_binary.hpp>
 #include <nbla/cuda/half.hpp>
 #include <nbla/cuda/utils/atomic_add.cuh>
@@ -67,12 +68,41 @@ namespace transform_binary_cuda {
 // ----------------------------------------------------------------------------
 // Utilities
 // ----------------------------------------------------------------------------
-#define TRANSFORM_BINARY_DIV_SIZE 128
+// The macros and functions in cuda/common.hpp are redefined
+// for three-dimensional blocks and for Size_t.
+#define TRANSFORM_BINARY_CUDA_GRID_DIV 128
 
-/** CUDA grid-strided loop of Size_t*/
+// NBLA_CUDA_MAX_BLOCKS is 65536. Probably 65535 is more appropriate
+// because CUDA Toolkit Documentation describes taht this is the maximum
+// y- or z-dimension of a grid of thread blocks.
+#define TRANSFORM_BINARY_CUDA_MAX_BLOCKS 65535
+#define TRANSFORM_BINARY_CUDA_MAX_Z_THREADS 64
+
+/** ceil(N/D) where N and D are Size_t */
+#define NBLA_CEIL_SIZE_T_DIV(N, D)                                             \
+  ((static_cast<Size_t>(N) + static_cast<Size_t>(D) - 1) /                     \
+   static_cast<Size_t>(D))
+
+/** CUDA grid-strided loop of Size_t */
 #define TRANSFORM_BINARY_CUDA_KERNEL_LOOP(idx, num)                            \
   for (Size_t idx = (Size_t)blockIdx.x * blockDim.x + threadIdx.x;             \
        idx < (num); idx += (Size_t)blockDim.x * gridDim.x)
+
+/** Get an appropriate block size given a size of elements.
+    The kernel is assumed to contain a grid-strided loop.
+
+    This is an overload function of Size_t type which originally defined
+    in cuda/common.hpp.
+ */
+inline Size_t cuda_get_blocks_by_size(const Size_t size) {
+  if (size == 0)
+    return 0;
+  const Size_t blocks = NBLA_CEIL_SIZE_T_DIV(size, NBLA_CUDA_NUM_THREADS);
+  const Size_t inkernel_loop =
+      NBLA_CEIL_SIZE_T_DIV(blocks, NBLA_CUDA_MAX_BLOCKS);
+  const Size_t total_blocks = NBLA_CEIL_SIZE_T_DIV(blocks, inkernel_loop);
+  return total_blocks;
+}
 
 enum Term { x0, x1 };
 
@@ -85,9 +115,12 @@ struct Dim3KernelParams {
 
 /* Get the block size for the kernels specialized for three-dimensional data.
 
- If #dim of blocks is 3, blockDim.x * blockDim.y * blockDim.z <= 512
- If #dim of blocks is 2, blockDim.x * blockDim.y <= 512, blockDim.z = 1
- If #dim of blocks is 1, blockDim.x <= 512, blockDim.y = 1, blockDim.z = 1
+ If #dim of blocks is 3,
+ blockDim.x * blockDim.y * blockDim.z <= NBLA_CUDA_NUM_THREADS
+ If #dim of blocks is 2,
+ blockDim.x * blockDim.y <= NBLA_CUDA_NUM_THREADS, blockDim.z = 1
+ If #dim of blocks is 1,
+ blockDim.x <= NBLA_CUDA_NUM_THREADS, blockDim.y = 1, blockDim.z = 1
 
  Template is used to suppress the duplicated definition of this function
  among binary operators. It would be avoidable by declaration and definition
@@ -99,7 +132,7 @@ dim3 get_blocks_dim3(const Shape_t &shape, const int num_block_dims) {
     NBLA_ERROR(error_code::value, "Shape is not three-dimensional.");
   }
 
-  // blockDim.x = 2^pow[2], blockDim.x = 2^pow[1], blockDim.x = 2^pow[0],
+  // blockDim.x = 2^pow[2], blockDim.y = 2^pow[1], blockDim.z = 2^pow[0],
   Size_t pow[3] = {0, 0, 0};
 
   // Get the smallest power of 2 greater than or equal to each shape
@@ -109,15 +142,43 @@ dim3 get_blocks_dim3(const Shape_t &shape, const int num_block_dims) {
   if (num_block_dims == 3)
     pow[0] = (Size_t)std::ceil(std::log2(shape[0]));
 
-  // Adjast block sizes <= 512 (it can be converted from Shape_t to dim3 type.)
-  pow[2] = std::min(pow[2], (Size_t)9);
+  // Adjast block sizes <= NBLA_CUDA_NUM_THREADS
+  // (this value could be converted from Shape_t to dim3 type.)
+  const Size_t max_pow = (Size_t)std::floor(std::log2(NBLA_CUDA_NUM_THREADS));
+  const Size_t max_pow_z =
+      (Size_t)std::floor(std::log2(TRANSFORM_BINARY_CUDA_MAX_Z_THREADS));
+  pow[2] = std::min(pow[2], max_pow);
   if (num_block_dims != 1)
-    pow[1] = std::min(pow[1], 9 - pow[2]);
+    pow[1] = std::min(pow[1], max_pow - pow[2]);
   if (num_block_dims == 3)
-    pow[0] = std::min(pow[0], 9 - pow[2] - pow[1]);
+    pow[0] = std::min(max_pow_z, std::min(pow[0], max_pow - pow[2] - pow[1]));
 
   // Power and return
   return dim3(1 << pow[2], 1 << pow[1], 1 << pow[0]);
+}
+
+/** Get an appropriate grid size given a size of elements.
+    The kernel is assumed to contain a grid-strided loop.
+
+    At the same time, Size_t type for NNabla is converted to uint type for CUDA
+    safely.
+
+    Template is used to suppress the duplicated definition of this function
+    among binary operators. It would be avoidable by declaration and definition
+    file separation.
+ */
+template <typename T, typename BinaryOp>
+dim3 get_strided_grids_dim3(const Size_t grid_x, const Size_t grid_y,
+                            const Size_t grid_z) {
+  const Shape_t internal_loop{
+      NBLA_CEIL_SIZE_T_DIV(grid_x, TRANSFORM_BINARY_CUDA_MAX_BLOCKS),
+      NBLA_CEIL_SIZE_T_DIV(grid_y, TRANSFORM_BINARY_CUDA_MAX_BLOCKS),
+      NBLA_CEIL_SIZE_T_DIV(grid_z, TRANSFORM_BINARY_CUDA_MAX_BLOCKS)};
+  return dim3{
+      static_cast<unsigned int>(NBLA_CEIL_SIZE_T_DIV(grid_x, internal_loop[0])),
+      static_cast<unsigned int>(NBLA_CEIL_SIZE_T_DIV(grid_y, internal_loop[1])),
+      static_cast<unsigned int>(
+          NBLA_CEIL_SIZE_T_DIV(grid_z, internal_loop[2]))};
 }
 
 inline __device__ void get_indices(Size_t *idxes /* Size_t[2] */, Size_t idx,
@@ -207,36 +268,44 @@ template <typename T, typename PRECISE_T, typename BinaryOp>
 __global__ void kernel_forward_dim3(BinaryOp op, const T *__restrict__ x0,
                                     const T *__restrict__ x1, T *y,
                                     const Dim3KernelParams p) {
-  const Size_t ix = (Size_t)blockIdx.x * blockDim.x + threadIdx.x;
-  const Size_t iy = (Size_t)blockIdx.y * blockDim.y + threadIdx.y;
-  const Size_t iz = (Size_t)blockIdx.z * blockDim.z + threadIdx.z;
-  if (ix >= p.shape_y_2 || iy >= p.shape_y_1 || iz >= p.shape_y_0)
+  const Size_t tid_x = (Size_t)blockIdx.x * blockDim.x + threadIdx.x;
+  const Size_t tid_y = (Size_t)blockIdx.y * blockDim.y + threadIdx.y;
+  const Size_t tid_z = (Size_t)blockIdx.z * blockDim.z + threadIdx.z;
+  if (tid_x >= p.shape_y_2 || tid_y >= p.shape_y_1 || tid_z >= p.shape_y_0)
     return;
 
-  const Size_t idx =
-      flatten_idx(ix, iy, iz, p.stride_y_2, p.stride_y_1, p.stride_y_0);
-  const Size_t idx0 =
-      flatten_idx(ix, iy, iz, p.stride_x0_2, p.stride_x0_1, p.stride_x0_0);
-  const Size_t idx1 =
-      flatten_idx(ix, iy, iz, p.stride_x1_2, p.stride_x1_1, p.stride_x1_0);
-  y[idx] =
-      op(static_cast<PRECISE_T>(x0[idx0]), static_cast<PRECISE_T>(x1[idx1]));
+  for (Size_t iz = tid_z; iz < p.shape_y_0;
+       iz += (Size_t)blockDim.z * gridDim.z) {
+    for (Size_t iy = tid_y; iy < p.shape_y_1;
+         iy += (Size_t)blockDim.y * gridDim.y) {
+      for (Size_t ix = tid_x; ix < p.shape_y_2;
+           ix += (Size_t)blockDim.x * gridDim.x) {
+        const Size_t idx =
+            flatten_idx(ix, iy, iz, p.stride_y_2, p.stride_y_1, p.stride_y_0);
+        const Size_t idx0 = flatten_idx(ix, iy, iz, p.stride_x0_2,
+                                        p.stride_x0_1, p.stride_x0_0);
+        const Size_t idx1 = flatten_idx(ix, iy, iz, p.stride_x1_2,
+                                        p.stride_x1_1, p.stride_x1_0);
+        y[idx] = op(static_cast<PRECISE_T>(x0[idx0]),
+                    static_cast<PRECISE_T>(x1[idx1]));
+      }
+    }
+  }
 }
 
 // Perform binary operation without broadcast for both terms
 template <typename T, typename PRECISE_T, typename BinaryOp>
-__global__ void kernel_forward_dim3_not_broadcasted_both_terms(
-    BinaryOp op, const T *__restrict__ x0, const T *__restrict__ x1, T *y,
-    const Dim3KernelParams p) {
-  const Size_t ix = (Size_t)blockIdx.x * blockDim.x + threadIdx.x;
-  if (ix >= p.shape_y_2)
-    return;
-
-  const Size_t idx = ix * p.stride_y_2;
-  const Size_t idx0 = ix * p.stride_x0_2;
-  const Size_t idx1 = ix * p.stride_x1_2;
-  y[idx] =
-      op(static_cast<PRECISE_T>(x0[idx0]), static_cast<PRECISE_T>(x1[idx1]));
+__global__ void
+kernel_forward_dim3_not_broadcasted_both_terms(const Size_t size, BinaryOp op,
+                                               const T *x0, const T *x1, T *y,
+                                               const Dim3KernelParams p) {
+  TRANSFORM_BINARY_CUDA_KERNEL_LOOP(ix, size) { // size == p.shape_y_2
+    const Size_t idx = ix * p.stride_y_2;
+    const Size_t idx0 = ix * p.stride_x0_2;
+    const Size_t idx1 = ix * p.stride_x1_2;
+    y[idx] =
+        op(static_cast<PRECISE_T>(x0[idx0]), static_cast<PRECISE_T>(x1[idx1]));
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -247,31 +316,39 @@ template <typename T, typename PRECISE_T, typename BinaryOp, Term term>
 __global__ void kernel_backward_dim3_broadcasted_other_term(
     BinaryOp op, const T *dy, const T *x0, const T *x1, const T *y, T *dx,
     const bool inplace, const Dim3KernelParams p) {
-  const Size_t ix = (Size_t)blockIdx.x * blockDim.x + threadIdx.x;
-  const Size_t iy = (Size_t)blockIdx.y * blockDim.y + threadIdx.y;
-  const Size_t iz = (Size_t)blockIdx.z * blockDim.z + threadIdx.z;
-  if (ix >= p.shape_y_2 || iy >= p.shape_y_1 || iz >= p.shape_y_0)
+  const Size_t tid_x = (Size_t)blockIdx.x * blockDim.x + threadIdx.x;
+  const Size_t tid_y = (Size_t)blockIdx.y * blockDim.y + threadIdx.y;
+  const Size_t tid_z = (Size_t)blockIdx.z * blockDim.z + threadIdx.z;
+  if (tid_x >= p.shape_y_2 || tid_y >= p.shape_y_1 || tid_z >= p.shape_y_0)
     return;
 
-  const Size_t idx =
-      flatten_idx(ix, iy, iz, p.stride_y_2, p.stride_y_1, p.stride_y_0);
-  const Size_t idx0 =
-      flatten_idx(ix, iy, iz, p.stride_x0_2, p.stride_x0_1, p.stride_x0_0);
-  const Size_t idx1 =
-      flatten_idx(ix, iy, iz, p.stride_x1_2, p.stride_x1_1, p.stride_x1_0);
-
-  if (term == Term::x0) {
-    dx[idx0] =
-        static_cast<PRECISE_T>(dx[idx0]) +
-        op.g0(static_cast<PRECISE_T>(dy[idx]), static_cast<PRECISE_T>(x0[idx0]),
-              static_cast<PRECISE_T>(x1[idx1]), static_cast<PRECISE_T>(y[idx]),
-              inplace);
-  } else {
-    dx[idx1] =
-        static_cast<PRECISE_T>(dx[idx1]) +
-        op.g1(static_cast<PRECISE_T>(dy[idx]), static_cast<PRECISE_T>(x0[idx0]),
-              static_cast<PRECISE_T>(x1[idx1]), static_cast<PRECISE_T>(y[idx]),
-              inplace);
+  for (Size_t iz = tid_z; iz < p.shape_y_0;
+       iz += (Size_t)blockDim.z * gridDim.z) {
+    for (Size_t iy = tid_y; iy < p.shape_y_1;
+         iy += (Size_t)blockDim.y * gridDim.y) {
+      for (Size_t ix = tid_x; ix < p.shape_y_2;
+           ix += (Size_t)blockDim.x * gridDim.x) {
+        const Size_t idx =
+            flatten_idx(ix, iy, iz, p.stride_y_2, p.stride_y_1, p.stride_y_0);
+        const Size_t idx0 = flatten_idx(ix, iy, iz, p.stride_x0_2,
+                                        p.stride_x0_1, p.stride_x0_0);
+        const Size_t idx1 = flatten_idx(ix, iy, iz, p.stride_x1_2,
+                                        p.stride_x1_1, p.stride_x1_0);
+        if (term == Term::x0) {
+          dx[idx0] = static_cast<PRECISE_T>(dx[idx0]) +
+                     op.g0(static_cast<PRECISE_T>(dy[idx]),
+                           static_cast<PRECISE_T>(x0[idx0]),
+                           static_cast<PRECISE_T>(x1[idx1]),
+                           static_cast<PRECISE_T>(y[idx]), inplace);
+        } else {
+          dx[idx1] = static_cast<PRECISE_T>(dx[idx1]) +
+                     op.g1(static_cast<PRECISE_T>(dy[idx]),
+                           static_cast<PRECISE_T>(x0[idx0]),
+                           static_cast<PRECISE_T>(x1[idx1]),
+                           static_cast<PRECISE_T>(y[idx]), inplace);
+        }
+      }
+    }
   }
 }
 
@@ -280,28 +357,26 @@ __global__ void kernel_backward_dim3_broadcasted_other_term(
 // one.
 template <typename T, typename PRECISE_T, typename BinaryOp, Term term>
 __global__ void kernel_backward_dim3_not_broadcasted_both_terms(
-    BinaryOp op, const T *dy, const T *x0, const T *x1, const T *y, T *dx,
-    const bool inplace, const Dim3KernelParams p) {
-  Size_t ix = (Size_t)blockIdx.x * blockDim.x + threadIdx.x;
-  if (ix >= p.shape_y_2)
-    return;
+    const Size_t size, BinaryOp op, const T *dy, const T *x0, const T *x1,
+    const T *y, T *dx, const bool inplace, const Dim3KernelParams p) {
+  TRANSFORM_BINARY_CUDA_KERNEL_LOOP(ix, size) { // size == p.shape_y_2
+    const Size_t idx = ix * p.stride_y_2;
+    const Size_t idx0 = ix * p.stride_x0_2;
+    const Size_t idx1 = ix * p.stride_x1_2;
 
-  const Size_t idx = ix * p.stride_y_2;
-  const Size_t idx0 = ix * p.stride_x0_2;
-  const Size_t idx1 = ix * p.stride_x1_2;
-
-  if (term == Term::x0) {
-    dx[idx0] =
-        static_cast<PRECISE_T>(dx[idx0]) +
-        op.g0(static_cast<PRECISE_T>(dy[idx]), static_cast<PRECISE_T>(x0[idx0]),
-              static_cast<PRECISE_T>(x1[idx1]), static_cast<PRECISE_T>(y[idx]),
-              inplace);
-  } else {
-    dx[idx1] =
-        static_cast<PRECISE_T>(dx[idx1]) +
-        op.g1(static_cast<PRECISE_T>(dy[idx]), static_cast<PRECISE_T>(x0[idx0]),
-              static_cast<PRECISE_T>(x1[idx1]), static_cast<PRECISE_T>(y[idx]),
-              inplace);
+    if (term == Term::x0) {
+      dx[idx0] = static_cast<PRECISE_T>(dx[idx0]) +
+                 op.g0(static_cast<PRECISE_T>(dy[idx]),
+                       static_cast<PRECISE_T>(x0[idx0]),
+                       static_cast<PRECISE_T>(x1[idx1]),
+                       static_cast<PRECISE_T>(y[idx]), inplace);
+    } else {
+      dx[idx1] = static_cast<PRECISE_T>(dx[idx1]) +
+                 op.g1(static_cast<PRECISE_T>(dy[idx]),
+                       static_cast<PRECISE_T>(x0[idx0]),
+                       static_cast<PRECISE_T>(x1[idx1]),
+                       static_cast<PRECISE_T>(y[idx]), inplace);
+    }
   }
 }
 
@@ -345,24 +420,27 @@ __device__ PRECISE_T kernel_backward_dim3_block_reduce_x(Size_t tid,
 template <typename T, typename PRECISE_T, Size_t blockSize>
 __global__ void kernel_backward_dim3_reduce_x_after_z(const PRECISE_T *src,
                                                       T *dst,
-                                                      const Size_t x_size) {
+                                                      const Size_t x_size,
+                                                      const Size_t y_size) {
   const Size_t tid = threadIdx.x;
-  const Size_t y = blockIdx.y;
+  const Size_t bid_y = blockIdx.y; // "bid" means block ID.
 
   extern __shared__ PRECISE_T sbuf[];
 
-  PRECISE_T sum = 0;
-  for (Size_t x = tid; x < x_size; x += blockSize) {
-    sum += (PRECISE_T)src[x + y * x_size];
-  }
+  for (Size_t y = bid_y; y < y_size; y += (Size_t)gridDim.y) {
+    PRECISE_T sum = 0;
+    for (Size_t x = tid; x < x_size; x += blockSize) {
+      sum += (PRECISE_T)src[x + y * x_size];
+    }
 
-  sbuf[tid] = sum;
-  __syncthreads();
+    sbuf[tid] = sum;
+    __syncthreads();
 
-  sum = kernel_backward_dim3_block_reduce_x<PRECISE_T, blockSize>(tid, sbuf);
+    sum = kernel_backward_dim3_block_reduce_x<PRECISE_T, blockSize>(tid, sbuf);
 
-  if (tid == 0) {
-    dst[y] = (PRECISE_T)dst[y] + sum;
+    if (tid == 0) {
+      dst[y] = (PRECISE_T)dst[y] + sum;
+    }
   }
 }
 
@@ -373,42 +451,48 @@ __global__ void kernel_backward_dim3_reduce_x(
     BinaryOp op, const T *dy, const T *x0, const T *x1, const T *y, T *dx,
     const bool inplace, const Dim3KernelParams p, const Size_t x_size,
     const Size_t y_size, const Size_t z_size) {
-  const Size_t tid = threadIdx.x;
-  const Size_t iy = (Size_t)blockIdx.y * blockDim.y + threadIdx.y;
-  const Size_t iz = (Size_t)blockIdx.z * blockDim.z + threadIdx.z;
-  if (iy >= y_size || iz >= z_size)
+  const Size_t tid_x = threadIdx.x;
+  const Size_t tid_y = (Size_t)blockIdx.y * blockDim.y + threadIdx.y;
+  const Size_t tid_z = (Size_t)blockIdx.z * blockDim.z + threadIdx.z;
+  if (tid_y >= y_size || tid_z >= z_size)
     return;
 
   extern __shared__ PRECISE_T sbuf[];
 
-  PRECISE_T sum = 0;
-  for (Size_t ix = tid; ix < x_size; ix += blockSize) {
-    const Size_t idx =
-        flatten_idx(ix, iy, iz, p.stride_y_2, p.stride_y_1, p.stride_y_0);
-    const Size_t idx0 =
-        flatten_idx(ix, iy, iz, p.stride_x0_2, p.stride_x0_1, p.stride_x0_0);
-    const Size_t idx1 =
-        flatten_idx(ix, iy, iz, p.stride_x1_2, p.stride_x1_1, p.stride_x1_0);
-    if (term == Term::x0) {
-      sum += op.g0(static_cast<PRECISE_T>(dy[idx]),
-                   static_cast<PRECISE_T>(x0[idx0]),
-                   static_cast<PRECISE_T>(x1[idx1]),
-                   static_cast<PRECISE_T>(y[idx]), inplace);
-    } else {
-      sum += op.g1(static_cast<PRECISE_T>(dy[idx]),
-                   static_cast<PRECISE_T>(x0[idx0]),
-                   static_cast<PRECISE_T>(x1[idx1]),
-                   static_cast<PRECISE_T>(y[idx]), inplace);
+  for (Size_t iz = tid_z; iz < z_size; iz += (Size_t)blockDim.z * gridDim.z) {
+    for (Size_t iy = tid_y; iy < y_size; iy += (Size_t)blockDim.y * gridDim.y) {
+      PRECISE_T sum = 0;
+      for (Size_t ix = tid_x; ix < x_size; ix += blockSize) {
+        const Size_t idx =
+            flatten_idx(ix, iy, iz, p.stride_y_2, p.stride_y_1, p.stride_y_0);
+        const Size_t idx0 = flatten_idx(ix, iy, iz, p.stride_x0_2,
+                                        p.stride_x0_1, p.stride_x0_0);
+        const Size_t idx1 = flatten_idx(ix, iy, iz, p.stride_x1_2,
+                                        p.stride_x1_1, p.stride_x1_0);
+        if (term == Term::x0) {
+          sum += op.g0(static_cast<PRECISE_T>(dy[idx]),
+                       static_cast<PRECISE_T>(x0[idx0]),
+                       static_cast<PRECISE_T>(x1[idx1]),
+                       static_cast<PRECISE_T>(y[idx]), inplace);
+        } else {
+          sum += op.g1(static_cast<PRECISE_T>(dy[idx]),
+                       static_cast<PRECISE_T>(x0[idx0]),
+                       static_cast<PRECISE_T>(x1[idx1]),
+                       static_cast<PRECISE_T>(y[idx]), inplace);
+        }
+      }
+
+      sbuf[tid_x] = sum;
+      __syncthreads();
+
+      sum = kernel_backward_dim3_block_reduce_x<PRECISE_T, blockSize>(tid_x,
+                                                                      sbuf);
+
+      if (tid_x == 0) {
+        dx[iy + iz * y_size] =
+            static_cast<PRECISE_T>(dx[iy + iz * y_size]) + sum;
+      }
     }
-  }
-
-  sbuf[tid] = sum;
-  __syncthreads();
-
-  sum = kernel_backward_dim3_block_reduce_x<PRECISE_T, blockSize>(tid, sbuf);
-
-  if (tid == 0) {
-    dx[iy + iz * y_size] = static_cast<PRECISE_T>(dx[iy + iz * y_size]) + sum;
   }
 }
 
@@ -417,39 +501,44 @@ __global__ void kernel_backward_dim3_reduce_x(
 // ----------------------------------------------------------------------------
 // y-axis reduction
 template <typename T, typename PRECISE_T, typename BinaryOp, Term term,
-          Size_t y_div_size>
+          Size_t y_grid_div>
 __global__ void kernel_backward_dim3_reduce_y(
     BinaryOp op, const T *dy, const T *x0, const T *x1, const T *y,
     PRECISE_T *dst, const bool inplace, const Dim3KernelParams p,
     const Size_t x_size, const Size_t y_size, const Size_t z_size) {
-  const Size_t ix = (Size_t)blockIdx.x * blockDim.x + threadIdx.x;
-  Size_t iy = (Size_t)blockIdx.y * y_div_size;
-  const Size_t iz = (Size_t)blockIdx.z * blockDim.z + threadIdx.z;
+  const Size_t tid_x = (Size_t)blockIdx.x * blockDim.x + threadIdx.x;
+  const Size_t tid_y = (Size_t)blockIdx.y * y_grid_div;
+  const Size_t tid_z = (Size_t)blockIdx.z * blockDim.z + threadIdx.z;
+  if (tid_x >= x_size || tid_z >= z_size)
+    return;
 
-  if (ix < x_size && iz < z_size) {
-    PRECISE_T sum = 0;
+  const Size_t yend = min(tid_y + y_grid_div, y_size);
 
-    for (const Size_t yend = min(iy + y_div_size, y_size); iy < yend; ++iy) {
-      const Size_t idx =
-          flatten_idx(ix, iy, iz, p.stride_y_2, p.stride_y_1, p.stride_y_0);
-      const Size_t idx0 =
-          flatten_idx(ix, iy, iz, p.stride_x0_2, p.stride_x0_1, p.stride_x0_0);
-      const Size_t idx1 =
-          flatten_idx(ix, iy, iz, p.stride_x1_2, p.stride_x1_1, p.stride_x1_0);
+  for (Size_t iz = tid_z; iz < z_size; iz += (Size_t)blockDim.z * gridDim.z) {
+    for (Size_t ix = tid_x; ix < x_size; ix += (Size_t)blockDim.x * gridDim.x) {
+      PRECISE_T sum = 0;
+      for (Size_t iy = tid_y; iy < yend; ++iy) {
+        const Size_t idx =
+            flatten_idx(ix, iy, iz, p.stride_y_2, p.stride_y_1, p.stride_y_0);
+        const Size_t idx0 = flatten_idx(ix, iy, iz, p.stride_x0_2,
+                                        p.stride_x0_1, p.stride_x0_0);
+        const Size_t idx1 = flatten_idx(ix, iy, iz, p.stride_x1_2,
+                                        p.stride_x1_1, p.stride_x1_0);
 
-      if (term == Term::x0) {
-        sum += op.g0(static_cast<PRECISE_T>(dy[idx]),
-                     static_cast<PRECISE_T>(x0[idx0]),
-                     static_cast<PRECISE_T>(x1[idx1]),
-                     static_cast<PRECISE_T>(y[idx]), inplace);
-      } else {
-        sum += op.g1(static_cast<PRECISE_T>(dy[idx]),
-                     static_cast<PRECISE_T>(x0[idx0]),
-                     static_cast<PRECISE_T>(x1[idx1]),
-                     static_cast<PRECISE_T>(y[idx]), inplace);
+        if (term == Term::x0) {
+          sum += op.g0(static_cast<PRECISE_T>(dy[idx]),
+                       static_cast<PRECISE_T>(x0[idx0]),
+                       static_cast<PRECISE_T>(x1[idx1]),
+                       static_cast<PRECISE_T>(y[idx]), inplace);
+        } else {
+          sum += op.g1(static_cast<PRECISE_T>(dy[idx]),
+                       static_cast<PRECISE_T>(x0[idx0]),
+                       static_cast<PRECISE_T>(x1[idx1]),
+                       static_cast<PRECISE_T>(y[idx]), inplace);
+        }
       }
+      atomic_add(&dst[ix + iz * x_size], sum);
     }
-    atomic_add(&dst[ix + iz * x_size], sum);
   }
 }
 
@@ -458,39 +547,44 @@ __global__ void kernel_backward_dim3_reduce_y(
 // ----------------------------------------------------------------------------
 // z-axis reduction
 template <typename T, typename PRECISE_T, typename BinaryOp, Term term,
-          Size_t z_div_size>
+          Size_t z_grid_div>
 __global__ void kernel_backward_dim3_reduce_z(
     BinaryOp op, const T *dy, const T *x0, const T *x1, const T *y,
     PRECISE_T *dst, const bool inplace, const Dim3KernelParams p,
     const Size_t x_size, const Size_t y_size, const Size_t z_size) {
-  const Size_t ix = (Size_t)blockIdx.x * blockDim.x + threadIdx.x;
-  const Size_t iy = (Size_t)blockIdx.y * blockDim.y + threadIdx.y;
-  Size_t iz = (Size_t)blockIdx.z * z_div_size;
+  const Size_t tid_x = (Size_t)blockIdx.x * blockDim.x + threadIdx.x;
+  const Size_t tid_y = (Size_t)blockIdx.y * blockDim.y + threadIdx.y;
+  const Size_t tid_z = (Size_t)blockIdx.z * z_grid_div;
+  if (tid_x >= x_size || tid_y >= y_size)
+    return;
 
-  if (ix < x_size && iy < y_size) {
-    PRECISE_T sum = 0;
+  const Size_t zend = min(tid_z + z_grid_div, z_size);
 
-    for (const Size_t zend = min(iz + z_div_size, z_size); iz < zend; ++iz) {
-      const Size_t idx =
-          flatten_idx(ix, iy, iz, p.stride_y_2, p.stride_y_1, p.stride_y_0);
-      const Size_t idx0 =
-          flatten_idx(ix, iy, iz, p.stride_x0_2, p.stride_x0_1, p.stride_x0_0);
-      const Size_t idx1 =
-          flatten_idx(ix, iy, iz, p.stride_x1_2, p.stride_x1_1, p.stride_x1_0);
+  for (Size_t iy = tid_y; iy < y_size; iy += (Size_t)blockDim.y * gridDim.y) {
+    for (Size_t ix = tid_x; ix < x_size; ix += (Size_t)blockDim.x * gridDim.x) {
+      PRECISE_T sum = 0;
+      for (Size_t iz = tid_z; iz < zend; ++iz) {
+        const Size_t idx =
+            flatten_idx(ix, iy, iz, p.stride_y_2, p.stride_y_1, p.stride_y_0);
+        const Size_t idx0 = flatten_idx(ix, iy, iz, p.stride_x0_2,
+                                        p.stride_x0_1, p.stride_x0_0);
+        const Size_t idx1 = flatten_idx(ix, iy, iz, p.stride_x1_2,
+                                        p.stride_x1_1, p.stride_x1_0);
 
-      if (term == Term::x0) {
-        sum += op.g0(static_cast<PRECISE_T>(dy[idx]),
-                     static_cast<PRECISE_T>(x0[idx0]),
-                     static_cast<PRECISE_T>(x1[idx1]),
-                     static_cast<PRECISE_T>(y[idx]), inplace);
-      } else {
-        sum += op.g1(static_cast<PRECISE_T>(dy[idx]),
-                     static_cast<PRECISE_T>(x0[idx0]),
-                     static_cast<PRECISE_T>(x1[idx1]),
-                     static_cast<PRECISE_T>(y[idx]), inplace);
+        if (term == Term::x0) {
+          sum += op.g0(static_cast<PRECISE_T>(dy[idx]),
+                       static_cast<PRECISE_T>(x0[idx0]),
+                       static_cast<PRECISE_T>(x1[idx1]),
+                       static_cast<PRECISE_T>(y[idx]), inplace);
+        } else {
+          sum += op.g1(static_cast<PRECISE_T>(dy[idx]),
+                       static_cast<PRECISE_T>(x0[idx0]),
+                       static_cast<PRECISE_T>(x1[idx1]),
+                       static_cast<PRECISE_T>(y[idx]), inplace);
+        }
       }
+      atomic_add(&dst[ix + iy * x_size], sum);
     }
-    atomic_add(&dst[ix + iy * x_size], sum);
   }
 }
 
@@ -535,32 +629,19 @@ void forward_impl(const Context &ctx, BinaryOp op, const Variables &inputs,
         (stride_x1[0] == 0) || (stride_x1[1] == 0) || (stride_x1[2] == 0)) {
       // Broadcast
       dim3 blockDim = get_blocks_dim3<T, BinaryOp>(shape, 3);
-      const Size_t ceiled_x = (x_size + blockDim.x - 1) / blockDim.x;
-      const Size_t ceiled_y = (y_size + blockDim.y - 1) / blockDim.y;
-      const Size_t ceiled_z = (z_size + blockDim.z - 1) / blockDim.z;
-      NBLA_CHECK(
-          ceiled_x <= UINT_MAX || ceiled_y <= UINT_MAX || ceiled_z <= UINT_MAX,
-          error_code::type, "The input size is too large to be converted to "
-                            "the gridSize of a CUDA kernel.");
-      dim3 gridDim(static_cast<unsigned int>(ceiled_x),
-                   static_cast<unsigned int>(ceiled_y),
-                   static_cast<unsigned int>(ceiled_z));
-
+      dim3 gridDim = get_strided_grids_dim3<T, BinaryOp>(
+          NBLA_CEIL_SIZE_T_DIV(x_size, blockDim.x),
+          NBLA_CEIL_SIZE_T_DIV(y_size, blockDim.y),
+          NBLA_CEIL_SIZE_T_DIV(z_size, blockDim.z));
       kernel_forward_dim3<T, PRECISE_T, BinaryOp><<<gridDim, blockDim>>>(
           op, x0, x1, y, params);
       NBLA_CUDA_KERNEL_CHECK();
     } else {
       // Not broadcast
-      dim3 blockDim = get_blocks_dim3<T, BinaryOp>(shape, 1);
-      const Size_t ceiled_x = (x_size + blockDim.x - 1) / blockDim.x;
-      NBLA_CHECK(ceiled_x <= UINT_MAX, error_code::type,
-                 "The input size is too large to be converted to the gridSize "
-                 "of a CUDA kernel.");
-      dim3 gridDim(static_cast<unsigned int>(ceiled_x));
-
-      kernel_forward_dim3_not_broadcasted_both_terms<
-          T, PRECISE_T, BinaryOp><<<gridDim, blockDim>>>(op, x0, x1, y, params);
-      NBLA_CUDA_KERNEL_CHECK();
+      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
+          (kernel_forward_dim3_not_broadcasted_both_terms<T, PRECISE_T,
+                                                          BinaryOp>),
+          shape[2], op, x0, x1, y, params);
     }
   } else {
     // Otherwise
@@ -591,32 +672,21 @@ void backward_impl_dim3_without_reduction(
   if (broadcasted_the_other_term) {
     // The other term is broadcasted.
     dim3 blockDim = get_blocks_dim3<T, BinaryOp>(shape, 3);
-    const Size_t ceiled_x = (x_size + blockDim.x - 1) / blockDim.x;
-    const Size_t ceiled_y = (y_size + blockDim.y - 1) / blockDim.y;
-    const Size_t ceiled_z = (z_size + blockDim.z - 1) / blockDim.z;
-    NBLA_CHECK(ceiled_x <= UINT_MAX || ceiled_y <= UINT_MAX ||
-                   ceiled_z <= UINT_MAX,
-               error_code::type, "The input size is too large to be converted "
-                                 "to the gridSize of a CUDA kernel.");
-    dim3 gridDim(static_cast<unsigned int>(ceiled_x),
-                 static_cast<unsigned int>(ceiled_y),
-                 static_cast<unsigned int>(ceiled_z));
+    dim3 gridDim = get_strided_grids_dim3<T, BinaryOp>(
+        NBLA_CEIL_SIZE_T_DIV(x_size, blockDim.x),
+        NBLA_CEIL_SIZE_T_DIV(y_size, blockDim.y),
+        NBLA_CEIL_SIZE_T_DIV(z_size, blockDim.z));
+
     kernel_backward_dim3_broadcasted_other_term<T, PRECISE_T, BinaryOp,
                                                 term><<<gridDim, blockDim>>>(
         op, dy, x0, x1, y, dx, inplace, params);
     NBLA_CUDA_KERNEL_CHECK();
   } else {
     // The other term is not broadcasted too. The computation becomes easier.
-    dim3 blockDim = get_blocks_dim3<T, BinaryOp>(shape, 1);
-    const Size_t ceiled_x = (x_size + blockDim.x - 1) / blockDim.x;
-    NBLA_CHECK(ceiled_x <= UINT_MAX, error_code::type,
-               "The input size is too large to be converted to the gridSize of "
-               "a CUDA kernel.");
-    dim3 gridDim(static_cast<unsigned int>(ceiled_x));
-    kernel_backward_dim3_not_broadcasted_both_terms<
-        T, PRECISE_T, BinaryOp, term><<<gridDim, blockDim>>>(
-        op, dy, x0, x1, y, dx, inplace, params);
-    NBLA_CUDA_KERNEL_CHECK();
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
+        (kernel_backward_dim3_not_broadcasted_both_terms<T, PRECISE_T, BinaryOp,
+                                                         term>),
+        shape[2], op, dy, x0, x1, y, dx, inplace, params);
   }
 }
 
@@ -636,15 +706,15 @@ void backward_impl_dim3_reduce_x(BinaryOp op, const T *dy, const T *x0,
   const size_t smem_size = blockSize * sizeof(PRECISE_T);
 
   if (z_reduced_buff) {
-    // z axis is already reduced.
-    dim3 gridDim(1, y_size); // z_size == 1
+    // z axis is reduced previously.
+    dim3 gridDim = get_strided_grids_dim3<T, BinaryOp>(1, y_size, 1);
     kernel_backward_dim3_reduce_x_after_z<
         T, PRECISE_T, blockSize><<<gridDim, blockDim, smem_size>>>(
-        z_reduced_buff, dx, x_size);
+        z_reduced_buff, dx, x_size, y_size);
     NBLA_CUDA_KERNEL_CHECK();
   } else {
     // x axis is only reduced.
-    dim3 gridDim(1, y_size, z_size);
+    dim3 gridDim = get_strided_grids_dim3<T, BinaryOp>(1, y_size, z_size);
     kernel_backward_dim3_reduce_x<T, PRECISE_T, BinaryOp, term,
                                   blockSize><<<gridDim, blockDim, smem_size>>>(
         op, dy, x0, x1, y, dx, inplace, params, x_size, y_size, z_size);
@@ -662,21 +732,15 @@ void backward_impl_dim3_reduce_y(const Context &ctx, BinaryOp op, const T *dy,
                                  const Size_t z_size) {
   dim3 blockDim =
       get_blocks_dim3<T, BinaryOp>(Shape_t{z_size, y_size, x_size}, 1);
-  const Size_t ceiled_x = (x_size + blockDim.x - 1) / blockDim.x;
-  const Size_t ceiled_y =
-      (y_size + TRANSFORM_BINARY_DIV_SIZE - 1) / TRANSFORM_BINARY_DIV_SIZE;
-  const Size_t ceiled_z = (z_size + blockDim.z - 1) / blockDim.z;
-  NBLA_CHECK(ceiled_x <= UINT_MAX || ceiled_y <= UINT_MAX ||
-                 ceiled_z <= UINT_MAX,
-             error_code::type, "The input size is too large to be converted to "
-                               "the gridSize of a CUDA kernel.");
-  dim3 gridDim(static_cast<unsigned int>(ceiled_x),
-               static_cast<unsigned int>(ceiled_y),
-               static_cast<unsigned int>(ceiled_z));
+  dim3 gridDim = get_strided_grids_dim3<T, BinaryOp>(
+      NBLA_CEIL_SIZE_T_DIV(x_size, blockDim.x),
+      NBLA_CEIL_SIZE_T_DIV(y_size, TRANSFORM_BINARY_CUDA_GRID_DIV),
+      NBLA_CEIL_SIZE_T_DIV(z_size, blockDim.z));
 
   if (is_same<T, PRECISE_T>::value) {
     kernel_backward_dim3_reduce_y<
-        T, T, BinaryOp, term, TRANSFORM_BINARY_DIV_SIZE><<<gridDim, blockDim>>>(
+        T, T, BinaryOp, term,
+        TRANSFORM_BINARY_CUDA_GRID_DIV><<<gridDim, blockDim>>>(
         op, dy, x0, x1, y, dx, inplace, params, x_size, y_size, z_size);
     NBLA_CUDA_KERNEL_CHECK();
   } else {
@@ -688,7 +752,7 @@ void backward_impl_dim3_reduce_y(const Context &ctx, BinaryOp op, const T *dy,
 
     kernel_backward_dim3_reduce_y<
         T, PRECISE_T, BinaryOp, term,
-        TRANSFORM_BINARY_DIV_SIZE><<<gridDim, blockDim>>>(
+        TRANSFORM_BINARY_CUDA_GRID_DIV><<<gridDim, blockDim>>>(
         op, dy, x0, x1, y, tmp, inplace, params, x_size, y_size, z_size);
     NBLA_CUDA_KERNEL_CHECK();
 
@@ -706,21 +770,14 @@ PRECISE_T *backward_impl_dim3_reduce_z(
     const Size_t z_size, const bool reduce_x) {
   dim3 blockDim =
       get_blocks_dim3<T, BinaryOp>(Shape_t{z_size, y_size, x_size}, 2);
-  const Size_t ceiled_x = (x_size + blockDim.x - 1) / blockDim.x;
-  const Size_t ceiled_y = (y_size + blockDim.y - 1) / blockDim.y;
-  const Size_t ceiled_z =
-      (z_size + TRANSFORM_BINARY_DIV_SIZE - 1) / TRANSFORM_BINARY_DIV_SIZE;
-  NBLA_CHECK(ceiled_x <= UINT_MAX || ceiled_y <= UINT_MAX ||
-                 ceiled_z <= UINT_MAX,
-             error_code::type, "The input size is too large to be converted to "
-                               "the gridSize of a CUDA kernel.");
-  dim3 gridDim(static_cast<unsigned int>(ceiled_x),
-               static_cast<unsigned int>(ceiled_y),
-               static_cast<unsigned int>(ceiled_z));
-
+  dim3 gridDim = get_strided_grids_dim3<T, BinaryOp>(
+      NBLA_CEIL_SIZE_T_DIV(x_size, blockDim.x),
+      NBLA_CEIL_SIZE_T_DIV(y_size, blockDim.y),
+      NBLA_CEIL_SIZE_T_DIV(z_size, TRANSFORM_BINARY_CUDA_GRID_DIV));
   if (is_same<T, PRECISE_T>::value && !reduce_x) {
     kernel_backward_dim3_reduce_z<
-        T, T, BinaryOp, term, TRANSFORM_BINARY_DIV_SIZE><<<gridDim, blockDim>>>(
+        T, T, BinaryOp, term,
+        TRANSFORM_BINARY_CUDA_GRID_DIV><<<gridDim, blockDim>>>(
         op, dy, x0, x1, y, dx, inplace, params, x_size, y_size, z_size);
     NBLA_CUDA_KERNEL_CHECK();
     return nullptr;
@@ -733,7 +790,7 @@ PRECISE_T *backward_impl_dim3_reduce_z(
 
     kernel_backward_dim3_reduce_z<
         T, PRECISE_T, BinaryOp, term,
-        TRANSFORM_BINARY_DIV_SIZE><<<gridDim, blockDim>>>(
+        TRANSFORM_BINARY_CUDA_GRID_DIV><<<gridDim, blockDim>>>(
         op, dy, x0, x1, y, tmp, inplace, params, x_size, y_size, z_size);
     NBLA_CUDA_KERNEL_CHECK();
 
@@ -774,7 +831,6 @@ void backward_impl_dim3(const Context &ctx, BinaryOp op, const T *dy,
                                 stride_x1[0], stride_x1[1], stride_x1[2],
                                 stride_y[0],  stride_y[1],  stride_y[2],
                                 shape_y[0],   shape_y[1],   shape_y[2]};
-
   if (!reduce_x && !reduce_y && !reduce_z) {
     // This term is not broadcasted. Reduction is not required.
     backward_impl_dim3_without_reduction<T, PRECISE_T, BinaryOp, term>(
@@ -799,6 +855,9 @@ void backward_impl_dim3(const Context &ctx, BinaryOp op, const T *dy,
 
     if (reduce_x) {
       dim3 blockDim = get_blocks_dim3<T, BinaryOp>(shape, 1);
+      NBLA_CHECK(NBLA_CUDA_NUM_THREADS == 512, error_code::value,
+                 "The CUDA kernel to reduce x-axis in base_transform_binary "
+                 "assumes NBLA_CUDA_NUM_THREADS == 512.");
       if (blockDim.x == 512) {
         backward_impl_dim3_reduce_x<T, PRECISE_T, BinaryOp, term, 512>(
             op, dy, x0, x1, y, tmp, dx, inplace, params, x_size, y_size,
