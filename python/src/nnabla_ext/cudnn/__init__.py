@@ -81,7 +81,7 @@ def check_gpu(device_id):
 
     """
     import os
-    from nnabla.utils.nvml import pynvml
+    import pynvml
     incompatible_gpus = nnabla_ext.cuda.incompatible_gpus
     cuda_ver = nnabla_ext.cuda.__cuda_version__.replace('.', '')
     cudnn_ver = nnabla_ext.cuda.__cudnn_version__[0]

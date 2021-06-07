@@ -68,7 +68,7 @@ def load_shared_from_error(err):
 
 def check_gpu_compatibility():
     import os
-    from nnabla.utils.nvml import pynvml
+    import pynvml
 
     def list_local_gpu():
         pynvml.nvmlInit()
