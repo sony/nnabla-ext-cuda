@@ -25,8 +25,8 @@ public:
   typedef typename CudaType<T>::type Tcu;
 
   explicit SpectralNormCuda(const Context &ctx, int dim, int itr, float eps,
-                            bool test)
-      : SpectralNorm<T>(ctx, dim, itr, eps, test),
+                            bool test, bool output_u)
+      : SpectralNorm<T>(ctx, dim, itr, eps, test, output_u),
         device_(std::stoi(ctx.device_id)) {}
   virtual ~SpectralNormCuda() {}
   virtual string name() { return "SpectralNormCuda"; }
