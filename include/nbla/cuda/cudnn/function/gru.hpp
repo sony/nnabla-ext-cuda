@@ -36,6 +36,7 @@ public:
   virtual vector<string> allowed_array_classes() {
     return SingletonManager::get<Cuda>()->array_classes();
   }
+  virtual bool grad_depends_output_data(int i, int o) const { return true; }
 
 protected:
   int seq_len_;
@@ -92,6 +93,7 @@ protected:
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
+  virtual bool grad_depends_input_data_impl(int i, int o) const { return true; }
 };
 }
 #endif

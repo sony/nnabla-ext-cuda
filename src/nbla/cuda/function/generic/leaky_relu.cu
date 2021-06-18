@@ -36,16 +36,16 @@ __global__ void kernel_leaky_relu_forward(const int num, T *y, const T *x,
 }
 
 template <typename T, bool accum = true>
-__global__ void kernel_leaky_relu_backward(const int num, T *dx, const T *x,
+__global__ void kernel_leaky_relu_backward(const int num, T *dx, const T *sign,
                                            const T *dy, float alpha) {
   NBLA_CUDA_KERNEL_LOOP(idx, num) {
     if (accum) {
-      if (x[idx] > 0)
+      if (sign[idx] > 0)
         dx[idx] += dy[idx];
       else
         dx[idx] += alpha * dy[idx];
     } else {
-      if (x[idx] > 0)
+      if (sign[idx] > 0)
         dx[idx] = dy[idx];
       else
         dx[idx] = alpha * dy[idx];
@@ -74,17 +74,18 @@ void LeakyReLUCuda<T>::backward_impl(const Variables &inputs,
     return;
   }
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
+  const Tc *sign = this->inplace_ ? outputs[0]->get_data_pointer<Tc>(this->ctx_)
+                                  : inputs[0]->get_data_pointer<Tc>(this->ctx_);
   Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(
       this->ctx_, !(this->inplace_ || accum[0]));
   const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
   size_t size = inputs[0]->size();
   if (dx != dy && accum[0]) {
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_leaky_relu_backward<Tc, true>), size,
-                                   dx, x, dy, this->alpha_);
+                                   dx, sign, dy, this->alpha_);
   } else {
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_leaky_relu_backward<Tc, false>),
-                                   size, dx, x, dy, this->alpha_);
+                                   size, dx, sign, dy, this->alpha_);
   }
 }
 }

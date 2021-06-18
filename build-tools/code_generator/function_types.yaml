@@ -138,7 +138,7 @@ Sum:
   half: [Half]
 CumSum:
   float: [float]
-  # half: [Half]  
+# half: [Half]
 Mean:
   float: [float]
   half: [Half]
@@ -327,7 +327,7 @@ Sinh:
   half: [Half]
 Cosh:
   float: [float]
-  half: [Half]  
+  half: [Half]
 Concatenate:
   float: [float]
   half: [Half]
@@ -363,7 +363,7 @@ Flip:
   half: [Half]
 # Shift:
 #   float: [float]
-  half: [Half]
+#  half: [Half]
 Sort:
   float: [float]
   half: [Half]
@@ -449,7 +449,7 @@ EpsilonInsensitiveLoss:
   half: [Half]
 # KLMultinomial:
 #   float: [float]
-  half: [Half]
+#  half: [Half]
 BinarySigmoid:
   float: [float]
   half: [Half]
@@ -519,21 +519,21 @@ Ceil:
 Floor:
   float: [float]
   half: [Half]
-Sin:
-  float: [float]
-  half: [Half]
-Cos:
-  float: [float]
-  half: [Half]
-Tan:
-  float: [float]
-  half: [Half]
-Sinh:
-  float: [float]
-  half: [Half]
-Cosh:
-  float: [float]
-  half: [Half]
+#Sin:
+#  float: [float]
+#  half: [Half]
+#Cos:
+#  float: [float]
+#  half: [Half]
+#Tan:
+#  float: [float]
+#  half: [Half]
+#Sinh:
+#  float: [float]
+#  half: [Half]
+#Cosh:
+#  float: [float]
+#  half: [Half]
 ASin:
   float: [float]
   half: [Half]

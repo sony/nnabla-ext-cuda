@@ -22,6 +22,7 @@ namespace nbla {
 
 /** @copydoc Mul2
 */
-NBLA_DECLARE_TRANSFORM_BINARY_CUDA_INPLACE(Mul2);
+// In-placing is obsoleted.
+NBLA_DECLARE_TRANSFORM_BINARY_CUDA_INPLACE(Mul2, true);
 }
 #endif
