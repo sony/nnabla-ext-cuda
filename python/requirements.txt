@@ -9,7 +9,6 @@ Cython
 boto3
 h5py<=3.1.0
 numpy==1.19.5
-onnx
 protobuf
 six
 tqdm
@@ -20,5 +19,6 @@ autopep8
 # Test
 ipython
 pytest
+pytest-runner
 scipy
 scikit-image

@@ -11,7 +11,7 @@ REM distributed under the License is distributed on an "AS IS" BASIS,
 REM WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 REM See the License for the specific language governing permissions and
 REM limitations under the License.
-REM 
+REM
 
 
 @ECHO OFF
@@ -31,9 +31,9 @@ IF NOT DEFINED WHLCUDA (
    exit /b 255
 )
 
-pip install %WHL% || GOTO :error
-pip install --no-deps %WHLCUDA% || GOTO :error
-pip install pytest
+pip install %PIP_INS_OPTS% %WHL% || GOTO :error
+pip install %PIP_INS_OPTS% --no-deps %WHLCUDA% || GOTO :error
+pip install %PIP_INS_OPTS% pytest
 
 SET PYTHONPATH=%nnabla_ext_cuda_root%\python\test;%VENV%\Lib\site-packages;%PYTHONPATH%
 python -m pytest %nnabla_root%\python\test || GOTO :error

@@ -120,7 +120,7 @@ nnabla-ext-cuda-wheel-local: nnabla-install \
 
 .PHONY: nnabla-ext-cuda-install
 nnabla-ext-cuda-install:
-	pip install --force-reinstall --no-deps $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/*-$(INSTALL_WHEEL_ARCH)*.whl
+	pip install ${PIP_INS_OPTS} --force-reinstall --no-deps $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/*-$(INSTALL_WHEEL_ARCH)*.whl
 
 ########################################################################################################################
 # Shell (for rapid development)

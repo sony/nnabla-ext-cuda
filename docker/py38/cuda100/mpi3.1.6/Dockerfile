@@ -14,7 +14,13 @@
 
 FROM ubuntu:18.04 as openmpi
 
-RUN apt-get update
+ARG PIP_INS_OPTS
+ARG PYTHONWARNINGS
+ARG CURL_OPTS
+ARG WGET_OPTS
+ARG APT_OPTS
+
+RUN eval ${APT_OPTS} && apt-get update
 RUN apt-get install -y --no-install-recommends \
         build-essential \
         curl \
@@ -24,7 +30,7 @@ RUN apt-get install -y --no-install-recommends \
 RUN apt-get install -y --no-install-recommends ca-certificates
 
 RUN mkdir /tmp/openmpi
-RUN curl https://download.open-mpi.org/release/open-mpi/v3.1/openmpi-3.1.6.tar.bz2 -o /tmp/openmpi/openmpi-3.1.6.tar.bz2
+RUN curl ${CURL_OPTS} https://download.open-mpi.org/release/open-mpi/v3.1/openmpi-3.1.6.tar.bz2 -o /tmp/openmpi/openmpi-3.1.6.tar.bz2
 RUN tar Cxvf /tmp/openmpi /tmp/openmpi/openmpi-3.1.6.tar.bz2
 RUN cd tmp/openmpi/openmpi-3.1.6 \
     && ./configure \
@@ -38,7 +44,13 @@ RUN cd tmp/openmpi/openmpi-3.1.6 \
 
 FROM nvidia/cuda:10.0-cudnn7-runtime-ubuntu18.04
 
-RUN apt-get update \
+ARG PIP_INS_OPTS
+ARG PYTHONWARNINGS
+ARG CURL_OPTS
+ARG WGET_OPTS
+ARG APT_OPTS
+
+RUN eval ${APT_OPTS} && apt-get update \
     && apt-get install -y --no-install-recommends \
        bzip2 \
        ca-certificates \
@@ -53,11 +65,11 @@ RUN apt-get update \
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.8 0
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 0
 
-RUN pip3 install --upgrade pip
-RUN pip install wheel setuptools
-RUN pip install opencv-python || true
+RUN pip3 install ${PIP_INS_OPTS} --upgrade pip
+RUN pip install ${PIP_INS_OPTS} wheel setuptools
+RUN pip install ${PIP_INS_OPTS} opencv-python || true
 
-RUN pip install --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda100 \
+RUN pip install ${PIP_INS_OPTS} --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda100 \
     || echo "Skip DALI installation (CUDA=10.0)"
 
 COPY --from=openmpi /opt/openmpi /opt/openmpi
@@ -66,7 +78,7 @@ ENV LD_LIBRARY_PATH /opt/openmpi/lib:$LD_LIBRARY_PATH
 
 
 ARG NNABLA_VER
-RUN pip install nnabla-ext-cuda100-nccl2-mpi3.1.6==${NNABLA_VER}
+RUN pip install ${PIP_INS_OPTS} nnabla-ext-cuda100-nccl2-mpi3.1.6==${NNABLA_VER}
 
 # Solve nccl error that No space left on device
 # while creating shared memory segment.
