@@ -147,7 +147,7 @@ shared_ptr<cudaStream_t> Cuda::get_stream(unsigned int flags,
   }
 
   auto tid = std::this_thread::get_id();
-  std::lock_guard<std::mutex> lock(mtx_stream);
+  std::lock_guard<std::mutex> lock(mtx_stream_);
 
   int streamIdInt = static_cast<int>(streamId);
   auto &device_streams = this->streams_[device];

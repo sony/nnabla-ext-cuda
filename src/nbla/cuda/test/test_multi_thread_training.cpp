@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include <time.h>
 
 #include "gtest/gtest.h"
 #include <chrono>
@@ -79,10 +80,26 @@ CgVariablePtr model(CgVariablePtr x, ParameterDirectory parameters) {
   return h;
 }
 
-bool traing_a_model(nbla::Context ctx) {
+typedef std::tuple<std::shared_ptr<ParameterDirectory>, CgVariablePtr,
+                   CgVariablePtr, CgVariablePtr, CgVariablePtr>
+    model_t;
 
-  // Create a context for cpu
-  nbla::Context cpu_ctx{{"cpu:float"}, "CpuCachedArray", "0"};
+model_t build_model(int batch_size) {
+  std::shared_ptr<ParameterDirectory> ptr_params =
+      std::make_shared<ParameterDirectory>();
+  ParameterDirectory &params = *ptr_params.get();
+  auto x = make_shared<CgVariable>(Shape_t({batch_size, 1, 24, 24}), false);
+  auto t = make_shared<CgVariable>(Shape_t({batch_size, 1}), false);
+  auto h = model(x, params);
+  auto loss = f::mean(f::softmax_cross_entropy(h, t, 1), {0, 1}, false);
+  auto err = f::mean(f::top_n_error(h, t, 1, 1), {0, 1}, false);
+  return std::make_tuple(ptr_params, x, t, loss, err);
+}
+
+bool train_a_model(nbla::Context cpu_ctx, nbla::Context ctx, int batch_size,
+                   model_t m, int delay) {
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
   RandomDataIterator train_data_provider("train");
   RandomDataIterator test_data_provider("test");
@@ -90,17 +107,15 @@ bool traing_a_model(nbla::Context ctx) {
   // Setup context
   SingletonManager::get<GlobalContext>()->set_current_context(ctx);
 
-  // Build network
-  ParameterDirectory params;
+  std::shared_ptr<ParameterDirectory> ptr_params;
+  CgVariablePtr x, t, loss, err;
 
-  int batch_size = 4;
+  std::tie(ptr_params, x, t, loss, err) = m;
+
+  ParameterDirectory &params = *ptr_params.get();
+
   float mean_t_loss = 0.;
   float mean_t_err = 0.;
-  auto x = make_shared<CgVariable>(Shape_t({batch_size, 1, 28, 28}), false);
-  auto t = make_shared<CgVariable>(Shape_t({batch_size, 1}), false);
-  auto h = model(x, params);
-  auto loss = f::mean(f::softmax_cross_entropy(h, t, 1), {0, 1}, false);
-  auto err = f::mean(f::top_n_error(h, t, 1, 1), {0, 1}, false);
 
   // Setup solver and input learnable parameters
   auto adam = create_AdamSolver(ctx, 0.001, 0.9, 0.999, 1.0e-8);
@@ -136,14 +151,44 @@ bool traing_a_model(nbla::Context ctx) {
 }
 
 TEST(MultiThreadTrainingTest, TestTrainingThread8) {
+  int thread_num = 20;
+  int batch_size = 4;
+
   // Create a context (the following setting is recommended.)
   nbla::init_cudnn();
   nbla::Context ctx{
       {"cudnn:float", "cuda:float", "cpu:float"}, "CudaCachedArray", "0"};
-  std::vector<std::thread> threads;
+  nbla::Context cpu_ctx_1{{"cpu:float"}, "CpuArray", "0"};
+  nbla::Context cpu_ctx_2{{"cpu:float"}, "CpuCachedArray", "0"};
 
-  for (int i = 0; i < 8; ++i) {
-    threads.push_back(std::thread(traing_a_model, ctx));
+  std::vector<std::thread> threads;
+  std::vector<int> rand_delays;
+
+  srand(time(NULL));
+
+  std::vector<model_t> inputs;
+  for (int i = 0; i < thread_num; ++i) {
+    auto m = build_model(batch_size);
+    inputs.push_back(m);
+    rand_delays.push_back(rand() % 100 + 1);
+  }
+
+  for (int i = 0; i < thread_num; ++i) {
+    threads.push_back(std::thread(train_a_model, cpu_ctx_1, ctx, batch_size,
+                                  inputs[i], rand_delays[i]));
+  }
+
+  for (auto &th : threads) {
+    if (th.joinable()) {
+      th.join();
+    }
+  }
+
+  threads.clear();
+
+  for (int i = 0; i < thread_num; ++i) {
+    threads.push_back(std::thread(train_a_model, cpu_ctx_2, ctx, batch_size,
+                                  inputs[i], rand_delays[i]));
   }
 
   for (auto &th : threads) {

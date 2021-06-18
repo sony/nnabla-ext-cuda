@@ -713,9 +713,12 @@ void CudnnSoftmax::backward(const void *alpha, const void *y, const void *dy,
 CudnnHandleManager::CudnnHandleManager() {}
 
 CudnnHandleManager::~CudnnHandleManager() {
-  for (auto dev_handles : this->handles_) {
-    for (auto handle : dev_handles.second) {
-      NBLA_CUDNN_CHECK(cudnnDestroy(*handle.second));
+  for (auto device : this->handles_) {
+    for (auto thread : device.second) {
+      for (auto stream : thread.second) {
+        cudnnHandle_t handle = *stream.second;
+        NBLA_CUDNN_CHECK(cudnnDestroy(handle));
+      }
     }
   }
 }
@@ -724,7 +727,11 @@ cudnnHandle_t CudnnHandleManager::handle(int device, cudaStream_t stream) {
   if (device < 0) {
     NBLA_CUDA_CHECK(cudaGetDevice(&device));
   }
-  auto &dev_handles = this->handles_[device];
+  auto tid = std::this_thread::get_id();
+  std::lock_guard<std::mutex> lock(mtx_cudnn_handle_);
+
+  auto &tid_handles = this->handles_[device];
+  auto &dev_handles = tid_handles[tid];
   auto handle = dev_handles[stream];
   if (handle) {
     return *handle;
@@ -733,7 +740,7 @@ cudnnHandle_t CudnnHandleManager::handle(int device, cudaStream_t stream) {
   handle = make_shared<cudnnHandle_t>();
   NBLA_CUDNN_CHECK(cudnnCreate(handle.get()));
   NBLA_CUDNN_CHECK(cudnnSetStream(*handle, stream));
-  dev_handles[stream] = handle;
+  tid_handles[tid][stream] = handle;
   return *handle;
 }
 
@@ -850,16 +857,19 @@ void CudnnHandleManager::verify_conv_algo_id(int id, ConvOpType op) {
 }
 
 void CudnnHandleManager::set_conv_algo_blacklist(int id, ConvOpType op) {
+  std::lock_guard<std::mutex> lock(mtx_cudnn_handle_);
   verify_conv_algo_id(id, op);
   conv_algo_blacklists_[static_cast<size_t>(op)].insert(id);
 }
 
 void CudnnHandleManager::unset_conv_algo_blacklist(int id, ConvOpType op) {
+  std::lock_guard<std::mutex> lock(mtx_cudnn_handle_);
   verify_conv_algo_id(id, op);
   conv_algo_blacklists_[static_cast<size_t>(op)].erase(id);
 }
 
 bool CudnnHandleManager::check_conv_algo_blacklist(int id, ConvOpType op) {
+  std::lock_guard<std::mutex> lock(mtx_cudnn_handle_);
   verify_conv_algo_id(id, op);
   return conv_algo_blacklists_[static_cast<size_t>(op)].count(id) > 0;
 }
