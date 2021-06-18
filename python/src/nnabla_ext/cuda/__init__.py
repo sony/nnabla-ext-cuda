@@ -68,18 +68,18 @@ def load_shared_from_error(err):
 
 def check_gpu_compatibility():
     import os
-    import pynvml
+    from nnabla.utils import nvml
 
     def list_local_gpu():
-        pynvml.nvmlInit()
-        device_count = pynvml.nvmlDeviceGetCount()
+        nvml.nvmlInit()
+        device_count = nvml.nvmlDeviceGetCount()
         local_gpus = []
         for device_index in range(device_count):
-            handle = pynvml.nvmlDeviceGetHandleByIndex(device_index)
-            gpu_name = pynvml.nvmlDeviceGetName(
+            handle = nvml.nvmlDeviceGetHandleByIndex(device_index)
+            gpu_name = nvml.nvmlDeviceGetName(
                 handle).decode('utf-8').lower()
             local_gpus.append(gpu_name)
-        pynvml.nvmlShutdown()
+        nvml.nvmlShutdown()
         return local_gpus
 
     def compare_gpu(local_gpus, incompatible_gpu, cuda_ver, cudnn_ver):
