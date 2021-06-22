@@ -12,6 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#Flatbuffer compiler
+FROM ubuntu:18.04 as flatc
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       ca-certificates \
+       curl \
+       cmake \
+       make \
+       g++ \
+       git \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN umask 0 \
+    && mkdir -p /tmp/deps \
+    && cd /tmp/deps \
+    && git clone https://github.com/google/flatbuffers.git \
+    && cd flatbuffers \
+    && cmake -G "Unix Makefiles" \
+    && make \
+    && make install \
+    && cd / \
+    && rm -rf /tmp/*
+
 FROM nvidia/cuda:10.0-cudnn7-runtime-ubuntu18.04
 
 ARG PIP_INS_OPTS
@@ -40,6 +64,8 @@ RUN pip install ${PIP_INS_OPTS} opencv-python || true
 
 RUN pip install ${PIP_INS_OPTS} --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda100 \
     || echo "Skip DALI installation (CUDA=10.0)"
+
+COPY --from=flatc /usr/local/bin/flatc /usr/local/bin/flatc
 
 ARG NNABLA_VER
 RUN pip install ${PIP_INS_OPTS} nnabla-ext-cuda100==${NNABLA_VER} nnabla_converter==${NNABLA_VER}
