@@ -12,6 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#Flatbuffer compiler
+FROM ubuntu:18.04 as flatc
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       ca-certificates \
+       curl \
+       cmake \
+       make \
+       g++ \
+       git \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN umask 0 \
+    && mkdir -p /tmp/deps \
+    && cd /tmp/deps \
+    && git clone https://github.com/google/flatbuffers.git \
+    && cd flatbuffers \
+    && cmake -G "Unix Makefiles" \
+    && make \
+    && make install \
+    && cd / \
+    && rm -rf /tmp/*
+
 FROM nvidia/cuda:10.0-cudnn7-runtime-ubuntu18.04
 
 RUN apt-get update \
@@ -40,6 +64,8 @@ RUN pip install --extra-index-url https://developer.download.nvidia.com/compute/
 
 ARG NNABLA_VER
 RUN pip install nnabla-ext-cuda100-nccl2-mpi2.1.1==${NNABLA_VER} nnabla_converter==${NNABLA_VER}
+
+COPY --from=flatc /usr/local/bin/flatc /usr/local/bin/flatc
 
 # Solve nccl error that No space left on device
 # while creating shared memory segment.
