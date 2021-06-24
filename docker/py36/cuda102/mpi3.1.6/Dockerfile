@@ -12,6 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#Flatbuffer compiler
+FROM ubuntu:18.04 as flatc
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       ca-certificates \
+       curl \
+       cmake \
+       make \
+       g++ \
+       git \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN umask 0 \
+    && mkdir -p /tmp/deps \
+    && cd /tmp/deps \
+    && git clone https://github.com/google/flatbuffers.git \
+    && cd flatbuffers \
+    && cmake -G "Unix Makefiles" \
+    && make \
+    && make install \
+    && cd / \
+    && rm -rf /tmp/*
+
 FROM ubuntu:18.04 as openmpi
 
 ARG PIP_INS_OPTS
@@ -79,6 +103,8 @@ ENV LD_LIBRARY_PATH /opt/openmpi/lib:$LD_LIBRARY_PATH
 
 ARG NNABLA_VER
 RUN pip install ${PIP_INS_OPTS} nnabla-ext-cuda102-nccl2-mpi3.1.6==${NNABLA_VER} nnabla_converter==${NNABLA_VER}
+
+COPY --from=flatc /usr/local/bin/flatc /usr/local/bin/flatc
 
 # Solve nccl error that No space left on device
 # while creating shared memory segment.
