@@ -37,6 +37,17 @@ RUN umask 0 \
     && cd / \
     && rm -rf /tmp/*
 
+FROM nvidia/cuda:11.0-cudnn8-devel-ubuntu18.04 as cudalibcheck
+
+ARG PIP_INS_OPTS
+ARG PYTHONWARNINGS
+ARG CURL_OPTS
+ARG WGET_OPTS
+ARG APT_OPTS
+
+ADD cudalibCheck.cpp /tmp/
+RUN nvcc -ccbin g++ -m64 /tmp/cudalibCheck.cpp -o /usr/local/bin/cudalibCheck -lcuda
+
 FROM nvidia/cuda:11.0-cudnn8-runtime-ubuntu18.04
 
 ARG PIP_INS_OPTS
@@ -75,17 +86,16 @@ RUN pip install ${PIP_INS_OPTS} nnabla-ext-cuda110-nccl2-mpi2.1.1==${NNABLA_VER}
 COPY --from=flatc /usr/local/bin/flatc /usr/local/bin/flatc
 
 # cuda compat driver support
+COPY --from=cudalibcheck /usr/local/bin/cudalibCheck /usr/local/bin/cudalibCheck
 COPY .bashrc /home/nnabla/.bashrc
 COPY bash.bashrc /etc/bash.bashrc
 COPY shinit_v2 /etc/shinit_v2
-COPY cudalibCheck /usr/local/bin/cudalibCheck
 RUN mkdir -p -m 775 /usr/local/cuda/compat/lib \
     && cd /usr/local/cuda/compat/lib \
     && for f in ../*.so*; do ln -sf $f .; done \
     && echo /usr/local/cuda/compat/lib > /etc/ld.so.conf.d/00-cuda-compat.conf \
     && ldconfig \
-    && rm -f /usr/local/cuda/compat/lib/*.so* \
-    && nvcc -ccbin g++ -m64 cudalibCheck.cpp -o cudalibCheck -lcuda
+    && rm -f /usr/local/cuda/compat/lib/*.so*
 
 # singularity environment
 RUN mkdir -p -m 775 /.singularity.d/env
