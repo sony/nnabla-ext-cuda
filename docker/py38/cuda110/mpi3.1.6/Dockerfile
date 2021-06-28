@@ -83,6 +83,25 @@ ENV LD_LIBRARY_PATH /opt/openmpi/lib:$LD_LIBRARY_PATH
 ARG NNABLA_VER
 RUN pip install ${PIP_INS_OPTS} nnabla-ext-cuda110-nccl2-mpi3.1.6==${NNABLA_VER}
 
+# cuda compat driver support
+COPY .bashrc /home/nnabla/.bashrc
+COPY bash.bashrc /etc/bash.bashrc
+COPY shinit_v2 /etc/shinit_v2
+COPY cudalibCheck /usr/local/bin/cudalibCheck
+RUN mkdir -p -m 775 /usr/local/cuda/compat/lib \
+    && cd /usr/local/cuda/compat/lib \
+    && for f in ../*.so*; do ln -sf $f .; done \
+    && echo /usr/local/cuda/compat/lib > /etc/ld.so.conf.d/00-cuda-compat.conf \
+    && ldconfig \
+    && rm -f /usr/local/cuda/compat/lib/*.so* \
+    && nvcc -ccbin g++ -m64 cudalibCheck.cpp -o cudalibCheck -lcuda
+
+# singularity environment
+RUN mkdir -p -m 775 /.singularity.d/env
+COPY 20-nvidia-cuda-compat.sh /.singularity.d/env/20-nvidia-cuda-compat.sh
+ENV BASH_ENV /etc/bash.bashrc
+ENV ENV /etc/shinit_v2
+
 # Solve nccl error that No space left on device
 # while creating shared memory segment.
 RUN echo NCCL_SHM_DISABLE=1 >> /etc/nccl.conf
