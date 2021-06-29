@@ -33,26 +33,29 @@ class SyncBatchNormalizationCuda : public SyncBatchNormalization<T> {
 protected:
   int device_;
   int blocks;
-  // for transpose
-  Variable v_axes_;
-  Variable v_in_strides_;
-  Variable v_out_strides_;
-  Variable v_out_shape_;
-  Variable v_in_shape_;
-  Variable v_in_trans_;
-  Variable v_din_trans_;
-  // work memory for data of each axis
-  Variable v_sync_;
-  Variable v_dmean_;
-  Variable v_dvar_;
-  Variable v_t_;
-  Variable v_inv_sqrt_variance_;
-  // work memory for each block data of shuffle reduction
-  Variable v_mean_reduction_space_;
-  Variable v_variance_reduction_space_;
-  Variable v_tmp_reduction_space_;
 
   BatchNormalizationCuda<T> batch_norm_;
+
+  // Temporally buffers and functions for forward
+  Variable v_staging_data_for_forward_;
+  Variable v_semaphores_for_forward_;
+  Variable v_local_mean_, v_local_invstd_, v_local_count_;
+  Variable v_all_mean_, v_all_invstd_, v_all_count_;
+  Variable v_all_gather_send_;
+  Variable v_all_gather_recv_;
+
+  FunctionPtr concatenate_;
+  FunctionPtr slice_mean_;
+  FunctionPtr slice_invstd_;
+  FunctionPtr slice_count_;
+
+  // Temporally buffers and functions for backward
+  Variable v_staging_data_for_backward_;
+  Variable v_semaphores_for_backward_;
+  Variable v_sum_dy_o_, v_sum_dy_xmu_o_;
+  Variable v_beta_grad_, v_gamma_grad_;
+
+  FunctionPtr add2_;
 
 public:
   typedef typename CudaType<T>::type Tc;
