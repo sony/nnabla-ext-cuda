@@ -81,14 +81,14 @@ def check_gpu(device_id):
 
     """
     import os
-    import pynvml
+    from nnabla.utils import nvml
     incompatible_gpus = nnabla_ext.cuda.incompatible_gpus
     cuda_ver = nnabla_ext.cuda.__cuda_version__.replace('.', '')
     cudnn_ver = nnabla_ext.cuda.__cudnn_version__[0]
-    pynvml.nvmlInit()
-    handle = pynvml.nvmlDeviceGetHandleByIndex(int(device_id))
-    gpu_name = pynvml.nvmlDeviceGetName(handle).decode('utf-8').lower()
-    pynvml.nvmlShutdown()
+    nvml.nvmlInit()
+    handle = nvml.nvmlDeviceGetHandleByIndex(int(device_id))
+    gpu_name = nvml.nvmlDeviceGetName(handle).decode('utf-8').lower()
+    nvml.nvmlShutdown()
     available_gpu_names = os.environ.get('AVAILABLE_GPU_NAMES')
     if available_gpu_names is not None:
         available_gpu_names = available_gpu_names.lower().split(',')
