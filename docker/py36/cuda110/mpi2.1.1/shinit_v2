@@ -16,10 +16,11 @@ if [ -n "${NV_DRIVER_VERS}" -a -e /dev/nvidiactl ]; then
   rm -f "${_CUDA_COMPAT_SYMLINK}/*"
 
   # Run cudaCheck with the compat library on LD_LIBRARY_PATH to see if it will initialize
-  export _CUDA_COMPAT_STATUS="$(LD_LIBRARY_PATH=${_CUDA_COMPAT_REALLIB} /usr/local/bin/cudalibCheck 2> /dev/null)"
+  LD_LIBRARY_PATH=${_CUDA_COMPAT_REALLIB} /usr/local/bin/cudalibCheck 2> /dev/null
+  CUDA_COMPAT_CHECK_PASS=$?
 
   # If compat check passed, bring the compat lib into the path (several ways for safety)
-  if [ "$(echo ${_CUDA_COMPAT_STATUS} | sed -e 's/^\([^:]*\).*$/\1/')" != "CUDA Driver OK" ]; then
+  if [ ${CUDA_COMPAT_CHECK_PASS} = 0 ]; then
     # symlink the compat lib into a location that was preset to be on LD_LIBRARY_PATH via ENV
     curdir=$PWD
     ( cd ${_CUDA_COMPAT_SYMLINK}; \
