@@ -129,7 +129,7 @@ public:
 protected:
   std::mutex mtx_cublas_;
   std::mutex mtx_curand_;
-  std::mutex mtx_stream;
+  std::mutex mtx_stream_;
   unordered_map<int, cublasHandle_t>
       cublas_handles_; ///< cuBLAS handles for each device.
   unordered_map<int, curandGenerator_t> curand_generators_;

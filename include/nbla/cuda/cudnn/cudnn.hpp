@@ -33,6 +33,7 @@
 #include <memory>
 #include <numeric>
 #include <set>
+#include <thread>
 #include <unordered_map>
 
 namespace nbla {
@@ -466,8 +467,11 @@ public:
   bool check_conv_algo_blacklist(int id, ConvOpType op);
 
 protected:
-  unordered_map<int, unordered_map<cudaStream_t, shared_ptr<cudnnHandle_t>>>
-      handles_;
+  std::mutex mtx_cudnn_handle_;
+  typedef unordered_map<std::thread::id,
+                        unordered_map<cudaStream_t, shared_ptr<cudnnHandle_t>>>
+      tid_cudnn_handle_t;
+  unordered_map<int, tid_cudnn_handle_t> handles_;
   Size_t workspace_limit_{0};        ///< Workspace limit in bytes.
   bool deterministic_option_{false}; ///< Choose deterministic algorithms
   bool heuristic_option_{false};     ///< Choose algorithm by a heuristic.
