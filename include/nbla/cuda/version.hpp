@@ -15,6 +15,12 @@
 #ifndef _NBLA_EXT_CUDA_VERSION_HPP_
 #define _NBLA_EXT_CUDA_VERSION_HPP_
 
+#include <string>
+
+namespace nbla {
+
+using std::string;
+
 const string nbla_ext_cuda_version(void);
 
 const string nbla_ext_cuda_cuda_version(void);
@@ -23,5 +29,7 @@ const string nbla_ext_cuda_cudnn_version(void);
 const string nbla_ext_cuda_author(void);
 const string nbla_ext_cuda_author_email(void);
 const string nbla_ext_cuda_build_number(void);
+
+}
 
 #endif //_NBLA_EXT_CUDA_VERSION_HPP_
