@@ -16,7 +16,7 @@ if [ -n "${NV_DRIVER_VERS}" -a -e /dev/nvidiactl ]; then
   rm -f "${_CUDA_COMPAT_SYMLINK}/*"
 
   # Run cudaCheck with the compat library on LD_LIBRARY_PATH to see if it will initialize
-  LD_LIBRARY_PATH=${_CUDA_COMPAT_REALLIB} /usr/local/bin/cudalibCheck 2> /dev/null
+  LD_LIBRARY_PATH=${_CUDA_COMPAT_REALLIB} /usr/local/bin/cudalibcheck 2> /dev/null
   CUDA_COMPAT_CHECK_PASS=$?
 
   # If compat check passed, bring the compat lib into the path (several ways for safety)

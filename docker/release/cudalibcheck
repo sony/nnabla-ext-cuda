@@ -1,0 +1,67 @@
+#!/usr/bin/python3
+# Copyright (c) 2021 Sony Corporation. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import ctypes
+import sys
+
+expected_version = '11.0'
+if len(sys.argv) > 1:
+    expected_version = sys.argv[1]
+
+gpu_available = False
+version = -1
+count = -1
+
+cuda = ctypes.CDLL('libcuda.so')
+r = cuda.cuInit(0)
+if r == 0:
+    cuDriverGetVersion = cuda.cuDriverGetVersion
+    cuDriverGetVersion.argtypes = [ctypes.c_void_p]
+    v = ctypes.c_int(-1)
+    pv = ctypes.pointer(v)
+    r = cuDriverGetVersion(pv)
+    if r == 0:
+        version = v.value
+        cuDeviceGetCount = cuda.cuDeviceGetCount
+        cuDeviceGetCount.argtypes = [ctypes.c_void_p]
+        c = ctypes.c_int(-1)
+        pc = ctypes.pointer(c)
+        r = cuDeviceGetCount(pc)
+        if r == 0:
+            count = c.value
+            cuDeviceGet = cuda.cuDeviceGet
+            cuDeviceGet.argtypes = [ctypes.c_void_p, ctypes.c_int]
+            d = ctypes.c_int(-1)
+            pd = ctypes.pointer(d)
+            gpu_available = True
+            for i in range(count):
+                r = cuDeviceGet(pd, i)
+                if r != 0:
+                    gpu_available = False
+
+if gpu_available:
+    major = int(version / 1000)
+    minor = int((version - major * 1000) / 10)
+    e1, e2 = [int(x) for x in expected_version.split('.')]
+    ev = e1 * 1000 + e2 * 10
+    if ev <= version and 0 < count:
+        print(f'CUDA Driver OK. Version:{major}.{minor}/Device:{count}')
+        sys.exit(0)
+    else:
+        print(f'Insufficient driver. Version:{major}.{minor}/Device:{count}')
+        sys.exit(1)
+else:
+    print(f'Insufficient driver. {r}')
+    sys.exit(2)
