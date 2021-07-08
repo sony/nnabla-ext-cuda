@@ -35,6 +35,10 @@ __global__ void kernel_categorical_cross_entropy_forward_naive(
     for (int i2 = 0; i2 < size2_; ++i2) {
       const int j = i0 * size2_ + i2;
       Tl label = l[j];
+      if (label < 0) {
+        y[j] = 0;
+        continue;
+      }
       const int k = i0 * size1_ * size2_ + label * size2_ + i2;
       y[j] = -log(max(p[k], numeric_limits_cuda<T>::min()));
     }
@@ -50,6 +54,9 @@ __global__ void kernel_categorical_cross_entropy_backward_naive(
     for (int i2 = 0; i2 < size2_; ++i2) {
       const int j = i0 * size2_ + i2;
       Tl label = l[j];
+      if (label < 0) {
+        continue;
+      }
       const int k = i0 * size1_ * size2_ + label * size2_ + i2;
       dx[k] += -dy[j] / max(p[k], numeric_limits_cuda<T>::min());
     }
@@ -68,6 +75,10 @@ kernel_categorical_cross_entropy_forward(const int size0x2_, const int size1_,
     const int i2 = idx % size2_;
     const int j = i0 * size2_ + i2;
     Tl label = l[j];
+    if (label < 0) {
+      y[j] = 0;
+      continue;
+    }
     const int k = i0 * size1_ * size2_ + label * size2_ + i2;
     y[j] = -log(max(p[k], numeric_limits_cuda<T>::min()));
   }
@@ -85,6 +96,9 @@ kernel_categorical_cross_entropy_backward(const int size0x2_, const int size1_,
     const int i2 = idx % size2_;
     const int j = i0 * size2_ + i2;
     Tl label = l[j];
+    if (label < 0) {
+      continue;
+    }
     const int k = i0 * size1_ * size2_ + label * size2_ + i2;
     dx[k] += -dy[j] / max(p[k], numeric_limits_cuda<T>::min());
   }

@@ -33,6 +33,10 @@ kernel_softmax_cross_entropy_forward(const int size0x2_, const int size1_,
     const int i2 = idx % size2_;
     const int j = i0 * size2_ + i2;
     Tl label = l[j];
+    if (label < 0) {
+      y[j] = 0;
+      continue;
+    }
     const int k = i0 * size1_ * size2_ + label * size2_ + i2;
     y[j] = -log_p[k];
   }
@@ -49,10 +53,17 @@ kernel_softmax_cross_entropy_backward(const int size0x2_, const int size1_,
     const int j = i0 * size2_ + i2;
     Tl label = l[j];
     T grad = dy[j];
-    for (int i1 = 0; i1 < size1_; ++i1) {
-      const int k = i0 * size1_ * size2_ + i1 * size2_ + i2;
-      dx[k] = (accum ? dx[k] : (T)0) +
-              grad * (std::exp(log_p[k]) - static_cast<int>(label == i1));
+    if (label < 0) {
+      for (int i1 = 0; i1 < size1_; ++i1) {
+        const int k = i0 * size1_ * size2_ + i1 * size2_ + i2;
+        dx[k] = (accum ? dx[k] : (T)0);
+      }
+    } else {
+      for (int i1 = 0; i1 < size1_; ++i1) {
+        const int k = i0 * size1_ * size2_ + i1 * size2_ + i2;
+        dx[k] = (accum ? dx[k] : (T)0) +
+                grad * (std::exp(log_p[k]) - static_cast<int>(label == i1));
+      }
     }
   }
 }
