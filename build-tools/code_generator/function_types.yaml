@@ -576,6 +576,15 @@ ScatterNd:
 ScatterAdd:
   float: [float]
   half: [Half]
+BoolGather:
+  float: [float]
+  half: [Half]
+BoolScatter:
+  float: [float]
+  half: [Half]
+BoolFill:
+  float: [float]
+  half: [Half]
 MaxPoolingBackward:
   float: [float]
   half: [Half]
