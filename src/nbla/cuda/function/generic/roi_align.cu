@@ -54,14 +54,14 @@ __global__ void roi_align_forward_kernel_nchw(
     SIZE_T x = index - y * output_cols;
 
     auto roi = *reinterpret_cast<Box<T> const *>(boxes_data + n * 5);
-    auto const roi_x1 = static_cast<T>(roi.x1 * spatial_scale_x - 0.5f);
-    auto const roi_y1 = static_cast<T>(roi.y1 * spatial_scale_y - 0.5f);
-    auto const roi_x2 = static_cast<T>(roi.x2 * spatial_scale_x - 0.5f);
-    auto const roi_y2 = static_cast<T>(roi.y2 * spatial_scale_y - 0.5f);
+    auto const roi_x1 = roi.x1 * spatial_scale_x - 0.5f;
+    auto const roi_y1 = roi.y1 * spatial_scale_y - 0.5f;
+    auto const roi_x2 = roi.x2 * spatial_scale_x - 0.5f;
+    auto const roi_y2 = roi.y2 * spatial_scale_y - 0.5f;
     auto const roi_index = clamp<SIZE_T>(roi.batch_index, 0, samples - 1);
 
-    auto const step_size_x = (roi_x2 - roi_x1) / static_cast<T>(output_cols);
-    auto const step_size_y = (roi_y2 - roi_y1) / static_cast<T>(output_rows);
+    auto const step_size_x = (roi_x2 - roi_x1) / output_cols;
+    auto const step_size_y = (roi_y2 - roi_y1) / output_rows;
 
     auto const grid_size_x = sampling_grid(sampling_ratio, step_size_x);
     auto const grid_size_y = sampling_grid(sampling_ratio, step_size_y);
@@ -70,51 +70,51 @@ __global__ void roi_align_forward_kernel_nchw(
     auto const step_size_yy = step_size_y / grid_size_y;
     auto const grid_size_xy = grid_size_x * grid_size_y;
 
-    auto const half_step_xx = T(0.5) * step_size_xx;
-    auto const half_step_yy = T(0.5) * step_size_yy;
+    auto const half_step_xx = 0.5f * step_size_xx;
+    auto const half_step_yy = 0.5f * step_size_yy;
 
-    auto const xf = roi_x1 + static_cast<T>(x) * step_size_x + half_step_xx;
-    auto const yf = roi_y1 + static_cast<T>(y) * step_size_y + half_step_yy;
+    auto const xf = roi_x1 + x * step_size_x + half_step_xx;
+    auto const yf = roi_y1 + y * step_size_y + half_step_yy;
 
     auto input_sample_data = input_data + roi_index * input_stride_n;
     auto input_channel_data = input_sample_data + c * input_stride_c;
-    auto output_data_value = T(0);
+    auto output_value = 0.0f;
 
     for (auto yy = 0; yy < grid_size_y; yy++) {
-      auto yyf = yf + static_cast<T>(yy) * step_size_yy;
+      auto yyf = yf + yy * step_size_yy;
 
-      if (yyf < T(-1) || yyf > static_cast<T>(input_rows))
+      if (yyf < -1.0f || yyf > input_rows)
         continue;
 
       yyf = clamp<T>(yyf, 0, input_rows - 1);
       auto const y_lo = static_cast<SIZE_T>(yyf);
       auto const y_hi = min(y_lo + 1, input_rows - 1);
       auto const ly = yyf - floor(yyf);
-      auto const hy = T(1) - ly;
+      auto const hy = 1.0f - ly;
 
       for (auto xx = 0; xx < grid_size_x; xx++) {
-        auto xxf = xf + static_cast<T>(xx) * step_size_xx;
+        auto xxf = xf + xx * step_size_xx;
 
-        if (xxf < T(-1) || xxf > static_cast<T>(input_cols))
+        if (xxf < -1.0f || xxf > input_cols)
           continue;
 
         xxf = clamp<T>(xxf, 0, input_cols - 1);
         auto const x_lo = static_cast<SIZE_T>(xxf);
         auto const x_hi = min(x_lo + 1, input_cols - 1);
         auto const lx = xxf - floor(xxf);
-        auto const hx = T(1) - lx;
+        auto const hx = 1.0f - lx;
 
         auto const p1 = y_lo * input_cols + x_lo;
         auto const p2 = y_lo * input_cols + x_hi;
         auto const p3 = y_hi * input_cols + x_lo;
         auto const p4 = y_hi * input_cols + x_hi;
-        output_data_value += hy * hx * input_channel_data[p1];
-        output_data_value += hy * lx * input_channel_data[p2];
-        output_data_value += ly * hx * input_channel_data[p3];
-        output_data_value += ly * lx * input_channel_data[p4];
+        output_value += hy * hx * input_channel_data[p1];
+        output_value += hy * lx * input_channel_data[p2];
+        output_value += ly * hx * input_channel_data[p3];
+        output_value += ly * lx * input_channel_data[p4];
       }
     }
-    output_data[output_index] = output_data_value / grid_size_xy;
+    output_data[output_index] = static_cast<T>(output_value / grid_size_xy);
   }
 }
 
@@ -133,14 +133,14 @@ __global__ void roi_align_forward_kernel_nhwc(
     SIZE_T x = i - y * output_cols;
 
     auto roi = *reinterpret_cast<Box<T> const *>(boxes_data + n * 5);
-    auto const roi_x1 = static_cast<T>(roi.x1 * spatial_scale_x - 0.5f);
-    auto const roi_y1 = static_cast<T>(roi.y1 * spatial_scale_y - 0.5f);
-    auto const roi_x2 = static_cast<T>(roi.x2 * spatial_scale_x - 0.5f);
-    auto const roi_y2 = static_cast<T>(roi.y2 * spatial_scale_y - 0.5f);
+    auto const roi_x1 = roi.x1 * spatial_scale_x - 0.5f;
+    auto const roi_y1 = roi.y1 * spatial_scale_y - 0.5f;
+    auto const roi_x2 = roi.x2 * spatial_scale_x - 0.5f;
+    auto const roi_y2 = roi.y2 * spatial_scale_y - 0.5f;
     auto const roi_index = clamp<SIZE_T>(roi.batch_index, 0, samples - 1);
 
-    auto const step_size_x = (roi_x2 - roi_x1) / static_cast<T>(output_cols);
-    auto const step_size_y = (roi_y2 - roi_y1) / static_cast<T>(output_rows);
+    auto const step_size_x = (roi_x2 - roi_x1) / output_cols;
+    auto const step_size_y = (roi_y2 - roi_y1) / output_rows;
 
     auto const grid_size_x = sampling_grid(sampling_ratio, step_size_x);
     auto const grid_size_y = sampling_grid(sampling_ratio, step_size_y);
@@ -149,11 +149,11 @@ __global__ void roi_align_forward_kernel_nhwc(
     auto const step_size_yy = step_size_y / grid_size_y;
     auto const grid_size_xy = grid_size_x * grid_size_y;
 
-    auto const half_step_xx = T(0.5) * step_size_xx;
-    auto const half_step_yy = T(0.5) * step_size_yy;
+    auto const half_step_xx = 0.5f * step_size_xx;
+    auto const half_step_yy = 0.5f * step_size_yy;
 
-    auto const xf = roi_x1 + static_cast<T>(x) * step_size_x + half_step_xx;
-    auto const yf = roi_y1 + static_cast<T>(y) * step_size_y + half_step_yy;
+    auto const xf = roi_x1 + x * step_size_x + half_step_xx;
+    auto const yf = roi_y1 + y * step_size_y + half_step_yy;
 
     auto input_sample_data = input_data + roi_index * input_stride_n;
     auto output_channel_data = output_data + thread_index * channels;
@@ -163,40 +163,40 @@ __global__ void roi_align_forward_kernel_nhwc(
     }
 
     for (auto yy = 0; yy < grid_size_y; yy++) {
-      auto yyf = yf + static_cast<T>(yy) * step_size_yy;
+      auto yyf = yf + yy * step_size_yy;
 
-      if (yyf < T(-1) || yyf > static_cast<T>(input_rows))
+      if (yyf < -1.0f || yyf > input_rows)
         continue;
 
       yyf = clamp<T>(yyf, 0, input_rows - 1);
       auto const y_lo = static_cast<SIZE_T>(yyf);
       auto const y_hi = min(y_lo + 1, input_rows - 1);
       auto const ly = yyf - floor(yyf);
-      auto const hy = T(1) - ly;
+      auto const hy = 1.0f - ly;
 
       for (auto xx = 0; xx < grid_size_x; xx++) {
-        auto xxf = xf + static_cast<T>(xx) * step_size_xx;
+        auto xxf = xf + xx * step_size_xx;
 
-        if (xxf < T(-1) || xxf > static_cast<T>(input_cols))
+        if (xxf < -1.0f || xxf > input_cols)
           continue;
 
         xxf = clamp<T>(xxf, 0, input_cols - 1);
         auto const x_lo = static_cast<SIZE_T>(xxf);
         auto const x_hi = min(x_lo + 1, input_cols - 1);
         auto const lx = xxf - floor(xxf);
-        auto const hx = T(1) - lx;
+        auto const hx = 1.0f - lx;
 
         auto const p1 = (y_lo * input_cols + x_lo) * channels;
         auto const p2 = (y_lo * input_cols + x_hi) * channels;
         auto const p3 = (y_hi * input_cols + x_lo) * channels;
         auto const p4 = (y_hi * input_cols + x_hi) * channels;
         for (auto c = 0; c < channels; c++) {
-          auto output_data_value = T(0);
+          auto output_data_value = 0.0f;
           output_data_value += hy * hx * input_sample_data[p1 + c];
           output_data_value += hy * lx * input_sample_data[p2 + c];
           output_data_value += ly * hx * input_sample_data[p3 + c];
           output_data_value += ly * lx * input_sample_data[p4 + c];
-          output_channel_data[c] += output_data_value;
+          output_channel_data[c] += static_cast<T>(output_data_value);
         }
       }
     }
@@ -224,14 +224,14 @@ __global__ void roi_align_backward_kernel_nchw(
     SIZE_T x = index - y * output_cols;
 
     auto roi = *reinterpret_cast<Box<T> const *>(boxes_data + n * 5);
-    auto const roi_x1 = static_cast<T>(roi.x1 * spatial_scale_x - 0.5f);
-    auto const roi_y1 = static_cast<T>(roi.y1 * spatial_scale_y - 0.5f);
-    auto const roi_x2 = static_cast<T>(roi.x2 * spatial_scale_x - 0.5f);
-    auto const roi_y2 = static_cast<T>(roi.y2 * spatial_scale_y - 0.5f);
+    auto const roi_x1 = roi.x1 * spatial_scale_x - 0.5f;
+    auto const roi_y1 = roi.y1 * spatial_scale_y - 0.5f;
+    auto const roi_x2 = roi.x2 * spatial_scale_x - 0.5f;
+    auto const roi_y2 = roi.y2 * spatial_scale_y - 0.5f;
     auto const roi_index = clamp<SIZE_T>(roi.batch_index, 0, samples - 1);
 
-    auto const step_size_x = (roi_x2 - roi_x1) / static_cast<T>(output_cols);
-    auto const step_size_y = (roi_y2 - roi_y1) / static_cast<T>(output_rows);
+    auto const step_size_x = (roi_x2 - roi_x1) / output_cols;
+    auto const step_size_y = (roi_y2 - roi_y1) / output_rows;
 
     auto const grid_size_x = sampling_grid(sampling_ratio, step_size_x);
     auto const grid_size_y = sampling_grid(sampling_ratio, step_size_y);
@@ -240,48 +240,52 @@ __global__ void roi_align_backward_kernel_nchw(
     auto const step_size_yy = step_size_y / grid_size_y;
     auto const grid_size_xy = grid_size_x * grid_size_y;
 
-    auto const half_step_xx = T(0.5) * step_size_xx;
-    auto const half_step_yy = T(0.5) * step_size_yy;
+    auto const half_step_xx = 0.5f * step_size_xx;
+    auto const half_step_yy = 0.5f * step_size_yy;
 
-    auto const xf = roi_x1 + static_cast<T>(x) * step_size_x + half_step_xx;
-    auto const yf = roi_y1 + static_cast<T>(y) * step_size_y + half_step_yy;
+    auto const xf = roi_x1 + x * step_size_x + half_step_xx;
+    auto const yf = roi_y1 + y * step_size_y + half_step_yy;
 
     auto input_sample_grad = input_grad + roi_index * input_sample_size;
     auto input_channel_grad = input_sample_grad + c * input_channel_size;
     auto output_grad_value = output_grad[output_index] / grid_size_xy;
 
     for (auto yy = 0; yy < grid_size_y; yy++) {
-      auto yyf = yf + static_cast<T>(yy) * step_size_yy;
+      auto yyf = yf + yy * step_size_yy;
 
-      if (yyf < T(-1) || yyf > static_cast<T>(input_rows))
+      if (yyf < -1.0f || yyf > input_rows)
         continue;
 
       yyf = clamp<T>(yyf, 0, input_rows - 1);
       auto const y_lo = static_cast<SIZE_T>(yyf);
       auto const y_hi = min(y_lo + 1, input_rows - 1);
       auto const ly = yyf - floor(yyf);
-      auto const hy = T(1) - ly;
+      auto const hy = 1.0f - ly;
 
       for (auto xx = 0; xx < grid_size_x; xx++) {
-        auto xxf = xf + static_cast<T>(xx) * step_size_xx;
+        auto xxf = xf + xx * step_size_xx;
 
-        if (xxf < T(-1) || xxf > static_cast<T>(input_cols))
+        if (xxf < -1.0f || xxf > input_cols)
           continue;
 
         xxf = clamp<T>(xxf, 0, input_cols - 1);
         auto const x_lo = static_cast<SIZE_T>(xxf);
         auto const x_hi = min(x_lo + 1, input_cols - 1);
         auto const lx = xxf - floor(xxf);
-        auto const hx = T(1) - lx;
+        auto const hx = 1.0f - lx;
 
         auto const p1 = y_lo * input_cols + x_lo;
         auto const p2 = y_lo * input_cols + x_hi;
         auto const p3 = y_hi * input_cols + x_lo;
         auto const p4 = y_hi * input_cols + x_hi;
-        atomic_add(&input_channel_grad[p1], hy * hx * output_grad_value);
-        atomic_add(&input_channel_grad[p2], hy * lx * output_grad_value);
-        atomic_add(&input_channel_grad[p3], ly * hx * output_grad_value);
-        atomic_add(&input_channel_grad[p4], ly * lx * output_grad_value);
+        const T v1 = static_cast<T>(hy * hx * output_grad_value);
+        const T v2 = static_cast<T>(hy * lx * output_grad_value);
+        const T v3 = static_cast<T>(ly * hx * output_grad_value);
+        const T v4 = static_cast<T>(ly * lx * output_grad_value);
+        atomic_add(&input_channel_grad[p1], v1);
+        atomic_add(&input_channel_grad[p2], v2);
+        atomic_add(&input_channel_grad[p3], v3);
+        atomic_add(&input_channel_grad[p4], v4);
       }
     }
   }
@@ -302,14 +306,14 @@ __global__ void roi_align_backward_kernel_nhwc(
     SIZE_T x = i - y * output_cols;
 
     auto roi = *reinterpret_cast<Box<T> const *>(boxes_data + n * 5);
-    auto const roi_x1 = static_cast<T>(roi.x1 * spatial_scale_x - 0.5f);
-    auto const roi_y1 = static_cast<T>(roi.y1 * spatial_scale_y - 0.5f);
-    auto const roi_x2 = static_cast<T>(roi.x2 * spatial_scale_x - 0.5f);
-    auto const roi_y2 = static_cast<T>(roi.y2 * spatial_scale_y - 0.5f);
+    auto const roi_x1 = roi.x1 * spatial_scale_x - 0.5f;
+    auto const roi_y1 = roi.y1 * spatial_scale_y - 0.5f;
+    auto const roi_x2 = roi.x2 * spatial_scale_x - 0.5f;
+    auto const roi_y2 = roi.y2 * spatial_scale_y - 0.5f;
     auto const roi_index = clamp<SIZE_T>(roi.batch_index, 0, samples - 1);
 
-    auto const step_size_x = (roi_x2 - roi_x1) / static_cast<T>(output_cols);
-    auto const step_size_y = (roi_y2 - roi_y1) / static_cast<T>(output_rows);
+    auto const step_size_x = (roi_x2 - roi_x1) / output_cols;
+    auto const step_size_y = (roi_y2 - roi_y1) / output_rows;
 
     auto const grid_size_x = sampling_grid(sampling_ratio, step_size_x);
     auto const grid_size_y = sampling_grid(sampling_ratio, step_size_y);
@@ -318,11 +322,11 @@ __global__ void roi_align_backward_kernel_nhwc(
     auto const step_size_yy = step_size_y / grid_size_y;
     auto const grid_size_xy = grid_size_x * grid_size_y;
 
-    auto const half_step_xx = T(0.5) * step_size_xx;
-    auto const half_step_yy = T(0.5) * step_size_yy;
+    auto const half_step_xx = 0.5f * step_size_xx;
+    auto const half_step_yy = 0.5f * step_size_yy;
 
-    auto const xf = roi_x1 + static_cast<T>(x) * step_size_x + half_step_xx;
-    auto const yf = roi_y1 + static_cast<T>(y) * step_size_y + half_step_yy;
+    auto const xf = roi_x1 + x * step_size_x + half_step_xx;
+    auto const yf = roi_y1 + y * step_size_y + half_step_yy;
 
     auto input_sample_grad = input_grad + roi_index * input_stride_n;
     auto output_channel_grad = output_grad + thread_index * channels;
@@ -330,37 +334,41 @@ __global__ void roi_align_backward_kernel_nhwc(
     for (auto yy = 0; yy < grid_size_y; yy++) {
       auto yyf = yf + static_cast<T>(yy) * step_size_yy;
 
-      if (yyf < T(-1) || yyf > static_cast<T>(input_rows))
+      if (yyf < -1.0f || yyf > static_cast<T>(input_rows))
         continue;
 
       yyf = clamp<T>(yyf, 0, input_rows - 1);
       auto const y_lo = static_cast<SIZE_T>(yyf);
       auto const y_hi = min(y_lo + 1, input_rows - 1);
       auto const ly = yyf - floor(yyf);
-      auto const hy = T(1) - ly;
+      auto const hy = 1.0f - ly;
 
       for (auto xx = 0; xx < grid_size_x; xx++) {
         auto xxf = xf + static_cast<T>(xx) * step_size_xx;
 
-        if (xxf < T(-1) || xxf > static_cast<T>(input_cols))
+        if (xxf < -1.0f || xxf > static_cast<T>(input_cols))
           continue;
 
         xxf = clamp<T>(xxf, 0, input_cols - 1);
         auto const x_lo = static_cast<SIZE_T>(xxf);
         auto const x_hi = min(x_lo + 1, input_cols - 1);
         auto const lx = xxf - floor(xxf);
-        auto const hx = T(1) - lx;
+        auto const hx = 1.0f - lx;
 
         auto const p1 = (y_lo * input_cols + x_lo) * channels;
         auto const p2 = (y_lo * input_cols + x_hi) * channels;
         auto const p3 = (y_hi * input_cols + x_lo) * channels;
         auto const p4 = (y_hi * input_cols + x_hi) * channels;
         for (auto c = 0; c < channels; c++) {
-          auto const output_grad_value = output_channel_grad[c] / grid_size_xy;
-          atomic_add(&input_sample_grad[p1 + c], hy * hx * output_grad_value);
-          atomic_add(&input_sample_grad[p2 + c], hy * lx * output_grad_value);
-          atomic_add(&input_sample_grad[p3 + c], ly * hx * output_grad_value);
-          atomic_add(&input_sample_grad[p4 + c], ly * lx * output_grad_value);
+          auto const grad_value = static_cast<float>(output_channel_grad[c]);
+          const T v1 = static_cast<T>(hy * hx * grad_value / grid_size_xy);
+          const T v2 = static_cast<T>(hy * lx * grad_value / grid_size_xy);
+          const T v3 = static_cast<T>(ly * hx * grad_value / grid_size_xy);
+          const T v4 = static_cast<T>(ly * lx * grad_value / grid_size_xy);
+          atomic_add(&input_sample_grad[p1 + c], v1);
+          atomic_add(&input_sample_grad[p2 + c], v2);
+          atomic_add(&input_sample_grad[p3 + c], v3);
+          atomic_add(&input_sample_grad[p4 + c], v4);
         }
       }
     }
