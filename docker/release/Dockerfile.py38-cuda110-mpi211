@@ -32,6 +32,7 @@ RUN eval ${APT_OPTS} && apt-get update \
        python3-pip \
        openmpi-bin \
        openssh-client \
+       libibverbs1 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.8 0
