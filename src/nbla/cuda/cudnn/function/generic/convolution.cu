@@ -83,18 +83,18 @@ void ConvolutionCudaCudnn<T>::setup_impl(const Variables &inputs,
                      this->stride_,
                      this->dilation_};
 
-  //  auto &rsc = SingletonManager::get<CudnnHandleManager>()->conv_resource;
-  //  auto it = rsc.find(desc);
-  //  if (it != rsc.end()) {
-  //    // Found a previously created one.
-  //    // std::cout << "Found previously created one: " << desc << std::endl;
-  //    rsc_ = it->second;
-  //    return;
-  //  }
+  auto &rsc = SingletonManager::get<CudnnHandleManager>()->conv_resource;
+  auto it = rsc.find(desc);
+  if (it != rsc.end()) {
+    // Found a previously created one.
+    // std::cout << "Found previously created one: " << desc << std::endl;
+    rsc_ = it->second;
+    return;
+  }
   // Create a new resource.
   // This will search a best algorithm given config.
   rsc_ = make_shared<CudnnConvResource>(desc);
-  //  rsc.insert({desc, rsc_}); // Register the created resource to global.
+  rsc.insert({desc, rsc_}); // Register the created resource to global.
 }
 
 template <class T>
