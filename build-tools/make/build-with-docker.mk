@@ -52,7 +52,7 @@ DOCKER_IMAGE_NNABLA_EXT_CUDA ?= $(DOCKER_IMAGE_NAME_BASE)-nnabla-ext-cuda$(CUDA_
 
 .PHONY: docker_image_build_cuda
 docker_image_build_cuda:
-	docker pull nvidia/cuda$(ARCH_SUFFIX):$(CUDA_VERSION_MAJOR).$(CUDA_VERSION_MINOR)-cudnn$(CUDNN_VERSION)-devel-centos7
+	docker pull nvidia/cuda$(ARCH_SUFFIX):$(CUDA_VERSION_MAJOR).$(CUDA_VERSION_MINOR)-cudnn$(CUDNN_VERSION)-devel-ubuntu18.04
 	if ! docker image inspect $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA) >/dev/null 2>/dev/null; then \
 		echo "Building: $(DOCKERFILE_PATH_NNABLA_EXT_CUDA)"; \
 		if [ "$(OMPI_SUFFIX)" = "" ]; then \
