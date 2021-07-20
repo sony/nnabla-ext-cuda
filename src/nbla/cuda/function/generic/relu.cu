@@ -27,15 +27,15 @@ namespace nbla {
 //=============================================================================
 // They have the same performance as cuDNN 8.1.1 for float)
 template <typename T>
-__global__ void kernel_relu_forward(const int size2, const int size, T *y,
+__global__ void kernel_relu_forward(const Size_t size2, const Size_t size, T *y,
                                     const T *x) {
-  NBLA_CUDA_KERNEL_LOOP(idx, size) { y[idx] = max((T)0, x[idx]); }
+  NBLA_CUDA_KERNEL_LOOP_SIZE_T(idx, size) { y[idx] = max((T)0, x[idx]); }
 }
 
 template <bool accum, typename T>
-__global__ void kernel_relu_backward(const int size2, const int size, T *dx,
-                                     const T *y, const T *dy) {
-  NBLA_CUDA_KERNEL_LOOP(idx, size) {
+__global__ void kernel_relu_backward(const Size_t size2, const Size_t size,
+                                     T *dx, const T *y, const T *dy) {
+  NBLA_CUDA_KERNEL_LOOP_SIZE_T(idx, size) {
     dx[idx] = (accum ? dx[idx] : (T)0) + (y[idx] > (T)0 ? dy[idx] : (T)0);
   }
 }
@@ -45,15 +45,15 @@ __global__ void kernel_relu_backward(const int size2, const int size, T *dx,
 //=============================================================================
 // Optimizing the number of trasactions for global memory access
 // by using half2 type.
-__device__ void kernel_relu_forward_half2(const int size2, const int size,
+__device__ void kernel_relu_forward_half2(const Size_t size2, const Size_t size,
                                           HalfCuda *y, const HalfCuda *x) {
   // HalfCuda is aligned 2. See nbla/cuda/half.hpp.
   half2 *y2 = reinterpret_cast<half2 *>(y);
   const half2 *x2 = reinterpret_cast<const half2 *>(x);
   const half zero = (half)0;
 
-  NBLA_CUDA_KERNEL_LOOP(idx2, size2) {
-    const int idx = 2 * idx2;
+  NBLA_CUDA_KERNEL_LOOP_SIZE_T(idx2, size2) {
+    const Size_t idx = 2 * idx2;
     if (idx + 1 == size) {
       // The last fraction element cannot be vectrized into half2.
       y[idx] = max((HalfCuda)0, x[idx]);
@@ -68,22 +68,26 @@ __device__ void kernel_relu_forward_half2(const int size2, const int size,
 
       // 3. Store the two elements once.
       y2[idx2] = __halves2half2(y_buff[0], y_buff[1]);
+
+      // Note: __hmax2 is not supported before CUDA 11.1. Here we do not
+      //       use the macro switch to it because it did not improve
+      //       the speed.
     }
   }
 }
 
 template <bool accum>
-__device__ void kernel_relu_backward_half2(const int size2, const int size,
-                                           HalfCuda *dx, const HalfCuda *y,
-                                           const HalfCuda *dy) {
+__device__ void
+kernel_relu_backward_half2(const Size_t size2, const Size_t size, HalfCuda *dx,
+                           const HalfCuda *y, const HalfCuda *dy) {
   // HalfCuda is aligned 2. See nbla/cuda/half.hpp.
   half2 *dx2 = reinterpret_cast<half2 *>(dx);
   const half2 *y2 = reinterpret_cast<const half2 *>(y);
   const half2 *dy2 = reinterpret_cast<const half2 *>(dy);
   const half zero = (half)0;
 
-  NBLA_CUDA_KERNEL_LOOP(idx2, size2) {
-    const int idx = 2 * idx2;
+  NBLA_CUDA_KERNEL_LOOP_SIZE_T(idx2, size2) {
+    const Size_t idx = 2 * idx2;
     if (idx + 1 == size) {
       // The last fraction element cannot be vectrized into half2.
       const HalfCuda nbla_zero = (HalfCuda)0;
@@ -111,22 +115,22 @@ __device__ void kernel_relu_backward_half2(const int size2, const int size,
 
 // C++11 cannot specialize tmplate functions partially.
 template <>
-__global__ void kernel_relu_forward(const int size2, const int size,
+__global__ void kernel_relu_forward(const Size_t size2, const Size_t size,
                                     HalfCuda *y, const HalfCuda *x) {
   kernel_relu_forward_half2(size2, size, y, x);
 }
 
 template <>
-__global__ void kernel_relu_backward<true>(const int size2, const int size,
-                                           HalfCuda *dx, const HalfCuda *y,
-                                           const HalfCuda *dy) {
+__global__ void
+kernel_relu_backward<true>(const Size_t size2, const Size_t size, HalfCuda *dx,
+                           const HalfCuda *y, const HalfCuda *dy) {
   kernel_relu_backward_half2<true>(size2, size, dx, y, dy);
 }
 
 template <>
-__global__ void kernel_relu_backward<false>(const int size2, const int size,
-                                            HalfCuda *dx, const HalfCuda *y,
-                                            const HalfCuda *dy) {
+__global__ void
+kernel_relu_backward<false>(const Size_t size2, const Size_t size, HalfCuda *dx,
+                            const HalfCuda *y, const HalfCuda *dy) {
   kernel_relu_backward_half2<false>(size2, size, dx, y, dy);
 }
 
@@ -148,10 +152,9 @@ void ReLUCuda<T>::forward_impl(const Variables &inputs,
   const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
   Tc *y =
       outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, !this->inplace_);
-  // TODO: Use Size_t
-  const int size = static_cast<int>(inputs[0]->size());
-  const int size2 = interpret_size<T>(size);
-  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_relu_forward, size2, size, y, x);
+  const Size_t size = inputs[0]->size();
+  const Size_t size2 = interpret_size<T>(size);
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE_SIZE_T(kernel_relu_forward, size2, size, y, x);
 }
 
 template <class T>
@@ -168,16 +171,15 @@ void ReLUCuda<T>::backward_impl(const Variables &inputs,
       this->ctx_, !(this->inplace_ || accum[0]));
   const Tc *y = outputs[0]->get_data_pointer<Tc>(this->ctx_);
   const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
-  // TODO: Use Size_t
-  const int size = static_cast<int>(inputs[0]->size());
-  const int size2 = interpret_size<T>(size);
+  const Size_t size = inputs[0]->size();
+  const Size_t size2 = interpret_size<T>(size);
 
   if (dx != dy && accum[0]) {
-    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_relu_backward<true>), size2, size,
-                                   dx, y, dy);
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE_SIZE_T((kernel_relu_backward<true>), size2,
+                                          size, dx, y, dy);
   } else {
-    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_relu_backward<false>), size2, size,
-                                   dx, y, dy);
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE_SIZE_T((kernel_relu_backward<false>), size2,
+                                          size, dx, y, dy);
   }
 }
 }
