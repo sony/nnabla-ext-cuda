@@ -50,28 +50,29 @@ __device__ void kernel_relu_forward_half2(const Size_t size2, const Size_t size,
   // HalfCuda is aligned 2. See nbla/cuda/half.hpp.
   half2 *y2 = reinterpret_cast<half2 *>(y);
   const half2 *x2 = reinterpret_cast<const half2 *>(x);
-  const half zero = (half)0;
+  const HalfCuda zero(0);
 
   NBLA_CUDA_KERNEL_LOOP_SIZE_T(idx2, size2) {
     const Size_t idx = 2 * idx2;
     if (idx + 1 == size) {
       // The last fraction element cannot be vectrized into half2.
-      y[idx] = max((HalfCuda)0, x[idx]);
+      y[idx] = max(zero, x[idx]);
     } else {
       // 1. Load the two elements once.
       const half2 x2_val = x2[idx2];
-      half y_buff[2];
+      HalfCuda y_buff[2];
 
       // 2. Compute ReLU respectively.
-      y_buff[0] = __hmax(zero, __low2half(x2_val));
-      y_buff[1] = __hmax(zero, __high2half(x2_val));
-
-      // 3. Store the two elements once.
-      y2[idx2] = __halves2half2(y_buff[0], y_buff[1]);
-
+      const HalfCuda low(__low2half(x2_val));
+      const HalfCuda high(__high2half(x2_val));
+      y_buff[0] = (low > zero ? low : zero);
+      y_buff[1] = (high > zero ? high : zero);
       // Note: __hmax2 is not supported before CUDA 11.1. Here we do not
       //       use the macro switch to it because it did not improve
       //       the speed.
+
+      // 3. Store the two elements once.
+      y2[idx2] = __halves2half2(y_buff[0].h, y_buff[1].h);
     }
   }
 }
@@ -84,30 +85,36 @@ kernel_relu_backward_half2(const Size_t size2, const Size_t size, HalfCuda *dx,
   half2 *dx2 = reinterpret_cast<half2 *>(dx);
   const half2 *y2 = reinterpret_cast<const half2 *>(y);
   const half2 *dy2 = reinterpret_cast<const half2 *>(dy);
-  const half zero = (half)0;
+  const HalfCuda zero(0);
 
   NBLA_CUDA_KERNEL_LOOP_SIZE_T(idx2, size2) {
     const Size_t idx = 2 * idx2;
     if (idx + 1 == size) {
       // The last fraction element cannot be vectrized into half2.
-      const HalfCuda nbla_zero = (HalfCuda)0;
-      dx[idx] = (accum ? dx[idx] : nbla_zero) +
-                (y[idx] > nbla_zero ? dy[idx] : nbla_zero);
+      dx[idx] = (accum ? dx[idx] : zero) + (y[idx] > zero ? dy[idx] : zero);
     } else {
       // 1. Load the two elements once.
       const half2 y2_val = y2[idx2];
       const half2 dy2_val = dy2[idx2];
-      half dx_buff[2];
+      HalfCuda dx_buff[2];
 
       // 2. Compute the gradient of ReLU respectively.
-      dx_buff[0] = (__low2half(y2_val) > zero ? __low2half(dy2_val) : zero);
-      dx_buff[1] = (__high2half(y2_val) > zero ? __high2half(dy2_val) : zero);
+      dx_buff[0] =
+          (HalfCuda(__low2half(y2_val)) > zero ? HalfCuda(__low2half(dy2_val))
+                                               : zero);
+      dx_buff[1] =
+          (HalfCuda(__high2half(y2_val)) > zero ? HalfCuda(__high2half(dy2_val))
+                                                : zero);
 
       // 3. Store the two elements once.
       if (accum) {
-        dx2[idx2] += __halves2half2(dx_buff[0], dx_buff[1]);
+        // half2 arithmetic is not supported in lower compute capability.
+        const half2 dx_tmp = dx2[idx2];
+        const HalfCuda low = dx_buff[0] + HalfCuda(__low2half(dx_tmp));
+        const HalfCuda high = dx_buff[1] + HalfCuda(__high2half(dx_tmp));
+        dx2[idx2] = __halves2half2(low.h, high.h);
       } else {
-        dx2[idx2] = __halves2half2(dx_buff[0], dx_buff[1]);
+        dx2[idx2] = __halves2half2(dx_buff[0].h, dx_buff[1].h);
       }
     }
   }
