@@ -21,7 +21,7 @@ nvidia-docker run <options> nnabla/nnabla-ext-cuda:<tag> <command>
 You can also build docker images from Dockerfiles located in this folder (describe the above table).
 
 ```
-docker build <options> -t <image name>:<tag> <Dockerfile folder>
+docker build <options> -t <image name>:<tag> <Dockerfile folder> -f <Dockerfile name>
 ```
 
 ## Tutorial image

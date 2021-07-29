@@ -37,6 +37,36 @@ RUN umask 0 \
     && cd / \
     && rm -rf /tmp/*
 
+FROM ubuntu:18.04 as openmpi
+
+ARG PIP_INS_OPTS
+ARG PYTHONWARNINGS
+ARG CURL_OPTS
+ARG WGET_OPTS
+ARG APT_OPTS
+
+RUN eval ${APT_OPTS} && apt-get update
+RUN apt-get install -y --no-install-recommends \
+        build-essential \
+        curl \
+        gfortran \
+        libibverbs-dev
+
+RUN apt-get install -y --no-install-recommends ca-certificates
+
+RUN mkdir /tmp/openmpi
+RUN curl ${CURL_OPTS} https://download.open-mpi.org/release/open-mpi/v3.1/openmpi-3.1.6.tar.bz2 -o /tmp/openmpi/openmpi-3.1.6.tar.bz2
+RUN tar Cxvf /tmp/openmpi /tmp/openmpi/openmpi-3.1.6.tar.bz2
+RUN cd tmp/openmpi/openmpi-3.1.6 \
+    && ./configure \
+        --prefix=/opt/openmpi --enable-orterun-prefix-by-default --with-sge \
+        CC=gcc \
+        CXX=g++ \
+        F77=gfortran \
+        FC=gfortran \
+    && make -j8 \
+    && make install
+
 FROM nvidia/cuda:11.0-cudnn8-runtime-ubuntu18.04
 
 ARG PIP_INS_OPTS
@@ -52,14 +82,18 @@ RUN eval ${APT_OPTS} && apt-get update \
        curl \
        libglib2.0-0 \
        libgl1-mesa-glx \
-       python3.6 \
+       python3.7 \
        python3-pip \
-       openmpi-bin \
        openssh-client \
+       ibverbs-providers \
+       opensm \
+       libdapl2 \
+       libibmad5 \
+       librdmacm1 \
     && rm -rf /var/lib/apt/lists/*
 
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.6 0
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 0
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.7 0
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 0
 
 RUN pip3 install ${PIP_INS_OPTS} --upgrade pip
 RUN pip install ${PIP_INS_OPTS} wheel setuptools
@@ -68,11 +102,33 @@ RUN pip install ${PIP_INS_OPTS} opencv-python || true
 RUN pip install ${PIP_INS_OPTS} --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda110 \
     || echo "Skip DALI installation (CUDA=11.0)"
 
+COPY --from=openmpi /opt/openmpi /opt/openmpi
+ENV PATH /opt/openmpi/bin:$PATH
+ENV LD_LIBRARY_PATH /opt/openmpi/lib:$LD_LIBRARY_PATH
+
 
 ARG NNABLA_VER
-RUN pip install ${PIP_INS_OPTS} nnabla-ext-cuda110-nccl2-mpi2.1.1==${NNABLA_VER} nnabla_converter==${NNABLA_VER}
+RUN pip install ${PIP_INS_OPTS} nnabla-ext-cuda110-nccl2-mpi3.1.6==${NNABLA_VER} nnabla_converter==${NNABLA_VER}
 
 COPY --from=flatc /usr/local/bin/flatc /usr/local/bin/flatc
+
+# cuda compat driver support
+COPY cudalibcheck /usr/local/bin/cudalibcheck
+COPY .bashrc /home/nnabla/.bashrc
+COPY bash.bashrc /etc/bash.bashrc
+COPY shinit_v2 /etc/shinit_v2
+RUN mkdir -p -m 775 /usr/local/cuda/compat/lib \
+    && cd /usr/local/cuda/compat/lib \
+    && for f in ../*.so*; do ln -sf $f .; done \
+    && echo /usr/local/cuda/compat/lib > /etc/ld.so.conf.d/00-cuda-compat.conf \
+    && ldconfig \
+    && rm -f /usr/local/cuda/compat/lib/*.so*
+
+# singularity environment
+RUN mkdir -p -m 775 /.singularity.d/env
+COPY 20-nvidia-cuda-compat.sh /.singularity.d/env/20-nvidia-cuda-compat.sh
+ENV BASH_ENV /etc/bash.bashrc
+ENV ENV /etc/shinit_v2
 
 # Solve nccl error that No space left on device
 # while creating shared memory segment.

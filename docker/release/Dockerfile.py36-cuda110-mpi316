@@ -85,6 +85,11 @@ RUN eval ${APT_OPTS} && apt-get update \
        python3.6 \
        python3-pip \
        openssh-client \
+       ibverbs-providers \
+       opensm \
+       libdapl2 \
+       libibmad5 \
+       librdmacm1 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.6 0
@@ -106,6 +111,24 @@ ARG NNABLA_VER
 RUN pip install ${PIP_INS_OPTS} nnabla-ext-cuda110-nccl2-mpi3.1.6==${NNABLA_VER} nnabla_converter==${NNABLA_VER}
 
 COPY --from=flatc /usr/local/bin/flatc /usr/local/bin/flatc
+
+# cuda compat driver support
+COPY cudalibcheck /usr/local/bin/cudalibcheck
+COPY .bashrc /home/nnabla/.bashrc
+COPY bash.bashrc /etc/bash.bashrc
+COPY shinit_v2 /etc/shinit_v2
+RUN mkdir -p -m 775 /usr/local/cuda/compat/lib \
+    && cd /usr/local/cuda/compat/lib \
+    && for f in ../*.so*; do ln -sf $f .; done \
+    && echo /usr/local/cuda/compat/lib > /etc/ld.so.conf.d/00-cuda-compat.conf \
+    && ldconfig \
+    && rm -f /usr/local/cuda/compat/lib/*.so*
+
+# singularity environment
+RUN mkdir -p -m 775 /.singularity.d/env
+COPY 20-nvidia-cuda-compat.sh /.singularity.d/env/20-nvidia-cuda-compat.sh
+ENV BASH_ENV /etc/bash.bashrc
+ENV ENV /etc/shinit_v2
 
 # Solve nccl error that No space left on device
 # while creating shared memory segment.
