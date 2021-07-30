@@ -22,6 +22,14 @@
 
 namespace nbla {
 
+// This implementation can be activated when the relu in
+// build-tools/code_generator/function_types.yaml is activated.
+// See also src/nbla/cuda/cudnn/function/generic/relu.cu
+//
+// ReLUCudaCudnn requres inputs[0] (x) and outputs[0] (y), but ReLUCuda only
+// requires y. Therefore ReLUCuda has an advantage of memory usage over
+// ReLUCudaCudnn. That is why ReLUCudaCudnn was removed.
+#if 0
 /** @copydoc ReLU
 */
 template <typename T> class ReLUCudaCudnn : public ReLUCuda<T> {
@@ -62,5 +70,6 @@ protected:
                              const vector<bool> &accum);
   virtual bool grad_depends_input_data_impl(int i, int j) const { return true; }
 };
+#endif
 }
 #endif

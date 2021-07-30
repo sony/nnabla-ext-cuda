@@ -24,6 +24,14 @@
 
 namespace nbla {
 
+// This implementation can be activated when the relu in
+// build-tools/code_generator/function_types.yaml is activated.
+// See also include/nbla/cuda/cudnn/function/generic/relu.cu
+//
+// ReLUCudaCudnn requres inputs[0] (x) and outputs[0] (y), but ReLUCuda only
+// requires y. Therefore ReLUCuda has an advantage of memory usage over
+// ReLUCudaCudnn. That is why ReLUCudaCudnn was removed.
+#if 0
 template <typename T>
 void ReLUCudaCudnn<T>::setup_impl(const Variables &inputs,
                                   const Variables &outputs) {
@@ -81,4 +89,5 @@ void ReLUCudaCudnn<T>::backward_impl(const Variables &inputs,
       this->output_desc_, dy, input_desc_, x, &beta, input_desc_, dx));
 #endif
 }
+#endif
 }

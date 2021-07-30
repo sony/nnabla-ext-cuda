@@ -38,9 +38,9 @@ Sigmoid:
 Tanh:
   float: [float]
   half: [Half]
-ReLU:
-  float: [float]
-  half: [Half]
+# ReLU:
+#   float: [float]
+#   half: [Half]
 # LeakyReLU:
 #   float: [float]
 Softmax:

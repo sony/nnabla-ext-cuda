@@ -181,6 +181,11 @@ enum {
 #define NBLA_CEIL_INT_DIV(N, D)                                                \
   ((static_cast<int>(N) + static_cast<int>(D) - 1) / static_cast<int>(D))
 
+/** ceil(N/D) where N and D are nbla::Size)t integers */
+#define NBLA_CEIL_SIZE_T_DIV(N, D)                                             \
+  ((static_cast<Size_t>(N) + static_cast<Size_t>(D) - 1) /                     \
+   static_cast<Size_t>(D))
+
 /** Default num threads */
 #define NBLA_CUDA_NUM_THREADS 512
 
@@ -189,6 +194,10 @@ enum {
 
 /** Block size */
 #define NBLA_CUDA_GET_BLOCKS(num) NBLA_CEIL_INT_DIV(num, NBLA_CUDA_NUM_THREADS)
+
+/** Block size with nbla::Size_t */
+#define NBLA_CUDA_GET_BLOCKS_SIZE_T(num)                                       \
+  NBLA_CEIL_SIZE_T_DIV(num, NBLA_CUDA_NUM_THREADS)
 
 /** Get an appropriate block size given a size of elements.
 
@@ -203,11 +212,33 @@ inline int cuda_get_blocks_by_size(int size) {
   return total_blocks;
 }
 
+/** Get an appropriate block size given a size of elements with nbla::Size_t.
+
+    The kernel is assumed to contain a grid-strided loop.
+*/
+inline Size_t cuda_get_blocks_by_size_with_size_t(const Size_t size) {
+  if (size == 0)
+    return 0;
+  const Size_t blocks = NBLA_CUDA_GET_BLOCKS_SIZE_T(size);
+  const Size_t inkernel_loop =
+      NBLA_CEIL_SIZE_T_DIV(blocks, NBLA_CUDA_MAX_BLOCKS);
+  const Size_t total_blocks = NBLA_CEIL_SIZE_T_DIV(blocks, inkernel_loop);
+  return total_blocks;
+}
+
 /** Launch simple kernel */
 #define NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel, size, ...)                      \
   {                                                                            \
     (kernel)<<<cuda_get_blocks_by_size(size), NBLA_CUDA_NUM_THREADS>>>(        \
         (size), __VA_ARGS__);                                                  \
+    NBLA_CUDA_KERNEL_CHECK();                                                  \
+  }
+
+/** Launch simple kernel */
+#define NBLA_CUDA_LAUNCH_KERNEL_SIMPLE_SIZE_T(kernel, size, ...)               \
+  {                                                                            \
+    (kernel)<<<cuda_get_blocks_by_size_with_size_t(size),                      \
+               NBLA_CUDA_NUM_THREADS>>>((size), __VA_ARGS__);                  \
     NBLA_CUDA_KERNEL_CHECK();                                                  \
   }
 
@@ -223,6 +254,14 @@ inline int cuda_get_blocks_by_size(int size) {
 #define NBLA_CUDA_KERNEL_LOOP(idx, num)                                        \
   for (int idx = blockIdx.x * blockDim.x + threadIdx.x; idx < (num);           \
        idx += blockDim.x * gridDim.x)
+
+/** Cuda grid-strided loop */
+#define NBLA_CUDA_KERNEL_LOOP_SIZE_T(idx, num)                                 \
+  for (Size_t idx =                                                            \
+           static_cast<Size_t>(blockIdx.x) * static_cast<Size_t>(blockDim.x) + \
+           static_cast<Size_t>(threadIdx.x);                                   \
+       idx < (num); idx += static_cast<Size_t>(blockDim.x) *                   \
+                           static_cast<Size_t>(gridDim.x))
 
 /** Instantiate template CUDA functions */
 #define NBLA_INSTANTIATE_CUDA_FUNCS(type, classname)                           \
