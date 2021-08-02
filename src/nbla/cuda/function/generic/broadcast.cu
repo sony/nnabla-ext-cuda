@@ -31,7 +31,7 @@ void BroadcastCuda<T>::setup_impl(const Variables &inputs,
                                   const Variables &outputs) {
   Broadcast<T>::setup_impl(inputs, outputs);
   int ndim = outputs[0]->ndim();
-  auto inshape = inputs[0]->shape();
+  auto eshape = expand_shape(inputs[0]->shape(), ndim);
   vector<int> broadcast_dims;
   if (inputs[0]->ndim() == 0) {
     // If input is a scalar.
@@ -39,7 +39,7 @@ void BroadcastCuda<T>::setup_impl(const Variables &inputs,
     std::iota(broadcast_dims.begin(), broadcast_dims.end(), 0);
   } else {
     for (int d = 0; d < ndim; ++d) {
-      if (this->shape_[d] != inshape[d])
+      if (this->shape_[d] != eshape[d])
         broadcast_dims.push_back(d);
     }
   }
@@ -134,8 +134,11 @@ void BroadcastCuda<T>::forward_impl(const Variables &inputs,
     return v.get_data_pointer<int>(this->ctx_);
   };
   const int *stride_x = _iarr(this->stride_x_);
+  // for (int i = 0; i < this->stride_x_.ndim(); i++) {
+  //   printf("stride_x[%d] = %d\n", i, stride_x[i]);
+  // }
   const int *shape_y = _iarr(this->shape_y_);
-  int ndim = inputs[0]->ndim();
+  int ndim = outputs[0]->ndim();
   int size = outputs[0]->size();
   cuda_set_device(device_);
   switch_broadcast_cuda<NBLA_BROADCAST_MAX_DIM, Tc>::call(ndim, size, x,
