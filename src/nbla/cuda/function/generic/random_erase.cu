@@ -217,8 +217,7 @@ void RandomEraseCuda<T>::forward_impl(const Variables &inputs,
 
   // Copy once
   auto size = inputs[0]->size();
-  Tcu *y =
-      outputs[0]->cast_data_and_get_pointer<Tcu>(this->ctx_, !this->inplace_);
+  Tcu *y = outputs[0]->cast_data_and_get_pointer<Tcu>(this->ctx_, true);
   const Tcu *x = inputs[0]->get_data_pointer<Tcu>(this->ctx_);
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((random_erase::kernel_copy<Tcu, false>), size,
                                  y, x);
@@ -275,8 +274,7 @@ void RandomEraseCuda<T>::backward_impl(const Variables &inputs,
 
   auto size = inputs[0]->size();
   const Tcu *gy = outputs[0]->get_grad_pointer<Tcu>(this->ctx_);
-  Tcu *gx = inputs[0]->cast_grad_and_get_pointer<Tcu>(
-      this->ctx_, !(this->inplace_ || accum[0]));
+  Tcu *gx = inputs[0]->cast_grad_and_get_pointer<Tcu>(this->ctx_, !accum[0]);
 
   // STE
   if (!this->ste_fine_grained_) {

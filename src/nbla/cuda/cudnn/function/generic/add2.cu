@@ -33,7 +33,7 @@ void Add2CudaCudnn<T>::setup_impl(const Variables &inputs,
   if (inputs[0]->shape() != inputs[1]->shape()) {
     // Trying to fallback to broadcastable Add2.
     this->fall_back_func_ = std::shared_ptr<Function>(
-        new BcAdd2Cuda<T>(this->ctx_, this->inplace_));
+        new BcAdd2Cuda<T>(this->ctx_, false /* inplace is obsoleted. */));
     this->fall_back_func_->setup(inputs, outputs);
     return;
   }
@@ -54,8 +54,7 @@ void Add2CudaCudnn<T>::forward_impl(const Variables &inputs,
   cuda_set_device(std::stoi(this->ctx_.device_id));
   const Tw *x0 = inputs[0]->get_data_pointer<Tw>(this->ctx_);
   const Tw *x1 = inputs[1]->get_data_pointer<Tw>(this->ctx_);
-  Tw *y =
-      outputs[0]->cast_data_and_get_pointer<Tw>(this->ctx_, !this->inplace_);
+  Tw *y = outputs[0]->cast_data_and_get_pointer<Tw>(this->ctx_, true);
   auto alpha = get_cudnn_scalar_arg<T>(1);
   auto beta = get_cudnn_scalar_arg<T>(1);
   if (x0 == y) {
@@ -87,8 +86,7 @@ void Add2CudaCudnn<T>::backward_impl(const Variables &inputs,
                                      const vector<bool> &propagate_down,
                                      const vector<bool> &accum) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  Tw *dx0 = inputs[0]->cast_grad_and_get_pointer<Tw>(
-      this->ctx_, !(this->inplace_ || accum[0]));
+  Tw *dx0 = inputs[0]->cast_grad_and_get_pointer<Tw>(this->ctx_, !accum[0]);
   Tw *dx1 = inputs[1]->cast_grad_and_get_pointer<Tw>(this->ctx_, !accum[1]);
   const Tw *dy = outputs[0]->get_grad_pointer<Tw>(this->ctx_);
   auto alpha = get_cudnn_scalar_arg<T>(1);
