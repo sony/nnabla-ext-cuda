@@ -33,14 +33,6 @@ namespace nbla {
 template <typename T>
 class SyncBatchNormalizationCudaCudnn : public SyncBatchNormalizationCuda<T> {
 protected:
-  int device_;
-  cudnnBatchNormMode_t mode_;
-  cudnnHandle_t cudnn_handle_;
-  cudnnTensorDescriptor_t input_desc_, output_desc_;
-  cudnnTensorDescriptor_t bn_scale_bias_mean_var_desc_;
-  cudnnDataType_t derived_bn_dtype_;
-  double epsilon;
-
   BatchNormalizationCudaCudnn<T> batch_norm_cudnn_;
 
 public:
@@ -53,33 +45,8 @@ public:
                                   float eps, bool batch_stat)
       : SyncBatchNormalizationCuda<T>(ctx, comm, group, axes, decay_rate, eps,
                                       batch_stat),
-        device_(std::stoi(ctx.device_id)),
         batch_norm_cudnn_(ctx, axes, decay_rate, eps, batch_stat,
-                          false /* no_scale */, false /* no_bias */) {
-#if CUDNN_VERSION < 5000
-    std::cout << "Falling back to BatchNormalizationCuda since BN does not "
-                 "exist in CUDNN_VERSION < 5000."
-              << std::endl; // TODO: warn.
-    this->fall_back_func_.reset(
-        new BatchNormalizationCuda<T>(ctx, axes, decay_rate, eps, batch_stat));
-#else
-    mode_ = CUDNN_BATCHNORM_SPATIAL;
-    NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&input_desc_));
-    NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&output_desc_));
-    NBLA_CUDNN_CHECK(
-        cudnnCreateTensorDescriptor(&bn_scale_bias_mean_var_desc_));
-    // NOTE: epsilon should be less than CUDNN_BN_MIN_EPSILON
-    epsilon = std::max((double)this->eps_, CUDNN_BN_MIN_EPSILON);
-#endif
-  }
-  virtual ~SyncBatchNormalizationCudaCudnn() {
-    if (this->fall_back_func_)
-      return;
-    NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(input_desc_));
-    NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(output_desc_));
-    NBLA_CUDNN_CHECK(
-        cudnnDestroyTensorDescriptor(bn_scale_bias_mean_var_desc_));
-  }
+                          false /* no_scale */, false /* no_bias */) {}
   virtual string name() override { return "SyncBatchNormalizationCudaCudnn"; }
   virtual vector<string> allowed_array_classes() override {
     return SingletonManager::get<Cuda>()->array_classes();
@@ -87,9 +54,6 @@ public:
 
 protected:
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
-  virtual void forward_impl_batch(const Variables &inputs,
-                                  const Variables &outputs,
-                                  const bool update_inputs) override;
   virtual void forward_impl_global(const Variables &inputs,
                                    const Variables &outputs) override;
 };
