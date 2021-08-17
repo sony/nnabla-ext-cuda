@@ -23,7 +23,7 @@ namespace nbla {
 template <typename T>
 void GroupNormalizationCudaCudnn<T>::setup_impl(const Variables &inputs,
                                                 const Variables &outputs) {
-  GroupNormalization<T>::setup_impl(inputs, outputs);
+  GroupNormalizationCuda<T>::setup_impl(inputs, outputs);
   cuda_set_device(this->device_);
 }
 
@@ -31,7 +31,7 @@ template <typename T>
 void GroupNormalizationCudaCudnn<T>::forward_impl(const Variables &inputs,
                                                   const Variables &outputs) {
   cuda_set_device(this->device_);
-  GroupNormalization<T>::forward_impl(inputs, outputs);
+  GroupNormalizationCuda<T>::forward_impl(inputs, outputs);
 }
 
 template <typename T>
@@ -43,6 +43,7 @@ void GroupNormalizationCudaCudnn<T>::backward_impl(
     return;
   }
   cuda_set_device(this->device_);
-  GroupNormalization<T>::backward_impl(inputs, outputs, propagate_down, accum);
+  GroupNormalizationCuda<T>::backward_impl(inputs, outputs, propagate_down,
+                                           accum);
 }
 }
