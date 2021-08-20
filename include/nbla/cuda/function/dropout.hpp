@@ -32,7 +32,7 @@ public:
                        bool output_mask = false)
       : Dropout<T>(ctx, T(p), seed, output_mask) {
     cuda_set_device(std::stoi(ctx.device_id));
-    NBLA_CHECK(this->p_ > 0., error_code::value,
+    NBLA_CHECK(this->p_ >= 0., error_code::value,
                "p must be between 0.0 and 1.0");
     NBLA_CHECK(this->p_ < 1., error_code::value,
                "p must be between 0.0 and 1.0");
