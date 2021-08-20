@@ -23,6 +23,6 @@ namespace nbla {
 
 /** @copydoc AddScalar
 */
-NBLA_DECLARE_TRANSFORM_UNARY_CUDA_1_INPLACE(AddScalar, double, false);
+NBLA_DECLARE_TRANSFORM_UNARY_CUDA_1_INPLACE(AddScalar, double, true);
 }
 #endif

@@ -23,6 +23,6 @@ namespace nbla {
 
 /** @copydoc Sub2
 */
-NBLA_DECLARE_TRANSFORM_BINARY_CUDA_INPLACE(Sub2, false);
+NBLA_DECLARE_TRANSFORM_BINARY_CUDA_INPLACE(Sub2, true);
 }
 #endif
