@@ -23,6 +23,8 @@ namespace nbla {
 template <typename T>
 class LayerNormalizationCuda : public LayerNormalization<T> {
 public:
+  typedef typename CudaType<T>::type Tc;
+
   explicit LayerNormalizationCuda(const Context &ctx,
                                   const vector<int> &batch_axis, float eps,
                                   bool no_scale, bool no_bias)
@@ -36,6 +38,13 @@ public:
 
 protected:
   int device_;
+  Size_t reduce_size_, batch_size_;
+
+  Variable mean_, var_;
+
+  Variable sum_dygamma_, sum_dyxgamma_;
+  Variable factor_a_, factor_b_;
+
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,

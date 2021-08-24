@@ -18,17 +18,17 @@
 #include <nbla/cuda/cuda.hpp>
 #include <nbla/cuda/cudnn/cudnn.hpp>
 
-#include <nbla/function/layer_normalization.hpp>
+#include <nbla/cuda/function/layer_normalization.hpp>
 
 namespace nbla {
 
 template <typename T>
-class LayerNormalizationCudaCudnn : public LayerNormalization<T> {
+class LayerNormalizationCudaCudnn : public LayerNormalizationCuda<T> {
 public:
   explicit LayerNormalizationCudaCudnn(const Context &ctx,
                                        const vector<int> &batch_axis, float eps,
                                        bool no_scale, bool no_bias)
-      : LayerNormalization<T>(ctx, batch_axis, eps, no_scale, no_bias),
+      : LayerNormalizationCuda<T>(ctx, batch_axis, eps, no_scale, no_bias),
         device_(std::stoi(ctx.device_id)) {}
   virtual ~LayerNormalizationCudaCudnn() {}
   virtual string name() { return "LayerNormalizationCudaCudnn"; }

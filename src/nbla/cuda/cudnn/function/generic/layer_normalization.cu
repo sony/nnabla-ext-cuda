@@ -23,7 +23,7 @@ namespace nbla {
 template <typename T>
 void LayerNormalizationCudaCudnn<T>::setup_impl(const Variables &inputs,
                                                 const Variables &outputs) {
-  LayerNormalization<T>::setup_impl(inputs, outputs);
+  LayerNormalizationCuda<T>::setup_impl(inputs, outputs);
   cuda_set_device(this->device_);
 }
 
@@ -31,7 +31,7 @@ template <typename T>
 void LayerNormalizationCudaCudnn<T>::forward_impl(const Variables &inputs,
                                                   const Variables &outputs) {
   cuda_set_device(this->device_);
-  LayerNormalization<T>::forward_impl(inputs, outputs);
+  LayerNormalizationCuda<T>::forward_impl(inputs, outputs);
 }
 
 template <typename T>
@@ -43,6 +43,7 @@ void LayerNormalizationCudaCudnn<T>::backward_impl(
     return;
   }
   cuda_set_device(this->device_);
-  LayerNormalization<T>::backward_impl(inputs, outputs, propagate_down, accum);
+  LayerNormalizationCuda<T>::backward_impl(inputs, outputs, propagate_down,
+                                           accum);
 }
 }
