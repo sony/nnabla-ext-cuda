@@ -17,6 +17,8 @@
 #include <nbla/cuda/function/cumprod.hpp>
 #include <nbla/variable.hpp>
 
+#include <memory>
+
 namespace nbla {
 
 template <typename T>
@@ -94,6 +96,69 @@ kernel_cumprod_backward(const int size0x2_, const int size1_, const int size2_,
 }
 
 template <typename T>
+__global__ void
+kernel_cumprod_backward_zero_input(const int size0x2_, const int size1_,
+                                   const int size2_, const T *x, const T *y,
+                                   const T *g_y, T *g_x, bool exclusive_,
+                                   bool reverse_, bool accum) {
+  typedef typename CudaTypeForceFloat<T>::type AccumType;
+  NBLA_CUDA_KERNEL_LOOP(idx, size0x2_) {
+    const int i0 = idx / size2_;
+    const int i2 = idx % size2_;
+    const int j = i0 * size1_ * size2_ + i2;
+
+    AccumType cur = T(0);
+    for (int index = 0; index < size1_; ++index) {
+
+      const int i1 = reverse_ ? index : size1_ - index - 1;
+      const int x_k = i1 * size2_ + j;
+
+      T coeff =
+          (i1 == 0) ? (T)1 : exclusive_ ? y[x_k] : y[(i1 - 1) * size2_ + j];
+      if (reverse_)
+        coeff = (i1 == size1_ - 1) ? (T)1 : exclusive_
+                                                ? y[x_k]
+                                                : y[(i1 + 1) * size2_ + j];
+
+      cur = exclusive_ ? (T)0 : coeff * g_y[x_k];
+
+      if (reverse_) {
+        for (int i4 = i1 - 1; i4 >= 0; --i4) {
+          if (!exclusive_ || i4 != i1 - 1)
+            coeff *=
+                (exclusive_ ? x[(i4 + 1) * size2_ + j] : x[i4 * size2_ + j]);
+          cur += coeff * g_y[i4 * size2_ + j];
+        }
+      } else {
+        for (int i4 = i1 + 1; i4 < size1_; ++i4) {
+          if (!exclusive_ || i4 != i1 + 1) {
+            coeff *=
+                (exclusive_ ? x[(i4 - 1) * size2_ + j] : x[i4 * size2_ + j]);
+          }
+          cur += coeff * g_y[i4 * size2_ + j];
+        }
+      }
+
+      if (accum)
+        g_x[x_k] += cur;
+      else
+        g_x[x_k] = cur;
+    }
+  }
+}
+
+template <typename T>
+__global__ void kernel_zero_input_check(const int size0x2_, const T *x,
+                                        bool *zero_input_present) {
+  NBLA_CUDA_KERNEL_LOOP(idx, size0x2_) {
+    if (x[idx] == (T)0) {
+      *zero_input_present = true;
+      break;
+    }
+  }
+}
+
+template <typename T>
 void CumProdCuda<T>::backward_impl(const Variables &inputs,
                                    const Variables &outputs,
                                    const vector<bool> &propagate_down,
@@ -108,12 +173,31 @@ void CumProdCuda<T>::backward_impl(const Variables &inputs,
   const T *y = outputs[0]->get_data_pointer<T>(this->ctx_);
   const T *x = inputs[0]->get_data_pointer<T>(this->ctx_);
 
+  bool *d_zero_input_present, h_zero_input_present = false;
+  NBLA_CUDA_CHECK(cudaMalloc(&d_zero_input_present, sizeof(bool)));
+  NBLA_CUDA_CHECK(cudaMemcpy(d_zero_input_present, &h_zero_input_present,
+                             sizeof(bool), cudaMemcpyHostToDevice));
+
+  size_t size = inputs[0]->size();
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_zero_input_check<Tcu>), size, x,
+                                 d_zero_input_present);
+  NBLA_CUDA_CHECK(cudaMemcpy(&h_zero_input_present, d_zero_input_present,
+                             sizeof(bool), cudaMemcpyDeviceToHost));
+
   if (propagate_down[0]) {
     Tcu *g_x = inputs[0]->cast_grad_and_get_pointer<Tcu>(this->ctx_, !accum[0]);
-    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_cumprod_backward<Tcu>),
-                                   this->size0_ * this->size2_, this->size1_,
-                                   this->size2_, x, y, g_y, g_x,
-                                   this->exclusive_, this->reverse_, accum[0]);
+
+    if (h_zero_input_present == 1) {
+      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
+          (kernel_cumprod_backward_zero_input<Tcu>),
+          this->size0_ * this->size2_, this->size1_, this->size2_, x, y, g_y,
+          g_x, this->exclusive_, this->reverse_, accum[0]);
+    } else {
+      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
+          (kernel_cumprod_backward<Tcu>), this->size0_ * this->size2_,
+          this->size1_, this->size2_, x, y, g_y, g_x, this->exclusive_,
+          this->reverse_, accum[0]);
+    }
   }
 }
 }
