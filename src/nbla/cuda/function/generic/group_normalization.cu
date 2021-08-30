@@ -20,33 +20,10 @@
 #include <nbla/cuda/utils/block_reduce.cuh>
 #include <nbla/cuda/utils/warp_reduce.cuh>
 
-// For channel-last adaptor
-#include <nbla/function/transpose.hpp>
+// Common kernels
+#include <nbla/cuda/function/kernel/normalization.cuh>
 
 namespace nbla {
-
-// TODO:
-inline void dump_buffer(const float *ptr, const int size, string message) {
-  std::cout << message << ": ";
-  for (int i = 0; i < size; i++) {
-    std::cout << ptr[i] << ", ";
-  }
-  std::cout << std::endl;
-}
-
-inline void dump_data_buffer(Variable *var, const int size, string message) {
-  cudaDeviceSynchronize();
-  nbla::Context cpu_ctx{{"cpu:float"}, "CpuCachedArray", "0"};
-  const float *ptr = var->get_data_pointer<float>(cpu_ctx);
-  dump_buffer(ptr, size, message);
-}
-
-inline void dump_grad_buffer(Variable *var, const int size, string message) {
-  cudaDeviceSynchronize();
-  nbla::Context cpu_ctx{{"cpu:float"}, "CpuCachedArray", "0"};
-  const float *ptr = var->get_grad_pointer<float>(cpu_ctx);
-  dump_buffer(ptr, size, message);
-}
 
 template <typename T>
 void GroupNormalizationCuda<T>::setup_impl(const Variables &inputs,
@@ -58,194 +35,41 @@ void GroupNormalizationCuda<T>::setup_impl(const Variables &inputs,
   const auto x_shape = x->shape();
   const auto ndim = x->ndim();
   const auto c = this->channel_axis_;
-  channel_last_ = c == ndim - 1 && ndim != 2;
   channel_size_ = x_shape[c];
 
-  if (channel_last_) {
-    // Pre-transpose: [b, h, w, c] -> [b, c, h, w]
-    vector<int> pre_transpose_shape;
-    for (int i = 0; i < this->batch_axis_.size(); i++) {
-      pre_transpose_shape.push_back(i);
-    }
-    pre_transpose_shape.push_back(c);
-    for (int i = this->batch_axis_.size(); i < ndim - 1; i++) {
-      pre_transpose_shape.push_back(i);
-    }
-    pre_transpose_ = create_Transpose(this->ctx_, pre_transpose_shape);
-    pre_transpose_->setup({inputs[0]}, {&pre_adaptor_});
+  need_adaptor_ = ChannelFirstAdaptor::need_adaptor(
+      inputs[0]->shape(), this->batch_axis_, this->channel_axis_);
 
-    // Post-transpose: [b, c, h, w] -> [b, h, w, c]
-    vector<int> post_transpose_shape;
-    for (int i = 0; i < this->batch_axis_.size(); i++) {
-      post_transpose_shape.push_back(i);
-    }
-    for (int i = this->batch_axis_.size(); i < ndim - 1; i++) {
-      post_transpose_shape.push_back(i + 1);
-    }
-    post_transpose_shape.push_back(this->batch_axis_.size());
-    post_transpose_ = create_Transpose(this->ctx_, post_transpose_shape);
-    post_adaptor_.reshape(pre_adaptor_.shape(), true);
-    post_transpose_->setup({&post_adaptor_}, {outputs[0]});
+  if (need_adaptor_) {
+    adaptor_ = std::make_shared<ChannelFirstAdaptor>();
+    adaptor_->setup(inputs[0], &pre_adaptor_, &post_adaptor_, outputs[0],
+                    inputs[0]->shape(), this->batch_axis_, this->channel_axis_,
+                    this->ctx_);
 
-    // Create stats shape
     const auto c_ = this->batch_axis_.size();
-    Shape_t stats_shape;
-    for (auto i = 0; i < c_; i++) {
-      stats_shape.push_back(pre_adaptor_.shape()[i]);
-    }
-    stats_shape.push_back(this->num_groups_);
-    stats_shape.push_back(pre_adaptor_.shape()[c_] / this->num_groups_);
-    for (auto i = c + 1; i < ndim; i++) {
-      stats_shape.push_back(pre_adaptor_.shape()[i]);
-    }
-
     batch_size_ = pre_adaptor_.size() / pre_adaptor_.size(c_);
     reduce_size_ =
         pre_adaptor_.size(c_ + 1) * (channel_size_ / this->num_groups_);
     outer_size_ = pre_adaptor_.size() / reduce_size_;
-
-    // TODO: output stat
-    a_.reshape({batch_size_ * channel_size_}, true);
-    b_.reshape({batch_size_ * channel_size_}, true);
-    var_.reshape(stats_shape, true);
-    mean_.reshape(stats_shape, true);
-
-    sum_dy_.reshape({batch_size_ * channel_size_}, true);
-    sum_dyx_.reshape({batch_size_ * channel_size_}, true);
-    gamma_invstd_.reshape({batch_size_ * channel_size_}, true);
-    factor1_.reshape({batch_size_ * this->num_groups_}, true);
-    factor2_.reshape({batch_size_ * this->num_groups_}, true);
   } else {
     batch_size_ = x->size() / x->size(c);
     reduce_size_ = x->size(c + 1) * (channel_size_ / this->num_groups_);
     outer_size_ = x->size() / reduce_size_;
-
-    // Create stats shape
-    Shape_t stats_shape;
-    for (auto i = 0; i < c; i++) {
-      stats_shape.push_back(x_shape[i]);
-    }
-    stats_shape.push_back(this->num_groups_);
-    stats_shape.push_back(x_shape[c] / this->num_groups_);
-    for (auto i = c + 1; i < ndim; i++) {
-      stats_shape.push_back(x_shape[i]);
-    }
-
-    // TODO: output stat
-    a_.reshape({batch_size_ * channel_size_}, true);
-    b_.reshape({batch_size_ * channel_size_}, true);
-    var_.reshape(stats_shape, true);
-    mean_.reshape(stats_shape, true);
-
-    sum_dy_.reshape({batch_size_ * channel_size_}, true);
-    sum_dyx_.reshape({batch_size_ * channel_size_}, true);
-    gamma_invstd_.reshape({batch_size_ * channel_size_}, true);
-    factor1_.reshape({batch_size_ * this->num_groups_}, true);
-    factor2_.reshape({batch_size_ * this->num_groups_}, true);
   }
+
+  a_.reshape({batch_size_ * channel_size_}, true);
+  b_.reshape({batch_size_ * channel_size_}, true);
+  var_.reshape({batch_size_ * channel_size_}, true);
+  mean_.reshape({batch_size_ * channel_size_}, true);
+
+  sum_dy_.reshape({batch_size_ * channel_size_}, true);
+  sum_dyx_.reshape({batch_size_ * channel_size_}, true);
+  gamma_invstd_.reshape({batch_size_ * channel_size_}, true);
+  factor1_.reshape({batch_size_ * this->num_groups_}, true);
+  factor2_.reshape({batch_size_ * this->num_groups_}, true);
 }
 
 constexpr int GROUP_NORM_ELEMENTWISE_UNROLL_SIZE = 4;
-
-template <typename index_t> struct WelfordType {
-  float mean;
-  float m2;
-  index_t n;
-};
-
-template <typename index_t> class WelfordOp {
-public:
-  using storage_type = WelfordType<index_t>;
-
-  __forceinline__ __device__ void init(storage_type &thread_data) {
-    thread_data.mean = 0.0f;
-    thread_data.m2 = 0.0f;
-    thread_data.n = 0;
-  }
-
-  __forceinline__ __device__ void reduce(storage_type &to,
-                                         const storage_type &from) {
-    if (to.n == 0) {
-      to = from;
-      return;
-    }
-    if (from.n == 0) {
-      return;
-    }
-    const index_t next_n = to.n + from.n;
-    const float next_n_inv = 1.0f / next_n;
-    const float dmean = from.mean - to.mean;
-    const float next_mean = to.mean + dmean * from.n * next_n_inv;
-    const float next_m2 =
-        to.m2 + from.m2 + dmean * dmean * to.n * from.n * next_n_inv;
-    to.mean = next_mean;
-    to.m2 = next_m2;
-    to.n = next_n;
-  }
-
-  __forceinline__ __device__ void reduce_one(storage_type &to, const float x) {
-    const float dmean = x - to.mean;
-    const float next_mean = to.mean + dmean / (to.n + 1);
-    const float next_m2 = to.m2 + dmean * (x - next_mean);
-    to.mean = next_mean;
-    to.m2 = next_m2;
-    to.n = to.n + 1;
-  }
-};
-
-// Explicit template instantiation of shuffle_down for WelfordType
-template <>
-__forceinline__ __device__ WelfordType<int>
-shuffle_down(WelfordType<int> val, int offset, int width) {
-  WelfordType<int> buff;
-  buff.mean = shuffle_down(val.mean, offset, width);
-  buff.m2 = shuffle_down(val.m2, offset, width);
-  buff.n = shuffle_down(val.n, offset, width);
-  return buff;
-}
-
-template <>
-__forceinline__ __device__ WelfordType<Size_t>
-shuffle_down(WelfordType<Size_t> val, int offset, int width) {
-  WelfordType<Size_t> buff;
-  buff.mean = shuffle_down(val.mean, offset, width);
-  buff.m2 = shuffle_down(val.m2, offset, width);
-  buff.n = shuffle_down(val.n, offset, width);
-  return buff;
-}
-
-template <typename T, typename index_t>
-__global__ void group_norm_forward_mean_var(const index_t reduce_size,
-                                            const T *x, T *mean, T *var) {
-
-  const index_t bidx = blockIdx.x;
-  const index_t tidx = threadIdx.x;
-  const index_t bdimx = blockDim.x;
-
-  WelfordOp<index_t> op;
-
-  // Load and reduce
-  WelfordType<index_t> val;
-  op.init(val);
-  for (index_t i = tidx; i < reduce_size; i += bdimx) {
-    const index_t idx = bidx * reduce_size + i;
-    op.reduce_one(val, float(x[idx]));
-  }
-
-  if (bdimx <= CUDA_WARP_SIZE) {
-    // Warp reduce
-    warpReduce(op, val);
-  } else {
-    // Block reduce
-    blockReduce(op, val);
-  }
-
-  // Store
-  if (threadIdx.x == 0) {
-    mean[bidx] = val.mean;
-    var[bidx] = val.m2 / reduce_size;
-  }
-}
 
 template <typename T, typename index_t>
 __global__ void group_norm_forward_normalization_factor(
@@ -286,39 +110,6 @@ group_norm_forward_normalization(const index_t size, const index_t spatial_size,
       const index_t ab_idx = idx / spatial_size;
       y[idx] = a[ab_idx] * x[idx] + b[ab_idx];
     }
-  }
-}
-
-template <typename T, typename index_t>
-__global__ void group_norm_backward_sum_dy_dyx(const index_t spatial_size,
-                                               const T *x, const T *dy,
-                                               T *sum_dy_out, T *sum_dyx_out) {
-
-  const index_t bidx = blockIdx.x;
-  const index_t tidx = threadIdx.x;
-  const index_t bdimx = blockDim.x;
-
-  // Load and reduce
-  float sum_dy = 0.0f;
-  float sum_dyx = 0.0f;
-  for (index_t i = tidx; i < spatial_size; i += bdimx) {
-    const index_t idx = bidx * spatial_size + i;
-    sum_dy += static_cast<float>(dy[idx]);
-    sum_dyx += static_cast<float>(dy[idx]) * static_cast<float>(x[idx]);
-  }
-
-  if (bdimx <= CUDA_WARP_SIZE) {
-    sum_dy = warpReduceSum(sum_dy);
-    sum_dyx = warpReduceSum(sum_dyx);
-  } else {
-    sum_dy = blockReduceSum(sum_dy);
-    sum_dyx = blockReduceSum(sum_dyx);
-  }
-
-  // Store
-  if (threadIdx.x == 0) {
-    sum_dy_out[bidx] = sum_dy;
-    sum_dyx_out[bidx] = sum_dyx;
   }
 }
 
@@ -459,17 +250,20 @@ template <typename T>
 void GroupNormalizationCuda<T>::forward_impl(const Variables &inputs,
                                              const Variables &outputs) {
   cuda_set_device(this->device_);
-  if (channel_last_) {
-    pre_transpose_->forward({inputs[0]}, {&pre_adaptor_});
+  if (need_adaptor_) {
+    // Transpose input to [B, C, H, W] memory format.
+    adaptor_->forward_pre(inputs[0], &pre_adaptor_);
 
-    auto gn_cf_in = inputs;
-    gn_cf_in[0] = &pre_adaptor_;
-    auto gn_cf_out = outputs;
-    gn_cf_out[0] = &post_adaptor_;
+    auto in_cf_in = inputs;
+    auto in_cf_out = outputs;
+    in_cf_in[0] = &pre_adaptor_;
+    in_cf_out[0] = &post_adaptor_;
 
-    forward_channel_first(gn_cf_in, gn_cf_out);
+    // Instance normalization
+    forward_channel_first(in_cf_in, in_cf_out);
 
-    post_transpose_->forward({&post_adaptor_}, {outputs[0]});
+    // Transpose output to original memory format.
+    adaptor_->forward_post(&post_adaptor_, outputs[0]);
   } else {
     forward_channel_first(inputs, outputs);
   }
@@ -492,8 +286,12 @@ void GroupNormalizationCuda<T>::forward_channel_first(
     Tc *mean = v_mean->cast_data_and_get_pointer<Tc>(this->ctx_);
     Tc *var = v_var->cast_data_and_get_pointer<Tc>(this->ctx_);
     const int num_threads = reduce_size_ < 512 ? 32 : 512; // TODO:
-    group_norm_forward_mean_var<<<outer_size_, num_threads>>>(reduce_size_, x,
-                                                              mean, var);
+
+    const auto grid = outer_size_;
+    const auto block = num_threads;
+
+    WelfordOp<Tc, Size_t> op(x, mean, var, reduce_size_);
+    reduce_2d_x<<<grid, block>>>(op, reduce_size_);
     NBLA_CUDA_KERNEL_CHECK();
   }
 
@@ -553,20 +351,20 @@ void GroupNormalizationCuda<T>::backward_impl(
   }
   cuda_set_device(this->device_);
 
-  if (channel_last_) {
-    auto gn_cf_in = inputs;
-    gn_cf_in[0] = &pre_adaptor_;
-    auto gn_cf_out = outputs;
-    gn_cf_out[0] = &post_adaptor_;
+  if (need_adaptor_) {
+    adaptor_->backward_post(&post_adaptor_, outputs[0], true, false);
 
-    post_transpose_->backward({&post_adaptor_}, {outputs[0]}, {true}, {false});
+    auto in_cf_in = inputs;
+    auto in_cf_out = outputs;
+    in_cf_in[0] = &pre_adaptor_;
+    in_cf_out[0] = &post_adaptor_;
 
-    auto gn_cf_accum = accum;
-    gn_cf_accum[0] = false;
-    backward_channel_first(gn_cf_in, gn_cf_out, propagate_down, gn_cf_accum);
+    auto in_cf_accum = accum;
+    in_cf_accum[0] = false;
+    backward_channel_first(in_cf_in, in_cf_out, propagate_down, in_cf_accum);
 
-    pre_transpose_->backward({inputs[0]}, {&pre_adaptor_}, {propagate_down[0]},
-                             {accum[0]});
+    adaptor_->backward_pre(inputs[0], &pre_adaptor_, propagate_down[0],
+                           accum[0]);
   } else {
     backward_channel_first(inputs, outputs, propagate_down, accum);
   }
@@ -598,8 +396,8 @@ void GroupNormalizationCuda<T>::backward_channel_first(
     const auto grid = batch_size_ * channel_size_;
     const auto block = num_threads;
 
-    group_norm_backward_sum_dy_dyx<<<grid, block>>>(spatial_size, x, dy, sum_dy,
-                                                    sum_dyx);
+    GNGradOp<Tc, Size_t> op(x, dy, sum_dy, sum_dyx);
+    reduce_2d_x<<<grid, block>>>(op, spatial_size);
     NBLA_CUDA_KERNEL_CHECK();
   }
 
@@ -678,19 +476,16 @@ void GroupNormalizationCuda<T>::backward_channel_first(
           size, channel_size_, spatial_size, this->num_groups_, x, dy,
           gamma_invstd, factor1, factor2, dx);
       NBLA_CUDA_KERNEL_CHECK();
-      // std::cout << "debug 01" << std::endl;
     } else {
       group_norm_backward_dx<false><<<grid, block>>>(
           size, channel_size_, spatial_size, this->num_groups_, x, dy,
           gamma_invstd, factor1, factor2, dx);
       NBLA_CUDA_KERNEL_CHECK();
-      // std::cout << "debug 02" << std::endl;
     }
   }
 
   if ((inputs.size() > 1 && propagate_down[1]) ||
       (inputs.size() > 2 && propagate_down[2])) {
-    // TODO: optional beta, gamma
     const auto beta_idx = 1;
     const auto gamma_idx = this->no_bias_ ? 1 : 2;
 

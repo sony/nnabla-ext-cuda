@@ -17,12 +17,14 @@
 
 #include <nbla/cuda/cuda.hpp>
 #include <nbla/function/instance_normalization.hpp>
+#include <nbla/function/utils/channel_first_adaptor.hpp>
 
 namespace nbla {
-
 template <typename T>
 class InstanceNormalizationCuda : public InstanceNormalization<T> {
 public:
+  typedef typename CudaType<T>::type Tc;
+
   explicit InstanceNormalizationCuda(const Context &ctx, int channel_axis,
                                      const vector<int> &batch_axis, float eps,
                                      bool no_scale, bool no_bias)
@@ -37,11 +39,27 @@ public:
 
 protected:
   int device_;
+
+  Variable mean_, var_;
+  int b_idx_, g_idx_;
+  Size_t reduce_size_, outer_size_;
+
+  Variable sum_dy_, sum_dyx_;
+  Variable factor_a_, factor_b_;
+
+  bool need_adaptor_;
+  std::shared_ptr<ChannelFirstAdaptor> adaptor_;
+  Variable pre_adaptor_, post_adaptor_;
+
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
+  void forward_channel_first(const Variables &inputs, const Variables &outputs);
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
+  void backward_channel_first(const Variables &inputs, const Variables &outputs,
+                              const vector<bool> &propagate_down,
+                              const vector<bool> &accum);
 };
 }
 #endif

@@ -17,6 +17,7 @@
 
 #include <nbla/cuda/cuda.hpp>
 #include <nbla/function/group_normalization.hpp>
+#include <nbla/function/utils/channel_first_adaptor.hpp>
 
 namespace nbla {
 
@@ -40,7 +41,6 @@ public:
 
 protected:
   int device_;
-  bool channel_last_;
   Size_t reduce_size_, outer_size_, channel_size_, batch_size_;
 
   Variable mean_, var_;
@@ -50,9 +50,9 @@ protected:
   Variable gamma_invstd_;
   Variable factor1_, factor2_;
 
-  // For emulating channel-last
+  bool need_adaptor_;
+  std::shared_ptr<ChannelFirstAdaptor> adaptor_;
   Variable pre_adaptor_, post_adaptor_;
-  FunctionPtr pre_transpose_, post_transpose_;
 
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
