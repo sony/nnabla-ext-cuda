@@ -14,65 +14,63 @@
 
 #include <nbla/cuda/array/cuda_array.hpp>
 #include <nbla/cuda/function/max.hpp>
-#include <nbla/cuda/utils/device_reduce.cuh>
 #include <nbla/cuda/utils/reduce_ops/max.cuh>
 
 namespace nbla {
 
-namespace {
-
 template <typename T>
-__global__ void adjust_index(const int size, T *data,
-                             const int reduction_size) {
-  NBLA_CUDA_KERNEL_LOOP(i, size) { data[i] -= i * reduction_size; }
-}
+void MaxCuda<T>::setup_impl(const Variables &inputs, const Variables &outputs) {
+  cuda_set_device(this->device_);
+  Max<T>::setup_impl(inputs, outputs);
+
+  const Shape_t axes(this->axes_.cbegin(), this->axes_.cend());
+  reduce_setup_(inputs[0]->shape(), axes);
 }
 
 template <typename T>
 void MaxCuda<T>::forward_impl(const Variables &inputs,
                               const Variables &outputs) {
-  Max<T>::forward_impl(inputs, outputs);
-  if (this->with_index_ || this->only_index_) {
-    Variable *idx_var = this->only_index_ ? outputs[0] : outputs[1];
-    auto idx_ptr = idx_var->cast_data_and_get_pointer<size_t>(this->ctx_);
-    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(adjust_index, idx_var->size(), idx_ptr,
-                                   this->reduction_size_);
-  }
-}
-
-template <typename T>
-void MaxCuda<T>::forward_impl_reduce(const T *x_, T *y_, int outer_size,
-                                     int reduction_size) {
-  const Tc *x = reinterpret_cast<const Tc *>(x_);
-  Tc *y = reinterpret_cast<Tc *>(y_);
   cuda_set_device(this->device_);
-  VariablePtr vind = this->index_buff_;
-  int *ind = vind->cast_data_and_get_pointer<int>(this->ctx_, true);
 
-  // TODO: Auto tune.
-  if (reduction_size / outer_size < 32) {
-    reduce_2d_mixed_parallel(outer_size, reduction_size,
-                             MaxPreOp<Tc>(x, y, ind));
-    return;
+  // Inputs
+  auto x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
+
+  // Outputs
+  Variable out_buf(outputs[0]->shape()); // Intermediate buffer used if required
+  Variable *idx_var;
+  Variable *out_var;
+
+  if (this->only_index_) {
+    out_var = &out_buf;
+    idx_var = outputs[0];
+  } else if (this->with_index_) {
+    out_var = outputs[0];
+    idx_var = outputs[1];
+  } else {
+    out_var = outputs[0];
+    idx_var = this->index_buff_.get();
   }
 
-  // Get block reduce buffer
-  auto fbuff = cuda_get_reduction_buffer<Tc>(reduction_size, this->ctx_);
-  auto ibuff = cuda_get_reduction_buffer<int>(reduction_size, this->ctx_);
-  MaxPreOp<Tc> pre_op(x, fbuff.second, ibuff.second);
-  MaxPostOp<Tc> post_op(fbuff.second, ibuff.second, y, ind);
-  reduce_2d_parallel_reduction(outer_size, reduction_size, pre_op, post_op);
+  auto y = out_var->cast_data_and_get_pointer<Tc>(this->ctx_, true);
+  auto idx = idx_var->cast_data_and_get_pointer<Size_t>(this->ctx_, true);
+
+  // Max
+  device_max(this->ctx_, x, y, idx, reduce_setup_);
 }
 
 template <typename T>
-__global__ void kernel_reduce_index_backward(const int num, T *dx,
-                                             const int *ind, const T *dy) {
-  NBLA_CUDA_KERNEL_LOOP(idx, num) { dx[ind[idx]] += dy[idx]; }
+__global__ void kernel_reduce_index_backward(const int outer_size,
+                                             const int reduction_size, T *dx,
+                                             const Size_t *ind, const T *dy) {
+  NBLA_CUDA_KERNEL_LOOP(o, outer_size) {
+    dx[o * reduction_size + ind[o]] += dy[o];
+  }
 }
 
 template <typename T>
 void MaxCuda<T>::backward_impl_reduce(const T *dy_, T *dx_, int outer_size,
                                       int reduction_size, bool accum) {
+  // ToDo: Use Size_t instead of int.
   const Tc *dy = reinterpret_cast<const Tc *>(dy_);
   Tc *dx = reinterpret_cast<Tc *>(dx_);
   cuda_set_device(this->device_);
@@ -80,8 +78,10 @@ void MaxCuda<T>::backward_impl_reduce(const T *dy_, T *dx_, int outer_size,
     cudaMemsetAsync(dx, 0, sizeof(*dx) * outer_size * reduction_size);
   }
   VariablePtr vind = this->index_buff_;
-  const int *ind = vind->get_data_pointer<int>(this->ctx_);
-  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_reduce_index_backward, outer_size, dx,
-                                 ind, dy);
+  // Use Size_t instead of int, matching the type with that used in forward_impl
+  // to avoid the unnecessary data copy of type cast.
+  const Size_t *ind = vind->get_data_pointer<Size_t>(this->ctx_);
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_reduce_index_backward, outer_size,
+                                 reduction_size, dx, ind, dy);
 }
 }

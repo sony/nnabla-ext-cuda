@@ -16,43 +16,26 @@
 #include <nbla/cuda/function/sum.hpp>
 #include <nbla/cuda/math.hpp>
 #include <nbla/cuda/utils/reduce.cuh>
+#include <nbla/cuda/utils/reduce_ops/sum.cuh>
 
 namespace nbla {
 
 template <typename T>
-void SumCuda<T>::forward_impl_reduce(const T *x_, T *y_, int outer_size,
-                                     int reduction_size) {
-  const Tc *x = reinterpret_cast<const Tc *>(x_);
-  Tc *y = reinterpret_cast<Tc *>(y_);
+void SumCuda<T>::setup_impl(const Variables &inputs, const Variables &outputs) {
   cuda_set_device(this->device_);
+  Sum<T>::setup_impl(inputs, outputs);
 
-  if (reduction_size / outer_size < 2048) {
-    const Tc *ones =
-        static_cast<const Tc *>(SingletonManager::get<NNabla>()->ones(
-            reduction_size, get_dtype<Tc>(), this->ctx_));
-    cuda_gemv<Tc>(this->device_, y, x, reduction_size, outer_size, true, ones,
-                  reduction_size, 1, 0);
-  } else if (reduction_size >= 1024) {
-    const int threads = NBLA_CUDA_NUM_THREADS;
-    const int blocks = min(NBLA_CUDA_GET_BLOCKS(reduction_size), 1024);
-    NdArray arr_buff({blocks});
-    Tc *buff = arr_buff.cast(get_dtype<Tc>(), this->ctx_, true)->pointer<Tc>();
-    while (outer_size--) {
-      kernel_reduce_per_block<<<blocks, threads>>>(reduction_size, x, buff);
-      NBLA_CUDA_KERNEL_CHECK();
-      kernel_reduce_per_block<<<1, 1024>>>(blocks, buff, y);
-      NBLA_CUDA_KERNEL_CHECK();
-      x += reduction_size;
-      y += 1;
-    }
-  } else {
-    while (outer_size--) {
-      kernel_reduce_per_block<<<1, 1024>>>(reduction_size, x, y);
-      NBLA_CUDA_KERNEL_CHECK();
-      x += reduction_size;
-      y += 1;
-    }
-  }
+  const Shape_t axes(this->axes_.cbegin(), this->axes_.cend());
+  reduce_setup_(inputs[0]->shape(), axes);
+}
+
+template <typename T>
+void SumCuda<T>::forward_impl(const Variables &inputs,
+                              const Variables &outputs) {
+  cuda_set_device(this->device_);
+  const Tc *const x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
+  Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
+  device_sum(this->ctx_, x, y, reduce_setup_);
 }
 
 template <typename T, bool accum>
