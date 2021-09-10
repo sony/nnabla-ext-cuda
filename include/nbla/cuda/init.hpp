@@ -1,4 +1,5 @@
 // Copyright 2017,2018,2019,2020,2021 Sony Corporation.
+// Copyright 2021 Sony Group Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -69,6 +70,11 @@ NBLA_CUDA_API size_t
 get_cuda_virtual_caching_allocator_max_available_bytes(const string &device_id);
 NBLA_CUDA_API vector<int>
 get_cuda_virtual_memory_used_counts(const string &device_id);
+
+/**
+ * Check if tf32 is enabled or not.
+ */
+NBLA_CUDA_API bool is_cuda_tf32_enabled();
 
 /** Get CUDA array classes.
 */
