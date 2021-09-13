@@ -23,7 +23,7 @@ namespace nbla {
 
 namespace scatter_nd_cuda {
 
-template <typename T>
+template <typename T, bool add = false>
 __global__ void forward(const int x_size, const T *x_data, const int y_size,
                         T *y_data, const int *y_shape, const int *y_stride,
                         const int *idx_data, const int idx_rows,
@@ -42,10 +42,14 @@ __global__ void forward(const int x_size, const T *x_data, const int y_size,
     // code (that would imply raising a trap plus always synchronization and
     // costly recovery). Still we don't want to write to unaccessible memory.
     if (y_offset < y_size) {
-      // Scatter indices are supposed to be unique, i.e. not to scatter
-      // different values into the same positions. Otherwise it is the last
-      // update that survives which for parallel execution is unpredictable.
-      atomic_add(&y_data[y_offset], x_data[tid]);
+      if (add) {
+        atomic_add(&y_data[y_offset], x_data[tid]);
+      } else {
+        // Scatter indices are supposed to be unique, i.e. not to scatter
+        // different values into the same positions. Otherwise it is the last
+        // update that survives which for parallel execution is unpredictable.
+        y_data[y_offset] = x_data[tid];
+      }
     }
   }
 }
@@ -126,9 +130,12 @@ void ScatterNdCuda<T>::forward_impl(const Variables &inputs,
   auto dst_shape_ptr = dst_meta_.get_data_pointer<int>(this->ctx_);
   auto dst_stride_ptr = dst_shape_ptr + outputs[0]->ndim();
 
-  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-      scatter_nd_cuda::forward<Tcu>, inputs[0]->size(), src, outputs[0]->size(),
-      dst, dst_shape_ptr, dst_stride_ptr, idx, idx_rows, idx_cols);
+  auto kernel = this->add_ ? scatter_nd_cuda::forward<Tcu, true>
+                           : scatter_nd_cuda::forward<Tcu, false>;
+
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel, inputs[0]->size(), src,
+                                 outputs[0]->size(), dst, dst_shape_ptr,
+                                 dst_stride_ptr, idx, idx_rows, idx_cols);
 }
 
 template <typename T>
