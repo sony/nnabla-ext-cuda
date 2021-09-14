@@ -81,8 +81,10 @@ __global__ void group_norm_forward_normalization_factor(
   // Original formula is `y = gamma * (x - mean) / sqrt(var) + beta`.
   // Thus `a = gamma / sqrt(var), b = beta - gamma * mean / sqrt(var).`
 
-  const index_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx < batch_size * channel_size) {
+  const auto outer_size = batch_size * channel_size;
+  // Grid-stride loop
+  for (index_t idx = blockIdx.x * blockDim.x + threadIdx.x; idx < outer_size;
+       idx += gridDim.x * blockDim.x) {
     const index_t stats_idx = idx / (channel_size / num_groups);
     const index_t param_idx = idx % channel_size;
     const T scale = gamma ? gamma[param_idx] : (T)1.0f;
@@ -99,16 +101,19 @@ template <typename T, typename index_t>
 __global__ void
 group_norm_forward_normalization(const index_t size, const index_t spatial_size,
                                  const T *x, const T *a, const T *b, T *y) {
-  const index_t offset =
-      blockIdx.x * (blockDim.x * GROUP_NORM_ELEMENTWISE_UNROLL_SIZE);
-// TODO: Grid strided loop
+  constexpr index_t N_UNROLL = GROUP_NORM_ELEMENTWISE_UNROLL_SIZE;
+
+  // Grid-stride loop
+  for (index_t offset = blockIdx.x * (blockDim.x * N_UNROLL) + threadIdx.x;
+       offset < size; offset += gridDim.x * (blockDim.x * N_UNROLL)) {
 
 #pragma unroll
-  for (auto i = 0; i < GROUP_NORM_ELEMENTWISE_UNROLL_SIZE; i++) {
-    const index_t idx = offset + threadIdx.x + i * blockDim.x;
-    if (idx < size) {
-      const index_t ab_idx = idx / spatial_size;
-      y[idx] = a[ab_idx] * x[idx] + b[ab_idx];
+    for (auto i = 0; i < N_UNROLL; i++) {
+      const index_t idx = offset + i * blockDim.x;
+      if (idx < size) {
+        const index_t ab_idx = idx / spatial_size;
+        y[idx] = a[ab_idx] * x[idx] + b[ab_idx];
+      }
     }
   }
 }
@@ -117,67 +122,77 @@ template <typename T, typename index_t>
 __global__ void group_norm_backward_gamma_invstd(
     const index_t size, const index_t channel_size, const int num_groups,
     const T *gamma, const T *var, T *gamma_invstd, const float eps) {
-  const index_t offset =
-      blockIdx.x * (blockDim.x * GROUP_NORM_ELEMENTWISE_UNROLL_SIZE);
-// TODO: Grid strided loop
+  constexpr index_t N_UNROLL = GROUP_NORM_ELEMENTWISE_UNROLL_SIZE;
+
+  // Grid-stride loop
+  for (index_t offset = blockIdx.x * (blockDim.x * N_UNROLL) + threadIdx.x;
+       offset < size; offset += gridDim.x * (blockDim.x * N_UNROLL)) {
 
 #pragma unroll
-  for (auto i = 0; i < GROUP_NORM_ELEMENTWISE_UNROLL_SIZE; i++) {
-    const index_t idx = offset + threadIdx.x + i * blockDim.x;
-    if (idx < size) {
-      const index_t stats_idx = idx / (channel_size / num_groups);
-      const index_t param_idx = idx % channel_size;
-      const T scale = gamma ? gamma[param_idx] : (T)1.0f;
-      gamma_invstd[idx] = scale * rsqrt(var[stats_idx] + eps);
+    for (auto i = 0; i < N_UNROLL; i++) {
+      const index_t idx = offset + i * blockDim.x;
+      if (idx < size) {
+        const index_t stats_idx = idx / (channel_size / num_groups);
+        const index_t param_idx = idx % channel_size;
+        const T scale = gamma ? gamma[param_idx] : (T)1.0f;
+        gamma_invstd[idx] = scale * rsqrt(var[stats_idx] + eps);
+      }
     }
   }
 }
 
 template <typename T, typename index_t>
 __global__ void group_norm_backward_dx_factor(
-    const index_t channel_size, const index_t spatial_size,
-    const int num_groups, const T *mean, const T *var, const T *dmean,
-    const T *dvar, const T *gamma, const T *sum_dy, const T *sum_dyx,
-    T *factor1, T *factor2, const float eps) {
-  const index_t bidx = blockIdx.x;
-  const index_t bidy = blockIdx.y;
+    const index_t batch_size, const index_t channel_size,
+    const index_t spatial_size, const int num_groups, const T *mean,
+    const T *var, const T *dmean, const T *dvar, const T *gamma,
+    const T *sum_dy, const T *sum_dyx, T *factor1, T *factor2,
+    const float eps) {
   const index_t tidx = threadIdx.x;
   const index_t bdimx = blockDim.x;
 
   const index_t chunk_size = channel_size / num_groups;
 
-  // Load and reduce
-  float sum_dy_gamma = 0.0f;
-  float sum_dyx_gamma = 0.0f;
-  for (index_t i = tidx; i < chunk_size; i += bdimx) {
-    const index_t idx = (bidx * num_groups + bidy) * chunk_size + i;
-    const index_t param_idx = bidy * chunk_size + i;
-    const T scale = gamma ? gamma[param_idx] : (T)1.0f;
-    sum_dy_gamma += static_cast<float>(sum_dy[idx] * scale);
-    sum_dyx_gamma += static_cast<float>(sum_dyx[idx] * scale);
-  }
+  // Grid-stride loop for batch
+  for (index_t bidx = blockIdx.x; bidx < batch_size; bidx += gridDim.x) {
+    // Grid-stride loop for group
+    for (index_t bidy = blockIdx.y; bidy < num_groups; bidy += gridDim.y) {
 
-  if (bdimx <= CUDA_WARP_SIZE) {
-    sum_dy_gamma = warpReduceSum(sum_dy_gamma);
-    sum_dyx_gamma = warpReduceSum(sum_dyx_gamma);
-  } else {
-    sum_dy_gamma = blockReduceSum(sum_dy_gamma);
-    sum_dyx_gamma = blockReduceSum(sum_dyx_gamma);
-  }
+      // Load and reduce
+      float sum_dy_gamma = 0.0f;
+      float sum_dyx_gamma = 0.0f;
+      for (index_t i = tidx; i < chunk_size; i += bdimx) {
+        const index_t idx = (bidx * num_groups + bidy) * chunk_size + i;
+        const index_t param_idx = bidy * chunk_size + i;
+        const T scale = gamma ? gamma[param_idx] : (T)1.0f;
+        sum_dy_gamma += static_cast<float>(sum_dy[idx] * scale);
+        sum_dyx_gamma += static_cast<float>(sum_dyx[idx] * scale);
+      }
 
-  // Store
-  if (threadIdx.x == 0) {
-    const float inv_reduce_size = 1.0f / (chunk_size * spatial_size);
-    const index_t stats_idx = bidx * num_groups + bidy;
-    const float invstd = rsqrt(var[stats_idx] + eps);
-    // TODO:
-    const float tmp = (sum_dy_gamma * mean[stats_idx] - sum_dyx_gamma) *
-                          invstd * invstd * invstd * inv_reduce_size +
-                      (dvar ? 2.0f * dvar[stats_idx] * inv_reduce_size : 0.0f);
-    factor1[stats_idx] = tmp;
-    factor2[stats_idx] = -tmp * mean[stats_idx] -
-                         sum_dy_gamma * invstd * inv_reduce_size +
-                         (dmean ? dmean[stats_idx] * inv_reduce_size : 0.0f);
+      if (bdimx <= CUDA_WARP_SIZE) {
+        sum_dy_gamma = warpReduceSum(sum_dy_gamma);
+        sum_dyx_gamma = warpReduceSum(sum_dyx_gamma);
+      } else {
+        sum_dy_gamma = blockReduceSum(sum_dy_gamma);
+        sum_dyx_gamma = blockReduceSum(sum_dyx_gamma);
+      }
+
+      // Store
+      if (threadIdx.x == 0) {
+        const float inv_reduce_size = 1.0f / (chunk_size * spatial_size);
+        const index_t stats_idx = bidx * num_groups + bidy;
+        const float invstd = rsqrt(var[stats_idx] + eps);
+        // TODO:
+        const float tmp =
+            (sum_dy_gamma * mean[stats_idx] - sum_dyx_gamma) * invstd * invstd *
+                invstd * inv_reduce_size +
+            (dvar ? 2.0f * dvar[stats_idx] * inv_reduce_size : 0.0f);
+        factor1[stats_idx] = tmp;
+        factor2[stats_idx] =
+            -tmp * mean[stats_idx] - sum_dy_gamma * invstd * inv_reduce_size +
+            (dmean ? dmean[stats_idx] * inv_reduce_size : 0.0f);
+      }
+    }
   }
 }
 
@@ -187,23 +202,26 @@ group_norm_backward_dx(const index_t size, const index_t channel_size,
                        const index_t spatial_size, const int num_groups,
                        const T *x, const T *dy, const T *gamma_invstd,
                        const T *factor1, const T *factor2, T *dx) {
-  const index_t offset =
-      blockIdx.x * (blockDim.x * GROUP_NORM_ELEMENTWISE_UNROLL_SIZE);
-// TODO: Grid strided loop
+  constexpr index_t N_UNROLL = GROUP_NORM_ELEMENTWISE_UNROLL_SIZE;
+
+  // Grid-stride loop
+  for (index_t offset = blockIdx.x * (blockDim.x * N_UNROLL) + threadIdx.x;
+       offset < size; offset += gridDim.x * (blockDim.x * N_UNROLL)) {
 
 #pragma unroll
-  for (auto i = 0; i < GROUP_NORM_ELEMENTWISE_UNROLL_SIZE; i++) {
-    const index_t idx = offset + threadIdx.x + i * blockDim.x;
-    if (idx < size) {
-      const index_t factor_idx =
-          idx / (spatial_size * (channel_size / num_groups));
-      const index_t param_idx = idx / (spatial_size);
-      if (accum) {
-        dx[idx] += gamma_invstd[param_idx] * dy[idx] +
-                   factor1[factor_idx] * x[idx] + factor2[factor_idx];
-      } else {
-        dx[idx] = gamma_invstd[param_idx] * dy[idx] +
-                  factor1[factor_idx] * x[idx] + factor2[factor_idx];
+    for (auto i = 0; i < GROUP_NORM_ELEMENTWISE_UNROLL_SIZE; i++) {
+      const index_t idx = offset + i * blockDim.x;
+      if (idx < size) {
+        const index_t factor_idx =
+            idx / (spatial_size * (channel_size / num_groups));
+        const index_t param_idx = idx / (spatial_size);
+        if (accum) {
+          dx[idx] += gamma_invstd[param_idx] * dy[idx] +
+                     factor1[factor_idx] * x[idx] + factor2[factor_idx];
+        } else {
+          dx[idx] = gamma_invstd[param_idx] * dy[idx] +
+                    factor1[factor_idx] * x[idx] + factor2[factor_idx];
+        }
       }
     }
   }
@@ -214,8 +232,9 @@ __global__ void group_norm_backward_dbeta_dgamma(
     const index_t batch_size, const index_t channel_size, const int num_groups,
     const T *mean, const T *var, const T *sum_dy, const T *sum_dyx, T *dbeta,
     T *dgamma, const float eps) {
-  const index_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx < channel_size) {
+  // Grid-stride loop
+  for (index_t idx = blockIdx.x * blockDim.x + threadIdx.x; idx < channel_size;
+       idx += gridDim.x * blockDim.x) {
     const index_t chunk_size = channel_size / num_groups;
 
     float db = 0.0f;
@@ -245,6 +264,9 @@ __global__ void group_norm_backward_dbeta_dgamma(
     }
   }
 }
+
+constexpr size_t GN_NUM_THREADS = NBLA_CUDA_NUM_THREADS;
+constexpr size_t GN_MAX_BLOCKS = NBLA_CUDA_MAX_BLOCKS;
 
 template <typename T>
 void GroupNormalizationCuda<T>::forward_impl(const Variables &inputs,
@@ -285,13 +307,14 @@ void GroupNormalizationCuda<T>::forward_channel_first(
     const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
     Tc *mean = v_mean->cast_data_and_get_pointer<Tc>(this->ctx_);
     Tc *var = v_var->cast_data_and_get_pointer<Tc>(this->ctx_);
-    const int num_threads = reduce_size_ < 512 ? 32 : 512; // TODO:
+    const int num_threads =
+        reduce_size_ < GN_NUM_THREADS ? CUDA_WARP_SIZE : GN_NUM_THREADS;
 
-    const auto grid = outer_size_;
+    const auto grid = std::min(outer_size_, static_cast<Size_t>(GN_MAX_BLOCKS));
     const auto block = num_threads;
 
     WelfordOp<Tc, Size_t> op(x, mean, var, reduce_size_);
-    reduce_2d_x<<<grid, block>>>(op, reduce_size_);
+    reduce_2d_x<<<grid, block>>>(op, outer_size_, reduce_size_);
     NBLA_CUDA_KERNEL_CHECK();
   }
 
@@ -311,9 +334,10 @@ void GroupNormalizationCuda<T>::forward_channel_first(
     Tc *a = a_.cast_data_and_get_pointer<Tc>(this->ctx_);
     Tc *b = b_.cast_data_and_get_pointer<Tc>(this->ctx_);
 
-    const auto grid =
-        NBLA_CEIL_SIZE_T_DIV(batch_size_ * channel_size_, 256); // TODO:
-    const auto block = 256;
+    const auto block = GN_NUM_THREADS;
+    const auto grid = std::min(
+        NBLA_CEIL_SIZE_T_DIV(batch_size_ * channel_size_, GN_NUM_THREADS),
+        static_cast<Size_t>(GN_MAX_BLOCKS));
     group_norm_forward_normalization_factor<<<grid, block>>>(
         batch_size_, channel_size_, this->num_groups_, mean, var, beta, gamma,
         a, b, this->eps_);
@@ -332,8 +356,10 @@ void GroupNormalizationCuda<T>::forward_channel_first(
     const Size_t num_threads = CUDA_WARP_SIZE * 2;
 
     const auto block = num_threads;
-    const auto grid = NBLA_CEIL_SIZE_T_DIV(
-        size, num_threads * GROUP_NORM_ELEMENTWISE_UNROLL_SIZE);
+    const auto grid =
+        std::min(NBLA_CEIL_SIZE_T_DIV(
+                     size, num_threads * GROUP_NORM_ELEMENTWISE_UNROLL_SIZE),
+                 static_cast<Size_t>(GN_MAX_BLOCKS));
 
     group_norm_forward_normalization<<<grid, block>>>(size, spatial_size, x, a,
                                                       b, y);
@@ -390,19 +416,21 @@ void GroupNormalizationCuda<T>::backward_channel_first(
     Tc *sum_dyx = sum_dyx_.cast_data_and_get_pointer<Tc>(this->ctx_);
 
     const Size_t size = inputs[0]->size();
-    const Size_t spatial_size = size / (batch_size_ * channel_size_);
-    const auto num_threads = spatial_size < 512 ? CUDA_WARP_SIZE : 512; // TODO:
+    const Size_t bc_size = batch_size_ * channel_size_;
+    const Size_t spatial_size = size / bc_size;
+    const auto num_threads =
+        spatial_size < GN_NUM_THREADS ? CUDA_WARP_SIZE : GN_NUM_THREADS;
 
-    const auto grid = batch_size_ * channel_size_;
+    const auto grid = std::min(bc_size, static_cast<Size_t>(GN_MAX_BLOCKS));
     const auto block = num_threads;
 
     GNGradOp<Tc, Size_t> op(x, dy, sum_dy, sum_dyx);
-    reduce_2d_x<<<grid, block>>>(op, spatial_size);
+    reduce_2d_x<<<grid, block>>>(op, bc_size, spatial_size);
     NBLA_CUDA_KERNEL_CHECK();
   }
 
   // Calculate gamma / sqrt(var)
-  {
+  if (propagate_down[0]) {
     const auto gamma_idx = this->no_bias_ ? 1 : 2;
     const Tc *gamma = this->no_scale_
                           ? nullptr
@@ -413,8 +441,10 @@ void GroupNormalizationCuda<T>::backward_channel_first(
     const Size_t size = batch_size_ * channel_size_;
     const auto num_threads = CUDA_WARP_SIZE * 2;
 
-    const auto grid = NBLA_CEIL_SIZE_T_DIV(
-        size, GROUP_NORM_ELEMENTWISE_UNROLL_SIZE * num_threads);
+    const auto grid =
+        std::min(NBLA_CEIL_SIZE_T_DIV(
+                     size, num_threads * GROUP_NORM_ELEMENTWISE_UNROLL_SIZE),
+                 static_cast<Size_t>(GN_MAX_BLOCKS));
     const auto block = num_threads;
 
     group_norm_backward_gamma_invstd<<<grid, block>>>(
@@ -424,7 +454,7 @@ void GroupNormalizationCuda<T>::backward_channel_first(
   }
 
   // Calculate factor1 and factor2
-  {
+  if (propagate_down[0]) {
     const auto gamma_idx = this->no_bias_ ? 1 : 2;
     const Tc *gamma = this->no_scale_
                           ? nullptr
@@ -445,12 +475,16 @@ void GroupNormalizationCuda<T>::backward_channel_first(
     const Size_t spatial_size = size / (batch_size_ * channel_size_);
     const auto num_threads = CUDA_WARP_SIZE * 2;
 
-    dim3 grid(batch_size_, this->num_groups_);
+    // dim3 grid(batch_size_, this->num_groups_);
+    dim3 grid;
+    grid.x = std::min(batch_size_, static_cast<Size_t>(GN_MAX_BLOCKS));
+    grid.y = std::min(static_cast<Size_t>(this->num_groups_),
+                      static_cast<Size_t>(GN_MAX_BLOCKS));
     dim3 block(num_threads);
 
     group_norm_backward_dx_factor<<<grid, block>>>(
-        channel_size_, spatial_size, this->num_groups_, mean, var, dmean, dvar,
-        gamma, sum_dy, sum_dyx, factor1, factor2, this->eps_);
+        batch_size_, channel_size_, spatial_size, this->num_groups_, mean, var,
+        dmean, dvar, gamma, sum_dy, sum_dyx, factor1, factor2, this->eps_);
     NBLA_CUDA_KERNEL_CHECK();
   }
 
@@ -468,8 +502,10 @@ void GroupNormalizationCuda<T>::backward_channel_first(
     const Size_t num_threads = CUDA_WARP_SIZE * 2;
 
     const auto block = num_threads;
-    const auto grid = NBLA_CEIL_SIZE_T_DIV(
-        size, num_threads * GROUP_NORM_ELEMENTWISE_UNROLL_SIZE);
+    const auto grid =
+        std::min(NBLA_CEIL_SIZE_T_DIV(
+                     size, num_threads * GROUP_NORM_ELEMENTWISE_UNROLL_SIZE),
+                 static_cast<Size_t>(GN_MAX_BLOCKS));
 
     if (accum[0]) {
       group_norm_backward_dx<true><<<grid, block>>>(
@@ -502,8 +538,10 @@ void GroupNormalizationCuda<T>::backward_channel_first(
                            this->ctx_, !accum[gamma_idx])
                      : nullptr;
 
-    const auto block = 256; // TODO:
-    const auto grid = NBLA_CEIL_SIZE_T_DIV(channel_size_, 256);
+    const auto block = GN_NUM_THREADS;
+    const auto grid =
+        std::min(NBLA_CEIL_SIZE_T_DIV(channel_size_, GN_NUM_THREADS),
+                 static_cast<Size_t>(GN_MAX_BLOCKS));
 
     if (!this->no_bias_ && accum[beta_idx]) {
       if (!this->no_scale_ && accum[gamma_idx]) {
@@ -528,5 +566,9 @@ void GroupNormalizationCuda<T>::backward_channel_first(
     }
     NBLA_CUDA_KERNEL_CHECK();
   }
+
+  // Clear internal buffer
+  sum_dy_.data()->array()->clear();
+  sum_dyx_.data()->array()->clear();
 }
 }

@@ -54,23 +54,26 @@ void InstanceNormalizationCuda<T>::setup_impl(const Variables &inputs,
 
 template <typename T, typename index_t>
 __global__ void
-instance_norm_forward_normalization(const index_t reduce_size, const T *x,
+instance_norm_forward_normalization(const index_t outer_size,
+                                    const index_t reduce_size, const T *x,
                                     const T *mean, const T *var, const T *beta,
                                     const T *gamma, T *y, const float eps) {
-
-  const index_t bidx = blockIdx.x;
   const index_t bidy = blockIdx.y;
   const index_t gdimy = gridDim.y;
   const index_t tidx = threadIdx.x;
   const index_t bdimx = blockDim.x;
 
-  for (index_t i = tidx + bdimx * bidy; i < reduce_size; i += bdimx * gdimy) {
-    const index_t idx = bidx * reduce_size + i;
-    const T scale = gamma ? gamma[bidx] : (T)1.0f;
-    const T bias = beta ? beta[bidx] : (T)0.0f;
-    const T invstd = rsqrt(var[bidx] + eps);
+  // Grid-stride loop
+  for (index_t outer_idx = blockIdx.x; outer_idx < outer_size;
+       outer_idx += gridDim.x) {
+    for (index_t i = tidx + bdimx * bidy; i < reduce_size; i += bdimx * gdimy) {
+      const index_t idx = outer_idx * reduce_size + i;
+      const T scale = gamma ? gamma[outer_idx] : (T)1.0f;
+      const T bias = beta ? beta[outer_idx] : (T)0.0f;
+      const T invstd = rsqrt(var[outer_idx] + eps);
 
-    y[idx] = scale * invstd * (x[idx] - mean[bidx]) + bias;
+      y[idx] = scale * invstd * (x[idx] - mean[outer_idx]) + bias;
+    }
   }
 }
 
@@ -79,9 +82,9 @@ __global__ void instance_norm_backward_dx_factor(
     const index_t outer_size, const index_t reduce_size, const T *gamma,
     const T *mean, const T *var, const T *dmean, const T *dvar, const T *sum_dy,
     const T *sum_dyx, T *factor_a, T *factor_b, const float eps) {
-  const index_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-
-  if (idx < outer_size) {
+  // Grid-stride loop
+  for (index_t idx = blockIdx.x * blockDim.x + threadIdx.x; idx < outer_size;
+       idx += gridDim.x * blockDim.x) {
     const float inv_reduce_size = 1.0f / reduce_size;
     const float invstd = rsqrt(var[idx] + eps);
     const float scale = gamma ? static_cast<float>(gamma[idx]) : 1.0f;
@@ -99,27 +102,31 @@ __global__ void instance_norm_backward_dx_factor(
 
 template <bool accum, typename T, typename index_t>
 __global__ void
-instance_norm_backward_dx(const index_t reduce_size, const T *x, const T *gamma,
-                          const T *dy, const T *var, const T *factor_a,
-                          const T *factor_b, T *dx, const float eps) {
+instance_norm_backward_dx(const index_t outer_size, const index_t reduce_size,
+                          const T *x, const T *gamma, const T *dy, const T *var,
+                          const T *factor_a, const T *factor_b, T *dx,
+                          const float eps) {
 
-  const index_t bidx = blockIdx.x;
   const index_t bidy = blockIdx.y;
   const index_t gdimy = gridDim.y;
   const index_t tidx = threadIdx.x;
   const index_t bdimx = blockDim.x;
 
-  for (index_t i = tidx + bdimx * bidy; i < reduce_size; i += bdimx * gdimy) {
-    const index_t idx = bidx * reduce_size + i;
-    const T scale = gamma ? gamma[bidx] : (T)1.0f;
-    const T invstd = rsqrt(var[bidx] + eps);
+  // Grid-stride loop
+  for (index_t outer_idx = blockIdx.x; outer_idx < outer_size;
+       outer_idx += gridDim.x) {
+    for (index_t i = tidx + bdimx * bidy; i < reduce_size; i += bdimx * gdimy) {
+      const index_t idx = outer_idx * reduce_size + i;
+      const T scale = gamma ? gamma[outer_idx] : (T)1.0f;
+      const T invstd = rsqrt(var[outer_idx] + eps);
 
-    if (accum) {
-      dx[idx] +=
-          dy[idx] * invstd * scale + factor_a[bidx] * x[idx] + factor_b[bidx];
-    } else {
-      dx[idx] =
-          dy[idx] * invstd * scale + factor_a[bidx] * x[idx] + factor_b[bidx];
+      if (accum) {
+        dx[idx] += dy[idx] * invstd * scale + factor_a[outer_idx] * x[idx] +
+                   factor_b[outer_idx];
+      } else {
+        dx[idx] = dy[idx] * invstd * scale + factor_a[outer_idx] * x[idx] +
+                  factor_b[outer_idx];
+      }
     }
   }
 }
@@ -129,9 +136,9 @@ __global__ void instance_norm_backward_dbeta_dgamma(
     const index_t outer_size, const index_t reduce_size, const T *x,
     const T *gamma, const T *dy, const T *sum_dy, const T *sum_dyx,
     const T *mean, const T *var, T *dbeta_out, T *dgamma_out, const float eps) {
-  const index_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-
-  if (idx < outer_size) {
+  // Grid-stride loop
+  for (index_t idx = blockIdx.x * blockDim.x + threadIdx.x; idx < outer_size;
+       idx += gridDim.x * blockDim.x) {
     const float invstd = rsqrt(var[idx] + eps);
     const float dbeta = sum_dy[idx];
     const float dgamma =
@@ -196,11 +203,14 @@ void InstanceNormalizationCuda<T>::forward_channel_first(
     Tc *mean = v_mean->cast_data_and_get_pointer<Tc>(this->ctx_);
     Tc *var = v_var->cast_data_and_get_pointer<Tc>(this->ctx_);
 
-    const auto grid = outer_size_;
-    const auto block = 512;
+    const int num_threads =
+        reduce_size_ < IN_NUM_THREADS ? CUDA_WARP_SIZE : IN_NUM_THREADS;
+
+    const auto grid = std::min(outer_size_, static_cast<Size_t>(IN_MAX_BLOCKS));
+    const auto block = num_threads;
 
     WelfordOp<Tc, Size_t> op(x, mean, var, reduce_size_);
-    reduce_2d_x<<<grid, block>>>(op, reduce_size_);
+    reduce_2d_x<<<grid, block>>>(op, outer_size_, reduce_size_);
     NBLA_CUDA_KERNEL_CHECK();
   }
 
@@ -220,13 +230,16 @@ void InstanceNormalizationCuda<T>::forward_channel_first(
                           : inputs[gamma_idx]->get_data_pointer<Tc>(this->ctx_);
     Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
 
-    // TODO:
-    const dim3 grid(outer_size_,
-                    NBLA_CEIL_SIZE_T_DIV(NBLA_CUDA_MAX_BLOCKS, outer_size_));
-    const auto block = 512;
+    const size_t elements_per_grid_y = IN_NUM_THREADS * 4;
+    dim3 grid;
+    grid.x = std::min(outer_size_, static_cast<Size_t>(IN_MAX_BLOCKS));
+    grid.y = std::min(NBLA_CEIL_SIZE_T_DIV(reduce_size_, elements_per_grid_y),
+                      static_cast<Size_t>(IN_MAX_BLOCKS));
+    grid.z = 1;
+    const auto block = IN_NUM_THREADS;
 
     instance_norm_forward_normalization<<<grid, block>>>(
-        reduce_size_, x, mean, var, beta, gamma, y, this->eps_);
+        outer_size_, reduce_size_, x, mean, var, beta, gamma, y, this->eps_);
     NBLA_CUDA_KERNEL_CHECK();
   }
 }
@@ -279,11 +292,15 @@ void InstanceNormalizationCuda<T>::backward_channel_first(
     Tc *sum_dy = sum_dy_.cast_data_and_get_pointer<Tc>(this->ctx_);
     Tc *sum_dyx = sum_dyx_.cast_data_and_get_pointer<Tc>(this->ctx_);
 
-    const auto grid = outer_size_;
-    const auto block = 512;
+    const int num_threads =
+        reduce_size_ < IN_NUM_THREADS ? CUDA_WARP_SIZE : IN_NUM_THREADS;
+
+    const auto grid = std::min(outer_size_, static_cast<Size_t>(IN_MAX_BLOCKS));
+
+    const auto block = num_threads;
 
     INGradOp<Tc, Size_t> op(x, dy, sum_dy, sum_dyx);
-    reduce_2d_x<<<grid, block>>>(op, reduce_size_);
+    reduce_2d_x<<<grid, block>>>(op, outer_size_, reduce_size_);
     NBLA_CUDA_KERNEL_CHECK();
   }
 
@@ -307,8 +324,10 @@ void InstanceNormalizationCuda<T>::backward_channel_first(
     Tc *factor_a = factor_a_.cast_data_and_get_pointer<Tc>(this->ctx_);
     Tc *factor_b = factor_b_.cast_data_and_get_pointer<Tc>(this->ctx_);
 
-    const auto grid = NBLA_CEIL_SIZE_T_DIV(outer_size_, 256);
-    const auto block = 256;
+    const auto grid = std::min(
+        static_cast<Size_t>(IN_MAX_BLOCKS),
+        static_cast<Size_t>(NBLA_CEIL_SIZE_T_DIV(outer_size_, IN_NUM_THREADS)));
+    const auto block = IN_NUM_THREADS;
 
     instance_norm_backward_dx_factor<<<grid, block>>>(
         outer_size_, reduce_size_, gamma, mean, var, dmean, dvar, sum_dy,
@@ -331,17 +350,22 @@ void InstanceNormalizationCuda<T>::backward_channel_first(
 
     Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_, !accum[0]);
 
-    // TODO:
-    const dim3 grid(outer_size_,
-                    NBLA_CEIL_SIZE_T_DIV(NBLA_CUDA_MAX_BLOCKS, outer_size_));
-    const auto block = 512;
+    const size_t elements_per_grid_y = IN_NUM_THREADS * 4;
+    dim3 grid;
+    grid.x = std::min(outer_size_, static_cast<Size_t>(IN_MAX_BLOCKS));
+    grid.y = std::min(NBLA_CEIL_SIZE_T_DIV(reduce_size_, elements_per_grid_y),
+                      static_cast<Size_t>(IN_MAX_BLOCKS));
+    grid.z = 1;
+    const auto block = IN_NUM_THREADS;
 
     if (accum[0]) {
       instance_norm_backward_dx<true><<<grid, block>>>(
-          reduce_size_, x, gamma, dy, var, factor_a, factor_b, dx, this->eps_);
+          outer_size_, reduce_size_, x, gamma, dy, var, factor_a, factor_b, dx,
+          this->eps_);
     } else {
       instance_norm_backward_dx<false><<<grid, block>>>(
-          reduce_size_, x, gamma, dy, var, factor_a, factor_b, dx, this->eps_);
+          outer_size_, reduce_size_, x, gamma, dy, var, factor_a, factor_b, dx,
+          this->eps_);
     }
     NBLA_CUDA_KERNEL_CHECK();
   }
@@ -370,8 +394,10 @@ void InstanceNormalizationCuda<T>::backward_channel_first(
                            this->ctx_, !accum[gamma_idx])
                      : nullptr;
 
-    const auto grid = NBLA_CEIL_SIZE_T_DIV(outer_size_, 256);
-    const auto block = 256;
+    const auto grid = std::min(
+        static_cast<Size_t>(IN_MAX_BLOCKS),
+        static_cast<Size_t>(NBLA_CEIL_SIZE_T_DIV(outer_size_, IN_NUM_THREADS)));
+    const auto block = IN_NUM_THREADS;
 
     if (!this->no_bias_ && accum[beta_idx]) {
       if (!this->no_scale_ && accum[gamma_idx]) {

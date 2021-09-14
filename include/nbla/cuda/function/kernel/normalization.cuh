@@ -215,41 +215,47 @@ public:
 };
 
 template <typename Op, typename index_t>
-__global__ void reduce_2d_x(Op op, index_t reduce_size) {
-  const index_t bidx = blockIdx.x;
+__global__ void reduce_2d_x(Op op, index_t outer_size, index_t reduce_size) {
   const index_t tidx = threadIdx.x;
   const index_t bdimx = blockDim.x;
 
-  // Load and reduce
-  typename Op::AccT val;
-  Op::init(val);
-  constexpr index_t B = 8;
-  typename Op::PreloadT reg[B];
-  for (index_t i = tidx; i < reduce_size; i += bdimx * B) {
+  // Grid-stride loop
+  for (index_t outer_idx = blockIdx.x; outer_idx < outer_size;
+       outer_idx += gridDim.x) {
+
+    // Load and reduce
+    typename Op::AccT val;
+    Op::init(val);
+    constexpr index_t B = 8;
+    typename Op::PreloadT reg[B];
+    for (index_t i = tidx; i < reduce_size; i += bdimx * B) {
 #pragma unroll
-    for (index_t j = 0; j < B; j++) {
-      if (i + bdimx * j < reduce_size) {
-        const index_t idx = bidx * reduce_size + i + bdimx * j;
-        reg[j] = op.load(idx, i);
+      for (index_t j = 0; j < B; j++) {
+        if (i + bdimx * j < reduce_size) {
+          const index_t global_idx = outer_idx * reduce_size + i + bdimx * j;
+          const index_t reduce_idx = i + bdimx * j;
+          reg[j] = op.load(global_idx, reduce_idx);
+        }
+      }
+#pragma unroll
+      for (index_t j = 0; j < B; j++) {
+        if (i + bdimx * j < reduce_size) {
+          op.reduce_one(val, reg[j]);
+        }
       }
     }
-#pragma unroll
-    for (index_t j = 0; j < B; j++) {
-      if (i + bdimx * j < reduce_size) {
-        op.reduce_one(val, reg[j]);
-      }
+
+    // Block reduce
+    if (bdimx <= CUDA_WARP_SIZE) {
+      warpReduce(op, val);
+    } else {
+      blockReduce(op, val);
     }
-  }
 
-  if (bdimx <= CUDA_WARP_SIZE) {
-    warpReduce(op, val);
-  } else {
-    blockReduce(op, val);
-  }
-
-  // Store
-  if (threadIdx.x == 0) {
-    op.store(bidx, val);
+    // Store
+    if (threadIdx.x == 0) {
+      op.store(outer_idx, val);
+    }
   }
 }
 }
