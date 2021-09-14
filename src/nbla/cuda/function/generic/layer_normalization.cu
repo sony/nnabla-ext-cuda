@@ -17,9 +17,6 @@
 #include <nbla/cuda/function/layer_normalization.hpp>
 #include <nbla/variable.hpp>
 
-#include <nbla/cuda/utils/block_reduce.cuh>
-#include <nbla/cuda/utils/warp_reduce.cuh>
-
 // Common kernels
 #include <nbla/cuda/function/kernel/normalization.cuh>
 

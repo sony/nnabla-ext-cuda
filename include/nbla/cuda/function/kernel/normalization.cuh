@@ -240,7 +240,12 @@ __global__ void reduce_2d_x(Op op, index_t reduce_size) {
       }
     }
   }
-  blockReduce(op, val);
+
+  if (bdimx <= CUDA_WARP_SIZE) {
+    warpReduce(op, val);
+  } else {
+    blockReduce(op, val);
+  }
 
   // Store
   if (threadIdx.x == 0) {
