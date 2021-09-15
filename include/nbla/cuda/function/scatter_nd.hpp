@@ -24,8 +24,9 @@ template <typename T> class ScatterNdCuda : public ScatterNd<T> {
 public:
   typedef typename CudaType<T>::type Tcu;
 
-  explicit ScatterNdCuda(const Context &ctx, const vector<int> &shape)
-      : ScatterNd<T>(ctx, shape), device_(std::stoi(ctx.device_id)) {}
+  explicit ScatterNdCuda(const Context &ctx, const vector<int> &shape,
+                         const bool add)
+      : ScatterNd<T>(ctx, shape, add), device_(std::stoi(ctx.device_id)) {}
   virtual ~ScatterNdCuda() {}
   virtual string name() { return "ScatterNdCuda"; }
   virtual vector<string> allowed_array_classes() {
