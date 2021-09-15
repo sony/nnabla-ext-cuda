@@ -1,4 +1,4 @@
-// Copyright (c) 2017 Sony Corporation. All Rights Reserved.
+// Copyright (c) 2017-2021 Sony Corporation. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -169,33 +169,45 @@ void TransposeCuda<T>::forward_impl(const Variables &inputs,
 
   if (ndim == 1) {
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(transpose_1d, size, x, y);
-  } else if (ndim == 2) {
+    return;
+  }
+  if (ndim == 2) {
     const auto shape = make_int2_from(this->x_shape_);
     const dim3 grid_dim(WARPS_FOR(shape.x), WARPS_FOR(shape.y));
-    const dim3 block_dim(CUDA_WARP_SIZE, 8);
-    transpose_2d<<<grid_dim, block_dim>>>(shape, x, y);
-    NBLA_CUDA_KERNEL_CHECK();
-  } else if (ndim == 3 && this->axes_[0] == 0) {
+    if (grid_dim.y < 65536) {
+      const dim3 block_dim(CUDA_WARP_SIZE, 8);
+      transpose_2d<<<grid_dim, block_dim>>>(shape, x, y);
+      NBLA_CUDA_KERNEL_CHECK();
+      return;
+    }
+  }
+  if (ndim == 3 && this->axes_[0] == 0) {
     const auto shape = make_int2_from(this->x_shape_, 1);
     const dim3 grid_dim(WARPS_FOR(shape.x), WARPS_FOR(shape.y));
-    const dim3 block_dim(CUDA_WARP_SIZE, 8);
-    for (int i = 0, w = shape.x * shape.y; i < this->x_shape_[0]; i++)
-      transpose_2d<<<grid_dim, block_dim>>>(shape, x + i * w, y + i * w);
-    NBLA_CUDA_KERNEL_CHECK();
-  } else if (ndim == 3) {
+    if (grid_dim.y < 65536) {
+      const dim3 block_dim(CUDA_WARP_SIZE, 8);
+      for (int i = 0, w = shape.x * shape.y; i < this->x_shape_[0]; i++)
+        transpose_2d<<<grid_dim, block_dim>>>(shape, x + i * w, y + i * w);
+      NBLA_CUDA_KERNEL_CHECK();
+      return;
+    }
+  }
+  if (ndim == 3) {
     const auto ostride = make_int3_from(this->y_strides_);
     const auto tstride = make_int3_from(this->x_strides_transposed_);
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(transpose_3d, size, ostride, tstride, x, y);
-  } else if (ndim == 4) {
+    return;
+  }
+  if (ndim == 4) {
     const auto ostride = make_int4_from(this->y_strides_);
     const auto tstride = make_int4_from(this->x_strides_transposed_);
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(transpose_4d, size, ostride, tstride, x, y);
-  } else {
-    auto var = static_cast<VariablePtr>(this->var_strides_);
-    auto ptr = var->get_data_pointer<char>(this->ctx_);
-    auto strides = reinterpret_cast<const TransposeStrides<int> *>(ptr);
-    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(transpose_nd, size, x, y, strides, ndim);
+    return;
   }
+  auto var = static_cast<VariablePtr>(this->var_strides_);
+  auto ptr = var->get_data_pointer<char>(this->ctx_);
+  auto strides = reinterpret_cast<const TransposeStrides<int> *>(ptr);
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(transpose_nd, size, x, y, strides, ndim);
 }
 
 template <class T>
@@ -213,49 +225,51 @@ void TransposeCuda<T>::backward_impl(const Variables &inputs,
   const int size = outputs[0]->size();
 
   if (ndim == 1) {
-    auto kernel = transpose_1d<Tcu>;
-    if (accum[0])
-      kernel = transpose_1d<Tcu, true>;
+    auto kernel = accum[0] ? transpose_1d<Tcu, true> : transpose_1d<Tcu>;
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel, size, dy, dx);
-  } else if (ndim == 2) {
+    return;
+  }
+  if (ndim == 2) {
     const auto shape = make_int2_from(this->y_shape_);
-    const dim3 grid(WARPS_FOR(shape.x), WARPS_FOR(shape.y));
-    auto kernel = transpose_2d<Tcu>;
-    if (accum[0])
-      kernel = transpose_2d<Tcu, true>;
-    kernel<<<grid, dim3(CUDA_WARP_SIZE, 8)>>>(shape, dy, dx);
-    NBLA_CUDA_KERNEL_CHECK();
-  } else if (ndim == 3 && this->axes_[0] == 0) {
+    const dim3 grid_dim(WARPS_FOR(shape.x), WARPS_FOR(shape.y));
+    if (grid_dim.y < 65536) {
+      const dim3 block_dim(CUDA_WARP_SIZE, 8);
+      auto kernel = accum[0] ? transpose_2d<Tcu, true> : transpose_2d<Tcu>;
+      kernel<<<grid_dim, block_dim>>>(shape, dy, dx);
+      NBLA_CUDA_KERNEL_CHECK();
+      return;
+    }
+  }
+  if (ndim == 3 && this->axes_[0] == 0) {
     const auto shape = make_int2_from(this->y_shape_, 1);
-    const dim3 grid(WARPS_FOR(shape.x), WARPS_FOR(shape.y));
-    auto kernel = transpose_2d<Tcu>;
-    if (accum[0])
-      kernel = transpose_2d<Tcu, true>;
-    for (int i = 0, w = shape.x * shape.y; i < this->x_shape_[0]; i++)
-      kernel<<<grid, dim3(CUDA_WARP_SIZE, 8)>>>(shape, dy + i * w, dx + i * w);
-    NBLA_CUDA_KERNEL_CHECK();
-  } else if (ndim == 3) {
+    const dim3 grid_dim(WARPS_FOR(shape.x), WARPS_FOR(shape.y));
+    if (grid_dim.y < 65536) {
+      const dim3 block_dim(CUDA_WARP_SIZE, 8);
+      auto kernel = accum[0] ? transpose_2d<Tcu, true> : transpose_2d<Tcu>;
+      for (int i = 0, w = shape.x * shape.y; i < this->x_shape_[0]; i++)
+        kernel<<<grid_dim, block_dim>>>(shape, dy + i * w, dx + i * w);
+      NBLA_CUDA_KERNEL_CHECK();
+      return;
+    }
+  }
+  if (ndim == 3) {
     const auto ostride = make_int3_from(this->x_strides_);
     const auto tstride = make_int3_from(this->y_strides_transposed_);
-    auto kernel = transpose_3d<Tcu, false>;
-    if (accum[0])
-      kernel = transpose_3d<Tcu, true>;
+    auto kernel = accum[0] ? transpose_3d<Tcu, true> : transpose_3d<Tcu>;
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel, size, ostride, tstride, dy, dx);
-  } else if (ndim == 4) {
+    return;
+  }
+  if (ndim == 4) {
     const auto ostride = make_int4_from(this->x_strides_);
     const auto tstride = make_int4_from(this->y_strides_transposed_);
-    auto kernel = transpose_4d<Tcu, false>;
-    if (accum[0])
-      kernel = transpose_4d<Tcu, true>;
+    auto kernel = accum[0] ? transpose_4d<Tcu, true> : transpose_4d<Tcu>;
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel, size, ostride, tstride, dy, dx);
-  } else {
-    auto var = static_cast<VariablePtr>(this->var_strides_);
-    auto ptr = var->get_data_pointer<char>(this->ctx_);
-    auto strides = reinterpret_cast<const TransposeStrides<int> *>(ptr);
-    auto kernel = transpose_nd<Tcu, false>;
-    if (accum[0])
-      kernel = transpose_nd<Tcu, true>;
-    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel, size, dy, dx, strides + ndim, ndim);
+    return;
   }
+  auto var = static_cast<VariablePtr>(this->var_strides_);
+  auto ptr = var->get_data_pointer<char>(this->ctx_);
+  auto strides = reinterpret_cast<const TransposeStrides<int> *>(ptr);
+  auto kernel = accum[0] ? transpose_nd<Tcu, true> : transpose_nd<Tcu>;
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel, size, dy, dx, strides + ndim, ndim);
 }
 }
