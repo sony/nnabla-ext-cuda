@@ -37,6 +37,11 @@ However, it often consumes much memory due to a big workspace memory required by
 
 In some cases it may be desired to restrict the automatic search for CUDNN Convolution algorithms to those that give deterministic (reproducable) results. This can be achived by setting an environment variable `NNABLA_CUDNN_DETERMINISTIC` to some value other than `0`.
 
+### TensorFloat-32 (TF32)
+
+In NNabla, the environment variable `NNABLA_CUDA_ALLOW_TF32` controls whether TF32 (about TF32, see [a blog post](https://blogs.nvidia.com/blog/2020/05/14/tensorfloat-32-precision-format/) from NVIDIA) is allowed to be used. If `NNABLA_CUDA_ALLOW_TF32` is not set (default) or 0, TF32 is disabled. Otherwise, it is enabled. `NNABLA_CUDA_ALLOW_TF32` always takes priority of `NVIDIA_TF32_OVERRIDE`. `NNABLA_CUDA_ALLOW_TF32` is only evaluated when initializing NNabla CUDA extension. If it is changed within the user program, the behavior is undefined.
+
+
 ## FAQ
 
 No FAQ so far.

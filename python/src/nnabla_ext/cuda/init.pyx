@@ -1,4 +1,5 @@
 # Copyright (c) 2017 Sony Corporation. All Rights Reserved.
+# Copyright 2021 Sony Group Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -36,6 +37,7 @@ cdef extern from "nbla/cuda/init.hpp" namespace "nbla":
     size_t get_cuda_virtual_caching_allocator_fragmentation_bytes(const string& device_id) except +
     size_t get_cuda_virtual_caching_allocator_max_available_bytes(const string& device_id) except +
     vector[int] get_cuda_virtual_memory_used_counts(const string& device_id) except +
+    bool is_cuda_tf32_enabled() except+
     vector[string] cuda_array_classes() except +
     void _cuda_set_array_classes(const vector[string] & a) except +
     void cuda_device_synchronize(const string & device) except +
@@ -108,6 +110,10 @@ def get_virtual_caching_allocator_max_available_bytes(str device_id):
 def get_virtual_memory_used_counts(str device_id):
     """Get # of cuda virtual memory which is currently used."""
     return get_cuda_virtual_memory_used_counts(device_id)
+
+def is_tf32_enabled():
+    """Check if tf32 is enabled or not."""
+    return is_cuda_tf32_enabled()
 
 ###############################################################################
 # Array preference API

@@ -1,5 +1,6 @@
 
 // Copyright 2018,2019,2020,2021 Sony Corporation.
+// Copyright 2021 Sony Group Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -64,6 +65,15 @@ void init_cuda() {
 
   // Init CPU features
   init_cpu();
+
+  // Set NVIDIA_TF32_OVERRIDE based on NNABLA_CUDA_ALLOW_TF32.
+  // NNabla does not use TF32 as defalut.
+  const char* allow_tf32 = std::getenv("NNABLA_CUDA_ALLOW_TF32");
+  if (!allow_tf32 || strcmp(allow_tf32, "0") == 0) {
+    nbla_setenv("NVIDIA_TF32_OVERRIDE", "0");
+  } else {
+    nbla_setenv("NVIDIA_TF32_OVERRIDE", "1");
+  }
 
   // Init Cuda Driver API
   NBLA_CUDA_DRIVER_CHECK(cuInit(0));
@@ -300,6 +310,12 @@ size_t get_cuda_virtual_caching_allocator_max_available_bytes(const string& devi
 
 vector<int> get_cuda_virtual_memory_used_counts(const string& device_id) {return {};}
 #endif // CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
+
+bool is_cuda_tf32_enabled() {
+  const char* tf32_enable = std::getenv("NVIDIA_TF32_OVERRIDE");
+  if (!tf32_enable || strcmp(tf32_enable, "0") == 0) return false;
+  return true;
+}
 
 /** Get CUDA array classes.
 */

@@ -1,4 +1,5 @@
 // Copyright 2017,2018,2019,2020,2021 Sony Corporation.
+// Copyright 2021 Sony Group Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -68,11 +69,16 @@ void cublas_gemm<half>(cublasHandle_t handle, cublasOperation_t op_x,
   cudaDeviceProp prop = cuda_get_current_device_properties();
   if (prop.major >= 5) {
     auto ct = cuda_data_type<typename CudaTypeForceFloat<half>::type>::type();
+#if CUDA_VERSION < 11000
+    // CUBLAS_TENSOR_OP_MATH is deprecated in CUDA 11.0
     NBLA_CUBLAS_CHECK(cublasSetMathMode(handle, CUBLAS_TENSOR_OP_MATH));
+#endif
     NBLA_CUBLAS_CHECK(cublasGemmEx(handle, op_x, op_y, m, n, k, &a, x, dt, lda,
                                    y, dt, ldb, &b, z, dt, ldc, ct,
                                    infer_gemm_algo_by_type(dt)));
+#if CUDA_VERSION < 11000
     NBLA_CUBLAS_CHECK(cublasSetMathMode(handle, CUBLAS_DEFAULT_MATH));
+#endif
   } else {
     NBLA_CUBLAS_CHECK(cublasSgemmEx(handle, op_x, op_y, m, n, k, &a, x, dt, lda,
                                     y, dt, ldb, &b, z, dt, ldc));
@@ -299,12 +305,17 @@ void cublas_gemm_strided_batched<half>(
     float b = beta;
     cudaDataType_t dt = cuda_data_type<half>::type();
     cudaDataType_t ct = cuda_data_type<float>::type();
+#if CUDA_VERSION < 11000
+    // CUBLAS_TENSOR_OP_MATH is deprecated in CUDA 11.0
     NBLA_CUBLAS_CHECK(cublasSetMathMode(handle, CUBLAS_TENSOR_OP_MATH));
+#endif
     NBLA_CUBLAS_CHECK(cublasGemmStridedBatchedEx(
         handle, op_x, op_y, m, n, k, &a, x, dt, lda, stride_a, y, dt, ldb,
         stride_b, &b, z, dt, ldc, stride_c, batch_count, ct,
         infer_gemm_algo_by_type(dt)));
+#if CUDA_VERSION < 11000
     NBLA_CUBLAS_CHECK(cublasSetMathMode(handle, CUBLAS_DEFAULT_MATH));
+#endif
     return;
   }
 #endif // CUDA_VERSION >= 9010
