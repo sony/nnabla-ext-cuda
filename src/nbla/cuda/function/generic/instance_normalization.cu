@@ -29,6 +29,15 @@ void InstanceNormalizationCuda<T>::setup_impl(const Variables &inputs,
   InstanceNormalization<T>::setup_impl(inputs, outputs);
   cuda_set_device(this->device_);
 
+  // Broadcasting scale and bias is not supported in CUDA backend.
+  if (this->need_beta_broadcast_ || this->need_gamma_broadcast_) {
+    this->fall_back_func_ = make_shared<InstanceNormalization<T>>(
+        this->ctx_, this->channel_axis_, this->batch_axis_, this->eps_,
+        this->no_scale_, this->no_bias_);
+    this->fall_back_func_->setup(inputs, outputs);
+    return;
+  }
+
   need_adaptor_ = ChannelFirstAdaptor::need_adaptor(
       inputs[0]->shape(), this->batch_axis_, this->channel_axis_);
 
