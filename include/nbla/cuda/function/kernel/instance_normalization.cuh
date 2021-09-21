@@ -84,13 +84,8 @@ instance_norm_backward_dx(const index_t outer_size, const index_t reduce_size,
       const T scale = gamma ? gamma[outer_idx] : (T)1.0f;
       const T invstd = rsqrt(var[outer_idx] + eps);
 
-      if (accum) {
-        dx[idx] += dy[idx] * invstd * scale + factor_a[outer_idx] * x[idx] +
-                   factor_b[outer_idx];
-      } else {
-        dx[idx] = dy[idx] * invstd * scale + factor_a[outer_idx] * x[idx] +
-                  factor_b[outer_idx];
-      }
+      dx[idx] = dy[idx] * invstd * scale + factor_a[outer_idx] * x[idx] +
+                factor_b[outer_idx] + (accum ? dx[idx] : (T)0.0f);
     }
   }
 }
@@ -109,18 +104,10 @@ __global__ void instance_norm_backward_dbeta_dgamma(
         sum_dyx[idx] * invstd - sum_dy[idx] * mean[idx] * invstd;
 
     if (dbeta_out) {
-      if (accum_beta) {
-        dbeta_out[idx] += dbeta;
-      } else {
-        dbeta_out[idx] = dbeta;
-      }
+      dbeta_out[idx] = dbeta + (accum_beta ? dbeta_out[idx] : (T)0.0f);
     }
     if (dgamma_out) {
-      if (accum_gamma) {
-        dgamma_out[idx] += dgamma;
-      } else {
-        dgamma_out[idx] = dgamma;
-      }
+      dgamma_out[idx] = dgamma + (accum_gamma ? dgamma_out[idx] : (T)0.0f);
     }
   }
 }

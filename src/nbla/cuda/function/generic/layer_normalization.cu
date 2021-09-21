@@ -207,15 +207,10 @@ void LayerNormalizationCuda<T>::backward_impl(
     grid.z = 1;
     const auto block = LN_NUM_THREADS;
 
-    if (accum[0]) {
-      layer_norm_backward_dx<true><<<grid, block>>>(batch_size_, reduce_size_,
-                                                    x, dy, gamma, var, factor_a,
-                                                    factor_b, dx, this->eps_);
-    } else {
-      layer_norm_backward_dx<false><<<grid, block>>>(
-          batch_size_, reduce_size_, x, dy, gamma, var, factor_a, factor_b, dx,
-          this->eps_);
-    }
+    auto kernel = accum[0] ? layer_norm_backward_dx<true, Tc, Size_t>
+                           : layer_norm_backward_dx<false, Tc, Size_t>;
+    kernel<<<grid, block>>>(batch_size_, reduce_size_, x, dy, gamma, var,
+                            factor_a, factor_b, dx, this->eps_);
     NBLA_CUDA_KERNEL_CHECK();
 
     // Clear internal buffers
@@ -247,27 +242,19 @@ void LayerNormalizationCuda<T>::backward_impl(
                                    reduce_size_, LN_NUM_THREADS)));
     const auto block = LN_NUM_THREADS;
 
+    // Select kernels by accum combination.
+    auto kernel = layer_norm_backward_dbeta_dgamma<true, true, Tc, Size_t>;
     if (!this->no_bias_ && accum[beta_idx]) {
-      if (!this->no_scale_ && accum[gamma_idx]) {
-        layer_norm_backward_dbeta_dgamma<true, true><<<grid, block>>>(
-            batch_size_, reduce_size_, x, dy, mean, var, dbeta, dgamma,
-            this->eps_);
-      } else {
-        layer_norm_backward_dbeta_dgamma<true, false><<<grid, block>>>(
-            batch_size_, reduce_size_, x, dy, mean, var, dbeta, dgamma,
-            this->eps_);
-      }
+      kernel = !this->no_scale_ && accum[gamma_idx]
+                   ? layer_norm_backward_dbeta_dgamma<true, true, Tc, Size_t>
+                   : layer_norm_backward_dbeta_dgamma<true, false, Tc, Size_t>;
     } else {
-      if (!this->no_scale_ && accum[gamma_idx]) {
-        layer_norm_backward_dbeta_dgamma<false, true><<<grid, block>>>(
-            batch_size_, reduce_size_, x, dy, mean, var, dbeta, dgamma,
-            this->eps_);
-      } else {
-        layer_norm_backward_dbeta_dgamma<false, false><<<grid, block>>>(
-            batch_size_, reduce_size_, x, dy, mean, var, dbeta, dgamma,
-            this->eps_);
-      }
+      kernel = !this->no_scale_ && accum[gamma_idx]
+                   ? layer_norm_backward_dbeta_dgamma<false, true, Tc, Size_t>
+                   : layer_norm_backward_dbeta_dgamma<false, false, Tc, Size_t>;
     }
+    kernel<<<grid, block>>>(batch_size_, reduce_size_, x, dy, mean, var, dbeta,
+                            dgamma, this->eps_);
     NBLA_CUDA_KERNEL_CHECK();
   }
 }

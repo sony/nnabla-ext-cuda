@@ -38,6 +38,7 @@ void InstanceNormalizationCuda<T>::setup_impl(const Variables &inputs,
     return;
   }
 
+  // Setup input and output adaptor for channel-last memory format
   need_adaptor_ = ChannelFirstAdaptor::need_adaptor(
       inputs[0]->shape(), this->batch_axis_, this->channel_axis_);
 
@@ -222,7 +223,6 @@ void InstanceNormalizationCuda<T>::backward_channel_first(
     NBLA_CUDA_KERNEL_CHECK();
   }
 
-  // TODO: change the comment
   // Calculate a and b such that `dx = gamma / sqrt(var) * dy + a * x + b`.
   if (propagate_down[0]) {
     const auto gamma_idx = this->no_bias_ ? 1 : 2;
@@ -276,15 +276,10 @@ void InstanceNormalizationCuda<T>::backward_channel_first(
     grid.z = 1;
     const auto block = IN_NUM_THREADS;
 
-    if (accum[0]) {
-      instance_norm_backward_dx<true><<<grid, block>>>(
-          outer_size_, reduce_size_, x, gamma, dy, var, factor_a, factor_b, dx,
-          this->eps_);
-    } else {
-      instance_norm_backward_dx<false><<<grid, block>>>(
-          outer_size_, reduce_size_, x, gamma, dy, var, factor_a, factor_b, dx,
-          this->eps_);
-    }
+    auto kernel = accum[0] ? instance_norm_backward_dx<true, Tc, Size_t>
+                           : instance_norm_backward_dx<false, Tc, Size_t>;
+    kernel<<<grid, block>>>(outer_size_, reduce_size_, x, gamma, dy, var,
+                            factor_a, factor_b, dx, this->eps_);
     NBLA_CUDA_KERNEL_CHECK();
 
     // Clear internal buffer
@@ -321,27 +316,21 @@ void InstanceNormalizationCuda<T>::backward_channel_first(
         static_cast<Size_t>(NBLA_CEIL_SIZE_T_DIV(outer_size_, IN_NUM_THREADS)));
     const auto block = IN_NUM_THREADS;
 
+    // Select kernels by accum combination.
+    auto kernel = instance_norm_backward_dbeta_dgamma<true, true, Tc, Size_t>;
     if (!this->no_bias_ && accum[beta_idx]) {
-      if (!this->no_scale_ && accum[gamma_idx]) {
-        instance_norm_backward_dbeta_dgamma<true, true><<<grid, block>>>(
-            outer_size_, reduce_size_, x, gamma, dy, sum_dy, sum_dyx, mean, var,
-            dbeta, dgamma, this->eps_);
-      } else {
-        instance_norm_backward_dbeta_dgamma<true, false><<<grid, block>>>(
-            outer_size_, reduce_size_, x, gamma, dy, sum_dy, sum_dyx, mean, var,
-            dbeta, dgamma, this->eps_);
-      }
+      kernel =
+          !this->no_scale_ && accum[gamma_idx]
+              ? instance_norm_backward_dbeta_dgamma<true, true, Tc, Size_t>
+              : instance_norm_backward_dbeta_dgamma<true, false, Tc, Size_t>;
     } else {
-      if (!this->no_scale_ && accum[gamma_idx]) {
-        instance_norm_backward_dbeta_dgamma<false, true><<<grid, block>>>(
-            outer_size_, reduce_size_, x, gamma, dy, sum_dy, sum_dyx, mean, var,
-            dbeta, dgamma, this->eps_);
-      } else {
-        instance_norm_backward_dbeta_dgamma<false, false><<<grid, block>>>(
-            outer_size_, reduce_size_, x, gamma, dy, sum_dy, sum_dyx, mean, var,
-            dbeta, dgamma, this->eps_);
-      }
+      kernel =
+          !this->no_scale_ && accum[gamma_idx]
+              ? instance_norm_backward_dbeta_dgamma<false, true, Tc, Size_t>
+              : instance_norm_backward_dbeta_dgamma<false, false, Tc, Size_t>;
     }
+    kernel<<<grid, block>>>(outer_size_, reduce_size_, x, gamma, dy, sum_dy,
+                            sum_dyx, mean, var, dbeta, dgamma, this->eps_);
     NBLA_CUDA_KERNEL_CHECK();
   }
 

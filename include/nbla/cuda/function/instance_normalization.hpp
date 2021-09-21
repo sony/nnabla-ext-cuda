@@ -39,14 +39,16 @@ public:
 
 protected:
   int device_;
-
   Variable mean_, var_;
-  int b_idx_, g_idx_;
+
+  // Internal buffres for forward
   Size_t reduce_size_, outer_size_;
 
+  // Internal buffres for backward
   Variable sum_dy_, sum_dyx_;
   Variable factor_a_, factor_b_;
 
+  // Adaptor for channel-last format
   bool need_adaptor_;
   std::shared_ptr<ChannelFirstAdaptor> adaptor_;
   Variable pre_adaptor_, post_adaptor_;

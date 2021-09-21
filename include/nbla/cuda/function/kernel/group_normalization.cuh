@@ -18,8 +18,6 @@
 
 namespace nbla {
 
-constexpr int GROUP_NORM_ELEMENTWISE_UNROLL_SIZE = 4;
-
 template <typename T, typename index_t>
 __global__ void group_norm_forward_normalization_factor(
     const index_t batch_size, const index_t channel_size, const int num_groups,
@@ -46,15 +44,15 @@ __global__ void group_norm_forward_normalization_factor(
   }
 }
 
-template <typename T, typename index_t>
+template <typename T, typename index_t, index_t N_UNROLL>
 __global__ void
 group_norm_forward_normalization(const index_t size, const index_t spatial_size,
                                  const T *x, const T *a, const T *b, T *y) {
-  constexpr index_t N_UNROLL = GROUP_NORM_ELEMENTWISE_UNROLL_SIZE;
+  const auto elements_per_block = blockDim.x * N_UNROLL;
 
   // Grid-stride loop
-  for (index_t offset = blockIdx.x * (blockDim.x * N_UNROLL) + threadIdx.x;
-       offset < size; offset += gridDim.x * (blockDim.x * N_UNROLL)) {
+  for (index_t offset = blockIdx.x * elements_per_block + threadIdx.x;
+       offset < size; offset += gridDim.x * elements_per_block) {
 
 #pragma unroll
     for (auto i = 0; i < N_UNROLL; i++) {
@@ -67,15 +65,15 @@ group_norm_forward_normalization(const index_t size, const index_t spatial_size,
   }
 }
 
-template <typename T, typename index_t>
+template <typename T, typename index_t, index_t N_UNROLL>
 __global__ void group_norm_backward_gamma_invstd(
     const index_t size, const index_t channel_size, const int num_groups,
     const T *gamma, const T *var, T *gamma_invstd, const float eps) {
-  constexpr index_t N_UNROLL = GROUP_NORM_ELEMENTWISE_UNROLL_SIZE;
+  const auto elements_per_block = blockDim.x * N_UNROLL;
 
   // Grid-stride loop
-  for (index_t offset = blockIdx.x * (blockDim.x * N_UNROLL) + threadIdx.x;
-       offset < size; offset += gridDim.x * (blockDim.x * N_UNROLL)) {
+  for (index_t offset = blockIdx.x * elements_per_block + threadIdx.x;
+       offset < size; offset += gridDim.x * elements_per_block) {
 
 #pragma unroll
     for (auto i = 0; i < N_UNROLL; i++) {
@@ -145,32 +143,28 @@ __global__ void group_norm_backward_dx_factor(
   }
 }
 
-template <bool accum, typename T, typename index_t>
+template <bool accum, typename T, typename index_t, index_t N_UNROLL>
 __global__ void
 group_norm_backward_dx(const index_t size, const index_t channel_size,
                        const index_t spatial_size, const int num_groups,
                        const T *x, const T *dy, const T *gamma_invstd,
                        const T *factor1, const T *factor2, T *dx) {
-  constexpr index_t N_UNROLL = GROUP_NORM_ELEMENTWISE_UNROLL_SIZE;
+  const auto elements_per_block = blockDim.x * N_UNROLL;
 
   // Grid-stride loop
-  for (index_t offset = blockIdx.x * (blockDim.x * N_UNROLL) + threadIdx.x;
-       offset < size; offset += gridDim.x * (blockDim.x * N_UNROLL)) {
+  for (index_t offset = blockIdx.x * elements_per_block + threadIdx.x;
+       offset < size; offset += gridDim.x * elements_per_block) {
 
 #pragma unroll
-    for (auto i = 0; i < GROUP_NORM_ELEMENTWISE_UNROLL_SIZE; i++) {
+    for (auto i = 0; i < N_UNROLL; i++) {
       const index_t idx = offset + i * blockDim.x;
       if (idx < size) {
         const index_t factor_idx =
             idx / (spatial_size * (channel_size / num_groups));
         const index_t param_idx = idx / (spatial_size);
-        if (accum) {
-          dx[idx] += gamma_invstd[param_idx] * dy[idx] +
-                     factor1[factor_idx] * x[idx] + factor2[factor_idx];
-        } else {
-          dx[idx] = gamma_invstd[param_idx] * dy[idx] +
-                    factor1[factor_idx] * x[idx] + factor2[factor_idx];
-        }
+        dx[idx] = gamma_invstd[param_idx] * dy[idx] +
+                  factor1[factor_idx] * x[idx] + factor2[factor_idx] +
+                  (accum ? dx[idx] : (T)0.0f);
       }
     }
   }
@@ -198,18 +192,10 @@ __global__ void group_norm_backward_dbeta_dgamma(
     }
 
     if (dbeta) {
-      if (beta_accum) {
-        dbeta[idx] += db;
-      } else {
-        dbeta[idx] = db;
-      }
+      dbeta[idx] = db + (beta_accum ? dbeta[idx] : (T)0.0f);
     }
     if (dgamma) {
-      if (gamma_accum) {
-        dgamma[idx] += dg;
-      } else {
-        dgamma[idx] = dg;
-      }
+      dgamma[idx] = dg + (gamma_accum ? dgamma[idx] : (T)0.0f);
     }
   }
 }

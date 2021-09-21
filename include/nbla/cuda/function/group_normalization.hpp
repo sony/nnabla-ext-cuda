@@ -42,14 +42,17 @@ public:
 protected:
   int device_;
   Size_t reduce_size_, outer_size_, channel_size_, batch_size_;
-
   Variable mean_, var_;
+
+  // Internal buffres for forward
   Variable a_, b_;
 
+  // Internal buffres for backward
   Variable sum_dy_, sum_dyx_;
   Variable gamma_invstd_;
   Variable factor1_, factor2_;
 
+  // Adaptor for channel-last format
   bool need_adaptor_;
   std::shared_ptr<ChannelFirstAdaptor> adaptor_;
   Variable pre_adaptor_, post_adaptor_;

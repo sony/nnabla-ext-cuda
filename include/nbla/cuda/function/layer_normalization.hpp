@@ -39,9 +39,9 @@ public:
 protected:
   int device_;
   Size_t reduce_size_, batch_size_;
-
   Variable mean_, var_;
 
+  // Internal buffres for backward
   Variable sum_dygamma_, sum_dyxgamma_;
   Variable factor_a_, factor_b_;
 

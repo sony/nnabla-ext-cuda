@@ -35,6 +35,7 @@ void GroupNormalizationCuda<T>::setup_impl(const Variables &inputs,
   const auto c = this->channel_axis_;
   channel_size_ = x_shape[c];
 
+  // Setup input and output adaptor for channel-last memory format
   need_adaptor_ = ChannelFirstAdaptor::need_adaptor(
       inputs[0]->shape(), this->batch_axis_, this->channel_axis_);
 
@@ -78,6 +79,7 @@ void GroupNormalizationCuda<T>::setup_impl(const Variables &inputs,
 constexpr size_t GN_NUM_THREADS = NBLA_CUDA_NUM_THREADS;
 // constexpr size_t GN_MAX_BLOCKS = NBLA_CUDA_MAX_BLOCKS;
 constexpr size_t GN_MAX_BLOCKS = 65535;
+constexpr int GN_N_UNROLL = 4;
 
 template <typename T>
 void GroupNormalizationCuda<T>::forward_impl(const Variables &inputs,
@@ -168,12 +170,11 @@ void GroupNormalizationCuda<T>::forward_channel_first(
 
     const auto block = num_threads;
     const auto grid =
-        std::min(NBLA_CEIL_SIZE_T_DIV(
-                     size, num_threads * GROUP_NORM_ELEMENTWISE_UNROLL_SIZE),
+        std::min(NBLA_CEIL_SIZE_T_DIV(size, num_threads * GN_N_UNROLL),
                  static_cast<Size_t>(GN_MAX_BLOCKS));
 
-    group_norm_forward_normalization<<<grid, block>>>(size, spatial_size, x, a,
-                                                      b, y);
+    group_norm_forward_normalization<Tc, Size_t, GN_N_UNROLL><<<grid, block>>>(
+        size, spatial_size, x, a, b, y);
     NBLA_CUDA_KERNEL_CHECK();
 
     // Clear internal buffers
@@ -263,12 +264,11 @@ void GroupNormalizationCuda<T>::backward_channel_first(
     const auto num_threads = CUDA_WARP_SIZE * 2;
 
     const auto grid =
-        std::min(NBLA_CEIL_SIZE_T_DIV(
-                     size, num_threads * GROUP_NORM_ELEMENTWISE_UNROLL_SIZE),
+        std::min(NBLA_CEIL_SIZE_T_DIV(size, num_threads * GN_N_UNROLL),
                  static_cast<Size_t>(GN_MAX_BLOCKS));
     const auto block = num_threads;
 
-    group_norm_backward_gamma_invstd<<<grid, block>>>(
+    group_norm_backward_gamma_invstd<Tc, Size_t, GN_N_UNROLL><<<grid, block>>>(
         size, channel_size_, this->num_groups_, gamma, var, gamma_invstd,
         this->eps_);
     NBLA_CUDA_KERNEL_CHECK();
@@ -296,7 +296,6 @@ void GroupNormalizationCuda<T>::backward_channel_first(
     const Size_t spatial_size = size / (batch_size_ * channel_size_);
     const auto num_threads = CUDA_WARP_SIZE * 2;
 
-    // dim3 grid(batch_size_, this->num_groups_);
     dim3 grid;
     grid.x = std::min(batch_size_, static_cast<Size_t>(GN_MAX_BLOCKS));
     grid.y = std::min(static_cast<Size_t>(this->num_groups_),
@@ -324,21 +323,16 @@ void GroupNormalizationCuda<T>::backward_channel_first(
 
     const auto block = num_threads;
     const auto grid =
-        std::min(NBLA_CEIL_SIZE_T_DIV(
-                     size, num_threads * GROUP_NORM_ELEMENTWISE_UNROLL_SIZE),
+        std::min(NBLA_CEIL_SIZE_T_DIV(size, num_threads * GN_N_UNROLL),
                  static_cast<Size_t>(GN_MAX_BLOCKS));
 
-    if (accum[0]) {
-      group_norm_backward_dx<true><<<grid, block>>>(
-          size, channel_size_, spatial_size, this->num_groups_, x, dy,
-          gamma_invstd, factor1, factor2, dx);
-      NBLA_CUDA_KERNEL_CHECK();
-    } else {
-      group_norm_backward_dx<false><<<grid, block>>>(
-          size, channel_size_, spatial_size, this->num_groups_, x, dy,
-          gamma_invstd, factor1, factor2, dx);
-      NBLA_CUDA_KERNEL_CHECK();
-    }
+    auto kernel = accum[0]
+                      ? group_norm_backward_dx<true, Tc, Size_t, GN_N_UNROLL>
+                      : group_norm_backward_dx<false, Tc, Size_t, GN_N_UNROLL>;
+    kernel<<<grid, block>>>(size, channel_size_, spatial_size,
+                            this->num_groups_, x, dy, gamma_invstd, factor1,
+                            factor2, dx);
+    NBLA_CUDA_KERNEL_CHECK();
 
     // Clear internal buffer
     gamma_invstd_.data()->array()->clear();
@@ -346,6 +340,7 @@ void GroupNormalizationCuda<T>::backward_channel_first(
     factor2_.data()->array()->clear();
   }
 
+  // Calculate dbeta and dgamma.
   if ((inputs.size() > 1 && propagate_down[1]) ||
       (inputs.size() > 2 && propagate_down[2])) {
     const auto beta_idx = 1;
@@ -369,27 +364,19 @@ void GroupNormalizationCuda<T>::backward_channel_first(
         std::min(NBLA_CEIL_SIZE_T_DIV(channel_size_, GN_NUM_THREADS),
                  static_cast<Size_t>(GN_MAX_BLOCKS));
 
+    // Select kernels by accum combination.
+    auto kernel = group_norm_backward_dbeta_dgamma<true, true, Tc, Size_t>;
     if (!this->no_bias_ && accum[beta_idx]) {
-      if (!this->no_scale_ && accum[gamma_idx]) {
-        group_norm_backward_dbeta_dgamma<true, true><<<grid, block>>>(
-            batch_size_, channel_size_, this->num_groups_, mean, var, sum_dy,
-            sum_dyx, dbeta, dgamma, this->eps_);
-      } else {
-        group_norm_backward_dbeta_dgamma<true, false><<<grid, block>>>(
-            batch_size_, channel_size_, this->num_groups_, mean, var, sum_dy,
-            sum_dyx, dbeta, dgamma, this->eps_);
-      }
+      kernel = !this->no_scale_ && accum[gamma_idx]
+                   ? group_norm_backward_dbeta_dgamma<true, true, Tc, Size_t>
+                   : group_norm_backward_dbeta_dgamma<true, false, Tc, Size_t>;
     } else {
-      if (!this->no_scale_ && accum[gamma_idx]) {
-        group_norm_backward_dbeta_dgamma<false, true><<<grid, block>>>(
-            batch_size_, channel_size_, this->num_groups_, mean, var, sum_dy,
-            sum_dyx, dbeta, dgamma, this->eps_);
-      } else {
-        group_norm_backward_dbeta_dgamma<false, false><<<grid, block>>>(
-            batch_size_, channel_size_, this->num_groups_, mean, var, sum_dy,
-            sum_dyx, dbeta, dgamma, this->eps_);
-      }
+      kernel = !this->no_scale_ && accum[gamma_idx]
+                   ? group_norm_backward_dbeta_dgamma<false, true, Tc, Size_t>
+                   : group_norm_backward_dbeta_dgamma<false, false, Tc, Size_t>;
     }
+    kernel<<<grid, block>>>(batch_size_, channel_size_, this->num_groups_, mean,
+                            var, sum_dy, sum_dyx, dbeta, dgamma, this->eps_);
     NBLA_CUDA_KERNEL_CHECK();
 
     // Clear internal buffer
