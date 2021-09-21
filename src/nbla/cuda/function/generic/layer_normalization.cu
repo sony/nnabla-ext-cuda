@@ -170,7 +170,8 @@ layer_norm_backward_dbeta_dgamma(const index_t batch_size,
 }
 
 constexpr size_t LN_NUM_THREADS = NBLA_CUDA_NUM_THREADS;
-constexpr size_t LN_MAX_BLOCKS = NBLA_CUDA_MAX_BLOCKS;
+// constexpr size_t LN_MAX_BLOCKS = NBLA_CUDA_MAX_BLOCKS;
+constexpr size_t LN_MAX_BLOCKS = 65535;
 
 template <typename T>
 void LayerNormalizationCuda<T>::forward_impl(const Variables &inputs,

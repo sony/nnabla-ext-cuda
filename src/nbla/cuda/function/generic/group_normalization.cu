@@ -274,7 +274,8 @@ __global__ void group_norm_backward_dbeta_dgamma(
 }
 
 constexpr size_t GN_NUM_THREADS = NBLA_CUDA_NUM_THREADS;
-constexpr size_t GN_MAX_BLOCKS = NBLA_CUDA_MAX_BLOCKS;
+// constexpr size_t GN_MAX_BLOCKS = NBLA_CUDA_MAX_BLOCKS;
+constexpr size_t GN_MAX_BLOCKS = 65535;
 
 template <typename T>
 void GroupNormalizationCuda<T>::forward_impl(const Variables &inputs,

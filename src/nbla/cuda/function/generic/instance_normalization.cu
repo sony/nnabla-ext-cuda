@@ -60,7 +60,8 @@ void InstanceNormalizationCuda<T>::setup_impl(const Variables &inputs,
 }
 
 constexpr size_t IN_NUM_THREADS = NBLA_CUDA_NUM_THREADS;
-constexpr size_t IN_MAX_BLOCKS = NBLA_CUDA_MAX_BLOCKS;
+// constexpr size_t IN_MAX_BLOCKS = NBLA_CUDA_MAX_BLOCKS;
+constexpr size_t IN_MAX_BLOCKS = 65535;
 
 template <typename T, typename index_t>
 __global__ void
