@@ -40,11 +40,17 @@ void LayerNormalizationCuda<T>::setup_impl(const Variables &inputs,
 
   reduce_size_ = x_size / batch_size_;
 
+  //----------------
+  // Reshape buffers
+  //----------------
+
+  // Batch stats
   mean_.reshape({batch_size_}, true);
   var_.reshape({batch_size_}, true);
+
+  // Internal buffers for backward calculation
   sum_dygamma_.reshape({batch_size_}, true);
   sum_dyxgamma_.reshape({batch_size_}, true);
-
   factor_a_.reshape({batch_size_}, true);
   factor_b_.reshape({batch_size_}, true);
 }
@@ -242,7 +248,7 @@ void LayerNormalizationCuda<T>::backward_impl(
   }
 
   // Calculate sum of dy * gamma and sum of dy * x * gamma.
-  {
+  if (propagate_down[0]) {
     const auto gamma_idx = this->no_bias_ ? 1 : 2;
 
     const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
@@ -262,7 +268,7 @@ void LayerNormalizationCuda<T>::backward_impl(
   }
 
   // Calculate a and b such that `dx = gamma / sqrt(var) * dy + a * x + b`.
-  {
+  if (propagate_down[0]) {
     const Tc *mean = v_mean->get_data_pointer<Tc>(this->ctx_);
     const Tc *var = v_var->get_data_pointer<Tc>(this->ctx_);
     const Tc *dmean = outputs.size() == 3
@@ -285,6 +291,10 @@ void LayerNormalizationCuda<T>::backward_impl(
         batch_size_, reduce_size_, mean, var, dmean, dvar, sum_dygamma,
         sum_dyxgamma, factor_a, factor_b, this->eps_);
     NBLA_CUDA_KERNEL_CHECK();
+
+    // Clear internal buffers
+    sum_dygamma_.data()->array()->clear();
+    sum_dyxgamma_.data()->array()->clear();
   }
 
   // Calculate dx.
@@ -319,6 +329,10 @@ void LayerNormalizationCuda<T>::backward_impl(
           this->eps_);
     }
     NBLA_CUDA_KERNEL_CHECK();
+
+    // Clear internal buffers
+    factor_a_.data()->array()->clear();
+    factor_b_.data()->array()->clear();
   }
 
   // Calculate dbeta and dgamma.

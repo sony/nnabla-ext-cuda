@@ -44,13 +44,23 @@ void InstanceNormalizationCuda<T>::setup_impl(const Variables &inputs,
     outer_size_ = inputs[0]->size() / reduce_size_;
   }
 
+  //----------------
+  // Reshape buffers
+  //----------------
+
+  // Batch stats
   mean_.reshape({outer_size_}, true);
   var_.reshape({outer_size_}, true);
+
+  // Internal buffers for backward calculation
   sum_dy_.reshape({outer_size_}, true);
   sum_dyx_.reshape({outer_size_}, true);
   factor_a_.reshape({outer_size_}, true);
   factor_b_.reshape({outer_size_}, true);
 }
+
+constexpr size_t IN_NUM_THREADS = NBLA_CUDA_NUM_THREADS;
+constexpr size_t IN_MAX_BLOCKS = NBLA_CUDA_MAX_BLOCKS;
 
 template <typename T, typename index_t>
 __global__ void
@@ -266,8 +276,14 @@ void InstanceNormalizationCuda<T>::backward_impl(
     in_cf_accum[0] = false;
     backward_channel_first(in_cf_in, in_cf_out, propagate_down, in_cf_accum);
 
+    post_adaptor_.data()->array()->clear();
+    post_adaptor_.grad()->array()->clear();
+
     adaptor_->backward_pre(inputs[0], &pre_adaptor_, propagate_down[0],
                            accum[0]);
+
+    pre_adaptor_.data()->array()->clear();
+    pre_adaptor_.grad()->array()->clear();
   } else {
     backward_channel_first(inputs, outputs, propagate_down, accum);
   }
@@ -306,7 +322,7 @@ void InstanceNormalizationCuda<T>::backward_channel_first(
 
   // TODO: change the comment
   // Calculate a and b such that `dx = gamma / sqrt(var) * dy + a * x + b`.
-  {
+  if (propagate_down[0]) {
     const auto gamma_idx = this->no_bias_ ? 1 : 2;
     const Tc *gamma = this->no_scale_
                           ? nullptr
@@ -368,6 +384,10 @@ void InstanceNormalizationCuda<T>::backward_channel_first(
           this->eps_);
     }
     NBLA_CUDA_KERNEL_CHECK();
+
+    // Clear internal buffer
+    factor_a_.data()->array()->clear();
+    factor_b_.data()->array()->clear();
   }
 
   // Calculate dbeta and dgamma.
@@ -422,5 +442,9 @@ void InstanceNormalizationCuda<T>::backward_channel_first(
     }
     NBLA_CUDA_KERNEL_CHECK();
   }
+
+  // Clear internal buffer
+  sum_dy_.data()->array()->clear();
+  sum_dyx_.data()->array()->clear();
 }
 }

@@ -57,11 +57,19 @@ void GroupNormalizationCuda<T>::setup_impl(const Variables &inputs,
     outer_size_ = x->size() / reduce_size_;
   }
 
-  a_.reshape({batch_size_ * channel_size_}, true);
-  b_.reshape({batch_size_ * channel_size_}, true);
+  //----------------
+  // Reshape buffers
+  //----------------
+
+  // Batch stats
   var_.reshape({batch_size_ * channel_size_}, true);
   mean_.reshape({batch_size_ * channel_size_}, true);
 
+  // Internal buffers for forward calculation
+  a_.reshape({batch_size_ * channel_size_}, true);
+  b_.reshape({batch_size_ * channel_size_}, true);
+
+  // Internal buffers for backward calculation
   sum_dy_.reshape({batch_size_ * channel_size_}, true);
   sum_dyx_.reshape({batch_size_ * channel_size_}, true);
   gamma_invstd_.reshape({batch_size_ * channel_size_}, true);
@@ -364,6 +372,10 @@ void GroupNormalizationCuda<T>::forward_channel_first(
     group_norm_forward_normalization<<<grid, block>>>(size, spatial_size, x, a,
                                                       b, y);
     NBLA_CUDA_KERNEL_CHECK();
+
+    // Clear internal buffers
+    a_.data()->array()->clear();
+    b_.data()->array()->clear();
   }
 }
 
@@ -389,8 +401,14 @@ void GroupNormalizationCuda<T>::backward_impl(
     in_cf_accum[0] = false;
     backward_channel_first(in_cf_in, in_cf_out, propagate_down, in_cf_accum);
 
+    post_adaptor_.data()->array()->clear();
+    post_adaptor_.grad()->array()->clear();
+
     adaptor_->backward_pre(inputs[0], &pre_adaptor_, propagate_down[0],
                            accum[0]);
+
+    pre_adaptor_.data()->array()->clear();
+    pre_adaptor_.grad()->array()->clear();
   } else {
     backward_channel_first(inputs, outputs, propagate_down, accum);
   }
@@ -518,6 +536,11 @@ void GroupNormalizationCuda<T>::backward_channel_first(
           gamma_invstd, factor1, factor2, dx);
       NBLA_CUDA_KERNEL_CHECK();
     }
+
+    // Clear internal buffer
+    gamma_invstd_.data()->array()->clear();
+    factor1_.data()->array()->clear();
+    factor2_.data()->array()->clear();
   }
 
   if ((inputs.size() > 1 && propagate_down[1]) ||
@@ -565,6 +588,10 @@ void GroupNormalizationCuda<T>::backward_channel_first(
       }
     }
     NBLA_CUDA_KERNEL_CHECK();
+
+    // Clear internal buffer
+    sum_dy_.data()->array()->clear();
+    sum_dyx_.data()->array()->clear();
   }
 
   // Clear internal buffer
