@@ -23,7 +23,7 @@ namespace nbla {
 template <typename T>
 class InstanceNormalizationCuda : public InstanceNormalization<T> {
 public:
-  typedef typename CudaType<T>::type Tc;
+  using Tc = typename CudaType<T>::type;
 
   explicit InstanceNormalizationCuda(const Context &ctx, int channel_axis,
                                      const vector<int> &batch_axis, float eps,
@@ -40,8 +40,7 @@ public:
 protected:
   int device_;
   Variable mean_, var_;
-
-  // Internal buffres for forward
+  float inv_reduce_size_;
   Size_t reduce_size_, outer_size_;
 
   // Internal buffres for backward
@@ -49,8 +48,9 @@ protected:
   Variable factor_a_, factor_b_;
 
   // Adaptor for channel-last format
-  bool need_adaptor_;
-  std::shared_ptr<ChannelFirstAdaptor> adaptor_;
+  bool need_adaptor_; // true: non channel-first (most case channel-last),
+                      // false: already channel-first
+  ChannelFirstAdaptorPtr adaptor_;
   Variable pre_adaptor_, post_adaptor_;
 
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);

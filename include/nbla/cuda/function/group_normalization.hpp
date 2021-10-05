@@ -24,7 +24,7 @@ namespace nbla {
 template <typename T>
 class GroupNormalizationCuda : public GroupNormalization<T> {
 public:
-  typedef typename CudaType<T>::type Tc;
+  using Tc = typename CudaType<T>::type;
 
   explicit GroupNormalizationCuda(const Context &ctx, int num_groups,
                                   int channel_axis,
@@ -42,6 +42,7 @@ public:
 protected:
   int device_;
   Size_t reduce_size_, outer_size_, channel_size_, batch_size_;
+  float inv_reduce_size_;
   Variable mean_, var_;
 
   // Internal buffres for forward
@@ -53,8 +54,9 @@ protected:
   Variable factor1_, factor2_;
 
   // Adaptor for channel-last format
-  bool need_adaptor_;
-  std::shared_ptr<ChannelFirstAdaptor> adaptor_;
+  bool need_adaptor_; // true: non channel-first (most case channel-last),
+                      // false: already channel-first
+  ChannelFirstAdaptorPtr adaptor_;
   Variable pre_adaptor_, post_adaptor_;
 
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);

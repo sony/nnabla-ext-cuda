@@ -1,4 +1,4 @@
-// Copyright (c) 2017 Sony Corporation. All Rights Reserved.
+// Copyright 2021 Sony Group Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef __NBLA_CUDA_UTILS_TYPES_CUH__
-#define __NBLA_CUDA_UTILS_TYPES_CUH__
+#ifndef __NBLA_CUDA_UTILS_REDUCE_OPS_INSTANCE_NORMLIZATION_CUH__
+#define __NBLA_CUDA_UTILS_REDUCE_OPS_INSTANCE_NORMLIZATION_CUH__
+
+#include <nbla/cuda/utils/reduce_ops/group_normalization.cuh>
 
 namespace nbla {
-struct floatint {
-  float f;
-  int i;
-};
 
-template <typename IndexT> struct WelfordType {
-  float mean;
-  float m2;
-  IndexT n;
-};
+// InstanceNormalization can use a same operator for backward reduction.
+template <typename Tcu, typename IndexT> using INGradOp = GNGradOp<Tcu, IndexT>;
 }
-
 #endif

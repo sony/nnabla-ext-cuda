@@ -16,23 +16,28 @@
 
 namespace nbla {
 
-template <typename T, typename index_t>
+// Use custom maximum blocks constant because NBLA_CUDA_MAX_BLOCKS is 65536
+// which does not match official CUDA document.
+constexpr size_t NBLA_CUDA_LN_MAX_BLOCKS = 65535;
+constexpr size_t NBLA_CUDA_LN_NUM_THREADS = NBLA_CUDA_NUM_THREADS;
+
+template <typename T, typename IndexT>
 __global__ void
-layer_norm_forward_normalization(const index_t outer_size,
-                                 const index_t reduce_size, const T *x,
+layer_norm_forward_normalization(const IndexT outer_size,
+                                 const IndexT reduce_size, const T *x,
                                  const T *mean, const T *var, const T *beta,
                                  const T *gamma, T *y, const float eps) {
 
-  const index_t bidy = blockIdx.y;
-  const index_t gdimy = gridDim.y;
-  const index_t tidx = threadIdx.x;
-  const index_t bdimx = blockDim.x;
+  const IndexT bidy = blockIdx.y;
+  const IndexT gdimy = gridDim.y;
+  const IndexT tidx = threadIdx.x;
+  const IndexT bdimx = blockDim.x;
 
   // Grid-stride loop
-  for (index_t outer_idx = blockIdx.x; outer_idx < outer_size;
+  for (IndexT outer_idx = blockIdx.x; outer_idx < outer_size;
        outer_idx += gridDim.x) {
-    for (index_t i = tidx + bdimx * bidy; i < reduce_size; i += bdimx * gdimy) {
-      const index_t idx = outer_idx * reduce_size + i;
+    for (IndexT i = tidx + bdimx * bidy; i < reduce_size; i += bdimx * gdimy) {
+      const IndexT idx = outer_idx * reduce_size + i;
       const T scale = gamma ? gamma[i] : (T)1.0f;
       const T bias = beta ? beta[i] : (T)0.0f;
       const T invstd = rsqrt(var[outer_idx] + eps);
@@ -42,16 +47,15 @@ layer_norm_forward_normalization(const index_t outer_size,
   }
 }
 
-template <typename T, typename index_t>
+template <typename T, typename IndexT>
 __global__ void layer_norm_backward_dx_factor(
-    const index_t batch_size, const index_t reduce_size, const T *mean,
+    const IndexT batch_size, const float inv_reduce_size, const T *mean,
     const T *var, const T *dmean, const T *dvar, const T *sum_dygamma,
     const T *sum_dyxgamma, T *factor_a, T *factor_b, const float eps) {
 
   // Grid-stride loop
-  for (index_t idx = blockIdx.x * blockDim.x + threadIdx.x; idx < batch_size;
+  for (IndexT idx = blockIdx.x * blockDim.x + threadIdx.x; idx < batch_size;
        idx += gridDim.x * blockDim.x) {
-    const float inv_reduce_size = 1.0f / reduce_size;
     const float invstd = rsqrt(var[idx] + eps);
 
     const float tmp = (sum_dygamma[idx] * mean[idx] - sum_dyxgamma[idx]) *
@@ -65,22 +69,22 @@ __global__ void layer_norm_backward_dx_factor(
   }
 }
 
-template <bool accum, typename T, typename index_t>
+template <bool accum, typename T, typename IndexT>
 __global__ void
-layer_norm_backward_dx(const index_t outer_size, const index_t reduce_size,
+layer_norm_backward_dx(const IndexT outer_size, const IndexT reduce_size,
                        const T *x, const T *dy, const T *gamma, const T *var,
                        const T *factor_a, const T *factor_b, T *dx,
                        const float eps) {
-  const index_t bidy = blockIdx.y;
-  const index_t gdimy = gridDim.y;
-  const index_t tidx = threadIdx.x;
-  const index_t bdimx = blockDim.x;
+  const IndexT bidy = blockIdx.y;
+  const IndexT gdimy = gridDim.y;
+  const IndexT tidx = threadIdx.x;
+  const IndexT bdimx = blockDim.x;
 
   // Grid-stride loop
-  for (index_t outer_idx = blockIdx.x; outer_idx < outer_size;
+  for (IndexT outer_idx = blockIdx.x; outer_idx < outer_size;
        outer_idx += gridDim.x) {
-    for (index_t i = tidx + bdimx * bidy; i < reduce_size; i += bdimx * gdimy) {
-      const index_t idx = outer_idx * reduce_size + i;
+    for (IndexT i = tidx + bdimx * bidy; i < reduce_size; i += bdimx * gdimy) {
+      const IndexT idx = outer_idx * reduce_size + i;
       const T scale = gamma ? gamma[i] : (T)1.0f;
       const T invstd = rsqrt(var[outer_idx] + eps);
 
@@ -90,19 +94,17 @@ layer_norm_backward_dx(const index_t outer_size, const index_t reduce_size,
   }
 }
 
-template <bool accum_beta, bool accum_gamma, typename T, typename index_t>
-__global__ void
-layer_norm_backward_dbeta_dgamma(const index_t batch_size,
-                                 const index_t reduce_size, const T *x,
-                                 const T *dy, const T *mean, const T *var,
-                                 T *dbeta_out, T *dgamma_out, const float eps) {
+template <bool accum_beta, bool accum_gamma, typename T, typename IndexT>
+__global__ void layer_norm_backward_dbeta_dgamma(
+    const IndexT batch_size, const IndexT reduce_size, const T *x, const T *dy,
+    const T *mean, const T *var, T *dbeta_out, T *dgamma_out, const float eps) {
   // Grid-stride loop
-  for (index_t idx = blockIdx.x * blockDim.x + threadIdx.x; idx < reduce_size;
+  for (IndexT idx = blockIdx.x * blockDim.x + threadIdx.x; idx < reduce_size;
        idx += gridDim.x * blockDim.x) {
     float dbeta = 0.0f;
     float dgamma = 0.0f;
-    for (index_t i = 0; i < batch_size; i++) {
-      const index_t global_idx = i * reduce_size + idx;
+    for (IndexT i = 0; i < batch_size; i++) {
+      const IndexT global_idx = i * reduce_size + idx;
       const float invstd = rsqrt(var[i] + eps);
       dbeta += static_cast<float>(dy[global_idx]);
       dgamma += dy[global_idx] * (x[global_idx] - mean[i]) * invstd;

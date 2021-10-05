@@ -29,7 +29,12 @@ public:
                                        const vector<int> &batch_axis, float eps,
                                        bool no_scale, bool no_bias)
       : LayerNormalizationCuda<T>(ctx, batch_axis, eps, no_scale, no_bias),
-        device_(std::stoi(ctx.device_id)) {}
+        device_(std::stoi(ctx.device_id)) {
+    // Currently, the CUDA C implementation is faster than one using cuDNN
+    // BatchNormalization.
+    this->fall_back_func_ = make_shared<LayerNormalizationCuda<T>>(
+        ctx, batch_axis, eps, no_scale, no_bias);
+  }
   virtual ~LayerNormalizationCudaCudnn() {}
   virtual string name() { return "LayerNormalizationCudaCudnn"; }
   virtual vector<string> allowed_array_classes() {

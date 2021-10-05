@@ -31,7 +31,12 @@ public:
                                        bool no_scale, bool no_bias)
       : GroupNormalizationCuda<T>(ctx, num_groups, channel_axis, batch_axis,
                                   eps, no_scale, no_bias),
-        device_(std::stoi(ctx.device_id)) {}
+        device_(std::stoi(ctx.device_id)) {
+    // Currently, the CUDA C implementation is faster than one using cuDNN
+    // BatchNormalization.
+    this->fall_back_func_ = make_shared<GroupNormalizationCuda<T>>(
+        ctx, num_groups, channel_axis, batch_axis, eps, no_scale, no_bias);
+  }
   virtual ~GroupNormalizationCudaCudnn() {}
   virtual string name() { return "GroupNormalizationCudaCudnn"; }
   virtual vector<string> allowed_array_classes() {

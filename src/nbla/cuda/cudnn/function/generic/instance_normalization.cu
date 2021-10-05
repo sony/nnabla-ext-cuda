@@ -25,10 +25,15 @@ namespace nbla {
 template <typename T>
 void InstanceNormalizationCudaCudnn<T>::setup_impl(const Variables &inputs,
                                                    const Variables &outputs) {
+#if IN_USE_CUDNN
+#if CUDNN_VERSION < 5000
+  NBLA_ERROR(error_code::not_implemented,
+             "In CUDNN_VERSION < 5000, InstanceNormalizationCudaCudnn must be "
+             "fallen back into InstanceNormalizationCuda since cuDNN "
+             "BatchNormalization does not exist in this cuDNN version.")
+#endif
   InstanceNormalizationCuda<T>::setup_impl(inputs, outputs);
   cuda_set_device(this->device_);
-
-#ifdef IN_USE_CUDNN
 
   if (outputs.size() == 3) {
     // [WORKAROUND]
@@ -87,15 +92,22 @@ void InstanceNormalizationCudaCudnn<T>::setup_impl(const Variables &inputs,
   beta_dummy_.reshape({outer_size_}, true);
   gamma_dummy_.reshape({outer_size_}, true);
 
+#else
+  NBLA_ERROR(error_code::not_implemented,
+             "Falling back into CUDA C implementation.")
 #endif
 }
 
 template <typename T>
 void InstanceNormalizationCudaCudnn<T>::forward_channel_first(
     const Variables &inputs, const Variables &outputs) {
-#ifndef IN_USE_CUDNN
-  InstanceNormalizationCuda<T>::forward_channel_first(inputs, outputs);
-#else
+#if IN_USE_CUDNN
+#if CUDNN_VERSION < 5000
+  NBLA_ERROR(error_code::not_implemented,
+             "In CUDNN_VERSION < 5000, InstanceNormalizationCudaCudnn must be "
+             "fallen back into InstanceNormalizationCuda since cuDNN "
+             "BatchNormalization does not exist in this cuDNN version.")
+#endif
   Variable *batch_mean = &this->mean_;
   Variable *batch_var = &this->var_;
 
@@ -147,6 +159,9 @@ void InstanceNormalizationCudaCudnn<T>::forward_channel_first(
   NBLA_CUDNN_CHECK(cudnnBatchNormalizationForwardTraining(
       cudnn_handle_, mode_, &a, &b, input_desc_.desc, x, output_desc_.desc, y,
       bn_scale_bias_mean_var_desc_.desc, gamma, beta, 0, rm, rv, eps, m, v));
+#else
+  NBLA_ERROR(error_code::not_implemented,
+             "Falling back into CUDA C implementation.")
 #endif
 }
 
@@ -154,10 +169,13 @@ template <typename T>
 void InstanceNormalizationCudaCudnn<T>::backward_channel_first(
     const Variables &inputs, const Variables &outputs,
     const vector<bool> &propagate_down, const vector<bool> &accum) {
-#ifndef IN_USE_CUDNN
-  InstanceNormalizationCuda<T>::backward_channel_first(inputs, outputs,
-                                                       propagate_down, accum);
-#else
+#if IN_USE_CUDNN
+#if CUDNN_VERSION < 5000
+  NBLA_ERROR(error_code::not_implemented,
+             "In CUDNN_VERSION < 5000, InstanceNormalizationCudaCudnn must be "
+             "fallen back into InstanceNormalizationCuda since cuDNN "
+             "BatchNormalization does not exist in this cuDNN version.")
+#endif
   const bool pd_beta = !this->no_bias_ && propagate_down[this->b_idx_];
   const bool pd_gamma = !this->no_scale_ && propagate_down[this->g_idx_];
 
@@ -183,8 +201,7 @@ void InstanceNormalizationCudaCudnn<T>::backward_channel_first(
 
   size_t prop_down_workspace_size = 0;
   if (!propagate_down[0]) {
-    prop_down_workspace_size = std::max(
-        prop_down_workspace_size, inputs[0]->size() * sizeof_dtype(DRV_BN_T()));
+    prop_down_workspace_size = inputs[0]->size() * sizeof_dtype(DRV_BN_T());
   }
   if (!pd_beta || !pd_gamma) {
     prop_down_workspace_size = std::max(prop_down_workspace_size,
@@ -234,6 +251,9 @@ void InstanceNormalizationCudaCudnn<T>::backward_channel_first(
       cudnn_handle_, mode_, &a_data, &b_data, &a_param, &b_param,
       input_desc_.desc, x, output_desc_.desc, dy, input_desc_.desc, dx,
       bn_scale_bias_mean_var_desc_.desc, gamma, dg, db, eps, m, v));
+#else
+  NBLA_ERROR(error_code::not_implemented,
+             "Falling back into CUDA C implementation.")
 #endif
 }
 }

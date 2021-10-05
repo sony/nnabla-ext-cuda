@@ -20,6 +20,8 @@
 // Kernels and ops
 #include <nbla/cuda/function/kernel/layer_normalization.cuh>
 #include <nbla/cuda/function/kernel/normalization.cuh>
+#include <nbla/cuda/utils/reduce_ops/layer_normalization.cuh>
+#include <nbla/cuda/utils/reduce_ops/welford.cuh>
 
 namespace nbla {
 
@@ -40,6 +42,7 @@ void LayerNormalizationCuda<T>::setup_impl(const Variables &inputs,
   }
 
   reduce_size_ = x_size / batch_size_;
+  inv_reduce_size_ = 1.0f / reduce_size_;
 
   //----------------
   // Reshape buffers
@@ -55,10 +58,6 @@ void LayerNormalizationCuda<T>::setup_impl(const Variables &inputs,
   factor_a_.reshape({batch_size_}, true);
   factor_b_.reshape({batch_size_}, true);
 }
-
-constexpr size_t LN_NUM_THREADS = NBLA_CUDA_NUM_THREADS;
-// constexpr size_t LN_MAX_BLOCKS = NBLA_CUDA_MAX_BLOCKS;
-constexpr size_t LN_MAX_BLOCKS = 65535;
 
 template <typename T>
 void LayerNormalizationCuda<T>::forward_impl(const Variables &inputs,
@@ -76,11 +75,12 @@ void LayerNormalizationCuda<T>::forward_impl(const Variables &inputs,
   // Calculate mean and variance
   {
     const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
-    Tc *mean = v_mean->cast_data_and_get_pointer<Tc>(this->ctx_);
-    Tc *var = v_var->cast_data_and_get_pointer<Tc>(this->ctx_);
+    Tc *mean = v_mean->cast_data_and_get_pointer<Tc>(this->ctx_, true);
+    Tc *var = v_var->cast_data_and_get_pointer<Tc>(this->ctx_, true);
 
-    const auto grid = std::min(batch_size_, static_cast<Size_t>(LN_MAX_BLOCKS));
-    const auto block = LN_NUM_THREADS;
+    const auto grid =
+        std::min(batch_size_, static_cast<Size_t>(NBLA_CUDA_LN_MAX_BLOCKS));
+    const auto block = NBLA_CUDA_LN_NUM_THREADS;
 
     WelfordOp<Tc, Size_t> op(x, mean, var, reduce_size_);
     reduce_2d_x<<<grid, block>>>(op, batch_size_, reduce_size_);
@@ -101,15 +101,16 @@ void LayerNormalizationCuda<T>::forward_impl(const Variables &inputs,
     const Tc *gamma = this->no_scale_
                           ? nullptr
                           : inputs[gamma_idx]->get_data_pointer<Tc>(this->ctx_);
-    Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_);
+    Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
 
-    const size_t elements_per_grid_y = LN_NUM_THREADS * 4;
+    const size_t elements_per_grid_y = NBLA_CUDA_LN_NUM_THREADS * 4;
     dim3 grid;
-    grid.x = std::min(batch_size_, static_cast<Size_t>(LN_MAX_BLOCKS));
+    grid.x =
+        std::min(batch_size_, static_cast<Size_t>(NBLA_CUDA_LN_MAX_BLOCKS));
     grid.y = std::min(NBLA_CEIL_SIZE_T_DIV(reduce_size_, elements_per_grid_y),
-                      static_cast<Size_t>(LN_MAX_BLOCKS));
+                      static_cast<Size_t>(NBLA_CUDA_LN_MAX_BLOCKS));
     grid.z = 1;
-    const auto block = LN_NUM_THREADS;
+    const auto block = NBLA_CUDA_LN_NUM_THREADS;
 
     layer_norm_forward_normalization<<<grid, block>>>(
         batch_size_, reduce_size_, x, mean, var, beta, gamma, y, this->eps_);
@@ -144,11 +145,14 @@ void LayerNormalizationCuda<T>::backward_impl(
                           ? nullptr
                           : inputs[gamma_idx]->get_data_pointer<Tc>(this->ctx_);
     const Tc *dy = outputs[0]->get_grad_pointer<Tc>(this->ctx_);
-    Tc *sum_dygamma = sum_dygamma_.cast_data_and_get_pointer<Tc>(this->ctx_);
-    Tc *sum_dyxgamma = sum_dyxgamma_.cast_data_and_get_pointer<Tc>(this->ctx_);
+    Tc *sum_dygamma =
+        sum_dygamma_.cast_data_and_get_pointer<Tc>(this->ctx_, true);
+    Tc *sum_dyxgamma =
+        sum_dyxgamma_.cast_data_and_get_pointer<Tc>(this->ctx_, true);
 
-    const auto grid = std::min(batch_size_, static_cast<Size_t>(LN_MAX_BLOCKS));
-    const auto block = LN_NUM_THREADS;
+    const auto grid =
+        std::min(batch_size_, static_cast<Size_t>(NBLA_CUDA_LN_MAX_BLOCKS));
+    const auto block = NBLA_CUDA_LN_NUM_THREADS;
 
     LNGradOp<Tc, Size_t> op(x, gamma, dy, sum_dygamma, sum_dyxgamma);
     reduce_2d_x<<<grid, block>>>(op, batch_size_, reduce_size_);
@@ -167,16 +171,16 @@ void LayerNormalizationCuda<T>::backward_impl(
     const Tc *sum_dygamma = sum_dygamma_.get_data_pointer<Tc>(this->ctx_);
     const Tc *sum_dyxgamma = sum_dyxgamma_.get_data_pointer<Tc>(this->ctx_);
 
-    Tc *factor_a = factor_a_.cast_data_and_get_pointer<Tc>(this->ctx_);
-    Tc *factor_b = factor_b_.cast_data_and_get_pointer<Tc>(this->ctx_);
+    Tc *factor_a = factor_a_.cast_data_and_get_pointer<Tc>(this->ctx_, true);
+    Tc *factor_b = factor_b_.cast_data_and_get_pointer<Tc>(this->ctx_, true);
 
-    const auto grid = std::min(
-        static_cast<Size_t>(LN_MAX_BLOCKS),
-        static_cast<Size_t>(NBLA_CEIL_SIZE_T_DIV(batch_size_, LN_NUM_THREADS)));
-    const auto block = LN_NUM_THREADS;
+    const auto grid = std::min(static_cast<Size_t>(NBLA_CUDA_LN_MAX_BLOCKS),
+                               static_cast<Size_t>(NBLA_CEIL_SIZE_T_DIV(
+                                   batch_size_, NBLA_CUDA_LN_NUM_THREADS)));
+    const auto block = NBLA_CUDA_LN_NUM_THREADS;
 
     layer_norm_backward_dx_factor<<<grid, block>>>(
-        batch_size_, reduce_size_, mean, var, dmean, dvar, sum_dygamma,
+        batch_size_, inv_reduce_size_, mean, var, dmean, dvar, sum_dygamma,
         sum_dyxgamma, factor_a, factor_b, this->eps_);
     NBLA_CUDA_KERNEL_CHECK();
 
@@ -199,13 +203,14 @@ void LayerNormalizationCuda<T>::backward_impl(
 
     Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_, !accum[0]);
 
-    const size_t elements_per_grid_y = LN_NUM_THREADS * 4;
+    const Size_t elements_per_grid_y = NBLA_CUDA_LN_NUM_THREADS * 4;
     dim3 grid;
-    grid.x = std::min(batch_size_, static_cast<Size_t>(LN_MAX_BLOCKS));
+    grid.x =
+        std::min(batch_size_, static_cast<Size_t>(NBLA_CUDA_LN_MAX_BLOCKS));
     grid.y = std::min(NBLA_CEIL_SIZE_T_DIV(reduce_size_, elements_per_grid_y),
-                      static_cast<Size_t>(LN_MAX_BLOCKS));
+                      static_cast<Size_t>(NBLA_CUDA_LN_MAX_BLOCKS));
     grid.z = 1;
-    const auto block = LN_NUM_THREADS;
+    const auto block = NBLA_CUDA_LN_NUM_THREADS;
 
     auto kernel = accum[0] ? layer_norm_backward_dx<true, Tc, Size_t>
                            : layer_norm_backward_dx<false, Tc, Size_t>;
@@ -237,10 +242,10 @@ void LayerNormalizationCuda<T>::backward_impl(
                            this->ctx_, !accum[gamma_idx])
                      : nullptr;
 
-    const auto grid = std::min(static_cast<Size_t>(LN_MAX_BLOCKS),
+    const auto grid = std::min(static_cast<Size_t>(NBLA_CUDA_LN_MAX_BLOCKS),
                                static_cast<Size_t>(NBLA_CEIL_SIZE_T_DIV(
-                                   reduce_size_, LN_NUM_THREADS)));
-    const auto block = LN_NUM_THREADS;
+                                   reduce_size_, NBLA_CUDA_LN_NUM_THREADS)));
+    const auto block = NBLA_CUDA_LN_NUM_THREADS;
 
     // Select kernels by accum combination.
     auto kernel = layer_norm_backward_dbeta_dgamma<true, true, Tc, Size_t>;

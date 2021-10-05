@@ -23,27 +23,22 @@ namespace nbla {
 template <typename T>
 void GroupNormalizationCudaCudnn<T>::setup_impl(const Variables &inputs,
                                                 const Variables &outputs) {
-  GroupNormalizationCuda<T>::setup_impl(inputs, outputs);
-  cuda_set_device(this->device_);
+  NBLA_ERROR(error_code::not_implemented,
+             "Falling back into CUDA C implementation.")
 }
 
 template <typename T>
 void GroupNormalizationCudaCudnn<T>::forward_impl(const Variables &inputs,
                                                   const Variables &outputs) {
-  cuda_set_device(this->device_);
-  GroupNormalizationCuda<T>::forward_impl(inputs, outputs);
+  NBLA_ERROR(error_code::not_implemented,
+             "Falling back into CUDA C implementation.")
 }
 
 template <typename T>
 void GroupNormalizationCudaCudnn<T>::backward_impl(
     const Variables &inputs, const Variables &outputs,
     const vector<bool> &propagate_down, const vector<bool> &accum) {
-  if (!(propagate_down[0] || (inputs.size() > 1 && propagate_down[1]) ||
-        (inputs.size() > 2 && propagate_down[2]))) {
-    return;
-  }
-  cuda_set_device(this->device_);
-  GroupNormalizationCuda<T>::backward_impl(inputs, outputs, propagate_down,
-                                           accum);
+  NBLA_ERROR(error_code::not_implemented,
+             "Falling back into CUDA C implementation.")
 }
 }
