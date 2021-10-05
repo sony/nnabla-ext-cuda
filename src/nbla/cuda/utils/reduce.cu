@@ -1,4 +1,4 @@
-// Copyright (c) 2017 Sony Corporation. All Rights Reserved.
+// Copyright (c) 2021 Sony Corporation. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,11 +17,13 @@
 
 namespace nbla {
 
+using std::vector;
+
 /** This class perform the dimensional compression of the input shape
-    to simplify the reduction computation and achive the integrated dimension
+    to simplify the reduction computation and achieve the integrated dimension
     for the implemented reduction algorithm.
 
-    - The adjascent dimensions with the same property (reduce or not reduce)
+    - The adjacent dimensions with the same property (reduce or not reduce)
       can be integrated into a single dimension.
     - The dimension of size 1 can be ignored.
  */
@@ -31,9 +33,9 @@ class Compressor {
 
   void compress(const Shape_t &shape_input, const Shape_t &reduce_axes) {
     // Flag in the dimensions to be reduced.
-    Shape_t reduce_flags(shape_input.size(), 0);
+    vector<bool> reduce_flags(shape_input.size(), false);
     for (const auto reduce_axis : reduce_axes) {
-      reduce_flags[reduce_axis] = 1;
+      reduce_flags[reduce_axis] = true;
     }
 
     // Compression
@@ -45,7 +47,7 @@ class Compressor {
       if (reduce_flags[i] != reduce_flags[i + 1]) {
         // Stop compression and store the integreted dimension.
         compressed_shape_input_.push_back(compressing_size);
-        if (reduce_flags[i] == 1) {
+        if (reduce_flags[i]) {
           compressed_reduce_axes_.push_back(compressed_shape_input_.size() - 1);
         }
         compressing_size = 1; // Reset
@@ -57,22 +59,22 @@ class Compressor {
       // Stop the last compression and store the integreted dimension.
       compressing_size *= shape_input[reduce_flags.size() - 1];
       compressed_shape_input_.push_back(compressing_size);
-      if (reduce_flags[reduce_flags.size() - 1] == 1) {
+      if (reduce_flags.back()) {
         compressed_reduce_axes_.push_back(compressed_shape_input_.size() - 1);
       }
     }
   }
 
   void ignore_1(Shape_t &ignored_shape_input, Shape_t &ignored_reduce_axes) {
-    Shape_t reduce_flags(compressed_shape_input_.size(), 0);
+    vector<bool> reduce_flags(compressed_shape_input_.size(), false);
     for (const auto reduce_axis : compressed_reduce_axes_) {
-      reduce_flags[reduce_axis] = 1;
+      reduce_flags[reduce_axis] = true;
     }
 
     for (Size_t i = 0; i < reduce_flags.size(); ++i) {
       if (compressed_shape_input_[i] != 1) {
         ignored_shape_input.push_back(compressed_shape_input_[i]);
-        if (reduce_flags[i] == 1) {
+        if (reduce_flags[i]) {
           ignored_reduce_axes.push_back(ignored_shape_input.size() - 1);
         }
       }
@@ -100,14 +102,17 @@ void ReduceSetup::operator()(const Shape_t &shape_input,
                                std::multiplies<Size_t>());
 
   // Use 32-bit indexing if possible to reduce the register consumption of
-  // reduction CUDA kernel and to achive more parallelism.
-  if (size_input > UINT_MAX) {
+  // reduction CUDA kernel and to achieve more parallelism.
+  if (size_input > std::numeric_limits<uint32_t>::max()) {
     require_64bit_index = true;
   } else {
     require_64bit_index = false;
   }
 
   // Debug code
+  // The code path using Size_t for indexing is difficult for testing because
+  // it requires the large GPU memory usage. The following code can be used
+  // to test the Size_t code path for developer.
   // std::cout << "Force Size_t" << std::endl;
   // require_64bit_index_ = true;
 

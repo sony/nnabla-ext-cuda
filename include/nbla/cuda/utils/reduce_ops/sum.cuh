@@ -1,4 +1,4 @@
-// Copyright (c) 2017 Sony Corporation. All Rights Reserved.
+// Copyright (c) 2021 Sony Corporation. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,22 +37,23 @@ public:
   ReduceOpSum(const Tcu *const in, Tcu *const out)
       : ReduceOpBase<ReduceOpSumLikeType<T, U>>(in, out, nullptr) {}
 
-  __device__ StorageT make_strage(const Tcu v, const IndexT idx) override {
+  __device__ StorageT make_storage(const Tcu v, const IndexT idx) override {
     return StorageT(v);
   }
 
   __device__ StorageT init() override { return StorageT(0); }
 
-  __device__ StorageT operator()(const StorageT a, const StorageT b) override {
+  __device__ StorageT operator()(const StorageT &a,
+                                 const StorageT &b) override {
     return a + b;
   }
 
-  __device__ void store(const IndexT idx, const StorageT v) override {
+  __device__ void store(const IndexT idx, const StorageT &v) override {
     this->output_[idx] = v;
   }
 
   __device__ void intermediate_store(const IndexT idx,
-                                     const StorageT v) override {
+                                     const StorageT &v) override {
     this->buf[idx] = v;
   }
 };

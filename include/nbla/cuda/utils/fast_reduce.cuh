@@ -17,10 +17,14 @@
 
 #include <assert.h>
 #include <nbla/cuda/common.hpp>
-#include <nbla/cuda/utils/index_convertor.cuh>
+#include <nbla/cuda/math.hpp>
+#include <nbla/cuda/utils/index_converter.cuh>
 #include <nbla/cuda/utils/reduce.hpp>
 #include <nbla/cuda/utils/warp_shuffle.cuh>
 #include <numeric>
+
+// TODO: Rename fast_reduct to device_reduce after removing other duplicated
+// reduction source codes.
 
 namespace nbla {
 
@@ -48,8 +52,8 @@ template <int unroll_size, class Op>
 __device__ typename Op::StorageT kernel_thread_reduce(
     Op op, typename Op::IndexT inner_idx, const typename Op::IndexT outer_idx,
     const typename Op::IndexT inner_size, const int inner_grid_stride,
-    const IndexConvertor<typename Op::IndexT> inner_idx_conv,
-    const IndexConvertor<typename Op::IndexT> outer_idx_conv) {
+    const IndexConverter<typename Op::IndexT> inner_idx_conv,
+    const IndexConverter<typename Op::IndexT> outer_idx_conv) {
   using StorageT = typename Op::StorageT;
   using IndexT = typename Op::IndexT;
 
@@ -69,8 +73,8 @@ __device__ typename Op::StorageT kernel_thread_reduce(
       // Load first. The loads become independent and the latencies are hidden.
       IndexT global_idx = inner_idx_conv.change_strides(
           global_outer_idx, inner_idx + inner_grid_stride * i);
-      loader[i] = op.make_strage(op.input[global_idx],
-                                 inner_idx + inner_grid_stride * i);
+      loader[i] = op.make_storage(op.input[global_idx],
+                                  inner_idx + inner_grid_stride * i);
     }
 #pragma unroll
     for (int i = 0; i < unroll_size; i++) {
@@ -81,7 +85,7 @@ __device__ typename Op::StorageT kernel_thread_reduce(
 
 #pragma unroll
   for (int i = 0; i < unroll_size; i++) {
-    // Load of the tail misaligned emelemnts
+    // Load of the tail misaligned elements
     // This loop unroll keeps "reduced" in register cache. If no loop unroll,
     // it is located in local memory, causing bad performance.
     const IndexT idx = inner_idx + inner_grid_stride * i;
@@ -89,7 +93,7 @@ __device__ typename Op::StorageT kernel_thread_reduce(
       break;
     }
     IndexT global_idx = inner_idx_conv.change_strides(global_outer_idx, idx);
-    reduced[i] = op(reduced[i], op.make_strage(op.input[global_idx], idx));
+    reduced[i] = op(reduced[i], op.make_storage(op.input[global_idx], idx));
   }
 
 #pragma unroll
@@ -115,7 +119,7 @@ __device__ typename Op::StorageT kernel_vectrized_thread_reduce_x(
     reduced[i] = op.init();
   }
 
-  // Load of the head misaligned emelemnts
+  // Load of the head misaligned elements
   auto input_slice = op.input + inner_size * outer_idx;
   constexpr int align_byte = sizeof(VecT);
   constexpr int elem_byte = sizeof(typename Op::Tcu);
@@ -123,11 +127,11 @@ __device__ typename Op::StorageT kernel_vectrized_thread_reduce_x(
   auto num_heads = (int64_t)input_slice % align_byte / elem_byte;
   if (num_heads > 0) {
     num_heads = aligned_elems - num_heads;
-    // assert(blockDim.x * gridDim.x >= vec_size);
+    // Assuming blockDim.x * gridDim.x >= vec_size;
     if (inner_idx < num_heads) {
       reduced[inner_idx] =
           op(reduced[inner_idx],
-             op.make_strage(input_slice[inner_idx], inner_idx));
+             op.make_storage(input_slice[inner_idx], inner_idx));
     }
     // Make aligned address
     input_slice += num_heads;
@@ -145,18 +149,18 @@ __device__ typename Op::StorageT kernel_vectrized_thread_reduce_x(
 #pragma unroll
     for (int i = 0; i < vec_size; i++) {
       reduced[i] =
-          op(reduced[i],
-             op.make_strage(load_reg[i], num_heads + i + vec_size * inner_idx));
+          op(reduced[i], op.make_storage(load_reg[i],
+                                         num_heads + i + vec_size * inner_idx));
     }
   }
 
-  // Load of the tail misaligned emelemnts
-  // assert(blockDim.x >= vec_size)
+  // Load of the tail misaligned elements
+  // Assuming blockDim.x >= vec_size.
   const IndexT idx =
       vec_size * IndexT((inner_size - num_heads) / vec_size) + threadIdx.x;
   if (blockIdx.x == 0 && num_heads + idx < inner_size) {
     reduced[0] =
-        op(reduced[0], op.make_strage(input_slice[idx], num_heads + idx));
+        op(reduced[0], op.make_storage(input_slice[idx], num_heads + idx));
   }
 
   for (int i = 1; i < vec_size; i++) {
@@ -166,28 +170,10 @@ __device__ typename Op::StorageT kernel_vectrized_thread_reduce_x(
   return reduced[0];
 }
 
-template <class T> __device__ T kernel_shuffle_down_1(T val, const int offset) {
-  int val1 = *reinterpret_cast<int *>(&val);
-  int v = warp::shuffle_down(val1, offset);
-  return *reinterpret_cast<T *>(&v);
-}
-
-template <class T> __device__ T kernel_shuffle_down_2(T val, const int offset) {
-  float2 val2 = *reinterpret_cast<float2 *>(&val);
-  float2 v = warp::shuffle_down(val2, offset);
-  return *reinterpret_cast<T *>(&v);
-}
-
-template <class T> __device__ T kernel_shuffle_down_4(T val, const int offset) {
-  float4 val4 = *reinterpret_cast<float4 *>(&val);
-  float4 v = warp::shuffle_down(val4, offset);
-  return *reinterpret_cast<T *>(&v);
-}
-
-template <class T>
-__device__ T kernel_shuffle_down_half(T val, const int offset) {
-  half val1 = *reinterpret_cast<half *>(&val);
-  half v = warp::shuffle_down(val1, offset);
+template <class SHFL_T, class T>
+__device__ T kernel_shuffle_down(T val, const int offset) {
+  SHFL_T shfl_v = *reinterpret_cast<SHFL_T *>(&val);
+  SHFL_T v = warp::shuffle_down(shfl_v, offset);
   return *reinterpret_cast<T *>(&v);
 }
 
@@ -198,13 +184,13 @@ __device__ typename Op::StorageT kernel_warp_reduce(Op op,
 #pragma unroll
   for (int offset = CUDA_WARP_SIZE / 2; offset > 0; offset /= 2) {
     if (sizeof(StorageT) == 16) {
-      val = op(val, kernel_shuffle_down_4(val, offset));
+      val = op(val, kernel_shuffle_down<float4>(val, offset));
     } else if (sizeof(StorageT) == 8) {
-      val = op(val, kernel_shuffle_down_2(val, offset));
+      val = op(val, kernel_shuffle_down<float2>(val, offset));
     } else if (sizeof(StorageT) == 4) {
-      val = op(val, kernel_shuffle_down_1(val, offset));
+      val = op(val, kernel_shuffle_down<float>(val, offset));
     } else if (sizeof(StorageT) == 2) {
-      val = op(val, kernel_shuffle_down_half(val, offset));
+      val = op(val, kernel_shuffle_down<half>(val, offset));
     } else {
       assert(false);
     }
@@ -221,17 +207,17 @@ kernel_block_reduce_xy(Op op, typename Op::StorageT reduced,
     const int block_local_idx = threadIdx.x + blockDim.x * threadIdx.y;
     sbuf[block_local_idx] = reduced;
 
+    __syncthreads();
+
 #pragma unroll
     for (int offset = blockDim.x / 2; offset >= CUDA_WARP_SIZE; offset /= 2) {
-      __syncthreads();
       if (threadIdx.x < offset && threadIdx.x + offset < blockDim.x) {
         reduced = op(reduced, sbuf[block_local_idx + offset]);
         sbuf[block_local_idx] = reduced;
       }
+      __syncthreads();
     }
   }
-
-  __syncthreads();
 
   reduced = kernel_warp_reduce(op, reduced);
 
@@ -267,18 +253,18 @@ template <class Op>
 __device__ typename Op::StorageT
 kernel_inter_block_reduce_xy(Op op, const typename Op::IndexT outer_idx,
                              typename Op::StorageT *sbuf) {
-  assert(blockDim.y == 1);
+  // Assuming blockDim.y == 1;
 
   // x reduction
   const auto num_blocks = gridDim.x; // the elements in buf per outer_idx
-  const auto buf_plane = op.buf + num_blocks * outer_idx;
+  const auto inner_buf = op.buf + num_blocks * outer_idx;
 
   // Load from global memory
   // Thread reduction on registers while loading.
   typename Op::StorageT reduced = op.init();
 
   for (auto idx = threadIdx.x; idx < num_blocks; idx += blockDim.x) {
-    reduced = op(reduced, buf_plane[idx]);
+    reduced = op(reduced, inner_buf[idx]);
   }
 
   // Block reduce
@@ -291,14 +277,14 @@ kernel_inter_block_reduce_y(Op op, const typename Op::IndexT outer_idx,
                             typename Op::StorageT *sbuf) {
   // x reduction
   const auto num_blocks = gridDim.y; // the elements in buf per outer_idx
-  const auto buf_plane = op.buf + outer_idx;
+  const auto inner_buf = op.buf + outer_idx;
 
   // Load from global memory
   // Thread reduction on registers while loading.
   typename Op::StorageT reduced = op.init();
 
   for (auto idx = threadIdx.y; idx < num_blocks; idx += blockDim.y) {
-    reduced = op(reduced, buf_plane[blockDim.x * gridDim.x * idx]);
+    reduced = op(reduced, inner_buf[blockDim.x * gridDim.x * idx]);
   }
 
   // Block reduce
@@ -310,8 +296,8 @@ __global__ void
 kernel_reduce_xy(Op op, int *const block_counter,
                  const typename Op::IndexT inner_size,
                  const typename Op::IndexT outer_size,
-                 const IndexConvertor<typename Op::IndexT> inner_idx_conv,
-                 const IndexConvertor<typename Op::IndexT> outer_idx_conv) {
+                 const IndexConverter<typename Op::IndexT> inner_idx_conv,
+                 const IndexConverter<typename Op::IndexT> outer_idx_conv) {
   using StorageT = typename Op::StorageT;
   using IndexT = typename Op::IndexT;
 
@@ -369,8 +355,8 @@ __global__ void
 kernel_reduce_y(Op op, int *const block_counter,
                 const typename Op::IndexT inner_size,
                 const typename Op::IndexT outer_size,
-                const IndexConvertor<typename Op::IndexT> inner_idx_conv,
-                const IndexConvertor<typename Op::IndexT> outer_idx_conv) {
+                const IndexConverter<typename Op::IndexT> inner_idx_conv,
+                const IndexConverter<typename Op::IndexT> outer_idx_conv) {
   using StorageT = typename Op::StorageT;
   using IndexT = typename Op::IndexT;
 
@@ -415,26 +401,26 @@ kernel_reduce_y(Op op, int *const block_counter,
 
 template <class Op> __global__ void kernel_copy(const Size_t size, Op op) {
   NBLA_CUDA_KERNEL_LOOP_SIZE_T(idx, size) {
-    op.store(idx, op.make_strage(op.input[idx], 0));
+    op.store(idx, op.make_storage(op.input[idx], 0));
   }
 }
 
-template <class Op> uint32_t get_strided_grid(const Size_t grid_dim) {
+static uint32_t get_strided_grid(const Size_t grid_dim) {
   return static_cast<uint32_t>(NBLA_CEIL_SIZE_T_DIV(
       grid_dim, NBLA_CEIL_SIZE_T_DIV(grid_dim, NBLA_CUDA_REDUCE_MAX_BLOCKS)));
 }
 
 template <class Op>
-void fast_reduce_xy(const Context &ctx, Op op, const ReduceSetup &setup) {
+void fast_reduce_xy(const Context &ctx, Op &op, const ReduceSetup &setup) {
+  // Some procedures can be moved to ReduceSetup::operator() if implementing the
+  // mechanism to define Op::IndexT when Function::setup.
   using Tcu = typename Op::Tcu;
   using IndexT = typename Op::IndexT;
   using StorageT = typename Op::StorageT;
 
   // Firstly determine an ideal parallelism for large enough input shape.
-  const auto size_x_pow2 =
-      static_cast<Size_t>(std::pow(2, std::floor(std::log2(setup.size_x))));
-  const auto size_y_pow2 =
-      static_cast<Size_t>(std::pow(2, std::floor(std::log2(setup.size_y))));
+  const auto size_x_pow2 = next_pow2_floor(setup.size_x);
+  const auto size_y_pow2 = next_pow2_floor(setup.size_y);
   const auto block_y = std::min(
       size_y_pow2, Size_t(NBLA_CUDA_REDUCE_NUM_THREADS / CUDA_WARP_SIZE));
   const auto block_x = std::max(Size_t(CUDA_WARP_SIZE),
@@ -442,7 +428,7 @@ void fast_reduce_xy(const Context &ctx, Op op, const ReduceSetup &setup) {
   dim3 block_dim = dim3(block_x, block_y);
   dim3 grid_dim(1, NBLA_CEIL_SIZE_T_DIV(setup.size_y, block_dim.y));
 
-  // Try to keep sufficient paralellism for any input shape.
+  // Try to keep sufficient parallelism for any input shape.
   const auto min_elements_per_thread = NBLA_CUDA_REDUCE_UNROLL_XY;
   auto elements_per_thread = setup.size_x / block_dim.x;
 
@@ -467,7 +453,8 @@ void fast_reduce_xy(const Context &ctx, Op op, const ReduceSetup &setup) {
   }
 
   // Determine the grid size for grid-strided loop.
-  grid_dim.y = get_strided_grid<Op>(grid_dim.y);
+  grid_dim.x = get_strided_grid(grid_dim.x);
+  grid_dim.y = get_strided_grid(grid_dim.y);
 
   // Prepare the temporary buffers for inter-block reduce
   NdArray buf_arr;
@@ -498,43 +485,40 @@ void fast_reduce_xy(const Context &ctx, Op op, const ReduceSetup &setup) {
   }
 
   // Utility to calculate the indices fast.
-  const IndexConvertor<IndexT> inner_idx_conv(setup.strides_x,
+  const IndexConverter<IndexT> inner_idx_conv(setup.strides_x,
                                               setup.strides_x_input);
-  const IndexConvertor<IndexT> outer_idx_conv(setup.strides_y,
+  const IndexConverter<IndexT> outer_idx_conv(setup.strides_y,
                                               setup.strides_y_input);
 
   // Reduction kernel launch
   const bool only_x = (setup.ndim_x == 1 && setup.ndim_y <= 1);
+  auto kernel = kernel_reduce_xy<Tcu, Op>;
 
   if (only_x) {
     // Call the faster implementation.
     if (sizeof(Tcu) == 4) {
       // A float4 stores the 4 elements of 32-bit type (float).
-      kernel_reduce_xy<float4><<<grid_dim, block_dim, smem_size>>>(
-          op, block_counter, setup.size_x, setup.size_y, inner_idx_conv,
-          outer_idx_conv);
-      NBLA_CUDA_KERNEL_CHECK();
+      kernel = kernel_reduce_xy<float4, Op>;
     } else if (sizeof(Tcu) == 2) {
       // A float2 stores the 4 elements of 16-bit type (half).
-      kernel_reduce_xy<float2><<<grid_dim, block_dim, smem_size>>>(
-          op, block_counter, setup.size_x, setup.size_y, inner_idx_conv,
-          outer_idx_conv);
-      NBLA_CUDA_KERNEL_CHECK();
+      kernel = kernel_reduce_xy<float2, Op>;
     } else {
       NBLA_ERROR(error_code::type,
                  "The size of types for reduction must be 2 or 4 bytes. "
                  "Please report this error to the developer team.");
     }
-  } else {
-    kernel_reduce_xy<Tcu><<<grid_dim, block_dim, smem_size>>>(
-        op, block_counter, setup.size_x, setup.size_y, inner_idx_conv,
-        outer_idx_conv);
-    NBLA_CUDA_KERNEL_CHECK();
   }
+
+  kernel<<<grid_dim, block_dim, smem_size>>>(op, block_counter, setup.size_x,
+                                             setup.size_y, inner_idx_conv,
+                                             outer_idx_conv);
+  NBLA_CUDA_KERNEL_CHECK();
 }
 
 template <class Op>
-void fast_reduce_y(const Context &ctx, Op op, const ReduceSetup &setup) {
+void fast_reduce_y(const Context &ctx, Op &op, const ReduceSetup &setup) {
+  // Some procedures can be moved to ReduceSetup::operator() if implementing the
+  // mechanism to define Op::IndexT when Function::setup.
   using Tcu = typename Op::Tcu;
   using StorageT = typename Op::StorageT;
   using IndexT = typename Op::IndexT;
@@ -543,9 +527,8 @@ void fast_reduce_y(const Context &ctx, Op op, const ReduceSetup &setup) {
   dim3 block_dim(NBLA_CUDA_REDUCE_NUM_THREADS, 1);
   dim3 grid_dim(NBLA_CEIL_SIZE_T_DIV(setup.size_x, block_dim.x), 1);
 
-  // Try to keep sufficient paralellism for any input shape.
-  const auto size_y_pow2 =
-      static_cast<Size_t>(std::pow(2, std::floor(std::log2(setup.size_y))));
+  // Try to keep sufficient parallelism for any input shape.
+  const auto size_y_pow2 = next_pow2_floor(setup.size_y);
   const auto min_elements_per_thread = NBLA_CUDA_REDUCE_UNROLL_Y;
   auto elements_per_thread = setup.size_y / block_dim.y;
 
@@ -570,7 +553,8 @@ void fast_reduce_y(const Context &ctx, Op op, const ReduceSetup &setup) {
   }
 
   // Determine the grid size for grid-strided loop.
-  grid_dim.x = get_strided_grid<Op>(grid_dim.x);
+  grid_dim.x = get_strided_grid(grid_dim.x);
+  grid_dim.y = get_strided_grid(grid_dim.y);
 
   // Prepare the temporary buffers for inter-block reduce
   NdArray buf_arr;
@@ -597,9 +581,9 @@ void fast_reduce_y(const Context &ctx, Op op, const ReduceSetup &setup) {
   }
 
   // Utility to calculate the indices fast.
-  const IndexConvertor<IndexT> inner_idx_conv(setup.strides_y,
+  const IndexConverter<IndexT> inner_idx_conv(setup.strides_y,
                                               setup.strides_y_input);
-  const IndexConvertor<IndexT> outer_idx_conv(setup.strides_x,
+  const IndexConverter<IndexT> outer_idx_conv(setup.strides_x,
                                               setup.strides_x_input);
 
   // Reduction kernel launch

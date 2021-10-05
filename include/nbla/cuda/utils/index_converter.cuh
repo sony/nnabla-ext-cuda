@@ -1,4 +1,4 @@
-// Copyright (c) 2017 Sony Corporation. All Rights Reserved.
+// Copyright (c) 2021 Sony Corporation. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef __NBLA_CUDA_UTILS_INDEX_CONVERTOR_CUH__
-#define __NBLA_CUDA_UTILS_INDEX_CONVERTOR_CUH__
+#ifndef __NBLA_CUDA_UTILS_INDEX_CONVERTER_CUH__
+#define __NBLA_CUDA_UTILS_INDEX_CONVERTER_CUH__
 
 namespace nbla {
 
@@ -79,23 +79,23 @@ public:
 /** This utility class defines the useful protocol to convert an index
     which is typically used in CUDA kernels.
 
-    - change_strides: decomposeing the given linear index in vector component
-                      form by using "strides" (given by the class constuctor)
+    - change_strides: decomposing the given linear index in vector component
+                      form by using "strides" (given by the class constructor)
                       and then composing the new linear index from them by using
-                      "other_strides" (also given by the class constuctor).
+                      "other_strides" (also given by the class constructor).
  */
-template <class IndexT> class IndexConvertor {
+template <class IndexT> class IndexConverter {
   int ndim_;
   Divider<IndexT> divider_[NBLA_CUDA_MAX_NDIM];
   IndexT other_strides_[NBLA_CUDA_MAX_NDIM];
 
 public:
-  IndexConvertor(const Shape_t &strides, const Shape_t &other_strides)
+  IndexConverter(const Shape_t &strides, const Shape_t &other_strides)
       : ndim_(strides.size()) {
     NBLA_CHECK(strides.size() == other_strides.size(), error_code::value,
-               "All sizes for IndexConvertor must be same.");
+               "All sizes for IndexConverter must be same.");
     NBLA_CHECK(ndim_ <= NBLA_CUDA_MAX_NDIM, error_code::value,
-               "The size for IndexConvertor must be <= %d.",
+               "The size for IndexConverter must be <= %d.",
                NBLA_CUDA_MAX_NDIM);
 
     for (int i = 0; i < ndim_; i++) {
@@ -104,10 +104,10 @@ public:
     }
   }
 
-  /** Decomposeing the given linear index in vector component form by using
-      "strides" (given by the class constuctor) and then composing the new
+  /** Decomposing the given linear index in vector component form by using
+      "strides" (given by the class constructor) and then composing the new
       linear index from them by using "other_strides" (also given by the class
-      constuctor). The new index is returened adding the base index.
+      constructor). The new index is returned adding the base index.
    */
   __device__ IndexT change_strides(IndexT base_idx, IndexT idx) const {
 #pragma unroll

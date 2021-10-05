@@ -108,11 +108,12 @@ public:
     return StorageT(-numeric_limits_cuda<Tcu>::max(), 0);
   }
 
-  __device__ StorageT make_strage(const Tcu v, const IndexT idx) override {
+  __device__ StorageT make_storage(const Tcu v, const IndexT idx) override {
     return StorageT(v, idx);
   }
 
-  __device__ StorageT operator()(const StorageT a, const StorageT b) override {
+  __device__ StorageT operator()(const StorageT &a,
+                                 const StorageT &b) override {
     if (a.val > b.val) {
       return a;
     } else if (a.val == b.val) {
@@ -126,13 +127,13 @@ public:
     }
   }
 
-  __device__ void store(const IndexT idx, const StorageT v) override {
+  __device__ void store(const IndexT idx, const StorageT &v) override {
     this->output_[idx] = v.val;
     this->idx_[idx] = v.idx;
   }
 
   __device__ void intermediate_store(const IndexT idx,
-                                     const StorageT v) override {
+                                     const StorageT &v) override {
     this->buf[idx] = v;
   }
 };

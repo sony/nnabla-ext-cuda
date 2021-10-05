@@ -1,4 +1,4 @@
-// Copyright (c) 2017 Sony Corporation. All Rights Reserved.
+// Copyright (c) 2021 Sony Corporation. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,12 +46,12 @@ public:
   ReduceOpBase(const Tcu *const in, Tcu *const out, Size_t *const idx)
       : input(in), output_(out), idx_(idx) {}
   virtual __device__ StorageT init() = 0;
-  virtual __device__ StorageT make_strage(const Tcu v, const IndexT idx) = 0;
-  virtual __device__ StorageT operator()(const StorageT a,
-                                         const StorageT b) = 0;
-  virtual __device__ void store(const IndexT idx, const StorageT v) = 0;
+  virtual __device__ StorageT make_storage(const Tcu v, const IndexT idx) = 0;
+  virtual __device__ StorageT operator()(const StorageT &a,
+                                         const StorageT &b) = 0;
+  virtual __device__ void store(const IndexT idx, const StorageT &v) = 0;
   virtual __device__ void intermediate_store(const IndexT idx,
-                                             const StorageT v) = 0;
+                                             const StorageT &v) = 0;
 };
 }
 #endif
