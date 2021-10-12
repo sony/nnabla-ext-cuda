@@ -26,25 +26,26 @@ void CumSumCuda<T>::setup_impl(const Variables &inputs,
   cuda_set_device(this->device_);
 }
 
-template <typename T, typename AccumType>
-__global__ void kernel_cumsum_forward(const int size0x2_, const int size1_,
-                                      const int size2_, const T *x,
-                                      AccumType *y, bool exclusive_,
-                                      bool reverse_) {
-  NBLA_CUDA_KERNEL_LOOP(idx, size0x2_) {
-    const int i0 = idx / size2_;
-    const int i2 = idx % size2_;
+template <typename T, typename AccumType, bool exclusive, bool reverse>
+__global__ void kernel_cumsum_forward(const int size0x2, const int size1,
+                                      const int size2, const T *x, T *y) {
+  NBLA_CUDA_KERNEL_LOOP(idx, size0x2) {
+    const int i0 = idx / size2;
+    const int i2 = idx % size2;
 
-    int j = i0 * size1_ * size2_ + i2;
-    for (int index = 0; index < size1_; ++index) {
-      const int i1 = reverse_ ? size1_ - index - 1 : index;
+    int j = i0 * size1 * size2 + i2;
+    AccumType sum = (AccumType)0;
+    for (int k = 0; k < size1; ++k) {
+      const int i1 = reverse ? size1 - k - 1 : k;
+      const int idx = i1 * size2 + j;
 
-      const int d = reverse_ ? -1 : 1;
-      const int x_k = exclusive_ ? (i1 - d) * size2_ + j : i1 * size2_ + j;
-      const int y_k = i1 * size2_ + j;
-      const int y_k_prev = y_k - d * size2_;
-
-      y[y_k] = index != 0 ? y[y_k_prev] + x[x_k] : exclusive_ ? 0 : x[x_k];
+      if (exclusive) {
+        y[idx] = sum;
+        sum += x[idx];
+      } else {
+        sum += x[idx];
+        y[idx] = sum;
+      }
     }
   }
 }
@@ -54,35 +55,53 @@ void CumSumCuda<T>::forward_impl(const Variables &inputs,
                                  const Variables &outputs) {
   cuda_set_device(this->device_);
   const Tcu *x = inputs[0]->get_data_pointer<Tcu>(this->ctx_);
-  AccumType *y = outputs[0]->cast_data_and_get_pointer<Tcu>(this->ctx_, true);
+  Tcu *y = outputs[0]->cast_data_and_get_pointer<Tcu>(this->ctx_, true);
 
-  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-      kernel_cumsum_forward, this->size0_ * this->size2_, this->size1_,
-      this->size2_, x, y, this->exclusive_, this->reverse_);
+  auto kernel = kernel_cumsum_forward<Tcu, AccumType, true /* exclusive */,
+                                      true /* reverse */>;
+
+  if (this->exclusive_) {
+    kernel = this->reverse_
+                 ? kernel_cumsum_forward<Tcu, AccumType, true, true>
+                 : kernel_cumsum_forward<Tcu, AccumType, true, false>;
+  } else {
+    kernel = this->reverse_
+                 ? kernel_cumsum_forward<Tcu, AccumType, false, true>
+                 : kernel_cumsum_forward<Tcu, AccumType, false, false>;
+  }
+
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel, this->size0_ * this->size2_,
+                                 this->size1_, this->size2_, x, y);
 }
 
-template <typename T>
-__global__ void kernel_cumsum_backward(const int size0x2_, const int size1_,
-                                       const int size2_, const T *g_y, T *g_x,
-                                       bool exclusive_, bool reverse_,
-                                       bool accum) {
+template <typename T, bool exclusive, bool reverse, bool accum>
+__global__ void kernel_cumsum_backward(const int size0x2, const int size1,
+                                       const int size2, const T *g_y, T *g_x) {
   typedef typename CudaTypeForceFloat<T>::type AccumType;
-  NBLA_CUDA_KERNEL_LOOP(idx, size0x2_) {
-    const int i0 = idx / size2_;
-    const int i2 = idx % size2_;
-    const int j = i0 * size1_ * size2_ + i2;
+  NBLA_CUDA_KERNEL_LOOP(idx, size0x2) {
+    const int i0 = idx / size2;
+    const int i2 = idx % size2;
+    const int j = i0 * size1 * size2 + i2;
 
     AccumType cum_sum = T(0);
-    for (int index = 0; index < size1_; ++index) {
+    for (int k = 0; k < size1; ++k) {
 
-      const int i1 = reverse_ ? index : size1_ - index - 1;
-      const int x_k = i1 * size2_ + j;
+      const int i1 = reverse ? k : size1 - k - 1;
+      const int idx = i1 * size2 + j;
 
-      cum_sum += g_y[x_k];
-      if (accum)
-        g_x[x_k] += (exclusive_ ? cum_sum - g_y[x_k] : cum_sum);
-      else
-        g_x[x_k] = (exclusive_ ? cum_sum - g_y[x_k] : cum_sum);
+      if (exclusive) {
+        if (accum)
+          g_x[idx] += cum_sum;
+        else
+          g_x[idx] = cum_sum;
+        cum_sum += g_y[idx];
+      } else {
+        cum_sum += g_y[idx];
+        if (accum)
+          g_x[idx] += cum_sum;
+        else
+          g_x[idx] = cum_sum;
+      }
     }
   }
 }
@@ -98,12 +117,30 @@ void CumSumCuda<T>::backward_impl(const Variables &inputs,
   cuda_set_device(this->device_);
 
   const Tcu *g_y = outputs[0]->get_grad_pointer<Tcu>(this->ctx_);
-  if (propagate_down[0]) {
-    Tcu *g_x = inputs[0]->cast_grad_and_get_pointer<Tcu>(this->ctx_, !accum[0]);
-    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_cumsum_backward<Tcu>),
-                                   this->size0_ * this->size2_, this->size1_,
-                                   this->size2_, g_y, g_x, this->exclusive_,
-                                   this->reverse_, accum[0]);
+  Tcu *g_x = inputs[0]->cast_grad_and_get_pointer<Tcu>(this->ctx_, !accum[0]);
+
+  auto kernel = kernel_cumsum_backward<Tcu, true /* exclusive */,
+                                       true /* reverse */, true /* accum */>;
+
+  if (this->exclusive_) {
+    if (this->reverse_) {
+      kernel = accum[0] ? kernel_cumsum_backward<Tcu, true, true, true>
+                        : kernel_cumsum_backward<Tcu, true, true, false>;
+    } else {
+      kernel = accum[0] ? kernel_cumsum_backward<Tcu, true, false, true>
+                        : kernel_cumsum_backward<Tcu, true, false, false>;
+    }
+  } else {
+    if (this->reverse_) {
+      kernel = accum[0] ? kernel_cumsum_backward<Tcu, false, true, true>
+                        : kernel_cumsum_backward<Tcu, false, true, false>;
+    } else {
+      kernel = accum[0] ? kernel_cumsum_backward<Tcu, false, false, true>
+                        : kernel_cumsum_backward<Tcu, false, false, false>;
+    }
   }
+
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel, this->size0_ * this->size2_,
+                                 this->size1_, this->size2_, g_y, g_x);
 }
 }
