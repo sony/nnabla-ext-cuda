@@ -43,7 +43,7 @@ protected:
   float inv_reduce_size_;
   Size_t reduce_size_, outer_size_;
 
-  // Internal buffres for backward
+  // Internal buffers for backward
   Variable sum_dy_, sum_dyx_;
   Variable factor_a_, factor_b_;
 

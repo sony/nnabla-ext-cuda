@@ -45,10 +45,10 @@ protected:
   float inv_reduce_size_;
   Variable mean_, var_;
 
-  // Internal buffres for forward
+  // Internal buffers for forward
   Variable a_, b_;
 
-  // Internal buffres for backward
+  // Internal buffers for backward
   Variable sum_dy_, sum_dyx_;
   Variable gamma_invstd_;
   Variable factor1_, factor2_;

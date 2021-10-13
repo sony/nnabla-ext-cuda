@@ -42,7 +42,7 @@ protected:
   float inv_reduce_size_;
   Variable mean_, var_;
 
-  // Internal buffres for backward
+  // Internal buffers for backward
   Variable sum_dygamma_, sum_dyxgamma_;
   Variable factor_a_, factor_b_;
 
