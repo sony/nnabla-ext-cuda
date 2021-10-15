@@ -16,14 +16,17 @@
 #define NBLA_CUDA_FUNCTION_CUMPROD_HPP
 
 #include <nbla/cuda/cuda.hpp>
+#include <nbla/cuda/utils/scan_setup.hpp>
 #include <nbla/function/cumprod.hpp>
 
 namespace nbla {
 
 template <typename T> class CumProdCuda : public CumProd<T> {
+  ScanSetup scan_setup_forward_;
+  ScanSetup scan_setup_backward_;
+
 public:
   typedef typename CudaType<T>::type Tcu;
-  typedef typename CudaTypeForceFloat<T>::type AccumType;
 
   explicit CumProdCuda(const Context &ctx, int axis, bool exclusive,
                        bool reverse)

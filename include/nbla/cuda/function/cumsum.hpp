@@ -17,14 +17,17 @@
 
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/cuda.hpp>
+#include <nbla/cuda/utils/scan_setup.hpp>
 #include <nbla/function/cumsum.hpp>
 
 namespace nbla {
 
 template <typename T> class CumSumCuda : public CumSum<T> {
+  ScanSetup scan_setup_forward_;
+  ScanSetup scan_setup_backward_;
+
 public:
   typedef typename CudaType<T>::type Tcu;
-  typedef typename CudaTypeForceFloat<T>::type AccumType;
 
   explicit CumSumCuda(const Context &ctx, int axis, bool exclusive,
                       bool reverse)

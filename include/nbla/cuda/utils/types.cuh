@@ -49,6 +49,20 @@ template <class T, class U> struct ReduceOpMaxLikeType {
   using IndexT = U;
   using StorageT = ValWithIdx<Tcu, IndexT>;
 };
+
+//==============================================================================
+// Type sets for scan CUDA kernel
+//==============================================================================
+// Tcu, IndexT, and StorageT are reuired as the interface of type set.
+// Type for scan sum
+template <class T, class U> struct ScanOpSumType {
+  using Tcu = typename CudaType<T>::type;
+  using IndexT = U;
+  using StorageT = typename CudaTypeForceFloat<T>::type;
+};
+// Type for scan prod
+// Same as sum
+template <class T, class U> using ScanOpProdType = ScanOpSumType<T, U>;
 }
 
 #endif
