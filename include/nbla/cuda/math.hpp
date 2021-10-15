@@ -166,13 +166,21 @@ void cuda_getri_batched(int device, int n, const T **x, int *pivot, T **y,
 }
 
 /** This function calculates the largest power of 2 less than or equal to n.
+    n must not be negative;
  */
 static Size_t next_pow2_floor(Size_t n) {
-  Size_t power = 1;
-  while (n >>= 1) {
-    power <<= 1;
-  }
-  return power;
+  // For negative n, the value of n >> x is implementation-defined.
+  NBLA_CHECK(n >= 0, error_code::value, "n must not be negative.");
+
+  // nbla::Size_t must be still int64_t.
+  n |= (n >> 1);
+  n |= (n >> 2);
+  n |= (n >> 4);
+  n |= (n >> 8);
+  n |= (n >> 16);
+  n |= (n >> 32);
+
+  return n - (n >> 1);
   // Same as
   // return static_cast<T>(std::pow(2, std::floor(std::log2(n))));
 }
