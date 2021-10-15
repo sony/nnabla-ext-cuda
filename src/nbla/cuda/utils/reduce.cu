@@ -41,26 +41,17 @@ class Compressor {
     // Compression
     Size_t compressing_size = 1;
 
-    for (Size_t i = 0; i < reduce_flags.size() - 1; ++i) {
+    for (Size_t i = 0; i < reduce_flags.size(); ++i) {
       compressing_size *= shape_input[i];
 
-      if (reduce_flags[i] != reduce_flags[i + 1]) {
+      if (i == reduce_flags.size() - 1 // Tail process
+          || reduce_flags[i] != reduce_flags[i + 1]) {
         // Stop compression and store the integreted dimension.
         compressed_shape_input_.push_back(compressing_size);
         if (reduce_flags[i]) {
           compressed_reduce_axes_.push_back(compressed_shape_input_.size() - 1);
         }
         compressing_size = 1; // Reset
-      }
-    }
-
-    // Tail process
-    if (reduce_flags.size() > 0) {
-      // Stop the last compression and store the integreted dimension.
-      compressing_size *= shape_input[reduce_flags.size() - 1];
-      compressed_shape_input_.push_back(compressing_size);
-      if (reduce_flags.back()) {
-        compressed_reduce_axes_.push_back(compressed_shape_input_.size() - 1);
       }
     }
   }
@@ -84,12 +75,12 @@ class Compressor {
 public:
   Compressor(const Shape_t &shape_input, const Shape_t &reduce_axes) {
     compress(shape_input, reduce_axes);
-    Shape_t tmp_compressed_reduce_axes_;
-    Shape_t tmp_compressed_shape_input_;
-    ignore_1(tmp_compressed_shape_input_, tmp_compressed_reduce_axes_);
-    compressed_reduce_axes_ = {};
-    compressed_shape_input_ = {};
-    compress(tmp_compressed_shape_input_, tmp_compressed_reduce_axes_);
+    Shape_t tmp_compressed_reduce_axes;
+    Shape_t tmp_compressed_shape_input;
+    ignore_1(tmp_compressed_shape_input, tmp_compressed_reduce_axes);
+    compressed_reduce_axes_.clear();
+    compressed_shape_input_.clear();
+    compress(tmp_compressed_shape_input, tmp_compressed_reduce_axes);
   }
 
   Shape_t get_compressed_reduce_axes() const { return compressed_reduce_axes_; }
@@ -98,8 +89,8 @@ public:
 
 void ReduceSetup::operator()(const Shape_t &shape_input,
                              const Shape_t &reduce_axes) {
-  size_input = std::accumulate(shape_input.cbegin(), shape_input.cend(), 1,
-                               std::multiplies<Size_t>());
+  size_input = std::accumulate(shape_input.cbegin(), shape_input.cend(),
+                               (Size_t)1, std::multiplies<Size_t>());
 
   // Use 32-bit indexing if possible to reduce the register consumption of
   // reduction CUDA kernel and to achieve more parallelism.

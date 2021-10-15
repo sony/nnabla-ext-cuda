@@ -45,9 +45,9 @@ test_cases = [
     #
     # Float
     #
-    # Misaligned memory layout appears whith vectrized load.
+    # Misaligned memory layout appears when vectrized load.
     TestCase((2, 3, 4, 5), (3,), 'float'),
-    # Misaligned memory layout appears without vectrized load.
+    # Misaligned memory layout appears when normal loop-unrolling load.
     TestCase((2, 3, 4, 5), (2,), 'float'),
     TestCase((2, 1, 4, 5), (2,), 'float'),  # shape with 1
     TestCase((2, 3, 1, 5), (2,), 'float'),  # shape with 1
@@ -95,12 +95,10 @@ def create_inputs(shape, seed, with_negative):
     # np.random.RandomState(seed).randn(*shape).astype(np.float32) always
     # generate float64, consuming larger memory. It can be avoided by
     # the following code.
-    if with_negative:
-        np_input = np.random.default_rng(
-            seed=seed).standard_normal(size=shape, dtype='float32')
-    else:
-        np_input = np.abs(np.random.default_rng(
-            seed=seed).standard_normal(size=shape, dtype='float32'))
+    np_input = np.random.default_rng(
+        seed=seed).standard_normal(size=shape, dtype='float32')
+    if not with_negative:
+        np_input = np.abs(np_input)
     v_input = nn.Variable.from_numpy_array(np_input)
     return np_input, v_input
 
@@ -110,7 +108,6 @@ def create_inputs(shape, seed, with_negative):
 # elements.
 @pytest.mark.parametrize("test_case", test_cases)
 def test_reduction_cuda_kernel_exact(test_case):
-    print(test_case)
     ctx = get_extension_context('cuda', type_config=test_case.type_config)
     with nn.context_scope(ctx):
         np_input = np.ones(test_case.shape, dtype='float32')
