@@ -17,12 +17,15 @@
 
 #include <nbla/cuda/cuda.hpp>
 #include <nbla/function/group_normalization.hpp>
+#include <nbla/function/utils/channel_first_adaptor.hpp>
 
 namespace nbla {
 
 template <typename T>
 class GroupNormalizationCuda : public GroupNormalization<T> {
 public:
+  using Tc = typename CudaType<T>::type;
+
   explicit GroupNormalizationCuda(const Context &ctx, int num_groups,
                                   int channel_axis,
                                   const vector<int> &batch_axis, float eps,
@@ -38,11 +41,33 @@ public:
 
 protected:
   int device_;
+  Size_t reduce_size_, outer_size_, channel_size_, batch_size_;
+  float inv_reduce_size_;
+  Variable mean_, var_;
+
+  // Internal buffers for forward
+  Variable a_, b_;
+
+  // Internal buffers for backward
+  Variable sum_dy_, sum_dyx_;
+  Variable gamma_invstd_;
+  Variable factor1_, factor2_;
+
+  // Adaptor for channel-last format
+  bool need_adaptor_; // true: non channel-first (most case channel-last),
+                      // false: already channel-first
+  ChannelFirstAdaptorPtr adaptor_;
+  Variable pre_adaptor_, post_adaptor_;
+
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
+  void forward_channel_first(const Variables &inputs, const Variables &outputs);
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
+  void backward_channel_first(const Variables &inputs, const Variables &outputs,
+                              const vector<bool> &propagate_down,
+                              const vector<bool> &accum);
 };
 }
 #endif

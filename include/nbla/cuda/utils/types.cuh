@@ -21,6 +21,12 @@ struct floatint {
   int i;
 };
 
+template <typename IndexT> struct WelfordType {
+  float mean;
+  float m2;
+  IndexT n;
+};
+
 template <class T, class IndexT> struct ValWithIdx {
   T val;
   IndexT idx;
