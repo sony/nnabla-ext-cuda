@@ -26,6 +26,29 @@ template <typename IndexT> struct WelfordType {
   float m2;
   IndexT n;
 };
+
+template <class T, class IndexT> struct ValWithIdx {
+  T val;
+  IndexT idx;
+  __device__ ValWithIdx(const T v, const IndexT i) : val(v), idx(i) {}
+  __device__ ValWithIdx() {}
+};
+
+//==============================================================================
+// Type sets for reduction CUDA kernel
+//==============================================================================
+// Tcu, IndexT, and StorageT are reuired as the interface of type set.
+template <class T, class U> struct ReduceOpSumLikeType {
+  using Tcu = typename CudaType<T>::type;
+  using IndexT = U;
+  using StorageT = typename CudaTypeForceFloat<T>::type;
+};
+
+template <class T, class U> struct ReduceOpMaxLikeType {
+  using Tcu = typename CudaType<T>::type;
+  using IndexT = U;
+  using StorageT = ValWithIdx<Tcu, IndexT>;
+};
 }
 
 #endif

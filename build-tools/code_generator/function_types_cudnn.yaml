@@ -84,9 +84,9 @@ WeightStandardization:
   half: [Half]
 # MeanSubtraction:
 #   float: [float]
-Sum:
-  float: [float]
-  half: [Half]
+# Sum:
+#   float: [float]
+#   half: [Half]
 Mean:
   float: [float]
   half: [Half]

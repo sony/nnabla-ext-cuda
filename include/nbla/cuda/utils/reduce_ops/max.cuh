@@ -15,6 +15,9 @@
 #ifndef __NBLA_CUDA_UTILS_REDUCE_OPS_MAX_CUH__
 #define __NBLA_CUDA_UTILS_REDUCE_OPS_MAX_CUH__
 
+#include <nbla/cuda/limits.hpp>
+#include <nbla/cuda/utils/fast_reduce.cuh>
+#include <nbla/cuda/utils/reduce_ops/base.cuh>
 #include <nbla/cuda/utils/types.cuh>
 
 namespace nbla {
@@ -83,5 +86,69 @@ public:
     return storage_type{this->x_[i], bind_[i]};
   }
 };
+
+/** Reduction operator to compute max.
+
+    Template parameters
+      - T: the type of the input and output values.
+      - U: the type of the size, shape, and indices of the input and output.
+ */
+template <class T, class U>
+class ReduceOpMax : public ReduceOpBase<ReduceOpMaxLikeType<T, U>> {
+public:
+  using Types = ReduceOpMaxLikeType<T, U>;
+  using Tcu = typename Types::Tcu;
+  using IndexT = typename Types::IndexT;
+  using StorageT = typename Types::StorageT;
+
+  ReduceOpMax(const Tcu *const in, Tcu *const out, Size_t *const idx)
+      : ReduceOpBase<ReduceOpMaxLikeType<T, U>>(in, out, idx) {}
+
+  __device__ StorageT init() override {
+    return StorageT(-numeric_limits_cuda<Tcu>::max(), 0);
+  }
+
+  __device__ StorageT make_storage(const Tcu v, const IndexT idx) override {
+    return StorageT(v, idx);
+  }
+
+  __device__ StorageT operator()(const StorageT &a,
+                                 const StorageT &b) override {
+    if (a.val > b.val) {
+      return a;
+    } else if (a.val == b.val) {
+      if (a.idx < b.idx) {
+        return a;
+      } else {
+        return b;
+      }
+    } else {
+      return b;
+    }
+  }
+
+  __device__ void store(const IndexT idx, const StorageT &v) override {
+    this->output_[idx] = v.val;
+    this->idx_[idx] = v.idx;
+  }
+
+  __device__ void intermediate_store(const IndexT idx,
+                                     const StorageT &v) override {
+    this->buf[idx] = v;
+  }
+};
+
+/** The sum of x is computed on GPU according to the setup parameters in
+    reduce_setup. The results are stored into y and idx.
+ */
+template <class T>
+void device_max(const Context &ctx, const T *const x, T *const y,
+                Size_t *const idx, const ReduceSetup &reduce_setup) {
+  if (reduce_setup.require_64bit_index) {
+    fast_reduce(ctx, ReduceOpMax<T, Size_t>(x, y, idx), reduce_setup);
+  } else {
+    fast_reduce(ctx, ReduceOpMax<T, uint32_t>(x, y, idx), reduce_setup);
+  }
+}
 }
 #endif
