@@ -18,20 +18,25 @@
 #include <nbla/cuda/cuda.hpp>
 #include <nbla/cuda/cudnn/cudnn.hpp>
 
-#include <nbla/function/group_normalization.hpp>
+#include <nbla/cuda/function/group_normalization.hpp>
 
 namespace nbla {
 
 template <typename T>
-class GroupNormalizationCudaCudnn : public GroupNormalization<T> {
+class GroupNormalizationCudaCudnn : public GroupNormalizationCuda<T> {
 public:
   explicit GroupNormalizationCudaCudnn(const Context &ctx, int num_groups,
                                        int channel_axis,
                                        const vector<int> &batch_axis, float eps,
                                        bool no_scale, bool no_bias)
-      : GroupNormalization<T>(ctx, num_groups, channel_axis, batch_axis, eps,
-                              no_scale, no_bias),
-        device_(std::stoi(ctx.device_id)) {}
+      : GroupNormalizationCuda<T>(ctx, num_groups, channel_axis, batch_axis,
+                                  eps, no_scale, no_bias),
+        device_(std::stoi(ctx.device_id)) {
+    // Currently, the CUDA C implementation is faster than one using cuDNN
+    // BatchNormalization.
+    this->fall_back_func_ = make_shared<GroupNormalizationCuda<T>>(
+        ctx, num_groups, channel_axis, batch_axis, eps, no_scale, no_bias);
+  }
   virtual ~GroupNormalizationCudaCudnn() {}
   virtual string name() { return "GroupNormalizationCudaCudnn"; }
   virtual vector<string> allowed_array_classes() {

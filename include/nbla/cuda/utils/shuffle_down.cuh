@@ -129,5 +129,15 @@ __forceinline__ __device__ floatint shuffle_down(floatint val, int offset,
   buff.i = shuffle_down(val.i, offset, width);
   return buff;
 }
+
+template <>
+__forceinline__ __device__ WelfordType<Size_t>
+shuffle_down(WelfordType<Size_t> val, int offset, int width) {
+  WelfordType<Size_t> buff;
+  buff.mean = shuffle_down(val.mean, offset, width);
+  buff.m2 = shuffle_down(val.m2, offset, width);
+  buff.n = shuffle_down(val.n, offset, width);
+  return buff;
+}
 }
 #endif
