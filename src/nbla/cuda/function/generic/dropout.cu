@@ -31,6 +31,16 @@ __global__ void kernel_dropout_forward(const int size, const float scale,
   }
 }
 
+template <typename T>
+__global__ void kernel_dropout_recompute(const int size, const float scale,
+                                         const float p, const T *x, T *y,
+                                         const float *m) {
+  NBLA_CUDA_KERNEL_LOOP(s, size) {
+    // This operation is done when forward. m[s] = (m[s] > p) ? 1 : 0;
+    y[s] = x[s] * m[s] * scale;
+  }
+}
+
 template <typename T, bool accum>
 __global__ void kernel_dropout_backward(const int size, const float scale,
                                         const T *dy, const float *m, T *dx) {
@@ -43,11 +53,17 @@ template <typename T>
 void DropoutCuda<T>::setup_impl(const Variables &inputs,
                                 const Variables &outputs) {
   outputs[0]->reshape(inputs[0]->shape(), true);
+  this->mask_.reshape(inputs[0]->shape(), true);
+
   if (this->output_mask_) {
     outputs[1]->reshape(inputs[0]->shape(), true);
-  } else {
-    this->mask_.reshape(inputs[0]->shape(), true);
   }
+}
+
+template <typename T>
+void DropoutCuda<T>::setup_recompute_impl(const Variables &inputs,
+                                          const Variables &outputs) {
+  store_mask_for_recompute_ = true;
 }
 
 template <class T>
@@ -64,17 +80,31 @@ void DropoutCuda<T>::forward_impl(const Variables &inputs,
   curand_generate_rand<float>(gen, 0.0f, 1.0f, m, inputs[0]->size());
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_dropout_forward, inputs[0]->size(),
                                  this->scale_, this->p_, x, y, m);
+
+  // When output_mask=true and no recomputation, outputs[1] is cleared.
+  // Then this->mask_ is always required when recomputation to store mask.
+  if (store_mask_for_recompute_ && this->output_mask_) {
+    const Array *out_m =
+        outputs[1]->data()->get(get_dtype<float>(), this->ctx_);
+    Array *inner_m =
+        this->mask_.data()->cast(get_dtype<float>(), this->ctx_, true);
+    inner_m->copy_from(out_m);
+  }
 }
 
 template <class T>
 void DropoutCuda<T>::recompute_impl(const Variables &inputs,
                                     const Variables &outputs) {
+  NBLA_CHECK(this->mask_.data()->array()->get_num_arrays(),
+             error_code::unclassified,
+             "The mask of Dropout must be stored in mask_ for recomputation. "
+             "Please report this error to the NNabla developer team.");
   cuda_set_device(std::stoi(this->ctx_.device_id));
   const Tc *x = inputs[0]->get_data_pointer<Tc>(this->ctx_);
   Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
-  Variable &mask = this->output_mask_ ? *outputs[1] : this->mask_;
-  float *m = mask.cast_data_and_get_pointer<float>(this->ctx_, true);
-  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_dropout_forward, inputs[0]->size(),
+  Variable &mask = this->mask_;
+  const float *m = mask.get_data_pointer<float>(this->ctx_);
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_dropout_recompute, inputs[0]->size(),
                                  this->scale_, this->p_, x, y, m);
 }
 

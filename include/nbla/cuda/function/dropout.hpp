@@ -55,11 +55,14 @@ public:
 
 protected:
   curandGenerator_t curand_generator_;
+  bool store_mask_for_recompute_ = false;
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
+  virtual void setup_recompute_impl(const Variables &inputs,
+                                    const Variables &outputs);
   virtual void recompute_impl(const Variables &inputs,
                               const Variables &outputs);
 
