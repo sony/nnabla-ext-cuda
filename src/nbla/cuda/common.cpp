@@ -42,4 +42,12 @@ cudaDeviceProp cuda_get_current_device_properties() {
   NBLA_CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
   return prop;
 }
+
+int cuda_get_current_device_attribute(cudaDeviceAttr attr) {
+  int value = -1;
+  int device = cuda_get_device(); // Note: Assuming device is properly set.
+  NBLA_CUDA_CHECK(cudaDeviceGetAttribute(&value, attr, device));
+
+  return value;
+}
 }

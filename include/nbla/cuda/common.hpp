@@ -287,5 +287,7 @@ NBLA_CUDA_API vector<size_t> cuda_mem_get_info();
 /** Get device properties of current CUDA device.
  */
 cudaDeviceProp cuda_get_current_device_properties();
+
+int cuda_get_current_device_attribute(cudaDeviceAttr attr);
 }
 #endif

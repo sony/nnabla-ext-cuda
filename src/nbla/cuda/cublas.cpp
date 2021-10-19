@@ -66,8 +66,9 @@ void cublas_gemm<half>(cublasHandle_t handle, cublasOperation_t op_x,
   auto dt = cuda_data_type<half>::type();
 #if CUDA_VERSION >= 9000
   // cublasGemmEx can only be used on architectures later than Kepler (>=5).
-  cudaDeviceProp prop = cuda_get_current_device_properties();
-  if (prop.major >= 5) {
+  cudaDeviceAttr attr = cudaDevAttrComputeCapabilityMajor;
+  int prop_major = cuda_get_current_device_attribute(attr);
+  if (prop_major >= 5) {
     auto ct = cuda_data_type<typename CudaTypeForceFloat<half>::type>::type();
 #if CUDA_VERSION < 11000
     // CUBLAS_TENSOR_OP_MATH is deprecated in CUDA 11.0
@@ -287,8 +288,10 @@ void cublas_gemm_strided_batched<half>(
     const half *y, int ldb, int stride_b, float beta, half *z, int ldc,
     int stride_c, int batch_count) {
 #if CUDA_VERSION >= 9010
-  cudaDeviceProp prop = cuda_get_current_device_properties();
-  if (prop.major >= 5) {
+  cudaDeviceAttr attr = cudaDevAttrComputeCapabilityMajor;
+  int prop_major = cuda_get_current_device_attribute(attr);
+
+  if (prop_major >= 5) {
     constexpr int batch_chunk = 1 << 15;
     if (batch_count > batch_chunk) {
       // Seems like cublasGemmStridedBatchedEx does not allow a large batch
