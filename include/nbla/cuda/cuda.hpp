@@ -130,7 +130,8 @@ protected:
   std::mutex mtx_cublas_;
   std::mutex mtx_curand_;
   std::mutex mtx_stream_;
-  unordered_map<int, cublasHandle_t>
+  typedef unordered_map<std::thread::id, cublasHandle_t> tid_cublas_handle_t;
+  unordered_map<int, tid_cublas_handle_t>
       cublas_handles_; ///< cuBLAS handles for each device.
   unordered_map<int, curandGenerator_t> curand_generators_;
   unordered_map<int, unordered_map<unsigned int, vector<cudaEvent_t>>>

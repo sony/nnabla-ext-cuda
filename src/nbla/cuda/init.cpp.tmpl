@@ -56,10 +56,15 @@
 
 #include <nbla/garbage_collector.hpp>
 
+#include <mutex>
+
 namespace nbla {
 
 void init_cuda() {
-  static bool is_initialized = false;
+  static std::mutex mtx;
+  std::lock_guard<std::mutex> lock(mtx);
+
+  static volatile bool is_initialized = false;
   if (is_initialized)
     return;
 

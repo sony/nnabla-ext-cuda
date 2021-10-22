@@ -44,8 +44,10 @@ Cuda::Cuda()
 }
 
 Cuda::~Cuda() {
-  for (auto handle : this->cublas_handles_) {
-    NBLA_CUBLAS_CHECK(cublasDestroy(handle.second));
+  for (auto &tid_handles : this->cublas_handles_) {
+    for (auto &handle : tid_handles.second) {
+      NBLA_CUBLAS_CHECK(cublasDestroy(handle.second));
+    }
   }
   for (auto gen : this->curand_generators_) {
     curand_destroy_generator(gen.second);
@@ -79,16 +81,26 @@ cublasHandle_t Cuda::cublas_handle(int device) {
   if (device < 0) {
     device = cuda_get_device();
   }
+  auto tid = std::this_thread::get_id();
   std::lock_guard<decltype(mtx_cublas_)> lock(mtx_cublas_);
-  auto it = this->cublas_handles_.find(device);
-  // Create a new one
-  if (it == this->cublas_handles_.end()) {
+  // Create cublas handle for each device and each thread
+  if (this->cublas_handles_.find(device) == this->cublas_handles_.end()) {
     cublasHandle_t handle;
     NBLA_CUBLAS_CHECK(cublasCreate(&handle));
-    this->cublas_handles_.insert({device, handle});
+    tid_cublas_handle_t cbhs;
+    cbhs[tid] = handle;
+    this->cublas_handles_.insert({device, cbhs});
+    return handle;
+  } else {
+    auto &tid_cublas_map = this->cublas_handles_[device];
+    if (tid_cublas_map.find(tid) != tid_cublas_map.end()) {
+      return tid_cublas_map[tid];
+    }
+    cublasHandle_t handle;
+    NBLA_CUBLAS_CHECK(cublasCreate(&handle));
+    tid_cublas_map.insert({tid, handle});
     return handle;
   }
-  return it->second;
 }
 
 std::shared_ptr<cudaEvent_t> Cuda::cuda_event(unsigned int flags, int device) {
