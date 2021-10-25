@@ -15,6 +15,7 @@
 #include <nbla/array.hpp>
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/function/cumprod.hpp>
+#include <nbla/cuda/utils/atomic_min.cuh>
 #include <nbla/cuda/utils/scan_ops/prod.cuh>
 #include <nbla/cuda/utils/scan_ops/sum.cuh>
 #include <nbla/variable.hpp>
@@ -143,25 +144,29 @@ void cumprod_backward_naive(const Context &ctx, const Tcu *g_y, const Tcu *x,
                                  masked_cumprod, g_x);
 }
 
+__global__ void kernel_fill_size_scan(const int size_outer, const int size_scan,
+                                      int *first_zero_index) {
+  NBLA_CUDA_KERNEL_LOOP(i0, size_outer) { first_zero_index[i0] = size_scan; }
+}
+
 template <typename T, bool reverse>
-__global__ void kernel_first_zero_index(const int size0, const int size1,
-                                        const T *x, int *first_zero_index) {
-  NBLA_CUDA_KERNEL_LOOP(i0, size0) {
-    first_zero_index[i0] = size1;
-    for (int k = 0; k < size1; k++) {
-      const int i1 = reverse ? size1 - k - 1 : k;
-      const int idx = i0 * size1 + i1;
-      if (x[idx] == (T)0) {
-        first_zero_index[i0] = k;
-        break;
-      }
+__global__ void kernel_first_zero_index(const int size_input,
+                                        const int size_scan, const T *x,
+                                        int *first_zero_index) {
+  NBLA_CUDA_KERNEL_LOOP(idx, size_input) {
+    const int i0 = idx / size_scan;
+    const int i1 = idx % size_scan;
+    const int k = reverse ? size_scan - i1 - 1 : i1;
+    if (x[idx] == (T)0) {
+      atomic_min(first_zero_index + i0, k);
     }
   }
 }
 
 template <typename T, bool reverse>
-__global__ void kernel_mask_input(const int size_input, const int size_scan, const T *x,
-                                  const int *first_zero_index, T *y) {
+__global__ void kernel_mask_input(const int size_input, const int size_scan,
+                                  const T *x, const int *first_zero_index,
+                                  T *y) {
   NBLA_CUDA_KERNEL_LOOP(idx, size_input) {
     const int i0 = idx / size_scan;
     const int i1 = idx % size_scan;
@@ -224,10 +229,12 @@ void cumprod_backward_parallel(const Context &ctx, const Tcu *g_y, const Tcu *x,
   Variable v_first_zero_index({setup.size_outer});
   int *first_zero_index =
       v_first_zero_index.cast_data_and_get_pointer<int>(ctx, true);
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_fill_size_scan, setup.size_outer,
+                                 setup.size_scan, first_zero_index);
   {
     auto kernel = setup.reverse ? kernel_first_zero_index<Tcu, true>
                                 : kernel_first_zero_index<Tcu, false>;
-    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel, setup.size_outer, setup.size_scan, x,
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel, setup.size_input, setup.size_scan, x,
                                    first_zero_index);
   }
 
