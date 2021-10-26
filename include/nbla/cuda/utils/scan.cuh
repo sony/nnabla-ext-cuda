@@ -22,6 +22,9 @@ namespace nbla {
 
 constexpr Size_t NBLA_CUDA_SCAN_MAX_BLOCKS = 65535;
 
+template <class Op>
+void scan(const Context &ctx, Op op, const ScanSetup &setup);
+
 template <class Op, bool exclusive, bool reverse, bool accum>
 __global__ void kernel_scan_naive(const typename Op::IndexT size_outer_inner,
                                   Op op, const typename Op::IndexT size_scan,
@@ -73,6 +76,128 @@ void scan_naive(const Context &ctx, Op op, const ScanSetup &setup) {
   const auto size = setup.size_outer * setup.size_inner;
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel, size, op, setup.size_scan,
                                  setup.size_inner);
+}
+
+constexpr Size_t NUM_ELEMENTS_PER_THREADS = 32;
+constexpr Size_t NUM_THREADS_PER_BLOCK = NBLA_CUDA_NUM_THREADS;
+
+template <class Op, bool exclusive, bool reverse>
+__global__ void
+kernel_scan_naive_inter_block_pre(Op op, const typename Op::IndexT size_outer,
+                                  const typename Op::IndexT size_scan,
+                                  const typename Op::IndexT size_inner,
+                                  const typename Op::IndexT size_scan_buf) {
+  using IndexT = typename Op::IndexT;
+  // Grid-stride loop for outer and inner axis.
+  for (IndexT i02 = blockIdx.y * blockDim.y + threadIdx.y;
+       i02 < size_outer * size_inner; i02 += gridDim.y * blockDim.y) {
+    const IndexT i0 = i02 / size_inner;
+    const IndexT i2 = i02 % size_inner;
+    // Grid-stride loop for scan axis.
+    for (IndexT i1_buf = blockIdx.x; i1_buf < size_scan_buf;
+         i1_buf += gridDim.x) {
+      typename Op::StorageT acc = op.init();
+      for (IndexT k = 0; k < NUM_ELEMENTS_PER_THREADS; k++) {
+        const IndexT i1 = i1_buf * NUM_ELEMENTS_PER_THREADS +
+                          (reverse ? NUM_ELEMENTS_PER_THREADS - k - 1 : k);
+        const IndexT idx = (i0 * size_scan + i1) * size_inner + i2;
+        if (i1 < size_scan) {
+          if (exclusive) {
+            op.store<false>(idx, acc);
+            acc = op(acc, op.input[idx]);
+          } else {
+            acc = op(acc, op.input[idx]);
+            op.store<false>(idx, acc);
+          }
+        }
+      }
+      const IndexT buf_idx = (i0 * size_scan_buf + i1_buf) * size_inner + i2;
+      op.intermediate_store(buf_idx, acc);
+    }
+  }
+}
+
+template <class Op, bool accum>
+__global__ void
+kernel_scan_naive_inter_block_post(Op op, const typename Op::IndexT size_outer,
+                                   const typename Op::IndexT size_scan,
+                                   const typename Op::IndexT size_inner,
+                                   const typename Op::IndexT size_scan_buf) {
+  using IndexT = typename Op::IndexT;
+  using StorageT = typename Op::StorageT;
+  // Grid-stride loop for outer and inner axis.
+  for (IndexT i02 = blockIdx.y * blockDim.y + threadIdx.y;
+       i02 < size_outer * size_inner; i02 += gridDim.y * blockDim.y) {
+    const IndexT i0 = i02 / size_inner;
+    const IndexT i2 = i02 % size_inner;
+    // Grid-stride loop for scan axis.
+    for (IndexT i1_buf = blockIdx.x; i1_buf < size_scan_buf;
+         i1_buf += gridDim.x) {
+      const IndexT buf_idx = (i0 * size_scan_buf + i1_buf) * size_inner + i2;
+      const typename Op::StorageT buf_val = op.buf[buf_idx];
+      for (IndexT k = 0; k < NUM_ELEMENTS_PER_THREADS; k++) {
+        const IndexT i1 = i1_buf * NUM_ELEMENTS_PER_THREADS + k;
+        if (i1 < size_scan) {
+          const IndexT idx = (i0 * size_scan + i1) * size_inner + i2;
+          op.store<accum>(idx, op.input[idx] + buf_val);
+        }
+      }
+    }
+  }
+}
+
+template <class Op>
+void scan_naive_inter_block(const Context &ctx, Op op, const ScanSetup &setup) {
+  using Tcu = typename Op::Tcu;
+  using IndexT = typename Op::IndexT;
+
+  // Step 1
+  IndexT size_scan_buf =
+      NBLA_CEIL_SIZE_T_DIV(setup.size_scan, NUM_ELEMENTS_PER_THREADS);
+  Variable v_pre_buf({setup.size_outer, size_scan_buf, setup.size_inner});
+  Variable v_pre_out({setup.size_outer, setup.size_scan, setup.size_inner});
+  Op op_pre(op.input, v_pre_out.cast_data_and_get_pointer<Tcu>(ctx, true));
+  op_pre.buf = v_pre_buf.cast_data_and_get_pointer<Tcu>(ctx, true);
+  const dim3 grid_dim(
+      std::min((Size_t)size_scan_buf, NBLA_CUDA_SCAN_MAX_BLOCKS),
+      std::min(NBLA_CEIL_SIZE_T_DIV(setup.size_outer * setup.size_inner,
+                                    NUM_THREADS_PER_BLOCK),
+               NBLA_CUDA_SCAN_MAX_BLOCKS));
+  const dim3 block_dim(1, NUM_THREADS_PER_BLOCK);
+  {
+    auto kernel = kernel_scan_naive_inter_block_pre<Op, false /* exclusive */,
+                                                    false /* reverse */>;
+    if (setup.exclusive) {
+      kernel = setup.reverse
+                   ? kernel_scan_naive_inter_block_pre<Op, true, true>
+                   : kernel_scan_naive_inter_block_pre<Op, true, false>;
+    } else {
+      kernel = setup.reverse
+                   ? kernel_scan_naive_inter_block_pre<Op, false, true>
+                   : kernel_scan_naive_inter_block_pre<Op, false, false>;
+    }
+    kernel<<<grid_dim, block_dim>>>(op_pre, setup.size_outer, setup.size_scan,
+                                    setup.size_inner, size_scan_buf);
+  }
+
+  // Step 2
+  ScanSetup setup_mid;
+  setup_mid(v_pre_buf.shape(), 1 /* axis */, true /* exclusive */,
+            setup.reverse, false);
+  Variable v_mid_out({setup.size_outer, size_scan_buf, setup.size_inner});
+  Op op_mid(v_pre_buf.get_data_pointer<Tcu>(ctx),
+            v_mid_out.cast_data_and_get_pointer<Tcu>(ctx, true));
+  scan(ctx, op_mid, setup_mid);
+
+  // Step 3
+  Op op_post(v_pre_out.get_data_pointer<Tcu>(ctx), op.output_);
+  op_post.buf = v_mid_out.cast_data_and_get_pointer<Tcu>(ctx, true);
+  {
+    auto kernel = setup.accum ? kernel_scan_naive_inter_block_post<Op, true>
+                              : kernel_scan_naive_inter_block_post<Op, false>;
+    kernel<<<grid_dim, block_dim>>>(op_post, setup.size_outer, setup.size_scan,
+                                    setup.size_inner, size_scan_buf);
+  }
 }
 
 constexpr Size_t NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_PER_BLOCK = 16;
@@ -370,9 +495,6 @@ kernel_scan_parallel_inter_block_post(Op op,
 }
 
 template <class Op>
-void scan(const Context &ctx, Op op, const ScanSetup &setup);
-
-template <class Op>
 void scan_parallel_inter_block(const Context &ctx, Op op,
                                const ScanSetup &setup) {
   using Tcu = typename Op::Tcu;
@@ -459,12 +581,16 @@ template <class Op>
 void scan(const Context &ctx, Op op, const ScanSetup &setup) {
   if (setup.size_inner == 1) {
     if (setup.size_scan < 128) {
-      scan_parallel<Op>(ctx, op, setup);
+      scan_parallel(ctx, op, setup);
     } else {
-      scan_parallel_inter_block<Op>(ctx, op, setup);
+      scan_parallel_inter_block(ctx, op, setup);
     }
   } else {
-    scan_naive(ctx, op, setup);
+    if (setup.size_scan < 128) {
+      scan_naive(ctx, op, setup);
+    } else {
+      scan_naive_inter_block(ctx, op, setup);
+    }
   }
 }
 }
