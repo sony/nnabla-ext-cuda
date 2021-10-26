@@ -21,11 +21,14 @@ root_dir = realpath(join(dirname(__file__), '..', '..'))
 def list(func_name):
     import yaml
     function_types = yaml.load(open(
-        join(root_dir, 'build-tools', 'code_generator', 'function_types.yaml'), 'r'))
+        join(root_dir, 'build-tools', 'code_generator', 'function_types.yaml'), 'r'),
+                               Loader=yaml.FullLoader)
     function_types_cudnn = yaml.load(open(join(
-        root_dir, 'build-tools', 'code_generator', 'function_types_cudnn.yaml'), 'r'))
+        root_dir, 'build-tools', 'code_generator', 'function_types_cudnn.yaml'), 'r'),
+                                     Loader=yaml.FullLoader)
     solver_types = yaml.load(
-        open(join(root_dir, 'build-tools', 'code_generator', 'solver_types.yaml'), 'r'))
+        open(join(root_dir, 'build-tools', 'code_generator', 'solver_types.yaml'), 'r'),
+        Loader=yaml.FullLoader)
 
     l = [(nn.Context(), func_name)]
 
