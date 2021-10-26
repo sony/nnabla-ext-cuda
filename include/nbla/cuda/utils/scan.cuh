@@ -17,6 +17,7 @@
 
 #include <nbla/common.hpp>
 #include <nbla/cuda/common.hpp>
+#include <nbla/cuda/utils/warp_shuffle.cuh>
 
 namespace nbla {
 
@@ -139,7 +140,7 @@ kernel_scan_naive_inter_block_post(Op op, const typename Op::IndexT size_outer,
         const IndexT i1 = i1_buf * NUM_ELEMENTS_PER_THREADS + k;
         if (i1 < size_scan) {
           const IndexT idx = (i0 * size_scan + i1) * size_inner + i2;
-          op.store<accum>(idx, op.input[idx] + buf_val);
+          op.store<accum>(idx, op(op.input[idx], buf_val));
         }
       }
     }
@@ -191,7 +192,7 @@ void scan_naive_inter_block(const Context &ctx, Op op, const ScanSetup &setup) {
 
   // Step 3
   Op op_post(v_pre_out.get_data_pointer<Tcu>(ctx), op.output_);
-  op_post.buf = v_mid_out.cast_data_and_get_pointer<Tcu>(ctx, true);
+  op_post.buf = v_mid_out.cast_data_and_get_pointer<Tcu>(ctx, false);
   {
     auto kernel = setup.accum ? kernel_scan_naive_inter_block_post<Op, true>
                               : kernel_scan_naive_inter_block_post<Op, false>;
@@ -200,8 +201,81 @@ void scan_naive_inter_block(const Context &ctx, Op op, const ScanSetup &setup) {
   }
 }
 
-constexpr Size_t NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_PER_BLOCK = 16;
-constexpr Size_t NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_OUTER = 32;
+constexpr Size_t NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_PER_BLOCK = 32;
+constexpr Size_t NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_OUTER = 16;
+
+template <class Op, bool exclusive, bool reverse, bool accum, int num_threads>
+__device__ typename Op::StorageT
+warp_scan(Op op, const typename Op::IndexT i0,
+          const typename Op::IndexT i1_base,
+          const typename Op::IndexT size_scan,
+          const typename Op::StorageT &last_block_total) {
+  using IndexT = typename Op::IndexT;
+  using StorageT = typename Op::StorageT;
+
+  const auto tidx = threadIdx.x;
+  const IndexT i1 = i1_base + tidx;
+
+  StorageT v;
+  if (i1 < size_scan) {
+    const IndexT idx = i0 * size_scan + i1;
+    if (tidx == 0 && !reverse) {
+      v = op(op.input[idx], last_block_total);
+    } else if (tidx == 31 && reverse) {
+      v = op(op.input[idx], last_block_total);
+    } else {
+      v = op.input[idx];
+    }
+  } else {
+    v = op.init();
+  }
+
+  if (reverse) {
+    for (int i = 1; i <= 32; i *= 2) {
+      const StorageT v_pair = warp::shuffle_down(v, i);
+      if (tidx < 32 - i) {
+        v = op(v, v_pair);
+      }
+    }
+  } else {
+    for (int i = 1; i <= 32; i *= 2) {
+      const StorageT v_pair = warp::shuffle_up(v, i);
+      if (tidx >= i) {
+        v = op(v, v_pair);
+      }
+    }
+  }
+
+  if (i1 < size_scan) {
+    const IndexT idx = i0 * size_scan + i1;
+    if (exclusive) {
+      if (reverse) {
+        if (tidx == 31 || i1 == size_scan - 1) {
+          op.store<accum>(idx, last_block_total);
+        }
+        if (tidx > 0 && i1 > 0) {
+          op.store<accum>(idx - 1, v);
+        }
+      } else {
+        if (tidx == 0) {
+          op.store<accum>(idx, last_block_total);
+        }
+        if (tidx < 31 && i1 + 1 < size_scan) {
+          op.store<accum>(idx + 1, v);
+        }
+      }
+    } else {
+      op.store<accum>(idx, v);
+    }
+  }
+
+  if (reverse) {
+    v = warp::shuffle(v, 0);
+  } else {
+    v = warp::shuffle(v, 31);
+  }
+  return v;
+}
 
 template <class Op, typename StorageT, bool exclusive, bool reverse, bool accum,
           int num_threads>
@@ -318,99 +392,93 @@ __device__ StorageT block_scan_parallel(Op op, const typename Op::IndexT i0,
   return total_val;
 }
 
-template <class Op, bool exclusive, bool reverse, bool accum>
+template <class Op, int block_dim_x, int block_dim_y, bool exclusive,
+          bool reverse, bool accum>
 __global__ void kernel_scan_parallel(Op op,
                                      const typename Op::IndexT size_outer,
                                      const typename Op::IndexT size_scan) {
   using IndexT = typename Op::IndexT;
   using StorageT = typename Op::StorageT;
 
-  for (IndexT i0 =
-           blockIdx.x * NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_OUTER + threadIdx.y;
-       i0 < size_outer;
-       i0 += gridDim.x * NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_OUTER) {
+  for (IndexT i0 = blockIdx.x * block_dim_y + threadIdx.y; i0 < size_outer;
+       i0 += gridDim.x * block_dim_y) {
     StorageT last_val = op.init();
-    for (IndexT k = 0;
-         k < NBLA_CEIL_SIZE_T_DIV(
-                 size_scan, NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_PER_BLOCK * 2);
-         k++) {
-      IndexT i1_base =
-          (reverse ? (NBLA_CEIL_SIZE_T_DIV(
-                          size_scan,
-                          NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_PER_BLOCK * 2) -
-                      k - 1)
-                   : k) *
-          NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_PER_BLOCK * 2;
-      last_val =
-          block_scan_parallel<Op, StorageT, exclusive, reverse, accum,
-                              NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_PER_BLOCK>(
-              op, i0, i1_base, size_scan, last_val);
+    const IndexT n_itr = NBLA_CEIL_SIZE_T_DIV(size_scan, block_dim_x);
+    for (IndexT k = 0; k < n_itr; k++) {
+      IndexT i1_base = (reverse ? (n_itr - k - 1) : k) * block_dim_x;
+      last_val = warp_scan<Op, exclusive, reverse, accum, block_dim_x>(
+          op, i0, i1_base, size_scan, last_val);
     }
   }
 }
 
 template <class Op>
 void scan_parallel(const Context &ctx, Op op, const ScanSetup &setup) {
-  auto kernel = kernel_scan_parallel<Op, false /* exclusive */,
-                                     false /* reverse */, false /* accum */>;
+  using IndexT = typename Op::IndexT;
+
+  constexpr IndexT block_dim_x = NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_PER_BLOCK;
+  constexpr IndexT block_dim_y = NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_OUTER;
+
+  auto kernel =
+      kernel_scan_parallel<Op, block_dim_x, block_dim_y, false /* exclusive */,
+                           false /* reverse */, false /* accum */>;
 
   if (setup.exclusive) {
     if (setup.reverse) {
-      kernel = setup.accum ? kernel_scan_parallel<Op, true, true, true>
-                           : kernel_scan_parallel<Op, true, true, false>;
+      kernel = setup.accum ? kernel_scan_parallel<Op, block_dim_x, block_dim_y,
+                                                  true, true, true>
+                           : kernel_scan_parallel<Op, block_dim_x, block_dim_y,
+                                                  true, true, false>;
     } else {
-      kernel = setup.accum ? kernel_scan_parallel<Op, true, false, true>
-                           : kernel_scan_parallel<Op, true, false, false>;
+      kernel = setup.accum ? kernel_scan_parallel<Op, block_dim_x, block_dim_y,
+                                                  true, false, true>
+                           : kernel_scan_parallel<Op, block_dim_x, block_dim_y,
+                                                  true, false, false>;
     }
   } else {
     if (setup.reverse) {
-      kernel = setup.accum ? kernel_scan_parallel<Op, false, true, true>
-                           : kernel_scan_parallel<Op, false, true, false>;
+      kernel = setup.accum ? kernel_scan_parallel<Op, block_dim_x, block_dim_y,
+                                                  false, true, true>
+                           : kernel_scan_parallel<Op, block_dim_x, block_dim_y,
+                                                  false, true, false>;
     } else {
-      kernel = setup.accum ? kernel_scan_parallel<Op, false, false, true>
-                           : kernel_scan_parallel<Op, false, false, false>;
+      kernel = setup.accum ? kernel_scan_parallel<Op, block_dim_x, block_dim_y,
+                                                  false, false, true>
+                           : kernel_scan_parallel<Op, block_dim_x, block_dim_y,
+                                                  false, false, false>;
     }
   }
 
-  const dim3 grid_dim(std::min(
-      NBLA_CEIL_SIZE_T_DIV(setup.size_outer,
-                           NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_PER_BLOCK),
-      NBLA_CUDA_SCAN_MAX_BLOCKS));
-  const dim3 block_dim(NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_PER_BLOCK,
-                       NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_OUTER);
+  const dim3 grid_dim(
+      std::min(NBLA_CEIL_SIZE_T_DIV((Size_t)setup.size_outer, block_dim_x),
+               NBLA_CUDA_SCAN_MAX_BLOCKS));
+  const dim3 block_dim(block_dim_x, block_dim_y);
 
   kernel<<<grid_dim, block_dim>>>(op, setup.size_outer, setup.size_scan);
   NBLA_CUDA_KERNEL_CHECK();
 }
 
-template <class Op, bool reverse>
+template <class Op, int block_dim_x, int block_dim_y, bool exclusive,
+          bool reverse>
 __global__ void
 kernel_scan_parallel_inter_block_pre(Op op,
                                      const typename Op::IndexT size_outer,
-                                     const typename Op::IndexT size_scan) {
+                                     const typename Op::IndexT size_scan,
+                                     const typename Op::IndexT size_scan_buf) {
   using IndexT = typename Op::IndexT;
   using StorageT = typename Op::StorageT;
 
   // Grid-stride loop for outer axis
-  for (IndexT i0 =
-           blockIdx.y * NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_OUTER + threadIdx.y;
-       i0 < size_outer;
-       i0 += gridDim.y * NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_OUTER) {
+  for (IndexT i0 = blockIdx.y * block_dim_y + threadIdx.y; i0 < size_outer;
+       i0 += gridDim.y * block_dim_y) {
     // Grid-stride loop for scan axis
-    for (IndexT i1_base =
-             blockIdx.x * (NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_PER_BLOCK * 2);
-         i1_base < size_scan;
-         i1_base +=
-         gridDim.x * (NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_PER_BLOCK * 2)) {
+    for (IndexT i1_buf = blockIdx.x; i1_buf < size_scan_buf;
+         i1_buf += gridDim.x) {
+      const IndexT i1_base = i1_buf * block_dim_x;
       const auto last_val =
-          block_scan_parallel<Op, StorageT, false /* exclusive */, reverse,
-                              false /* accum */,
-                              NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_PER_BLOCK>(
+          warp_scan<Op, exclusive, reverse, false /* accum */, block_dim_x>(
               op, i0, i1_base, size_scan, op.init());
-      const IndexT buf_idx =
-          i0 * NBLA_CEIL_SIZE_T_DIV(
-                   size_scan, NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_PER_BLOCK * 2) +
-          (i1_base / (NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_PER_BLOCK * 2));
+      const IndexT buf_idx = i0 * size_scan_buf + i1_buf;
       if (threadIdx.x == 0) {
         op.intermediate_store(buf_idx, last_val);
       }
@@ -418,77 +486,28 @@ kernel_scan_parallel_inter_block_pre(Op op,
   }
 }
 
-template <class Op, bool exclusive, bool reverse, bool accum>
+template <class Op, int block_dim_x, int block_dim_y, bool accum>
 __global__ void
 kernel_scan_parallel_inter_block_post(Op op,
                                       const typename Op::IndexT size_outer,
-                                      const typename Op::IndexT size_scan) {
+                                      const typename Op::IndexT size_scan,
+                                      const typename Op::IndexT size_scan_buf) {
   using IndexT = typename Op::IndexT;
   using StorageT = typename Op::StorageT;
 
   // Grid-stride loop for outer axis
-  for (IndexT i0 =
-           blockIdx.y * NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_OUTER + threadIdx.y;
-       i0 < size_outer;
-       i0 += gridDim.y * NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_OUTER) {
+  for (IndexT i0 = blockIdx.y * block_dim_y + threadIdx.y; i0 < size_outer;
+       i0 += gridDim.y * block_dim_y) {
     // Grid-stride loop for scan axis
-    for (IndexT i1_base =
-             blockIdx.x * (NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_PER_BLOCK * 2);
-         i1_base < size_scan;
-         i1_base +=
-         gridDim.x * (NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_PER_BLOCK * 2)) {
-      const IndexT buf_idx =
-          i0 * NBLA_CEIL_SIZE_T_DIV(
-                   size_scan, NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_PER_BLOCK * 2) +
-          (i1_base / (NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_PER_BLOCK * 2));
-
+    for (IndexT i1_buf = blockIdx.x; i1_buf < size_scan_buf;
+         i1_buf += gridDim.x) {
+      const IndexT i1_base = i1_buf * block_dim_x;
       const IndexT i1 = i1_base + threadIdx.x;
-      const IndexT num_threads = NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_PER_BLOCK;
-      if (exclusive) {
-        if (reverse) {
-          if (i1 < size_scan) {
-            const IndexT idx = i0 * size_scan + i1;
-            if (i1 > 0) {
-              op.store<accum>(idx - 1, op.input[idx] + op.buf[buf_idx]);
-            }
-            if (i1 == size_scan - 1) {
-              op.store<accum>(idx, op.init());
-            }
-          }
-          if (i1 + num_threads < size_scan) {
-            const IndexT idx = i0 * size_scan + (i1 + num_threads);
-            static_assert(num_threads > 0);
-            op.store<accum>(idx - 1, op.input[idx] + op.buf[buf_idx]);
-            if (i1 + num_threads == size_scan - 1) {
-              op.store<accum>(idx, op.init());
-            }
-          }
-        } else {
-          if (i1 < size_scan) {
-            const IndexT idx = i0 * size_scan + i1;
-            if (i1 + 1 < size_scan) {
-              op.store<accum>(idx + 1, op.input[idx] + op.buf[buf_idx]);
-            }
-            if (i1 == 0) {
-              op.store<accum>(idx, op.init());
-            }
-          }
-          if (i1 + num_threads < size_scan) {
-            const IndexT idx = i0 * size_scan + (i1 + num_threads);
-            if (i1 + num_threads + 1 < size_scan) {
-              op.store<accum>(idx + 1, op.input[idx] + op.buf[buf_idx]);
-            }
-          }
-        }
-      } else {
-        if (i1 < size_scan) {
-          const IndexT idx = i0 * size_scan + i1;
-          op.store<accum>(idx, op.input[idx] + op.buf[buf_idx]);
-        }
-        if (i1 + num_threads < size_scan) {
-          const IndexT idx = i0 * size_scan + (i1 + num_threads);
-          op.store<accum>(idx, op.input[idx] + op.buf[buf_idx]);
-        }
+
+      if (i1 < size_scan) {
+        const IndexT idx = i0 * size_scan + i1;
+        const IndexT buf_idx = i0 * size_scan_buf + i1_buf;
+        op.store<accum>(idx, op(op.input[idx], op.buf[buf_idx]));
       }
     }
   }
@@ -499,34 +518,50 @@ void scan_parallel_inter_block(const Context &ctx, Op op,
                                const ScanSetup &setup) {
   using Tcu = typename Op::Tcu;
   using StorageT = typename Op::StorageT;
+  using IndexT = typename Op::IndexT;
 
-  // TODO: Step 1
-  Variable pre_buf(
-      {setup.size_outer,
-       NBLA_CEIL_SIZE_T_DIV(setup.size_scan,
-                            NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_PER_BLOCK * 2)});
+  // Step 1
+  constexpr IndexT block_dim_x = NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_PER_BLOCK;
+  constexpr IndexT block_dim_y = NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_OUTER;
+  IndexT size_scan_buf = NBLA_CEIL_SIZE_T_DIV(setup.size_scan, block_dim_x);
+
+  Variable pre_buf({setup.size_outer, size_scan_buf});
   Variable pre_out({setup.size_outer, setup.size_scan});
   Op op_pre(op.input, pre_out.cast_data_and_get_pointer<Tcu>(ctx, true));
   op_pre.buf = pre_buf.cast_data_and_get_pointer<StorageT>(ctx, true);
-
-  auto kernel = setup.reverse ? kernel_scan_parallel_inter_block_pre<Op, true>
-                              : kernel_scan_parallel_inter_block_pre<Op, false>;
-
   const dim3 grid_dim(
-      std::min(
-          NBLA_CEIL_SIZE_T_DIV(setup.size_scan,
-                               NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_PER_BLOCK * 2),
-          NBLA_CUDA_SCAN_MAX_BLOCKS),
-      std::min(NBLA_CEIL_SIZE_T_DIV(setup.size_outer,
-                                    NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_OUTER),
+      std::min((Size_t)size_scan_buf, NBLA_CUDA_SCAN_MAX_BLOCKS),
+      std::min(NBLA_CEIL_SIZE_T_DIV(setup.size_outer, block_dim_y),
                NBLA_CUDA_SCAN_MAX_BLOCKS));
-  const dim3 block_dim(NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_PER_BLOCK,
-                       NBLA_CUDA_PREFIX_SCAN_NUM_THREADS_OUTER);
+  const dim3 block_dim(block_dim_x, block_dim_y);
 
-  kernel<<<grid_dim, block_dim>>>(op_pre, setup.size_outer, setup.size_scan);
-  NBLA_CUDA_KERNEL_CHECK();
+  {
+    auto kernel =
+        kernel_scan_parallel_inter_block_pre<Op, block_dim_x, block_dim_y,
+                                             false /* exclusive */,
+                                             false /* reverse */>;
+    if (setup.exclusive) {
+      kernel =
+          setup.reverse
+              ? kernel_scan_parallel_inter_block_pre<Op, block_dim_x,
+                                                     block_dim_y, true, true>
+              : kernel_scan_parallel_inter_block_pre<Op, block_dim_x,
+                                                     block_dim_y, true, false>;
+    } else {
+      kernel =
+          setup.reverse
+              ? kernel_scan_parallel_inter_block_pre<Op, block_dim_x,
+                                                     block_dim_y, false, true>
+              : kernel_scan_parallel_inter_block_pre<Op, block_dim_x,
+                                                     block_dim_y, false, false>;
+    }
 
-  // TODO: Step 2
+    kernel<<<grid_dim, block_dim>>>(op_pre, setup.size_outer, setup.size_scan,
+                                    size_scan_buf);
+    NBLA_CUDA_KERNEL_CHECK();
+  }
+
+  // Step 2
   Variable mid_out(pre_buf.shape());
   Op op_mid(pre_buf.get_data_pointer<Tcu>(ctx),
             mid_out.cast_data_and_get_pointer<Tcu>(ctx, true));
@@ -534,45 +569,21 @@ void scan_parallel_inter_block(const Context &ctx, Op op,
   ScanSetup setup_mid;
   setup_mid(mid_out.shape(), 1 /* axis */, true /* exclusive */, setup.reverse,
             false /* accum */);
-  // scan_parallel(ctx, op_mid, setup_mid);
   scan(ctx, op_mid, setup_mid);
 
-  // TODO: Step 3
+  // Step 3
   {
     Op op_post(pre_out.get_data_pointer<Tcu>(ctx), op.output_);
     op_post.buf = mid_out.cast_data_and_get_pointer<StorageT>(ctx, false);
 
-    auto kernel = kernel_scan_parallel_inter_block_post<
-        Op, false /* exclusive */, false /* reverse */, false /* accum */>;
+    auto kernel =
+        setup.accum ? kernel_scan_parallel_inter_block_post<Op, block_dim_x,
+                                                            block_dim_y, true>
+                    : kernel_scan_parallel_inter_block_post<Op, block_dim_x,
+                                                            block_dim_y, false>;
 
-    if (setup.exclusive) {
-      if (setup.reverse) {
-        kernel =
-            setup.accum
-                ? kernel_scan_parallel_inter_block_post<Op, true, true, true>
-                : kernel_scan_parallel_inter_block_post<Op, true, true, false>;
-      } else {
-        kernel =
-            setup.accum
-                ? kernel_scan_parallel_inter_block_post<Op, true, false, true>
-                : kernel_scan_parallel_inter_block_post<Op, true, false, false>;
-      }
-    } else {
-      if (setup.reverse) {
-        kernel =
-            setup.accum
-                ? kernel_scan_parallel_inter_block_post<Op, false, true, true>
-                : kernel_scan_parallel_inter_block_post<Op, false, true, false>;
-      } else {
-        kernel =
-            setup.accum
-                ? kernel_scan_parallel_inter_block_post<Op, false, false, true>
-                : kernel_scan_parallel_inter_block_post<Op, false, false,
-                                                        false>;
-      }
-    }
-
-    kernel<<<grid_dim, block_dim>>>(op_post, setup.size_outer, setup.size_scan);
+    kernel<<<grid_dim, block_dim>>>(op_post, setup.size_outer, setup.size_scan,
+                                    size_scan_buf);
     NBLA_CUDA_KERNEL_CHECK();
   }
 }

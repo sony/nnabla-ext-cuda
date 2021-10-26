@@ -144,38 +144,44 @@ void cumprod_backward_naive(const Context &ctx, const Tcu *g_y, const Tcu *x,
                                  masked_cumprod, g_x);
 }
 
-__global__ void kernel_fill_size_scan(const int size_outer, const int size_scan,
+__global__ void kernel_fill_size_scan(const int size_outer_inner,
+                                      const int size_scan,
                                       int *first_zero_index) {
-  NBLA_CUDA_KERNEL_LOOP(i0, size_outer) { first_zero_index[i0] = size_scan; }
+  NBLA_CUDA_KERNEL_LOOP(idx, size_outer_inner) {
+    first_zero_index[idx] = size_scan;
+  }
 }
 
 template <typename T, bool reverse>
 __global__ void kernel_first_zero_index(const int size_input,
-                                        const int size_scan, const T *x,
+                                        const int size_scan,
+                                        const int size_inner, const T *x,
                                         int *first_zero_index) {
   NBLA_CUDA_KERNEL_LOOP(idx, size_input) {
-    const int i0 = idx / size_scan;
-    const int i1 = idx % size_scan;
+    const int i0 = idx / size_inner / size_scan;
+    const int i1 = idx / size_inner % size_scan;
+    const int i2 = idx % size_inner;
     const int k = reverse ? size_scan - i1 - 1 : i1;
     if (x[idx] == (T)0) {
-      atomic_min(first_zero_index + i0, k);
+      atomic_min(&first_zero_index[i0 * size_inner + i2], k);
     }
   }
 }
 
 template <typename T, bool reverse>
 __global__ void kernel_mask_input(const int size_input, const int size_scan,
-                                  const T *x, const int *first_zero_index,
-                                  T *y) {
+                                  const int size_inner, const T *x,
+                                  const int *first_zero_index, T *y) {
   NBLA_CUDA_KERNEL_LOOP(idx, size_input) {
-    const int i0 = idx / size_scan;
-    const int i1 = idx % size_scan;
-    int z_pos = first_zero_index[i0];
+    const int i0 = idx / size_inner / size_scan;
+    const int i1 = idx / size_inner % size_scan;
+    const int i2 = idx % size_inner;
+    int z_pos = first_zero_index[i0 * size_inner + i2];
     const int k = reverse ? size_scan - i1 - 1 : i1;
     if (k == z_pos) {
-      y[i0 * size_scan + i1] = (T)1;
+      y[idx] = (T)1;
     } else {
-      y[i0 * size_scan + i1] = x[i0 * size_scan + i1];
+      y[idx] = x[idx];
     }
   }
 }
@@ -191,31 +197,33 @@ __global__ void kernel_prod_dy(const int size, const T *cumprod,
 }
 
 template <typename T, bool reverse, bool accum>
-__global__ void kernel_dx(const int size_input, const int size_scan, const T *x,
-                          const T *cumsum, const T *masked_cumsum,
-                          const int *first_zero_index, T *dx) {
+__global__ void kernel_dx(const int size_input, const int size_scan,
+                          const int size_inner, const T *x, const T *cumsum,
+                          const T *masked_cumsum, const int *first_zero_index,
+                          T *dx) {
   NBLA_CUDA_KERNEL_LOOP(idx, size_input) {
-    const int i0 = idx / size_scan;
-    const int i1 = idx % size_scan;
-    int z_pos = first_zero_index[i0];
+    const int i0 = idx / size_inner / size_scan;
+    const int i1 = idx / size_inner % size_scan;
+    const int i2 = idx % size_inner;
+    int z_pos = first_zero_index[i0 * size_inner + i2];
     const int k = reverse ? size_scan - i1 - 1 : i1;
     T grad;
     if (k < z_pos) {
-      grad = cumsum[i0 * size_scan + i1] / x[i0 * size_scan + i1];
+      grad = cumsum[idx] / x[idx];
     }
     if (k == z_pos) {
-      grad = masked_cumsum[i0 * size_scan + i1];
+      grad = masked_cumsum[idx];
     }
     if (k > z_pos) {
       grad = (T)0;
     }
-    dx[i0 * size_scan + i1] = grad + (accum ? dx[i0 * size_scan + i1] : (T)0);
+    dx[idx] = grad + (accum ? dx[idx] : (T)0);
   }
 }
 
 template <typename Tcu>
-void cumprod_backward_parallel(const Context &ctx, const Tcu *g_y, const Tcu *x,
-                               Tcu *g_x, const ScanSetup &setup) {
+void cumprod_backward(const Context &ctx, const Tcu *g_y, const Tcu *x,
+                      Tcu *g_x, const ScanSetup &setup) {
   using AccumType = typename CudaTypeForceFloat<Tcu>::type;
 
   // Step 1: Normal cumprod
@@ -226,16 +234,17 @@ void cumprod_backward_parallel(const Context &ctx, const Tcu *g_y, const Tcu *x,
   device_cumprod(ctx, x, cumprod, setup_cumprod);
 
   // Step 2: Find first 0 index
-  Variable v_first_zero_index({setup.size_outer});
+  Variable v_first_zero_index({setup.size_outer, setup.size_inner});
   int *first_zero_index =
       v_first_zero_index.cast_data_and_get_pointer<int>(ctx, true);
-  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_fill_size_scan, setup.size_outer,
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_fill_size_scan,
+                                 setup.size_outer * setup.size_inner,
                                  setup.size_scan, first_zero_index);
   {
     auto kernel = setup.reverse ? kernel_first_zero_index<Tcu, true>
                                 : kernel_first_zero_index<Tcu, false>;
-    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel, setup.size_input, setup.size_scan, x,
-                                   first_zero_index);
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel, setup.size_input, setup.size_scan,
+                                   setup.size_inner, x, first_zero_index);
   }
 
   // Step 3: Mask input
@@ -244,8 +253,9 @@ void cumprod_backward_parallel(const Context &ctx, const Tcu *g_y, const Tcu *x,
   {
     auto kernel = setup.reverse ? kernel_mask_input<Tcu, true>
                                 : kernel_mask_input<Tcu, false>;
-    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel, setup.size_input, setup.size_scan, x,
-                                   first_zero_index, masked_input);
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel, setup.size_input, setup.size_scan,
+                                   setup.size_inner, x, first_zero_index,
+                                   masked_input);
   }
 
   // Step 4: Masked cumprod
@@ -293,9 +303,9 @@ void cumprod_backward_parallel(const Context &ctx, const Tcu *g_y, const Tcu *x,
       kernel = setup.accum ? kernel_dx<Tcu, false, true>
                            : kernel_dx<Tcu, false, false>;
     }
-    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel, setup.size_input, setup.size_scan, x,
-                                   cumsum, masked_cumsum, first_zero_index,
-                                   g_x);
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel, setup.size_input, setup.size_scan,
+                                   setup.size_inner, x, cumsum, masked_cumsum,
+                                   first_zero_index, g_x);
   }
 }
 
@@ -316,10 +326,11 @@ void CumProdCuda<T>::backward_impl(const Variables &inputs,
 
   scan_setup_backward_.accum = accum[0];
 
-  if (scan_setup_backward_.size_inner == 1) {
-    cumprod_backward_parallel(this->ctx_, g_y, x, g_x, scan_setup_backward_);
-  } else {
+  if (scan_setup_backward_.size_inner > 1 &&
+      scan_setup_backward_.size_scan < 64) {
     cumprod_backward_naive(this->ctx_, g_y, x, g_x, scan_setup_backward_);
+  } else {
+    cumprod_backward(this->ctx_, g_y, x, g_x, scan_setup_backward_);
   }
 }
 }
