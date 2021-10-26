@@ -920,8 +920,9 @@ MultiProcessDataParallelCommunicatorNccl<T>::all_reduce_callback(
    *                                       equal to max_gpu_memory_size.
    *   Otherwise                         : the memory usage is equal pack_size.
    */
-  auto n = (max_gpu_memory_size < pack_size) ? 1 : max_gpu_memory_size /
-                                                       sizeof(Tc) / pack_size;
+  auto n = (max_gpu_memory_size < pack_size)
+               ? 1
+               : max_gpu_memory_size / sizeof(Tc) / pack_size;
   auto gpu_memory =
       make_shared<NdArray>(Shape_t{static_cast<int>(n * pack_size)});
 

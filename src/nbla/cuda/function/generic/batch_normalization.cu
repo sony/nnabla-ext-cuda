@@ -134,12 +134,12 @@ void BatchNormalizationCuda<T>::forward_impl_batch(const Variables &inputs,
   Tc *v =
       batch_var->cast_data_and_get_pointer<Tc>(this->ctx_, true); // batch varf
   // Inputs/Outputs
-  Tc *rm =
-      !update_inputs ? nullptr : inputs[m_idx]->cast_data_and_get_pointer<Tc>(
-                                     this->ctx_); // running mean
-  Tc *rv =
-      !update_inputs ? nullptr : inputs[v_idx]->cast_data_and_get_pointer<Tc>(
-                                     this->ctx_); // running var
+  Tc *rm = !update_inputs ? nullptr
+                          : inputs[m_idx]->cast_data_and_get_pointer<Tc>(
+                                this->ctx_); // running mean
+  Tc *rv = !update_inputs ? nullptr
+                          : inputs[v_idx]->cast_data_and_get_pointer<Tc>(
+                                this->ctx_); // running var
 
 #ifdef BATCH_NORMALIZATION_USE_PARALLEL_REDUCTION
   const int ndim = inputs[0]->ndim();
@@ -294,10 +294,13 @@ void BatchNormalizationCuda<T>::backward_impl_batch(
       inputs[b_idx]->grad()->zero(); // TODO: optimize this out if possible
     if (!this->no_scale_ && !accum[g_idx])
       inputs[g_idx]->grad()->zero(); // TODO: optimize this out if possible
-    Tc *db = !pd_beta ? nullptr : inputs[b_idx]->cast_grad_and_get_pointer<Tc>(
-                                      this->ctx_, false);
-    Tc *dg = !pd_gamma ? nullptr : inputs[g_idx]->cast_grad_and_get_pointer<Tc>(
-                                       this->ctx_, false);
+    Tc *db = !pd_beta ? nullptr
+                      : inputs[b_idx]->cast_grad_and_get_pointer<Tc>(this->ctx_,
+                                                                     false);
+    Tc *dg =
+        !pd_gamma
+            ? nullptr
+            : inputs[g_idx]->cast_grad_and_get_pointer<Tc>(this->ctx_, false);
 #ifdef BATCH_NORMALIZATION_USE_PARALLEL_REDUCTION
     backward_batch_gamma_beta_parallel_reduction(
         this->size0_, this->size1_, this->size2_, d_dy_trans, m, v, d_x_trans,
