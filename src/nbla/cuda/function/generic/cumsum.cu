@@ -27,7 +27,7 @@ void CumSumCuda<T>::setup_impl(const Variables &inputs,
   cuda_set_device(this->device_);
 
   scan_setup_forward_(inputs[0]->shape(), this->axis_, this->exclusive_,
-                      this->reverse_, false /* accum */);
+                      this->reverse_);
   scan_setup_backward_ = scan_setup_forward_;
 }
 
@@ -38,7 +38,7 @@ void CumSumCuda<T>::forward_impl(const Variables &inputs,
   const Tcu *x = inputs[0]->get_data_pointer<Tcu>(this->ctx_);
   Tcu *y = outputs[0]->cast_data_and_get_pointer<Tcu>(this->ctx_, true);
 
-  device_cumsum(this->ctx_, x, y, scan_setup_forward_);
+  device_cumsum(this->ctx_, x, y, scan_setup_forward_, false /* accum */);
 }
 
 template <typename T>
@@ -56,8 +56,7 @@ void CumSumCuda<T>::backward_impl(const Variables &inputs,
 
   // Perform reversed cumsum for `g_y`.
   // d_x = cumsum_reverse(d_y)
-  scan_setup_backward_.accum = accum[0];
   scan_setup_backward_.reverse = !this->reverse_;
-  device_cumsum(this->ctx_, g_y, g_x, scan_setup_backward_);
+  device_cumsum(this->ctx_, g_y, g_x, scan_setup_backward_, accum[0]);
 }
 }

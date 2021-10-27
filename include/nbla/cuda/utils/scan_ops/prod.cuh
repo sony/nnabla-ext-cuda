@@ -21,6 +21,12 @@
 
 namespace nbla {
 
+/**
+ * @brief Scan operator to compute cumulative prod.
+ *
+ * @tparam T the type of the input and output values;
+ * @tparam U the type of the size, shape, and indices of the input and output.
+ */
 template <class T, class U>
 class ScanOpProd : public ScanOpBase<ScanOpProdType<T, U>> {
 public:
@@ -36,9 +42,9 @@ public:
 
   __device__ StorageT make_storage(const Tcu v) override { return StorageT(v); }
 
-  __device__ StorageT operator()(const StorageT &acc,
+  __device__ StorageT operator()(const StorageT &accum,
                                  const StorageT &v) override {
-    return acc * v;
+    return accum * v;
   }
 
   __device__ void intermediate_store(const IndexT idx,
@@ -47,13 +53,19 @@ public:
   }
 };
 
+/**
+ * @brief The cumulative prod of x is computed on GPU according to the setup
+ * parameters in scan_setup. The results are stored into y.
+ */
 template <class T>
 void device_cumprod(const Context &ctx, const T *const x, T *const y,
-                    const ScanSetup &scan_setup) {
+                    const ScanSetup &scan_setup, const bool accum) {
   if (scan_setup.require_64bit_index) {
-    scan(ctx, ScanOpProd<T, Size_t>(x, y), scan_setup);
+    ScanOpProd<T, Size_t> op(x, y);
+    scan(ctx, op, scan_setup, accum);
   } else {
-    scan(ctx, ScanOpProd<T, uint32_t>(x, y), scan_setup);
+    ScanOpProd<T, int32_t> op(x, y);
+    scan(ctx, op, scan_setup, accum);
   }
 }
 }

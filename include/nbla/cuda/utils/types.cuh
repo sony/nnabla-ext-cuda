@@ -55,13 +55,25 @@ template <class T, class U> struct ReduceOpMaxLikeType {
 //==============================================================================
 // Tcu, IndexT, and StorageT are reuired as the interface of type set.
 // Type for scan sum
+
+/**
+ * @brief Type for cumulative sum scan.
+ *
+ * @tparam T the type of the input and output values;
+ * @tparam U the type of the size, shape, and indices of the input and output.
+ */
 template <class T, class U> struct ScanOpSumType {
   using Tcu = typename CudaType<T>::type;
   using IndexT = U;
   using StorageT = typename CudaTypeForceFloat<T>::type;
 };
-// Type for scan prod
-// Same as sum
+
+/**
+ * @brief Type for cumulative prod scan.
+ *
+ * @tparam T the type of the input and output values;
+ * @tparam U the type of the size, shape, and indices of the input and output.
+ */
 template <class T, class U> using ScanOpProdType = ScanOpSumType<T, U>;
 }
 

@@ -16,6 +16,7 @@
 #define __NBLA_CUDA_UTILS_ATOMIC_MIN_CUH__
 
 #include <cuda.h>
+#include <nbla/common.hpp>
 
 namespace nbla {
 
@@ -34,12 +35,33 @@ atomic_min(unsigned long long int *dst_adr, unsigned long long int val) {
   // Programming Guide by NVIDIA.
   // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#atomic-functions
   unsigned long long int old = *dst_adr, assumed;
-  do {
+  while (val < old) {
     assumed = old;
-    old = atomicCAS(dst_adr, assumed, std::min(assumed, val));
-  } while (assumed != old);
+    old = atomicCAS(dst_adr, assumed, val);
+    if (old == assumed) {
+      break;
+    }
+  }
   return old;
 #endif
+}
+
+template <>
+__device__ __inline__ Size_t atomic_min(Size_t *dst_adr, Size_t val) {
+  // `atomicMin()` for `signed long long int` does not exist.
+  // Here, we implement it using `atomicCAS()` based on sample codes in CUDA-C
+  // Programming Guide by NVIDIA.
+  // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#atomic-functions
+  Size_t old = *dst_adr, assumed;
+  while (val < old) {
+    assumed = old;
+    old = atomicCAS((unsigned long long *)dst_adr, (unsigned long long)assumed,
+                    (unsigned long long)val);
+    if (old == assumed) {
+      break;
+    }
+  }
+  return old;
 }
 }
 #endif

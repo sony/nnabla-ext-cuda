@@ -17,10 +17,16 @@
 
 namespace nbla {
 
+/** Interface class of scan operators.
+ */
 template <class ScanOpTypes> class ScanOpBase {
 public:
+  // Types used in reduction CUDA kernel provided by ScanOpTypes.
+  // See also nnabla-ext-cuda/include/nbla/cuda/utils/types.cuh.
   using Types = ScanOpTypes;
 
+  // Just shorten the type names for code readability.
+  // These name declarations are required as the interface.
   using Tcu = typename Types::Tcu;
   using IndexT = typename Types::IndexT;
   using StorageT = typename Types::StorageT;
@@ -32,17 +38,17 @@ public:
   StorageT *buf;
 
   // Output buffers
-  Tcu *const output_;
+  Tcu *const output;
 
 public:
-  ScanOpBase(const Tcu *const in, Tcu *const out) : input(in), output_(out) {}
+  ScanOpBase(const Tcu *const in, Tcu *const out) : input(in), output(out) {}
   virtual __device__ StorageT init() = 0;
   virtual __device__ StorageT make_storage(const Tcu v) = 0;
   virtual __device__ StorageT operator()(const StorageT &acc,
                                          const StorageT &v) = 0;
   template <bool accum>
   __device__ void store(const IndexT idx, const StorageT &v) {
-    output_[idx] = v + (accum ? output_[idx] : (Tcu)0);
+    output[idx] = v + (accum ? output[idx] : (Tcu)0);
   }
   virtual __device__ void intermediate_store(const IndexT idx,
                                              const StorageT &v) = 0;

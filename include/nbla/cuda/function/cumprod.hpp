@@ -22,8 +22,7 @@
 namespace nbla {
 
 template <typename T> class CumProdCuda : public CumProd<T> {
-  ScanSetup scan_setup_forward_;
-  ScanSetup scan_setup_backward_;
+  ScanSetup scan_setup_;
 
 public:
   typedef typename CudaType<T>::type Tcu;

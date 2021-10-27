@@ -16,34 +16,38 @@
 
 namespace nbla {
 void ScanSetup::operator()(const Shape_t &shape_input, const int axis,
-                           const bool exclusive, const bool reverse,
-                           const bool accum) {
+                           const bool exclusive, const bool reverse) {
+  // Scan conditions
   this->axis = axis;
   this->exclusive = exclusive;
   this->reverse = reverse;
-  this->accum = accum;
 
   const auto ndim = shape_input.size();
   NBLA_CHECK(0 <= axis && axis < ndim, error_code::value,
              "Axes out of range. 0 <= %d < %d", axis, ndim);
 
+  // size_outer
   size_outer = 1;
   for (int i = 0; i < axis; i++) {
     size_outer *= shape_input[i];
   }
 
+  // size_scan
   size_scan = shape_input[axis];
 
+  // size_inner
   size_inner = 1;
   for (int i = axis + 1; i < ndim; i++) {
     size_inner *= shape_input[i];
   }
 
+  // size_input
   size_input = size_outer * size_scan * size_inner;
 
+  // require_64bit_index
   // Use 32-bit indexing if possible to reduce the register consumption of
-  // reduction CUDA kernel and to achieve more parallelism.
-  if (size_input > std::numeric_limits<uint32_t>::max()) {
+  // scan CUDA kernel and to achieve more parallelism.
+  if (size_input > std::numeric_limits<int32_t>::max()) {
     require_64bit_index = true;
   } else {
     require_64bit_index = false;
