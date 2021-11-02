@@ -36,6 +36,19 @@ void LayerNormalizationCuda<T>::setup_impl(const Variables &inputs,
   const auto x_size = x->size();
   const auto x_shape = x->shape();
 
+  // Check if `batch_axis` are continuously aligned in outer axes.
+  // Currently, `batch_axis` not satisfy above condition like `[0, 2]` or `[1,
+  // 2]` are not supported in CUDA backend.
+  const auto &ba = this->batch_axis_;
+  bool need_fall_back = *std::max_element(ba.begin(), ba.end()) >= ba.size();
+  if (need_fall_back) {
+    this->fall_back_func_ = make_shared<LayerNormalization<T>>(
+        this->ctx_, this->batch_axis_, this->eps_, this->no_scale_,
+        this->no_bias_);
+    this->fall_back_func_->setup(inputs, outputs);
+    return;
+  }
+
   batch_size_ = 1;
   for (auto b : this->batch_axis_) {
     batch_size_ *= x_shape[b];
