@@ -50,7 +50,7 @@ void LayerNormalizationCuda<T>::setup_impl(const Variables &inputs,
   }
 
   batch_size_ = 1;
-  for (auto b : this->batch_axis_) {
+  for (const auto b : this->batch_axis_) {
     batch_size_ *= x_shape[b];
   }
 
@@ -62,14 +62,14 @@ void LayerNormalizationCuda<T>::setup_impl(const Variables &inputs,
   //----------------
 
   // Batch stats
-  mean_.reshape({batch_size_}, true);
-  var_.reshape({batch_size_}, true);
+  mean_.reshape(Shape_t{batch_size_}, true);
+  var_.reshape(Shape_t{batch_size_}, true);
 
   // Internal buffers for backward calculation
-  sum_dygamma_.reshape({batch_size_}, true);
-  sum_dyxgamma_.reshape({batch_size_}, true);
-  factor_a_.reshape({batch_size_}, true);
-  factor_b_.reshape({batch_size_}, true);
+  sum_dygamma_.reshape(Shape_t{batch_size_}, true);
+  sum_dyxgamma_.reshape(Shape_t{batch_size_}, true);
+  factor_a_.reshape(Shape_t{batch_size_}, true);
+  factor_b_.reshape(Shape_t{batch_size_}, true);
 }
 
 template <typename T>
