@@ -214,14 +214,16 @@ void BatchNormalizationCudaCudnn<T>::forward_impl_batch(
                 ->cast(DRV_BN_T(), this->ctx_, true)
                 ->pointer(); // batch var
   // Inputs/Outputs
-  void *rm = !update_inputs ? nullptr : inputs[this->m_idx_]
-                                            ->data()
-                                            ->cast(DRV_BN_T(), this->ctx_)
-                                            ->pointer(); // running mean
-  void *rv = !update_inputs ? nullptr : inputs[this->v_idx_]
-                                            ->data()
-                                            ->cast(DRV_BN_T(), this->ctx_)
-                                            ->pointer(); // running var
+  void *rm = !update_inputs ? nullptr
+                            : inputs[this->m_idx_]
+                                  ->data()
+                                  ->cast(DRV_BN_T(), this->ctx_)
+                                  ->pointer(); // running mean
+  void *rv = !update_inputs ? nullptr
+                            : inputs[this->v_idx_]
+                                  ->data()
+                                  ->cast(DRV_BN_T(), this->ctx_)
+                                  ->pointer(); // running var
 
   auto a = get_cudnn_scalar_arg<T>(1);
   auto b = get_cudnn_scalar_arg<T>(0);

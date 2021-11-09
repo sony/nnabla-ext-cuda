@@ -176,14 +176,16 @@ void FusedBatchNormalizationCudaCudnn<T>::fused_batch_norm_forward(
                 ->cast(DRV_BN_T(), this->ctx_, true)
                 ->pointer(); // batch var
   // Inputs/Outputs
-  void *rm = !update_inputs ? nullptr : inputs[3]
-                                            ->data()
-                                            ->cast(DRV_BN_T(), this->ctx_)
-                                            ->pointer(); // running mean
-  void *rv = !update_inputs ? nullptr : inputs[4]
-                                            ->data()
-                                            ->cast(DRV_BN_T(), this->ctx_)
-                                            ->pointer(); // running var
+  void *rm = !update_inputs ? nullptr
+                            : inputs[3]
+                                  ->data()
+                                  ->cast(DRV_BN_T(), this->ctx_)
+                                  ->pointer(); // running mean
+  void *rv = !update_inputs ? nullptr
+                            : inputs[4]
+                                  ->data()
+                                  ->cast(DRV_BN_T(), this->ctx_)
+                                  ->pointer(); // running var
 
   auto a = get_cudnn_scalar_arg<T>(1);
   auto b = get_cudnn_scalar_arg<T>(0);

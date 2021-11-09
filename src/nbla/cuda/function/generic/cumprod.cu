@@ -116,9 +116,9 @@ kernel_cumprod_backward_zero_input(const int size0x2_, const int size1_,
       T coeff =
           (i1 == 0) ? (T)1 : exclusive_ ? y[x_k] : y[(i1 - 1) * size2_ + j];
       if (reverse_)
-        coeff = (i1 == size1_ - 1) ? (T)1 : exclusive_
-                                                ? y[x_k]
-                                                : y[(i1 + 1) * size2_ + j];
+        coeff = (i1 == size1_ - 1)
+                    ? (T)1
+                    : exclusive_ ? y[x_k] : y[(i1 + 1) * size2_ + j];
 
       cur = exclusive_ ? (T)0 : coeff * g_y[x_k];
 
