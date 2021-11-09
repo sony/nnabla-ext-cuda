@@ -59,22 +59,23 @@ void ConvolutionCudaCudnn<T>::setup_impl(const Variables &inputs,
       device_, *dgrad_stream_);
 
 #if CUDNN_VERSION < 7000
-  x_offset_ = this->inner_size_i_ / this->group_;
-  y_offset_ = this->inner_size_o_ / this->group_;
-  w_offset_ = this->channels_o_ * this->inner_size_k_ / this->group_;
+  x_offset_ = static_cast<int>(this->inner_size_i_ / this->group_);
+  y_offset_ = static_cast<int>(this->inner_size_o_ / this->group_);
+  w_offset_ =
+      static_cast<int>(this->channels_o_ * this->inner_size_k_ / this->group_);
   if (inputs.size() == 3) {
-    b_offset_ = this->channels_o_ / this->group_;
+    b_offset_ = static_cast<int>(this->channels_o_ / this->group_);
   }
 #endif
 
   // Create or query a resource.
-  CudnnConvDesc desc{(int)this->kernel_.size(),
+  CudnnConvDesc desc{static_cast<int>(this->kernel_.size()),
                      device_,
                      cudnn_data_type<T>::type(),
                      CUDNN_CROSS_CORRELATION,
-                     this->outer_size_,
-                     this->channels_i_,
-                     this->channels_o_,
+                     static_cast<int>(this->outer_size_),
+                     static_cast<int>(this->channels_i_),
+                     static_cast<int>(this->channels_o_),
                      this->group_,
                      this->channel_last_,
                      this->spatial_shape_i_,
