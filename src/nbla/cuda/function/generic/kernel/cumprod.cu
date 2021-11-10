@@ -29,7 +29,7 @@ void cumprod_backward_naive(const Context &ctx, const Tcu *g_y, const Tcu *x,
 
   // `masked_cumprod` is a cumulative prod of `x` but treating the first zero
   // element as `1` on each `axis`.
-  Variable v_masked_cumprod({setup.size_input});
+  Variable v_masked_cumprod(Shape_t{setup.size_input});
   AccumType *masked_cumprod =
       v_masked_cumprod.cast_data_and_get_pointer<AccumType>(ctx, true);
 
@@ -55,15 +55,17 @@ void cumprod_backward(const Context &ctx, const Tcu *g_y, const Tcu *x,
   using AccumType = typename CudaTypeForceFloat<Tcu>::type;
 
   // Step 1: Normal cumprod
-  Variable v_cumprod({setup.size_input});
+  Variable v_cumprod(Shape_t{setup.size_input});
   Tcu *cumprod = v_cumprod.cast_data_and_get_pointer<Tcu>(ctx, true);
   auto setup_cumprod = setup;
   device_cumprod(ctx, x, cumprod, setup_cumprod, false /* accum */);
 
   // Step 2: Find first 0 index
-  Variable v_first_zero_index({setup.size_outer, setup.size_inner});
+  Variable v_first_zero_index(Shape_t{setup.size_outer, setup.size_inner});
   IndexT *first_zero_index =
       v_first_zero_index.cast_data_and_get_pointer<IndexT>(ctx, true);
+  // We use a custom kernel filling integer value since `NdArray::fill()` does
+  // not support interger value.
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_fill_size_scan<IndexT>,
                                  setup.size_outer * setup.size_inner,
                                  setup.size_scan, first_zero_index);
@@ -72,14 +74,14 @@ void cumprod_backward(const Context &ctx, const Tcu *g_y, const Tcu *x,
       setup.size_scan, setup.size_inner, x, first_zero_index);
 
   // Step 3: Mask input
-  Variable v_masked_input({setup.size_input});
+  Variable v_masked_input(Shape_t{setup.size_input});
   Tcu *masked_input = v_masked_input.cast_data_and_get_pointer<Tcu>(ctx, true);
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
       (kernel_mask_input<Tcu, IndexT, reverse>), setup.size_input,
       setup.size_scan, setup.size_inner, x, first_zero_index, masked_input);
 
   // Step 4: Masked cumprod
-  Variable v_masked_cumprod({setup.size_input});
+  Variable v_masked_cumprod(Shape_t{setup.size_input});
   Tcu *masked_cumprod =
       v_masked_cumprod.cast_data_and_get_pointer<Tcu>(ctx, true);
   auto setup_masked_cumprod = setup;
@@ -87,8 +89,8 @@ void cumprod_backward(const Context &ctx, const Tcu *g_y, const Tcu *x,
                  false /* accum */);
 
   // Step 5: Prod dy to cumprod and masked_cumprod
-  Variable v_cumprod_dy({setup.size_input}),
-      v_masked_cumprod_dy({setup.size_input});
+  Variable v_cumprod_dy(Shape_t{setup.size_input}),
+      v_masked_cumprod_dy(Shape_t{setup.size_input});
   Tcu *cumprod_dy = v_cumprod_dy.cast_data_and_get_pointer<Tcu>(ctx, true);
   Tcu *masked_cumprod_dy =
       v_masked_cumprod_dy.cast_data_and_get_pointer<Tcu>(ctx, true);
@@ -97,14 +99,14 @@ void cumprod_backward(const Context &ctx, const Tcu *g_y, const Tcu *x,
                                  cumprod_dy, masked_cumprod_dy);
 
   // Step 6: Reversed-cumsum of cumprod_dy
-  Variable v_cumsum({setup.size_input});
+  Variable v_cumsum(Shape_t{setup.size_input});
   Tcu *cumsum = v_cumsum.cast_data_and_get_pointer<Tcu>(ctx, true);
   auto setup_cumsum = setup;
   setup_cumsum.reverse = !setup.reverse;
   device_cumsum(ctx, cumprod_dy, cumsum, setup_cumsum, false /* accum */);
 
   // Step 7: Reversed-cumsum of masked_cumprod_dy
-  Variable v_masked_cumsum({setup.size_input});
+  Variable v_masked_cumsum(Shape_t{setup.size_input});
   Tcu *masked_cumsum =
       v_masked_cumsum.cast_data_and_get_pointer<Tcu>(ctx, true);
   auto setup_masked_cumsum = setup;

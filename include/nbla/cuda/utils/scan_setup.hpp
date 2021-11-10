@@ -43,7 +43,8 @@ namespace nbla {
  * e.g.) reverse == false: [1, 2, 3, 4] -> [1, 3, 6, 10]
  * e.g.) reverse == true: [1, 2, 3, 4] -> [10, 9, 7, 4]
  *
- * require_64bit_index:
+ * require_64bit_index: Whether 64bit integer is needed for indexing or size
+ * description.
  *
  */
 class ScanSetup {

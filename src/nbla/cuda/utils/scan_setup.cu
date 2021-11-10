@@ -47,6 +47,8 @@ void ScanSetup::operator()(const Shape_t &shape_input, const int axis,
   // require_64bit_index
   // Use 32-bit indexing if possible to reduce the register consumption of
   // scan CUDA kernel and to achieve more parallelism.
+  // For 32-bit indexing, we use signed integer because the value could be
+  // negative during the middle of index calculation in scan CUDA kernels.
   if (size_input > std::numeric_limits<int32_t>::max()) {
     require_64bit_index = true;
   } else {

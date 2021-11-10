@@ -1,4 +1,5 @@
 // Copyright (c) 2017 Sony Corporation. All Rights Reserved.
+// Copyright 2021 Sony Group Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,6 +30,7 @@ void CumSumCuda<T>::setup_impl(const Variables &inputs,
   scan_setup_forward_(inputs[0]->shape(), this->axis_, this->exclusive_,
                       this->reverse_);
   scan_setup_backward_ = scan_setup_forward_;
+  scan_setup_backward_.reverse = !this->reverse_;
 }
 
 template <typename T>
@@ -56,7 +58,6 @@ void CumSumCuda<T>::backward_impl(const Variables &inputs,
 
   // Perform reversed cumsum for `g_y`.
   // d_x = cumsum_reverse(d_y)
-  scan_setup_backward_.reverse = !this->reverse_;
   device_cumsum(this->ctx_, g_y, g_x, scan_setup_backward_, accum[0]);
 }
 }

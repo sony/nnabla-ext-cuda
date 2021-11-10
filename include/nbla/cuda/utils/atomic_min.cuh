@@ -25,34 +25,12 @@ template <typename T> __device__ __inline__ T atomic_min(T *dst_adr, T val) {
 }
 
 template <>
-__device__ __inline__ unsigned long long int
-atomic_min(unsigned long long int *dst_adr, unsigned long long int val) {
-#if (__CUDA_ARCH__ >= 350)
-  return atomicMin(dst_adr, val);
-#else
-  // `atomicMin()` for u64 is only supported for CC >= 3.5.
-  // Here, we implement it using `atomicCAS()` based on sample codes in CUDA-C
-  // Programming Guide by NVIDIA.
-  // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#atomic-functions
-  unsigned long long int old = *dst_adr, assumed;
-  while (val < old) {
-    assumed = old;
-    old = atomicCAS(dst_adr, assumed, val);
-    if (old == assumed) {
-      break;
-    }
-  }
-  return old;
-#endif
-}
-
-template <>
-__device__ __inline__ Size_t atomic_min(Size_t *dst_adr, Size_t val) {
+__device__ __inline__ int64_t atomic_min(int64_t *dst_adr, int64_t val) {
   // `atomicMin()` for `signed long long int` does not exist.
   // Here, we implement it using `atomicCAS()` based on sample codes in CUDA-C
   // Programming Guide by NVIDIA.
   // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#atomic-functions
-  Size_t old = *dst_adr, assumed;
+  int64_t old = *dst_adr, assumed;
   while (val < old) {
     assumed = old;
     old = atomicCAS((unsigned long long *)dst_adr, (unsigned long long)assumed,

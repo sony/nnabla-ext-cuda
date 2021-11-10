@@ -1,4 +1,4 @@
-# Copyright 2021 Sony Corporation.
+# Copyright 2021 Sony Group Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ import nnabla as nn
 import nnabla.functions as F
 from nnabla.ext_utils import get_extension_context
 from nnabla.testing import assert_allclose
+from refs import cumsum as ref_cumsum
 
 # The test cases must be examined and adjasted after modifying the scan CUDA kernel.
 
@@ -36,36 +37,12 @@ class Case:
                ', rtol=' + str(self.rtol) + ')'
 
 
-def ref_cumsum(x, axis, exclusive, reverse):
-    if reverse:
-        x = np.flip(x, axis)
-    y = np.cumsum(x, axis)
-    if exclusive:
-        # Make first element to zero on the axis.
-        pad_width = np.repeat([[0, 0]], x.ndim, axis=0)
-        pad_width[axis][0] = 1
-        y = np.pad(y, pad_width)
-        take_range = range(y.shape[axis]-1)
-        y = np.take(y, take_range, axis)
-    if reverse:
-        y = np.flip(y, axis)
-    return y
-
-
 # Error torelances are selected manually for each case because it is difficult
 # to select them generally for random input values.
 test_cases = [
     # --------------------------------
     # General cases
     # --------------------------------
-    Case((2, 3, 4, 5), 0),
-    Case((2, 3, 4, 5), 1),
-    Case((2, 3, 4, 5), 2),
-    Case((2, 3, 4, 5), 3),
-    Case((1, 512, 512, 1), 1, 2e-6),
-    Case((1, 512, 512, 1), 2, 2e-6),
-    Case((1, 512, 512, 1), 3, 2e-6),
-
     # Large cases
     Case((512 * 512, 128), 0, 3e-5),
     Case((128, 512 * 512), 1, 3e-5),
@@ -76,14 +53,22 @@ test_cases = [
     Case((1, 1, 1, 1), 3),
     Case((1, 123), 0),
     Case((123, 1), 1),
+    Case((1, 123, 1), 0),
+    Case((1, 123, 1), 1),
+    Case((1, 123, 1), 2),
     Case((1, 63), 1),
     Case((63, 1), 0),
+    Case((1, 63, 1), 0),
+    Case((1, 63, 1), 1),
+    Case((1, 63, 1), 2),
     # Parallel inter-block algorithm selection border
     Case((1, 1027), 1),
+    Case((1, 1028), 1),
     Case((1, 1029), 1),
     # Sequential inter-block algorithm selection border
-    Case((129, 1), 0),
     Case((127, 1), 0),
+    Case((128, 1), 0),
+    Case((129, 1), 0),
 
     # Large dimension cases
     Case((2, 3, 5, 7, 11, 3, 1, 4, 1, 5), 0),
@@ -104,7 +89,7 @@ test_cases = [
     Case((2048,), 0),
 
     # Parallel scan with inter-block kernels
-    Case((2049,), 0),
+    Case((2049,), 0),  # Minimal case
     Case((2048+123), 0),
     Case((2048+123, 1), 0),
     Case((1, 2048+123), 1),
@@ -133,7 +118,6 @@ def create_inputs(shape, seed, with_negative):
     # the following code.
     np_input = np.random.default_rng(
         seed=seed).standard_normal(size=shape, dtype='float32')
-    # np_input = np.ones(shape, dtype='float32')
     if not with_negative:
         np_input = np.abs(np_input)
     v_input = nn.Variable.from_numpy_array(np_input)
