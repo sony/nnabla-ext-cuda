@@ -92,6 +92,7 @@ RUN eval ${YUM_OPTS} \
         openssl-devel \
         bzip2-devel \
         libffi-devel \
+        libsndfile \
     && yum group install -y "Development Tools" \
     && yum clean all
 
