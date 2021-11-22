@@ -78,4 +78,4 @@ communicator/test_data_parallel_communicator.py::test_data_parallel_communicator
 
 
 Now you can use **Data Parallel Distributed Training** using multiple GPUs and multiple nodes, please
-go to [CIFAR-10 example](https://github.com/sony/nnabla-examples/tree/master/distributed/cifar10-100) for the usage.
+go to [CIFAR-10 example](https://github.com/sony/nnabla-examples/tree/master/image-classification/cifar10-100) for the usage.

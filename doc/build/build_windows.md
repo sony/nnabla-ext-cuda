@@ -14,7 +14,7 @@ Get several versions of cuDNN from following site. (Registration required)
 
 Make sure that set `CUDNN_PATH` variable. 
 
-Before building nnabla-ext cuda, build nnabla with [Instruction](https://github.com/sony/nnabla/doc/build/build_windows.md).
+Before building nnabla-ext cuda, build nnabla with [Instruction](https://github.com/sony/nnabla/blob/master/doc/build/build_windows.md).
 
 
 ### Build cpplib
