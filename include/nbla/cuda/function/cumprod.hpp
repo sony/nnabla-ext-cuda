@@ -1,4 +1,5 @@
 // Copyright 2021 Sony Corporation.
+// Copyright 2021 Sony Group Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,14 +17,16 @@
 #define NBLA_CUDA_FUNCTION_CUMPROD_HPP
 
 #include <nbla/cuda/cuda.hpp>
+#include <nbla/cuda/utils/scan_setup.hpp>
 #include <nbla/function/cumprod.hpp>
 
 namespace nbla {
 
 template <typename T> class CumProdCuda : public CumProd<T> {
+  ScanSetup scan_setup_;
+
 public:
   typedef typename CudaType<T>::type Tcu;
-  typedef typename CudaTypeForceFloat<T>::type AccumType;
 
   explicit CumProdCuda(const Context &ctx, int axis, bool exclusive,
                        bool reverse)

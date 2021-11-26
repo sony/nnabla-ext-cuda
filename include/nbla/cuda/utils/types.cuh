@@ -1,4 +1,5 @@
 // Copyright (c) 2017 Sony Corporation. All Rights Reserved.
+// Copyright 2021 Sony Group Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -49,6 +50,32 @@ template <class T, class U> struct ReduceOpMaxLikeType {
   using IndexT = U;
   using StorageT = ValWithIdx<Tcu, IndexT>;
 };
+
+//==============================================================================
+// Type sets for scan CUDA kernel
+//==============================================================================
+// Tcu, IndexT, and StorageT are reuired as the interface of type set.
+// Type for scan sum
+
+/**
+ * @brief Type for cumulative sum scan.
+ *
+ * @tparam T the type of the input and output values;
+ * @tparam U the type of the size, shape, and indices of the input and output.
+ */
+template <class T, class U> struct ScanOpSumType {
+  using Tcu = typename CudaType<T>::type;
+  using IndexT = U;
+  using StorageT = typename CudaTypeForceFloat<T>::type;
+};
+
+/**
+ * @brief Type for cumulative prod scan.
+ *
+ * @tparam T the type of the input and output values;
+ * @tparam U the type of the size, shape, and indices of the input and output.
+ */
+template <class T, class U> using ScanOpProdType = ScanOpSumType<T, U>;
 }
 
 #endif
