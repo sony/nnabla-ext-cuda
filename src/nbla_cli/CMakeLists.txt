@@ -45,6 +45,6 @@ add_definitions(-DWITH_CUDA)
 add_executable(nbla_cuda nbla_cuda.cpp)
 
 target_link_libraries(nbla_cuda ${NBLA_LIBRARY_NAME} ${NBLA_UTILS_LIBRARY_NAME} ${NBLA_CUDA_LIBRARY_NAME} ${NBLA_CLI_LIBRARY_NAME} ${HDF5_LIBRARIES})
-set_property(TARGET nbla_cuda PROPERTY CXX_STANDARD 11)
+set_property(TARGET nbla_cuda PROPERTY CXX_STANDARD 14)
 
 install(TARGETS nbla_cuda RUNTIME DESTINATION bin)

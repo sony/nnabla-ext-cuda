@@ -115,7 +115,7 @@ def get_cpu_extopts(lib):
     if sys.platform != 'win32':
         ext_opts.update(dict(
             extra_compile_args=[
-                '-std=c++11', '-Wno-sign-compare', '-Wno-unused-function', '-Wno-cpp'],
+                '-std=c++14', '-Wno-sign-compare', '-Wno-unused-function', '-Wno-cpp'],
             runtime_library_dirs=['$ORIGIN/'],
         ))
     else:

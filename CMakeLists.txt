@@ -227,7 +227,7 @@ if(BUILD_CPP_LIB)
     target_link_libraries(clibtest ${NBLA_CUDA_LIBRARY_NAME})
     target_link_libraries(clibtest ${NBLA_CUDA_LINKER_LIBS})
   
-    set_property(TARGET clibtest PROPERTY CXX_STANDARD 11)
+    set_property(TARGET clibtest PROPERTY CXX_STANDARD 14)
     nbla_exclude_from_all(clibtest)  # Exclude target from all or default build
     add_test(NAME clibtest COMMAND clibtest)
   endif()
