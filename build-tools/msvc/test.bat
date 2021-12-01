@@ -36,7 +36,7 @@ pip install %PIP_INS_OPTS% --no-deps %WHLCUDA% || GOTO :error
 pip install %PIP_INS_OPTS% pytest pytest-xdist[psutil]
 
 SET PYTHONPATH=%nnabla_ext_cuda_root%\python\test;%VENV%\Lib\site-packages;%PYTHONPATH%
-python -m pytest %nnabla_root%\python\test || GOTO :error
+python -m pytest %PYTEST_OPTS% %nnabla_root%\python\test || GOTO :error
 
 CALL deactivate.bat || GOTO :error
 
