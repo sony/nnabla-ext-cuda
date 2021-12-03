@@ -1,4 +1,4 @@
-# Copyright 2020,2021 Sony Corporation.
+# Copyright 2018,2019,2020,2021 Sony Corporation.
 # Copyright 2021 Sony Group Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,16 +14,12 @@
 # limitations under the License.
 
 #Flatbuffer compiler
+ARG CU1_VER
+ARG CU2_VER
+ARG CUDNN_VER
 FROM ubuntu:18.04 as flatc
 
-ARG PIP_INS_OPTS
-ARG PYTHONWARNINGS
-ARG CURL_OPTS
-ARG WGET_OPTS
-ARG APT_OPTS
-
-RUN eval ${APT_OPTS} \
-    && apt-get update \
+RUN apt-get update \
     && apt-get install -y --no-install-recommends \
        ca-certificates \
        curl \
@@ -44,13 +40,28 @@ RUN umask 0 \
     && cd / \
     && rm -rf /tmp/*
 
-FROM nvidia/cuda:10.0-cudnn7-runtime-ubuntu18.04
+FROM nvidia/cuda:${CU1_VER}.${CU2_VER}-cudnn${CUDNN_VER}-runtime-ubuntu18.04
 
+ARG CU1_VER
+ARG CU2_VER
+ARG CUDNN_VER
+ARG PYTHON_VER
 ARG PIP_INS_OPTS
 ARG PYTHONWARNINGS
 ARG CURL_OPTS
 ARG WGET_OPTS
 ARG APT_OPTS
+
+ENV DEBIAN_FRONTEND noninteractive
+
+RUN eval ${APT_OPTS} \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+    software-properties-common \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN add-apt-repository ppa:deadsnakes/ppa
 
 RUN eval ${APT_OPTS} && apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -59,38 +70,22 @@ RUN eval ${APT_OPTS} && apt-get update \
        curl \
        libglib2.0-0 \
        libgl1-mesa-glx \
-       python3.8 \
+       python${PYTHON_VER} \
        python3-pip \
-       openmpi-bin \
-       openssh-client \
+       python${PYTHON_VER}-distutils \
     && rm -rf /var/lib/apt/lists/*
 
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.8 0
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 0
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python${PYTHON_VER} 0
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VER} 0
 
 RUN pip3 install ${PIP_INS_OPTS} --upgrade pip
 RUN pip install ${PIP_INS_OPTS} wheel setuptools
 RUN pip install ${PIP_INS_OPTS} opencv-python || true
 
-RUN pip install ${PIP_INS_OPTS} --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda100 \
-    || echo "Skip DALI installation (CUDA=10.0)"
-
-
-ARG NNABLA_VER
-RUN pip install ${PIP_INS_OPTS} nnabla-ext-cuda100-nccl2-mpi2.1.1==${NNABLA_VER} nnabla_converter==${NNABLA_VER}
+RUN pip install ${PIP_INS_OPTS} --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda${CU1_VER}${CU2_VER} \
+    || echo "Skip DALI installation (CUDA=${CU1_VER}.${CU2_VER})"
 
 COPY --from=flatc /usr/local/bin/flatc /usr/local/bin/flatc
 
-# Solve nccl error that No space left on device
-# while creating shared memory segment.
-RUN echo NCCL_SHM_DISABLE=1 >> /etc/nccl.conf
-RUN echo NCCL_P2P_LEVEL=SYS >> /etc/nccl.conf
-
-# Prepare default user
-RUN useradd -m nnabla
-RUN chown -R nnabla:nnabla /home/nnabla
-
-USER nnabla
-WORKDIR /home/nnabla
-CMD [ "/bin/bash" ]
-
+ARG NNABLA_VER
+RUN pip install ${PIP_INS_OPTS} nnabla-ext-cuda${CU1_VER}${CU2_VER}==${NNABLA_VER} nnabla_converter==${NNABLA_VER}
