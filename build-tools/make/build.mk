@@ -143,8 +143,8 @@ nnabla-ext-cuda-test:
 nnabla-ext-cuda-test-local: nnabla-install nnabla-ext-cuda-install
 	cd $(BUILD_EXT_CUDA_DIRECTORY_WHEEL) \
 	&& PYTHONPATH=$(NNABLA_EXT_CUDA_DIRECTORY)/python/test \
-	&& $(NNABLA_DIRECTORY)/build-tools/make/pytest.sh $(NNABLA_DIRECTORY)/python/test \
-	&& $(NNABLA_DIRECTORY)/build-tools/make/pytest.sh $(NNABLA_EXT_CUDA_DIRECTORY)/python/test
+	&& $(NNABLA_DIRECTORY)/build-tools/make/pytest.sh ${PYTEST_OPTS} $(NNABLA_DIRECTORY)/python/test \
+	&& $(NNABLA_DIRECTORY)/build-tools/make/pytest.sh ${PYTEST_OPTS} $(NNABLA_EXT_CUDA_DIRECTORY)/python/test
 
 .PHONY: nnabla-ext-cuda-multi-gpu-test-local
 nnabla-ext-cuda-multi-gpu-test-local: nnabla-install nnabla-ext-cuda-install
@@ -156,8 +156,8 @@ nnabla-ext-cuda-multi-gpu-test-local: nnabla-install nnabla-ext-cuda-install
 			--communicator-gpus=0,1 \
 			$(NNABLA_DIRECTORY)/python/test/communicator
 	cd $(BUILD_EXT_CUDA_DIRECTORY_WHEEL) \
-	&& $(NNABLA_DIRECTORY)/build-tools/make/pytest.sh $(NNABLA_DIRECTORY)/python/test \
-	&& $(NNABLA_DIRECTORY)/build-tools/make/pytest.sh $(NNABLA_EXT_CUDA_DIRECTORY)/python/test
+	&& $(NNABLA_DIRECTORY)/build-tools/make/pytest.sh ${PYTEST_OPTS} $(NNABLA_DIRECTORY)/python/test \
+	&& $(NNABLA_DIRECTORY)/build-tools/make/pytest.sh ${PYTEST_OPTS} $(NNABLA_EXT_CUDA_DIRECTORY)/python/test
 
 .PHONY: update-gpu-list
 update-gpu-list:
