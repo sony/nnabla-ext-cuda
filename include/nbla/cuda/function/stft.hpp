@@ -21,17 +21,27 @@
 
 namespace nbla {
 
+// Prototype declaration for cross referencing between STFTCuda and ISTFTCuda.
+template <typename T> class ISTFTCuda;
+
 template <typename T> class STFTCuda : public STFT<T> {
+  // ISTFTCuda needs some STFTCuda methods when `as_stft_backward == true`.
+  friend ISTFTCuda<T>;
+
   stft::WINDOW_TYPE window_type_t_;
+
+protected:
+  // Only for `as_istft_backward == true`.
+  shared_ptr<ISTFTCuda<T>> istft_cuda_;
 
 public:
   typedef typename CudaType<T>::type Tcu;
 
   explicit STFTCuda(const Context &ctx, int window_size, int stride,
                     int fft_size, const string &window_type, bool center,
-                    const string &pad_mode)
+                    const string &pad_mode, bool as_istft_backward)
       : STFT<T>(ctx, window_size, stride, fft_size, window_type, center,
-                pad_mode),
+                pad_mode, as_istft_backward),
         device_(std::stoi(ctx.device_id)) {}
   virtual ~STFTCuda() {}
   virtual string name() { return "STFTCuda"; }
@@ -47,6 +57,11 @@ protected:
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
   virtual void calculate_conv_weight(Variable &conv_r, Variable &conv_i);
+
+  // Only for `as_istft_backward == true`.
+  virtual void apply_inv_window_forward(Variable *x, Variable *y);
+  virtual void apply_inv_window_backward(Variable *x, Variable *y,
+                                         const bool accum);
 };
 }
 #endif

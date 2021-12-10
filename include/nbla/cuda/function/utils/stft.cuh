@@ -18,23 +18,22 @@
 #include <nbla/cuda/function/utils/stft.hpp>
 
 template <typename T, stft::WINDOW_TYPE window_type>
-__global__ void kernel_window_func(const int window_size, const int fft_size,
-                                   T *wf) {
+__global__ void kernel_window(const int window_size, const int fft_size, T *w) {
   NBLA_CUDA_KERNEL_LOOP(idx, fft_size) {
     const auto left_pad = (fft_size - window_size) / 2;
-    const auto wf_idx = idx - left_pad;
+    const auto w_idx = idx - left_pad;
 
     const auto r_window_size = 1.0f / window_size;
-    if (0 <= wf_idx && wf_idx < window_size) {
+    if (0 <= w_idx && w_idx < window_size) {
       if (window_type == stft::WINDOW_TYPE::hanning) {
-        wf[idx] = (T)0.5 - (T)0.5 * cospif(2.0f * wf_idx * r_window_size);
+        w[idx] = (T)0.5 - (T)0.5 * cospif(2.0f * w_idx * r_window_size);
       } else if (window_type == stft::WINDOW_TYPE::hamming) {
-        wf[idx] = (T)0.54 - (T)0.46 * cospif(2.0f * wf_idx * r_window_size);
+        w[idx] = (T)0.54 - (T)0.46 * cospif(2.0f * w_idx * r_window_size);
       } else { // window_type == istft::WINDOW_TYPE::rectangular
-        wf[idx] = (T)1;
+        w[idx] = (T)1;
       }
     } else {
-      wf[idx] = (T)0;
+      w[idx] = (T)0;
     }
   }
 }

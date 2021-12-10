@@ -21,15 +21,27 @@
 
 namespace nbla {
 
+// Prototype declaration for cross referencing between STFTCuda and ISTFTCuda.
+template <typename T> class STFTCuda;
+
 template <typename T> class ISTFTCuda : public ISTFT<T> {
+  // STFTCuda needs some ISTFTCuda methods when `as_istft_backward == true`.
+  friend STFTCuda<T>;
+
   stft::WINDOW_TYPE window_type_t_;
+
+protected:
+  // Only for `as_istft_backward == true`.
+  shared_ptr<STFTCuda<T>> stft_cuda_;
 
 public:
   typedef typename CudaType<T>::type Tcu;
 
   explicit ISTFTCuda(const Context &ctx, int window_size, int stride,
-                     int fft_size, const string &window_type, bool center)
-      : ISTFT<T>(ctx, window_size, stride, fft_size, window_type, center),
+                     int fft_size, const string &window_type, bool center,
+                     const string &pad_mode, bool as_stft_backward)
+      : ISTFT<T>(ctx, window_size, stride, fft_size, window_type, center,
+                 pad_mode, as_stft_backward),
         device_(std::stoi(ctx.device_id)) {}
   virtual ~ISTFTCuda() {}
   virtual string name() { return "ISTFTCuda"; }
@@ -44,7 +56,12 @@ protected:
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
+  virtual void calculate_window(Context &ctx, Variable *window) const;
+  virtual void calculate_inv_window(Context &ctx, Variable *inv_window);
   virtual void calculate_conv_weight(Variable &conv_cos, Variable &conv_sin);
+  virtual void apply_inv_window_forward(Variable *x, Variable *y);
+  virtual void apply_inv_window_backward(Variable *x, Variable *y,
+                                         const bool accum);
 };
 }
 #endif
