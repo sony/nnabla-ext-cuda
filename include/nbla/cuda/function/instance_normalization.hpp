@@ -41,7 +41,7 @@ protected:
   int device_;
   Variable mean_, var_;
   float inv_reduce_size_;
-  Size_t reduce_size_, outer_size_;
+  Size_t reduce_size_, outer_size_, channel_size_;
 
   // Internal buffers for backward
   Variable sum_dy_, sum_dyx_;
@@ -62,6 +62,14 @@ protected:
   void backward_channel_first(const Variables &inputs, const Variables &outputs,
                               const vector<bool> &propagate_down,
                               const vector<bool> &accum);
+  void backward_channel_first_dx(const Variables &inputs,
+                                 const Variables &outputs,
+                                 const vector<bool> &propagate_down,
+                                 const vector<bool> &accum);
+  void backward_channel_first_dbeta_dgamma(const Variables &inputs,
+                                           const Variables &outputs,
+                                           const vector<bool> &propagate_down,
+                                           const vector<bool> &accum);
 };
 }
 #endif

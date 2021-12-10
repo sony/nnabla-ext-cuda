@@ -21,12 +21,11 @@ namespace nbla {
 constexpr size_t NBLA_CUDA_IN_MAX_BLOCKS = 65535;
 constexpr size_t NBLA_CUDA_IN_NUM_THREADS = NBLA_CUDA_NUM_THREADS;
 
-template <typename T, typename IndexT>
-__global__ void
-instance_norm_forward_normalization(const IndexT outer_size,
-                                    const IndexT reduce_size, const T *x,
-                                    const T *mean, const T *var, const T *beta,
-                                    const T *gamma, T *y, const float eps) {
+template <typename T, typename IndexT, bool bc_beta, bool bc_gamma>
+__global__ void instance_norm_forward_normalization(
+    const IndexT outer_size, const IndexT channel_size,
+    const IndexT reduce_size, const T *x, const T *mean, const T *var,
+    const T *beta, const T *gamma, T *y, const float eps) {
   const IndexT bidy = blockIdx.y;
   const IndexT gdimy = gridDim.y;
   const IndexT tidx = threadIdx.x;
@@ -35,10 +34,12 @@ instance_norm_forward_normalization(const IndexT outer_size,
   // Grid-stride loop
   for (IndexT outer_idx = blockIdx.x; outer_idx < outer_size;
        outer_idx += gridDim.x) {
+    const IndexT gamma_idx = bc_gamma ? outer_idx % channel_size : outer_idx;
+    const IndexT beta_idx = bc_beta ? outer_idx % channel_size : outer_idx;
     for (IndexT i = tidx + bdimx * bidy; i < reduce_size; i += bdimx * gdimy) {
       const IndexT idx = outer_idx * reduce_size + i;
-      const T scale = gamma ? gamma[outer_idx] : (T)1.0f;
-      const T bias = beta ? beta[outer_idx] : (T)0.0f;
+      const T scale = gamma ? gamma[gamma_idx] : (T)1.0f;
+      const T bias = beta ? beta[beta_idx] : (T)0.0f;
       const T invstd = rsqrt(var[outer_idx] + eps);
 
       y[idx] = scale * invstd * (x[idx] - mean[outer_idx]) + bias;
@@ -46,16 +47,18 @@ instance_norm_forward_normalization(const IndexT outer_size,
   }
 }
 
-template <typename T, typename IndexT>
+template <typename T, typename IndexT, bool bc_gamma>
 __global__ void instance_norm_backward_dx_factor(
-    const IndexT outer_size, const float inv_reduce_size, const T *gamma,
-    const T *mean, const T *var, const T *dmean, const T *dvar, const T *sum_dy,
-    const T *sum_dyx, T *factor_a, T *factor_b, const float eps) {
+    const IndexT outer_size, const IndexT channel_size,
+    const float inv_reduce_size, const T *gamma, const T *mean, const T *var,
+    const T *dmean, const T *dvar, const T *sum_dy, const T *sum_dyx,
+    T *factor_a, T *factor_b, const float eps) {
   // Grid-stride loop
   for (IndexT idx = blockIdx.x * blockDim.x + threadIdx.x; idx < outer_size;
        idx += gridDim.x * blockDim.x) {
     const float invstd = rsqrt(var[idx] + eps);
-    const float scale = gamma ? static_cast<float>(gamma[idx]) : 1.0f;
+    const IndexT gamma_idx = bc_gamma ? idx % channel_size : idx;
+    const float scale = gamma ? static_cast<float>(gamma[gamma_idx]) : 1.0f;
 
     const float tmp = (sum_dy[idx] * scale * mean[idx] - sum_dyx[idx] * scale) *
                           invstd * invstd * invstd * inv_reduce_size +
@@ -68,12 +71,12 @@ __global__ void instance_norm_backward_dx_factor(
   }
 }
 
-template <bool accum, typename T, typename IndexT>
+template <typename T, typename IndexT, bool bc_gamma, bool accum>
 __global__ void
-instance_norm_backward_dx(const IndexT outer_size, const IndexT reduce_size,
-                          const T *x, const T *gamma, const T *dy, const T *var,
-                          const T *factor_a, const T *factor_b, T *dx,
-                          const float eps) {
+instance_norm_backward_dx(const IndexT outer_size, const IndexT channel_size,
+                          const IndexT reduce_size, const T *x, const T *gamma,
+                          const T *dy, const T *var, const T *factor_a,
+                          const T *factor_b, T *dx, const float eps) {
 
   const IndexT bidy = blockIdx.y;
   const IndexT gdimy = gridDim.y;
@@ -83,9 +86,10 @@ instance_norm_backward_dx(const IndexT outer_size, const IndexT reduce_size,
   // Grid-stride loop
   for (IndexT outer_idx = blockIdx.x; outer_idx < outer_size;
        outer_idx += gridDim.x) {
+    const IndexT gamma_idx = bc_gamma ? outer_idx % channel_size : outer_idx;
     for (IndexT i = tidx + bdimx * bidy; i < reduce_size; i += bdimx * gdimy) {
       const IndexT idx = outer_idx * reduce_size + i;
-      const T scale = gamma ? gamma[outer_idx] : (T)1.0f;
+      const T scale = gamma ? gamma[gamma_idx] : (T)1.0f;
       const T invstd = rsqrt(var[outer_idx] + eps);
 
       dx[idx] = dy[idx] * invstd * scale + factor_a[outer_idx] * x[idx] +
@@ -113,6 +117,15 @@ __global__ void instance_norm_backward_dbeta_dgamma(
     if (dgamma_out) {
       dgamma_out[idx] = dgamma + (accum_gamma ? dgamma_out[idx] : (T)0.0f);
     }
+  }
+}
+
+template <typename T, typename IndexT, bool accum>
+__global__ void instance_norm_backward_accum_affine_param(const IndexT size,
+                                                          const T *grad_in,
+                                                          T *grad_out) {
+  NBLA_CUDA_KERNEL_LOOP_SIZE_T(idx, size) {
+    grad_out[idx] = grad_in[idx] + (accum ? grad_out[idx] : (T)0);
   }
 }
 }
