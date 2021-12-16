@@ -209,7 +209,7 @@ if(BUILD_CPP_LIB)
   ###############################################################################
   # C++ Testing
   ###############################################################################
-  if(BUILD_CPP_TEST)
+  if(BUILD_TEST)
     if (WIN32)
       set(BUILD_SHARED_LIBS ON CACHE BOOL
         "Force to build gtest with dll on Windows.")
@@ -221,7 +221,7 @@ if(BUILD_CPP_LIB)
     file(GLOB NBLA_TEST_SOURCES src/nbla/cuda/test/test_*.cpp)
     add_executable(clibtest ${NBLA_TEST_SOURCES})
     add_dependencies(clibtest ${NBLA_CUDA_LIBRARY_NAME})
-    target_link_libraries(clibtest gtest gtest_main)
+    target_link_libraries(clibtest gtestd gtest_maind pthread)
   
     add_dependencies(clibtest ${NBLA_CUDA_LIBRARY_NAME})
     target_link_libraries(clibtest ${NBLA_CUDA_LIBRARY_NAME})
