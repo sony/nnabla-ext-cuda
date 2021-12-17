@@ -74,7 +74,7 @@ void PackPaddedSequenceCuda<U>::forward_impl(const Variables &inputs,
       packed_sequence->cast_data_and_get_pointer<Tcu>(this->ctx_);
   auto data_batch_sizes = batch_sizes->cast_data_and_get_pointer<int>(cpu_ctx);
 
-  using function::utils::rnn::compute_batch_sizes;
+  using utils::rnn::compute_batch_sizes;
   using cuda::function::utils::rnn::pack;
   compute_batch_sizes(data_lengths, lengths->size(), data_batch_sizes);
   pack<Tcu, false>(this->ctx_, data_padded_sequence, data_batch_sizes,

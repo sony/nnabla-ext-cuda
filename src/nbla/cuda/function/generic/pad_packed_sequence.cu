@@ -72,7 +72,7 @@ void PadPackedSequenceCuda<U>::forward_impl(const Variables &inputs,
                                   : _cast_data(padded_sequence);
   auto data_lengths = lengths->cast_data_and_get_pointer<int>(cpu_ctx);
 
-  using function::utils::rnn::compute_lengths;
+  using utils::rnn::compute_lengths;
   using cuda::function::utils::rnn::unpack;
   compute_lengths(data_batch_sizes, batch_sizes->size(), data_lengths);
   unpack<Tcu, false>(this->ctx_, data_packed_sequence, data_batch_sizes,
