@@ -18,7 +18,9 @@
 #include <nbla/exception.hpp>
 #include <thread>
 
+#include <cstdlib>
 #include <stdio.h>
+#include <stdlib.h>
 
 namespace nbla {
 
@@ -67,6 +69,16 @@ TEST(WatchDogTest, TestLocalTimeoutSetting) {
     Watchdog::WatchdogLock lck(watch_dog, 4);
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
   }
+}
+
+TEST(WatchDogTest, TestDisableWithEnv) {
+  setenv("NNABLA_MPI_WATCH_DOG_ENABLE", "0", 0);
+  Watchdog watch_dog(3);
+  {
+    Watchdog::WatchdogLock lck(watch_dog, 1);
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  }
+  setenv("NNABLA_MPI_WATCH_DOG_ENABLE", "1", 1);
 }
 
 #if 0

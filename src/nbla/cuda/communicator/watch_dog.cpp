@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <chrono>
+#include <cstdlib>
 #include <nbla/cuda/communicator/watch_dog.hpp>
 #include <nbla/exception.hpp>
 #include <stdio.h>
@@ -30,9 +31,17 @@ void Watchdog::watch_dog_loop() {
       std::cv_status r =
           cv_.wait_for(lck, std::chrono::milliseconds(TICK * timeout_ticks_));
       if (r == std::cv_status::timeout) {
-        NBLA_ERROR(error_code::runtime,
-                   "System stop response within %8.2f seconds!",
-                   (TICK * timeout_ticks_) / 1000.0);
+        const char *e = std::getenv("NNABLA_MPI_WATCH_DOG_ENABLE");
+        if (!e || *e == '0') {
+          fprintf(stderr,
+                  "WARNING: some node stop response for %8.2f seconds!\n",
+                  (TICK * timeout_ticks_) / 1000.0);
+          break;
+        } else {
+          NBLA_ERROR(error_code::runtime,
+                     "System stop response within %8.2f seconds!",
+                     (TICK * timeout_ticks_) / 1000.0);
+        }
       }
     } else {
       cv_.wait(lck);
