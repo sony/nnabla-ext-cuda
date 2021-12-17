@@ -28,9 +28,8 @@ template <typename T> class DropoutCuda : public Dropout<T> {
 public:
   typedef typename CudaType<T>::type Tc;
 
-  explicit DropoutCuda(const Context &ctx, double p, int seed = -1,
-                       bool output_mask = false)
-      : Dropout<T>(ctx, T(p), seed, output_mask) {
+  explicit DropoutCuda(const Context &ctx, double p, int seed = -1)
+      : Dropout<T>(ctx, T(p), seed) {
     cuda_set_device(std::stoi(ctx.device_id));
     NBLA_CHECK(this->p_ >= 0., error_code::value,
                "p must be between 0.0 and 1.0");
@@ -55,11 +54,14 @@ public:
 
 protected:
   curandGenerator_t curand_generator_;
+  bool store_mask_for_recompute_ = false;
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
+  virtual void setup_recompute_impl(const Variables &inputs,
+                                    const Variables &outputs);
   virtual void recompute_impl(const Variables &inputs,
                               const Variables &outputs);
 
