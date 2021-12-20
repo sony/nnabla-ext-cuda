@@ -30,7 +30,7 @@ First, get the source of nnabla-ext-cuda and setup for build.
 ```shell
 git clone https://github.com/sony/nnabla-ext-cuda
 cd nnabla-ext-cuda
-pip install -U -r python/requirements.txt
+pip install -r python/requirements.txt
 mkdir build
 cd build
 ```
@@ -64,7 +64,7 @@ For unit testing, some additional requirements should be installed.
 
 ```shell
 cd nnabla
-pip install -U -r python/test_requirements.txt
+pip install -r python/test_requirements.txt
 ```
 
 Go to NNabla source root (not nnabla-ext-cuda).
