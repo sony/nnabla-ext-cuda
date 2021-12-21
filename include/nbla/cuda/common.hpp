@@ -285,6 +285,12 @@ int cuda_get_device();
 NBLA_CUDA_API vector<size_t> cuda_mem_get_info();
 
 /** Get device properties of current CUDA device.
+
+    Note that using `cuda_get_current_device_properties`
+    is extremely slower than `cuda_get_current_device_attribute`,
+    since some props require PCIe reads to query.
+    Keep in mind that sometime using this function could lead to huge
+    slowdowns in your implementation.
  */
 cudaDeviceProp cuda_get_current_device_properties();
 

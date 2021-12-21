@@ -170,9 +170,14 @@ void ReduceSetup::operator()(const Shape_t &shape_input,
   }
 
   // Collect the information about the device
-  const auto device_prop = cuda_get_current_device_properties();
+  // Note that using `cuda_get_current_device_properties` is extremely slower,
+  // since some props require PCIe reads to query.
+  auto max_threads_per_multi_procesor = cuda_get_current_device_attribute(
+      cudaDeviceAttr::cudaDevAttrMaxThreadsPerMultiProcessor);
+  auto multi_processor_count = cuda_get_current_device_attribute(
+      cudaDeviceAttr::cudaDevAttrMultiProcessorCount);
   const auto min_blocks_per_sm =
-      device_prop.maxThreadsPerMultiProcessor / NBLA_CUDA_REDUCE_NUM_THREADS;
-  min_blocks = min_blocks_per_sm * device_prop.multiProcessorCount;
+      max_threads_per_multi_procesor / NBLA_CUDA_REDUCE_NUM_THREADS;
+  min_blocks = min_blocks_per_sm * multi_processor_count;
 }
 }
