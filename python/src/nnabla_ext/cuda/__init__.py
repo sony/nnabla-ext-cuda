@@ -96,7 +96,7 @@ def check_gpu_compatibility():
                         unusable_gpu.append(gpu)
                     break
         if len(unusable_gpu) > 0:
-            raise ValueError("Currnetly, nnabla-ext-cuda" + cuda_ver + " does not support your " + ",".join(unusable_gpu) + " GPU." +
+            raise ValueError("Currently, nnabla-ext-cuda" + cuda_ver + " does not support your " + ",".join(unusable_gpu) + " GPU." +
                              " It may take a long time to initialize cudnn and can't converge well!\n" +
                              "You can set environment variable AVAILABLE_GPU_NAMES=\"" +
                              ",".join(unusable_gpu) + "\" to avoid this error.")
