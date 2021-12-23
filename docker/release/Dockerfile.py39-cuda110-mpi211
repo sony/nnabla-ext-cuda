@@ -79,6 +79,7 @@ RUN eval ${APT_OPTS} && apt-get update \
        libdapl2 \
        libibmad5 \
        librdmacm1 \
+       python3.9-distutils \
     && rm -rf /var/lib/apt/lists/*
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.9 0
