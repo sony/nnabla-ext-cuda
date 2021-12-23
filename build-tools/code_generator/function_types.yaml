@@ -567,6 +567,9 @@ IFFT:
 Prune:
   float: [float]
 #  half: [Half] # since segfault with Half
+Assign:
+  float: [float]
+  half: [Half]
 Gather:
   float: [float]
   half: [Half]
