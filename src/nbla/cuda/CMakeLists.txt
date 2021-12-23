@@ -118,7 +118,7 @@ file(GLOB CPP_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 if(MSVC)
   set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};-Xcompiler /W0")
 else()
-  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};-std=c++11")
+  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};-std=c++14")
   # Do not use `--default-stream per-thread` since some kernel calls are executed strangely in blocking streams other than default stream
   #set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS}; --default-stream per-thread")
   set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};")
@@ -139,7 +139,7 @@ cuda_compile(CU_OBJECTS
 add_library(${NBLA_CUDA_LIBRARY_NAME} SHARED ${CPP_SOURCES} ${CU_OBJECTS})
 
 target_link_libraries(${NBLA_CUDA_LIBRARY_NAME} ${NBLA_LINKER_LIBS} ${NBLA_CUDA_LINKER_LIBS} ${CPPLIB_LIBRARY})
-set_property(TARGET ${NBLA_CUDA_LIBRARY_NAME} PROPERTY CXX_STANDARD 11)
+set_property(TARGET ${NBLA_CUDA_LIBRARY_NAME} PROPERTY CXX_STANDARD 14)
 
 # Install library nnabla and include files.
 install(TARGETS ${NBLA_CUDA_LIBRARY_NAME} LIBRARY DESTINATION lib)

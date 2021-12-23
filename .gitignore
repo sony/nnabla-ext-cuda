@@ -37,3 +37,6 @@
 /src/nbla/cuda/version.cpp
 /third_party/*.zip
 /third_party/*/
+
+#vscode
+.vscode/
