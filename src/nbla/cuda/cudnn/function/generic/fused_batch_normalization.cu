@@ -77,7 +77,7 @@ void FusedBatchNormalizationCudaCudnn<T>::setup_impl(const Variables &inputs,
     }
   }
   if (!can_use_bn_ex || outputs.size() == 3) {
-    this->fall_back_func_ = make_shared<FusedBatchNormalization<T>>(
+    this->fall_back_func_ = make_shared<FusedBatchNormalizationCuda<T>>(
         this->ctx_, this->axes_, this->decay_rate_, this->eps_,
         this->batch_stat_, this->nonlinearity_);
     this->fall_back_func_->setup(inputs, outputs);

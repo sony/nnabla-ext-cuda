@@ -97,6 +97,9 @@ Sinc:
 BatchNormalization:
   float: [float]
   half: [Half]
+FusedBatchNormalization:
+  float: [float]
+  half: [Half]
 GroupNormalization:
   float: [float]
   half: [Half]

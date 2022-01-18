@@ -21,20 +21,9 @@
 #include <nbla/cuda/function/add2.hpp>
 #include <nbla/variable.hpp>
 
+#include <nbla/cuda/utils/add2.cuh>
+
 namespace nbla {
-
-template <typename T>
-__global__ void kernel_add2_forward(const int num, T *y, const T *x0,
-                                    const T *x1) {
-  NBLA_CUDA_KERNEL_LOOP(idx, num) { y[idx] = x0[idx] + x1[idx]; }
-}
-
-template <typename T, bool accum>
-__global__ void kernel_add2_backward(const int num, T *d, const T *dy) {
-  NBLA_CUDA_KERNEL_LOOP(idx, num) {
-    d[idx] = (accum ? d[idx] : (T)0) + dy[idx];
-  }
-}
 
 template <class T>
 void Add2Cuda<T>::forward_impl(const Variables &inputs,
