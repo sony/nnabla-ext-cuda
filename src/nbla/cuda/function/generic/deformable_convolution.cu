@@ -135,8 +135,7 @@ void DeformableConvolutionCuda<T>::backward_impl(
   if (propagate_down[0] || propagate_down[1] || propagate_down[2]) {
     col = temp_col->cast_data_and_get_pointer<Tc>(this->ctx_, true);
     offset = inputs[2]->get_data_pointer<Tc>(this->ctx_);
-    if (inputs.size() == 5 || (inputs.size() == 4 && inputs[3]->ndim() != 1) ||
-        propagate_down[3]) {
+    if (this->with_mask_ && propagate_down[3]) {
       mask = inputs[3]->get_data_pointer<Tc>(this->ctx_);
     }
   }
@@ -157,8 +156,7 @@ void DeformableConvolutionCuda<T>::backward_impl(
       inputs[2]->grad()->zero();
     doff = inputs[2]->cast_grad_and_get_pointer<Tc>(this->ctx_, false);
   }
-  if ((inputs.size() == 5 || (inputs.size() == 4 && inputs[3]->ndim() != 1)) &&
-      propagate_down[3]) {
+  if (this->with_mask_ && propagate_down[3]) {
     if (!accum[3])
       inputs[3]->grad()->zero();
     dmask = inputs[3]->cast_grad_and_get_pointer<Tc>(this->ctx_, false);
@@ -192,8 +190,7 @@ void DeformableConvolutionCuda<T>::backward_impl(
       if (this->spatial_dims_ == 2) {
         Tc *doff_n = doff + n * this->offset_size_i_;
 
-        if (inputs.size() == 5 ||
-            (inputs.size() == 4 && inputs[3]->ndim() != 1)) {
+        if (this->with_mask_ && propagate_down[3]) {
           modulated_deformable_col2im_cuda<Tc, true>(
               col, offset + n * this->offset_size_i_,
               mask + n * this->mask_size_i_, this->channels_i_,
@@ -235,8 +232,7 @@ void DeformableConvolutionCuda<T>::backward_impl(
       // Backprop to weights
       // im2col
       if (this->spatial_dims_ == 2) {
-        if (inputs.size() == 5 ||
-            (inputs.size() == 4 && inputs[3]->ndim() != 1)) {
+        if (this->with_mask_ && propagate_down[3]) {
           modulated_deformable_im2col_cuda<Tc, true>(
               x + n * this->inner_size_i_, offset + n * this->offset_size_i_,
               mask + n * this->mask_size_i_, this->channels_i_,
