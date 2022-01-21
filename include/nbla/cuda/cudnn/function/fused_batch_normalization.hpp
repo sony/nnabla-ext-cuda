@@ -20,7 +20,7 @@
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/cuda.hpp>
 #include <nbla/cuda/cudnn/cudnn.hpp>
-#include <nbla/function/fused_batch_normalization.hpp>
+#include <nbla/cuda/function/fused_batch_normalization.hpp>
 
 #include <type_traits>
 #include <vector>
@@ -30,7 +30,7 @@ using std::vector;
 namespace nbla {
 
 template <typename T>
-class FusedBatchNormalizationCudaCudnn : public FusedBatchNormalization<T> {
+class FusedBatchNormalizationCudaCudnn : public FusedBatchNormalizationCuda<T> {
 protected:
   int device_;
 #if CUDNN_VERSION >= 7400
@@ -55,15 +55,15 @@ public:
   FusedBatchNormalizationCudaCudnn(const Context &ctx, const vector<int> axes,
                                    float decay_rate, float eps, bool batch_stat,
                                    const string &nonlinearity)
-      : FusedBatchNormalization<T>(ctx, axes, decay_rate, eps, batch_stat,
-                                   nonlinearity),
+      : FusedBatchNormalizationCuda<T>(ctx, axes, decay_rate, eps, batch_stat,
+                                       nonlinearity),
         device_(std::stoi(ctx.device_id)) {
 #if CUDNN_VERSION >= 7400
     // Note: The below is_same test causes unreachable statement warning during
     // compiling. C++11 does not give any functionality for testing types at
     // compile-time.
     if (!std::is_same<Tw, HalfCuda>::value || !batch_stat) {
-      this->fall_back_func_ = make_shared<FusedBatchNormalization<T>>(
+      this->fall_back_func_ = make_shared<FusedBatchNormalizationCuda<T>>(
           ctx, axes, decay_rate, eps, batch_stat, nonlinearity);
       return;
     }
