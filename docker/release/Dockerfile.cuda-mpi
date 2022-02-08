@@ -141,8 +141,10 @@ RUN pip install ${PIP_INS_OPTS} nnabla-ext-cuda${CU1_VER}${CU2_VER}-nccl2-mpi${M
 COPY --from=flatc /usr/local/bin/flatc /usr/local/bin/flatc
 
 # cuda compat driver support
+ARG WORK_PATH_ARG="/home/nnabla"
+ENV WORK_PATH_ENV=${WORK_PATH_ARG}
 COPY cudalibcheck /usr/local/bin/cudalibcheck
-COPY .bashrc /home/nnabla/.bashrc
+COPY .bashrc ${WORK_PATH_ARG}/.bashrc
 COPY bash.bashrc /etc/bash.bashrc
 COPY shinit_v2 /etc/shinit_v2
 RUN mkdir -p -m 775 /usr/local/cuda/compat/lib \
@@ -155,18 +157,14 @@ RUN mkdir -p -m 775 /usr/local/cuda/compat/lib \
 # singularity environment
 RUN mkdir -p -m 775 /.singularity.d/env
 COPY 20-nvidia-cuda-compat.sh /.singularity.d/env/20-nvidia-cuda-compat.sh
-ENV BASH_ENV /etc/bash.bashrc
-ENV ENV /etc/shinit_v2
-
-# Solve nccl error that No space left on device
-# while creating shared memory segment.
-RUN echo NCCL_SHM_DISABLE=1 >> /etc/nccl.conf
-RUN echo NCCL_P2P_LEVEL=SYS >> /etc/nccl.conf
 
 # Prepare default user
 RUN useradd -m nnabla
 RUN chown -R nnabla:nnabla /home/nnabla
 
+COPY .entrypoint-cuda-mpi.sh ${WORK_PATH_ARG}/.entrypoint.sh
+RUN chmod +x ${WORK_PATH_ARG}/.entrypoint.sh
+
 USER nnabla
 WORKDIR /home/nnabla
-CMD [ "/bin/bash" ]
+ENTRYPOINT ["/bin/bash", "-c", "${WORK_PATH_ENV}/.entrypoint.sh \"${@}\"", "--"]
