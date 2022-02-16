@@ -19,7 +19,14 @@ ARG CU2_VER
 ARG CUDNN_VER
 FROM ubuntu:18.04 as flatc
 
-RUN apt-get update \
+ARG PIP_INS_OPTS
+ARG PYTHONWARNINGS
+ARG CURL_OPTS
+ARG WGET_OPTS
+ARG APT_OPTS
+
+RUN eval ${APT_OPTS} \
+    && apt-get update \
     && apt-get install -y --no-install-recommends \
        ca-certificates \
        curl \
