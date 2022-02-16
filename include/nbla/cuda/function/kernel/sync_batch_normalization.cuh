@@ -926,7 +926,7 @@ __global__ void batch_norm_backward_elemt_kernel(
 
   // dmean and dvar
   stat_scalar_t dv = w_c * sum_dy_xmu[plane];
-  dv = dv * (-0.5) * pow(invstd_c, 3) + (dvar ? dvar[plane] : 0);
+  dv = dv * (-0.5) * invstd_c * invstd_c * invstd_c + (dvar ? dvar[plane] : 0);
   stat_scalar_t dm = w_c * sum_dy[plane];
   dm = dm * -invstd_c + (dmean ? dmean[plane] : 0);
 
@@ -1000,7 +1000,8 @@ __global__ void batch_norm_backward_elemt_channels_last_kernel(
 
   // dmean and dvar
   scalar_t dv = w_c * sum_dy_xmu[c_offset];
-  dv = dv * (-0.5) * pow(invstd_c, 3) + (dvar ? dvar[c_offset] : 0);
+  dv = dv * (-0.5) * invstd_c * invstd_c * invstd_c +
+       (dvar ? dvar[c_offset] : 0);
   scalar_t dm = w_c * sum_dy[c_offset];
   dm = dm * -invstd_c + (dmean ? dmean[c_offset] : 0);
 

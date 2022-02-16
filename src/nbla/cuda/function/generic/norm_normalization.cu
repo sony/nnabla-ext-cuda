@@ -21,11 +21,13 @@
 #include <nbla/cuda/function/mul2.hpp>
 #include <nbla/cuda/function/sum.hpp>
 
+#include <cmath>
+
 namespace nbla {
 
 template <typename T>
 __global__ void kernel_abs_pow(const int size, const T *x, T *y, float p) {
-  NBLA_CUDA_KERNEL_LOOP(idx, size) { y[idx] = pow(abs(x[idx]), (T)p); }
+  NBLA_CUDA_KERNEL_LOOP(idx, size) { y[idx] = std::pow(abs(x[idx]), (T)p); }
 }
 
 template <typename T>
@@ -35,7 +37,9 @@ __global__ void kernel_add_pow(const int size, const T *x, T *y, float p,
   if (p == -0.5f) {
     NBLA_CUDA_KERNEL_LOOP(idx, size) { y[idx] = rsqrt(x[idx] + (T)eps); }
   } else {
-    NBLA_CUDA_KERNEL_LOOP(idx, size) { y[idx] = pow(x[idx] + (T)eps, (T)p); }
+    NBLA_CUDA_KERNEL_LOOP(idx, size) {
+      y[idx] = std::pow(x[idx] + (T)eps, (T)p);
+    }
   }
 }
 
@@ -45,9 +49,9 @@ __global__ void kernel_abs_pow_backward(const int size, const T *x, const T *gy,
   NBLA_CUDA_KERNEL_LOOP(idx, size) {
     // always accumulate
     if (x[idx] < 0) {
-      gx[idx] = gx[idx] + -p * pow(abs(x[idx]), (T)(p - 1.)) * gy[idx];
+      gx[idx] = gx[idx] + -p * std::pow(abs(x[idx]), (T)(p - 1.)) * gy[idx];
     } else {
-      gx[idx] = gx[idx] + p * pow(abs(x[idx]), (T)(p - 1.)) * gy[idx];
+      gx[idx] = gx[idx] + p * std::pow(abs(x[idx]), (T)(p - 1.)) * gy[idx];
     }
   }
 }
@@ -56,7 +60,7 @@ template <typename T>
 __global__ void kernel_add_pow_backward(const int size, const T *x, const T *gy,
                                         T *gx, float p, float eps) {
   NBLA_CUDA_KERNEL_LOOP(idx, size) {
-    gx[idx] = (T)p * pow(x[idx] + (T)eps, (T)(p - 1.)) * gy[idx];
+    gx[idx] = (T)p * std::pow(x[idx] + (T)eps, (T)(p - 1.)) * gy[idx];
   }
 }
 
