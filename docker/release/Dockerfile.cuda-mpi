@@ -1,5 +1,5 @@
 # Copyright 2020,2021 Sony Corporation.
-# Copyright 2021 Sony Group Corporation.
+# Copyright 2021,2022 Sony Group Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#Flatbuffer compiler
+# Flatbuffer compiler
 ARG CU1_VER
 ARG CU2_VER
 ARG CUDNN_VER
@@ -55,7 +55,7 @@ ARG CURL_OPTS
 ARG WGET_OPTS
 ARG APT_OPTS
 ARG MPI
-ARG MPI_FLAG
+ARG MPI_OPTS
 
 RUN eval ${APT_OPTS} && apt-get update
 RUN apt-get install -y --no-install-recommends \
@@ -71,7 +71,7 @@ RUN curl ${CURL_OPTS} https://download.open-mpi.org/release/open-mpi/v${MPI%.*}/
 RUN tar Cxvf /tmp/openmpi /tmp/openmpi/openmpi-${MPI}.tar.bz2
 RUN cd tmp/openmpi/openmpi-${MPI} \
     && ./configure \
-        --prefix=/opt/openmpi --enable-orterun-prefix-by-default --with-sge ${MPI_FLAG} \
+        --prefix=/opt/openmpi --enable-orterun-prefix-by-default --with-sge ${MPI_OPTS} \
         CC=gcc \
         CXX=g++ \
         F77=gfortran \
@@ -135,17 +135,13 @@ COPY --from=openmpi /opt/openmpi /opt/openmpi
 ENV PATH /opt/openmpi/bin:$PATH
 ENV LD_LIBRARY_PATH /opt/openmpi/lib:$LD_LIBRARY_PATH
 
+COPY --from=flatc /usr/local/bin/flatc /usr/local/bin/flatc
+
 ARG NNABLA_VER
 RUN pip install ${PIP_INS_OPTS} nnabla-ext-cuda${CU1_VER}${CU2_VER}-nccl2-mpi${MPI}==${NNABLA_VER} nnabla_converter==${NNABLA_VER}
 
-COPY --from=flatc /usr/local/bin/flatc /usr/local/bin/flatc
-
 # cuda compat driver support
-ARG WORK_PATH_ARG="/home/nnabla"
-ENV WORK_PATH_ENV=${WORK_PATH_ARG}
 COPY cudalibcheck /usr/local/bin/cudalibcheck
-COPY .bashrc ${WORK_PATH_ARG}/.bashrc
-COPY bash.bashrc /etc/bash.bashrc
 COPY shinit_v2 /etc/shinit_v2
 RUN mkdir -p -m 775 /usr/local/cuda/compat/lib \
     && cd /usr/local/cuda/compat/lib \
@@ -158,13 +154,21 @@ RUN mkdir -p -m 775 /usr/local/cuda/compat/lib \
 RUN mkdir -p -m 775 /.singularity.d/env
 COPY 20-nvidia-cuda-compat.sh /.singularity.d/env/20-nvidia-cuda-compat.sh
 
-# Prepare default user
-RUN useradd -m nnabla
-RUN chown -R nnabla:nnabla /home/nnabla
+# Solve nccl error that No space left on device
+# while creating shared memory segment.
+RUN echo NCCL_SHM_DISABLE=1 >> /etc/nccl.conf
+RUN echo NCCL_P2P_LEVEL=SYS >> /etc/nccl.conf
 
-COPY .entrypoint-cuda-mpi.sh ${WORK_PATH_ARG}/.entrypoint.sh
-RUN chmod +x ${WORK_PATH_ARG}/.entrypoint.sh
+# Prepare default user
+ARG WORK_PATH_ARG="/home/nnabla"
+RUN useradd -m nnabla
+COPY .bashrc ${WORK_PATH_ARG}/.bashrc
+RUN chown -R nnabla:nnabla ${WORK_PATH_ARG}
+
+# Entrypoint
+COPY .entrypoint-cuda-mpi.sh /opt/.entrypoint.sh
+RUN chmod +x /opt/.entrypoint.sh
 
 USER nnabla
-WORKDIR /home/nnabla
-ENTRYPOINT ["/bin/bash", "-c", "${WORK_PATH_ENV}/.entrypoint.sh \"${@}\"", "--"]
+WORKDIR ${WORK_PATH_ARG}
+ENTRYPOINT ["/bin/bash", "-c", "/opt/.entrypoint.sh \"${@}\"", "--"]

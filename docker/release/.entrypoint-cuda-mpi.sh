@@ -1,5 +1,6 @@
 #!/bin/bash
-# Copyright (c) 2021 Sony Corporation. All Rights Reserved.
+# Copyright 2021 Sony Corporation.
+# Copyright 2021,2022 Sony Group Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,14 +16,10 @@
 
 set -e
 
-export BASH_ENV=/etc/bash.bashrc
-export ENV=/etc/shinit_v2
+source /etc/shinit_v2
 
-# Solve nccl error that No space left on device
-# while creating shared memory segment.
-echo NCCL_SHM_DISABLE=1 >> /etc/nccl.conf
-echo NCCL_P2P_LEVEL=SYS >> /etc/nccl.conf
-
-/bin/bash
-
-$@
+if [ $# -eq 0 ]; then
+    exec "/bin/bash"
+else
+    exec "$@"
+fi

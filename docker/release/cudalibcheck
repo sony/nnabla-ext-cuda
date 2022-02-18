@@ -1,5 +1,6 @@
 #!/usr/bin/python3
-# Copyright (c) 2021 Sony Corporation. All Rights Reserved.
+# Copyright 2021 Sony Corporation.
+# Copyright 2021,2022 Sony Group Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +16,7 @@
 
 import ctypes
 import sys
-import os 
+import os
 
 cuda_ver = os.getenv('CUDA_VERSION')
 gpu_available = False
@@ -59,6 +60,7 @@ if gpu_available:
         sys.exit(3)
     elif ev <= version and 0 < count:
         # Cuda Driver supports the expected version. Enable Compat Driver.
+        print(f'CUDA Driver OK. Version:{major}.{minor}/Device:{count}')
         sys.exit(0)
     else:
         # Cuda Driver does not support the expected version. Disable Compat Driver.
