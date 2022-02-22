@@ -8,7 +8,7 @@ PyYAML
 Cython
 boto3
 h5py<=3.1.0
-numpy==1.19.5
+numpy==1.21.0
 protobuf
 six
 tqdm
