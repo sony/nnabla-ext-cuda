@@ -1,5 +1,6 @@
 #!/usr/bin/python3
-# Copyright (c) 2021 Sony Corporation. All Rights Reserved.
+# Copyright 2021 Sony Corporation.
+# Copyright 2021,2022 Sony Group Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,11 +16,9 @@
 
 import ctypes
 import sys
+import os
 
-expected_version = '11.0'
-if len(sys.argv) > 1:
-    expected_version = sys.argv[1]
-
+cuda_ver = os.getenv('CUDA_VERSION')
 gpu_available = False
 version = -1
 count = -1
@@ -54,14 +53,18 @@ if r == 0:
 if gpu_available:
     major = int(version / 1000)
     minor = int((version - major * 1000) / 10)
-    e1, e2 = [int(x) for x in expected_version.split('.')]
+    e1, e2, _ = [int(x) for x in cuda_ver.split('.')]
     ev = e1 * 1000 + e2 * 10
-    if ev <= version and 0 < count:
+    if ev < 11000:
+        # Disable Compat Driver when CUDA is older than 11.0.
+        sys.exit(3)
+    elif ev <= version and 0 < count:
+        # Cuda Driver supports the expected version. Enable Compat Driver.
         print(f'CUDA Driver OK. Version:{major}.{minor}/Device:{count}')
         sys.exit(0)
     else:
-        print(f'Insufficient driver. Version:{major}.{minor}/Device:{count}')
+        # Cuda Driver does not support the expected version. Disable Compat Driver.
         sys.exit(1)
 else:
-    print(f'Insufficient driver. {r}')
+    # Driver is insufficent as cuInit returns non-zero. Using host driver.
     sys.exit(2)
