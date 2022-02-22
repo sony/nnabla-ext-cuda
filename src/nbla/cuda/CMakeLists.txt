@@ -38,14 +38,11 @@ option(WITH_NCCL "Use nccl for distributed training" OFF)
 if(WITH_NCCL)
 	add_definitions(-DFEATURE_DIST_TRAIN)
 	find_package(NCCL REQUIRED)
-	find_package(MPI REQUIRED)
 	list(APPEND NBLA_CUDA_INCLUDE_DIRS 
 		${NCCL_INCLUDE_DIR}
-	        ${MPI_INCLUDE_PATH}
 	  )
 	list(APPEND NBLA_CUDA_LINKER_LIBS
 		${NCCL_LIBRARIES}
-	        ${MPI_LIBRARIES}
 	  )
 endif()
 
@@ -129,8 +126,10 @@ file(GLOB CU_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} */*.cu cudnn/*/*.cu)
 
 # Distributed Training
 if(NOT WITH_NCCL)
-	list(REMOVE_ITEM CU_SOURCES communicator/data_parallel_communicator.cu)
-	list(REMOVE_ITEM CU_SOURCES communicator/multi_process_data_parallel_communicator.cu)
+  list(REMOVE_ITEM CPP_SOURCES communicator/dl_mpi.cpp)
+  list(REMOVE_ITEM CPP_SOURCES communicator/watch_dog.cpp)
+  list(REMOVE_ITEM CU_SOURCES communicator/data_parallel_communicator.cu)
+  list(REMOVE_ITEM CU_SOURCES communicator/multi_process_data_parallel_communicator.cu)
 endif()
 
 cuda_compile(CU_OBJECTS

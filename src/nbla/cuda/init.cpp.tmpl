@@ -32,6 +32,7 @@
 #include <nbla/cuda/array/cuda_array.hpp>
 #include <nbla/cuda/array/cuda_dlpack_array.hpp>
 #include <nbla/backend_registry.hpp>
+#include <nbla/cuda/communicator/dl_mpi.h>
 
 // Todo: avoid including cudnn.h in cuda package.
 #include <cudnn.h>
@@ -248,18 +249,18 @@ void init_cuda() {
 
   // Communicator registration
 #ifdef FEATURE_DIST_TRAIN
-  typedef DataParallelCommunicatorNccl<float> DataParallelCommunicatorNcclf;
-  NBLA_REGISTER_COMMUNICATOR_IMPL(DataParallelCommunicator, DataParallelCommunicatorNcclf, "cuda:float");
-  typedef MultiProcessDataParallelCommunicatorNccl<float> MultiProcessDataParallelCommunicatorNcclf;
-  NBLA_REGISTER_COMMUNICATOR_IMPL(MultiProcessDataParallelCommunicator, MultiProcessDataParallelCommunicatorNcclf, "cuda:float");
+  if(!dl_mpi_init()){
+    typedef DataParallelCommunicatorNccl<float> DataParallelCommunicatorNcclf;
+    NBLA_REGISTER_COMMUNICATOR_IMPL(DataParallelCommunicator, DataParallelCommunicatorNcclf, "cuda:float");
+    typedef MultiProcessDataParallelCommunicatorNccl<float> MultiProcessDataParallelCommunicatorNcclf;
+    NBLA_REGISTER_COMMUNICATOR_IMPL(MultiProcessDataParallelCommunicator, MultiProcessDataParallelCommunicatorNcclf, "cuda:float");
 
-  typedef DataParallelCommunicatorNccl<Half> DataParallelCommunicatorNcclh;
-  NBLA_REGISTER_COMMUNICATOR_IMPL(DataParallelCommunicator, DataParallelCommunicatorNcclh, "cuda:half");
-  typedef MultiProcessDataParallelCommunicatorNccl<Half> MultiProcessDataParallelCommunicatorNcclh;
-  NBLA_REGISTER_COMMUNICATOR_IMPL(MultiProcessDataParallelCommunicator, MultiProcessDataParallelCommunicatorNcclh, "cuda:half");
-
+    typedef DataParallelCommunicatorNccl<Half> DataParallelCommunicatorNcclh;
+    NBLA_REGISTER_COMMUNICATOR_IMPL(DataParallelCommunicator, DataParallelCommunicatorNcclh, "cuda:half");
+    typedef MultiProcessDataParallelCommunicatorNccl<Half> MultiProcessDataParallelCommunicatorNcclh;
+    NBLA_REGISTER_COMMUNICATOR_IMPL(MultiProcessDataParallelCommunicator, MultiProcessDataParallelCommunicatorNcclh, "cuda:half");
+  }
 #endif
-
   is_initialized = true;
 }
 

@@ -32,6 +32,17 @@ function(download_and_extract_library NAME EXT URL)
 endfunction()
 
 download_and_extract_library(eigen-3.3.5 .zip https://gitlab.com/libeigen/eigen/-/archive/3.3.5/eigen-3.3.5.zip)
+download_and_extract_library(ompi-3.1.6 .zip https://github.com/open-mpi/ompi/archive/refs/tags/v3.1.6.zip)
+
+# Generate dl_mpi.h from ompi.h.in
+execute_process(
+  COMMAND ${PYTHON_COMMAND}
+          ${CMAKE_SOURCE_DIR}/build-tools/code_generator/dl_head_generate.py
+          OUTPUT_VARIABLE TEST
+          RESULT_VARIABLE GENERATE_RESULT)
+if (NOT ${GENERATE_RESULT} EQUAL 0)
+  message(FATAL_ERROR "mpi header generated failed.")
+endif()
 
 if(BUILD_TEST)
   download_and_extract_library(googletest-release-1.7.0 .zip https://github.com/google/googletest/archive/release-1.7.0.zip)

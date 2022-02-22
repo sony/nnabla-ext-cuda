@@ -21,9 +21,8 @@
 #include <algorithm>
 #include <cstdlib>
 #include <memory>
+#include <nbla/cuda/communicator/dl_mpi.h>
 #include <numeric>
-
-#include "mpi.h"
 #include <stdint.h>
 #include <unistd.h>
 
