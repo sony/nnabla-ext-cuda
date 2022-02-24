@@ -17,10 +17,10 @@
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/function/random_choice.hpp>
 #include <nbla/cuda/utils/atomic_add.cuh>
+#include <nbla/cuda/utils/scan_ops/sum.cuh>
 #include <nbla/variable.hpp>
 
 #include <thrust/device_vector.h>
-#include <thrust/scan.h>
 
 namespace nbla {
 
@@ -100,10 +100,19 @@ __global__ void add_gradient(const size_t size, const size_t w_size,
 } // namespace random_choice_cuda
 
 template <typename T>
+void RandomChoiceCuda<T>::setup_impl(const Variables &inputs,
+                                     const Variables &outputs) {
+  RandomChoice<T>::setup_impl(inputs, outputs);
+  cuda_set_device(this->device_);
+  auto w_size = inputs.at(1)->shape().back(); // size of weight vectors
+  scan_setup_(Shape_t{this->outer_loop_, w_size}, 1, false, false);
+}
+
+template <typename T>
 void RandomChoiceCuda<T>::setup_recompute_impl(const Variables &inputs,
                                                const Variables &outputs) {
   save_output_data_ = true;
-  output_data_for_recomp_.reshape(outputs[0]->shape(), true);
+  output_data_for_recomp_.reshape(outputs.at(0)->shape(), true);
 }
 
 template <typename T>
@@ -118,7 +127,7 @@ void RandomChoiceCuda<T>::forward_impl(const Variables &inputs,
 
   // Save output data for recomputation.
   if (save_output_data_) {
-    save_output_data<Tcu>(this->ctx_, outputs[0], output_data_for_recomp_);
+    save_output_data<Tcu>(this->ctx_, outputs.at(0), output_data_for_recomp_);
   }
 }
 
@@ -126,42 +135,38 @@ template <typename T>
 void RandomChoiceCuda<T>::recompute_impl(const Variables &inputs,
                                          const Variables &outputs) {
   // Restore output data of previous forward execution.
-  restore_output_data<Tcu>(this->ctx_, output_data_for_recomp_, outputs[0]);
+  restore_output_data<Tcu>(this->ctx_, output_data_for_recomp_, outputs.at(0));
   save_output_data_ = false;
 }
 
 template <typename T>
 void RandomChoiceCuda<T>::sample_with_replacement(const Variables &inputs,
                                                   const Variables &outputs) {
-  auto x = inputs[0], w = inputs[1], y = outputs[0];
+  using f32 = typename CudaTypeForceFloat<Tcu>::type;
+  auto x = inputs.at(0), w = inputs.at(1), y = outputs.at(0);
   Variable &idxbuf_ = this->idxbuf_;
   idxbuf_.data()->zero();
 
   auto idxbuf = idxbuf_.cast_data_and_get_pointer<int>(this->ctx_, false);
   auto x_data = x->get_data_pointer<Tcu>(this->ctx_);
-  auto w_data = w->get_data_pointer<Tcu>(this->ctx_);
+  auto w_data = w->get_data_pointer<f32>(this->ctx_);
   auto y_data = y->cast_data_and_get_pointer<Tcu>(this->ctx_, true);
   auto w_size = w->shape().back(); // size of each weight vector
   auto u_size = this->inner_loop_; // samples to draw per weight vector
 
   NdArray tmp0(Shape_t{x->size()});
   NdArray tmp1(Shape_t{y->size()});
-  auto w_sums = tmp0.cast(get_dtype<Tcu>(), this->ctx_, true)->pointer<Tcu>();
-  auto u_vals =
-      tmp1.cast(get_dtype<float>(), this->ctx_, true)->pointer<float>();
+  auto w_sums = tmp0.cast(get_dtype<f32>(), this->ctx_, true)->pointer<f32>();
+  auto u_vals = tmp1.cast(get_dtype<f32>(), this->ctx_, true)->pointer<f32>();
 
   // Generate random choices for each output sample point.
   curandGenerator_t &gen =
       this->seed_ == -1 ? SingletonManager::get<Cuda>()->curand_generator()
                         : curand_generator_;
-  curand_generate_rand<float>(gen, 0, 1, u_vals, y->size());
+  curand_generate_rand<f32>(gen, 0, 1, u_vals, y->size());
 
-  // Build cumulative sum of weights per population.
-  for (int i = 0; i < this->outer_loop_; i++) {
-    auto w_data_ptr = thrust::device_pointer_cast(w_data + i * w_size);
-    auto w_sums_ptr = thrust::device_pointer_cast(w_sums + i * w_size);
-    thrust::inclusive_scan(w_data_ptr, w_data_ptr + w_size, w_sums_ptr);
-  }
+  // Build cumulative sum of population weights.
+  device_cumsum(this->ctx_, w_data, w_sums, scan_setup_, false /* accum */);
 
   // Indirectly draw samples by building an index map.
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(random_choice_cuda::draw_samples, x->size(),
@@ -175,7 +180,8 @@ void RandomChoiceCuda<T>::sample_with_replacement(const Variables &inputs,
 template <typename T>
 void RandomChoiceCuda<T>::sample_without_replace(const Variables &inputs,
                                                  const Variables &outputs) {
-  auto x = inputs[0], w = inputs[1], y = outputs[0];
+  using f32 = typename CudaTypeForceFloat<Tcu>::type;
+  auto x = inputs.at(0), w = inputs.at(1), y = outputs.at(0);
   Variable &idxbuf_ = this->idxbuf_;
   idxbuf_.data()->zero();
 
@@ -189,14 +195,13 @@ void RandomChoiceCuda<T>::sample_without_replace(const Variables &inputs,
   NdArray tmp0(Shape_t{x->size()});
   NdArray tmp1(Shape_t{x->size()});
   NdArray tmp2(Shape_t{y->size()});
-  auto w_data = tmp0.cast(get_dtype<Tcu>(), this->ctx_, true)->pointer<Tcu>();
-  auto w_sums = tmp1.cast(get_dtype<Tcu>(), this->ctx_, true)->pointer<Tcu>();
-  auto u_vals =
-      tmp2.cast(get_dtype<float>(), this->ctx_, true)->pointer<float>();
+  auto w_data = tmp0.cast(get_dtype<f32>(), this->ctx_, true)->pointer<f32>();
+  auto w_sums = tmp1.cast(get_dtype<f32>(), this->ctx_, true)->pointer<f32>();
+  auto u_vals = tmp2.cast(get_dtype<f32>(), this->ctx_, true)->pointer<f32>();
 
   // Copy the weight data to writable memory where we can remove a
   // category (by nulling it's weight) after each round.
-  auto w_data_ptr = w->get_data_pointer<Tcu>(this->ctx_);
+  auto w_data_ptr = w->get_data_pointer<f32>(this->ctx_);
   thrust::copy_n(thrust::device_pointer_cast(w_data_ptr), w->size(),
                  thrust::device_pointer_cast(w_data));
 
@@ -204,19 +209,19 @@ void RandomChoiceCuda<T>::sample_without_replace(const Variables &inputs,
   curandGenerator_t &gen =
       this->seed_ == -1 ? SingletonManager::get<Cuda>()->curand_generator()
                         : curand_generator_;
-  curand_generate_rand<float>(gen, 0, 1, u_vals, y->size());
+  curand_generate_rand<f32>(gen, 0, 1, u_vals, y->size());
 
   // We draw one sample per round (and population) and set the choosen weight
   // to zero, so each round decreases the number of non-zero weights.
   for (int r = 0; r < u_size; r++) {
-    for (int i = 0; i < b_size; i++) {
-      auto w_data_ptr = thrust::device_pointer_cast(w_data + i * w_size);
-      auto w_sums_ptr = thrust::device_pointer_cast(w_sums + i * w_size);
-      thrust::inclusive_scan(w_data_ptr, w_data_ptr + w_size, w_sums_ptr);
-    }
+    // Build cumulative sum of population weights.
+    device_cumsum(this->ctx_, w_data, w_sums, scan_setup_, false /* accum */);
+
+    // Indirectly draw samples by building an index map.
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(random_choice_cuda::draw_sample, x->size(),
                                    w_size, u_size, w_sums, u_vals, idxbuf, r);
 
+    // Set weight to zero for the batch-size number of samples drawn.
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(random_choice_cuda::zero_weight, b_size,
                                    w_size, u_size, idxbuf, r, w_data)
   }
@@ -231,24 +236,24 @@ void RandomChoiceCuda<T>::backward_impl(const Variables &inputs,
                                         const Variables &outputs,
                                         const vector<bool> &propagate_down,
                                         const vector<bool> &accum) {
-  if (!(propagate_down[0] || propagate_down[1])) {
+  if (!(propagate_down.at(0) || propagate_down.at(1))) {
     return;
   }
+
   cuda_set_device(this->device_);
-
-  if ((propagate_down[0]) && (!accum[0]))
-    inputs[0]->grad()->zero();
-
-  if ((propagate_down[1]) && (!accum[1]))
-    inputs[1]->grad()->zero();
-
-  auto x = inputs[0], w = inputs[1], y = outputs[0];
+  auto x = inputs.at(0), w = inputs.at(1), y = outputs.at(0);
   Variable &idxbuf_ = this->idxbuf_;
+
+  if ((propagate_down.at(0)) && (!accum.at(0)))
+    x->grad()->zero();
+
+  if ((propagate_down.at(1)) && (!accum.at(1)))
+    w->grad()->zero();
 
   auto w_size = w->shape().back(); // size of each weight vector
   auto u_size = this->inner_loop_; // samples to draw per weight vector
 
-  if (propagate_down[0]) {
+  if (propagate_down.at(0)) {
     auto x_grad = x->cast_grad_and_get_pointer<Tcu>(this->ctx_, false);
     auto y_grad = y->get_grad_pointer<Tcu>(this->ctx_);
     auto idxbuf = idxbuf_.get_data_pointer<int>(this->ctx_);
@@ -256,7 +261,7 @@ void RandomChoiceCuda<T>::backward_impl(const Variables &inputs,
                                    w_size, u_size, idxbuf, y_grad, x_grad);
   }
 
-  if (propagate_down[1]) {
+  if (propagate_down.at(1)) {
     auto w_grad = w->cast_grad_and_get_pointer<Tcu>(this->ctx_, false);
     auto y_grad = y->get_grad_pointer<Tcu>(this->ctx_);
     auto idxbuf = idxbuf_.get_data_pointer<int>(this->ctx_);
