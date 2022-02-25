@@ -26,7 +26,7 @@ If you want to build it yourself using Makefile you can refer to the following c
 
 ```shell
 export NNABLA_DIR='path to your nnabla directory'
-export CUDA_VERSION_SUFFIX='CUDA version suffix, e.g. -100_7'
+export CUDA_VERSION_SUFFIX='CUDA version suffix, e.g. -102_8'
 make lenet
 ```
 

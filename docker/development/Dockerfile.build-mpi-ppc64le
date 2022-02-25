@@ -15,8 +15,8 @@
 
 
 ARG CUDA_VERSION_MAJOR=10
-ARG CUDA_VERSION_MINOR=0
-ARG CUDNN_VERSION=7
+ARG CUDA_VERSION_MINOR=2
+ARG CUDNN_VERSION=8
 
 ############################################################ OpenMPI
 # CentOS7:  1.10.7 (12)
