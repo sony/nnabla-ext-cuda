@@ -18,6 +18,7 @@
 
 #include <nbla/cuda/cuda.hpp>
 #include <nbla/cuda/utils/random.hpp>
+#include <nbla/cuda/utils/scan_setup.hpp>
 #include <nbla/function/random_choice.hpp>
 
 namespace nbla {
@@ -47,9 +48,11 @@ public:
 
 protected:
   int device_;
+  ScanSetup scan_setup_;
   curandGenerator_t curand_generator_;
   bool save_output_data_ = false;
   NdArray output_data_for_recomp_;
+  virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,
                              const vector<bool> &propagate_down,
