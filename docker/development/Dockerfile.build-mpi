@@ -203,17 +203,16 @@ RUN rpm -i /root/openmpi-*.rpm
 
 ############################################################ build python from source
 ARG PYTHON_VERSION_MAJOR=3
-ARG PYTHON_VERSION_MINOR=6
+ARG PYTHON_VERSION_MINOR=7
 ENV PYVERNAME=${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}
 
 ADD python/requirements.txt /tmp/deps/
 
 ARG ARCH_SUFFIX
 ARG CUDA_VERSION_MAJOR=10
-ARG CUDA_VERSION_MINOR=0
-ARG CUDNN_VERSION=7
-RUN if [ "${PYVERNAME}" == "3.6" ]; then wget ${WGET_OPTS} https://www.python.org/ftp/python/3.6.12/Python-3.6.12.tgz; fi \
-	&& if [ "${PYVERNAME}" == "3.7" ]; then wget ${WGET_OPTS} https://www.python.org/ftp/python/3.7.10/Python-3.7.10.tgz; fi \
+ARG CUDA_VERSION_MINOR=2
+ARG CUDNN_VERSION=8
+RUN if [ "${PYVERNAME}" == "3.7" ]; then wget ${WGET_OPTS} https://www.python.org/ftp/python/3.7.10/Python-3.7.10.tgz; fi \
 	&& if [ "${PYVERNAME}" == "3.8" ]; then wget ${WGET_OPTS} https://www.python.org/ftp/python/3.8.8/Python-3.8.8.tgz; fi \
 	&& if [ "${PYVERNAME}" == "3.9" ]; then wget ${WGET_OPTS} https://www.python.org/ftp/python/3.9.8/Python-3.9.8.tgz; fi \
 	&& tar -xzf Python-${PYVERNAME}*.tgz \
