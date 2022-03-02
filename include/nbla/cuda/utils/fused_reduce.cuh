@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef __NBLA_CUDA_UTILS_FUSED_REDUCE_CUH__
-#define __NBLA_CUDA_UTILS_FUSED_REDUCE_CUH__
+#ifndef NBLA_CUDA_UTILS_FUSED_REDUCE_CUH
+#define NBLA_CUDA_UTILS_FUSED_REDUCE_CUH
+
 #include <nbla/cuda/half.hpp>
 #include <nbla/cuda/utils/block_reduce.cuh>
 
@@ -120,113 +121,23 @@ kernel_fused_reduce_per_block_to_buff(int N, const F &f,
 
 template <typename F, typename... T>
 void fused_reduce(cudaStream_t stream, int num, ReduceTarget<T>... targets) {
-  if (num >= 1024) {
-    int blocks = min(NBLA_CUDA_GET_BLOCKS(num), /*max blocks*/ 1024);
+  constexpr int MAX_THREADS = 1024;
+  constexpr int MAX_BLOCKS = 1024;
+  if (num >= MAX_THREADS) {
+    int blocks = min(NBLA_CUDA_GET_BLOCKS(num), MAX_BLOCKS);
     internal::kernel_fused_reduce_per_block_to_buff<
         F, T...><<<blocks, NBLA_CUDA_NUM_THREADS, 0, stream>>>(num, F(),
                                                                targets...);
+    NBLA_CUDA_KERNEL_CHECK();
     internal::kernel_fused_reduce_per_block_from_buff<
-        Id<float>, T...><<<1, 1024, 0, stream>>>(blocks, Id<float>(),
-                                                 targets...);
+        Id<float>, T...><<<1, MAX_THREADS, 0, stream>>>(blocks, Id<float>(),
+                                                        targets...);
+    NBLA_CUDA_KERNEL_CHECK();
   } else {
-    internal::kernel_fused_reduce_per_block<F, T...><<<1, 1024, 0, stream>>>(
-        num, F(), targets...);
+    internal::kernel_fused_reduce_per_block<
+        F, T...><<<1, MAX_THREADS, 0, stream>>>(num, F(), targets...);
+    NBLA_CUDA_KERNEL_CHECK();
   }
-}
-
-namespace layer {
-template <typename V = float, typename Scalar = float> struct Argument {
-  size_t num;
-  V input;
-  Scalar *buff;
-  Scalar *output;
-};
-
-template <typename Scalar> struct Zero {
-  Scalar operator()() const { return Scalar(); }
-};
-template <> struct Zero<float2> {
-  float2 operator()() const { return make_float2(0.0, 0.0); }
-};
-
-template <typename F, typename V, typename Scalar>
-__global__ void
-kernel_fused_reduce_per_block_to_buff(const F &f, Scalar zero, size_t num,
-                                      Argument<V, Scalar> *args) {
-  for (int i = 0; i < num; ++i) {
-    const auto &arg = args[i];
-    Scalar thread_data = zero;
-    NBLA_CUDA_KERNEL_LOOP(i, arg.num) {
-      thread_data += f((Scalar)arg.input[i]);
-    }
-    thread_data = blockReduceSum(thread_data);
-    if (threadIdx.x == 0) {
-      arg.buff[blockIdx.x] = thread_data;
-    }
-  }
-}
-template <typename F, typename V, typename Scalar>
-__global__ void
-kernel_fused_reduce_per_block_from_buff(int N, const F &f, Scalar zero,
-                                        size_t num, Argument<V, Scalar> *args) {
-  for (int i = 0; i < num; ++i) {
-    const auto &arg = args[i];
-    Scalar thread_data = zero;
-    NBLA_CUDA_KERNEL_LOOP(i, N) { thread_data += f((Scalar)arg.buff[i]); }
-    thread_data = blockReduceSum(thread_data);
-    if (threadIdx.x == 0) {
-      arg.output[blockIdx.x] = thread_data;
-    }
-  }
-}
-template <typename F, typename V, typename Scalar>
-__global__ void kernel_fused_reduce_per_block(const F &f, Scalar zero,
-                                              size_t num,
-                                              Argument<V, Scalar> *args) {
-  for (int i = 0; i < num; ++i) {
-    const auto &arg = args[i];
-    Scalar thread_data = zero;
-    NBLA_CUDA_KERNEL_LOOP(i, arg.num) {
-      thread_data += f((Scalar)arg.input[i]);
-    }
-    thread_data = blockReduceSum(thread_data);
-    if (threadIdx.x == 0) {
-      arg.output[blockIdx.x] = thread_data;
-    }
-  }
-}
-
-template <typename F, typename V, typename Scalar>
-void fused_reduce(Context ctx, cudaStream_t stream,
-                  const std::vector<Argument<V, Scalar>> &args) {
-  size_t max_n = 0;
-  for (const auto &arg : args) {
-    max_n = std::max<size_t>(max_n, arg.num);
-  }
-
-  // Send argument to GPU
-  dtypes dtype = get_dtype<float>();
-  auto buff_arr =
-      make_shared<NdArray>(Shape_t{sizeof(Argument<V, Scalar>) * args.size()});
-  void *buff = buff_arr->cast(dtype, ctx, true)->template pointer<void>();
-  NBLA_CUDA_CHECK(cudaMemcpyAsync(buff, args.data(),
-                                  args.size() * sizeof(Argument<V, Scalar>),
-                                  cudaMemcpyHostToDevice, stream));
-
-  if (max_n >= 1024) {
-    int blocks = min(NBLA_CUDA_GET_BLOCKS(max_n), /*max blocks*/ 1024);
-    kernel_fused_reduce_per_block_to_buff<
-        F, V, Scalar><<<blocks, NBLA_CUDA_NUM_THREADS, 0, stream>>>(
-        F(), Zero<Scalar>()(), args.size(), (Argument<V, Scalar> *)buff);
-    kernel_fused_reduce_per_block_from_buff<Id<Scalar>, V,
-                                            Scalar><<<1, 1024, 0, stream>>>(
-        blocks, Id<Scalar>(), Zero<Scalar>()(), args.size(),
-        (Argument<V, Scalar> *)buff);
-  } else {
-    kernel_fused_reduce_per_block<F, V, Scalar><<<1, 1024, 0, stream>>>(
-        F(), Zero<Scalar>()(), args.size(), (Argument<V, Scalar> *)buff);
-  }
-}
 }
 }
 #endif
