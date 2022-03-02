@@ -552,7 +552,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::reduce(NdArrayPtr ndarray,
   Tc *dw1 = ndarray->cast(dtype, this->ctx_)->pointer<Tc>();
   NBLA_NCCL_CHECK(ncclReduce(dw0, dw1, n_param, get_nccl_dtype<Tc>(), ncclSum,
                              dst, comms_[group], stream));
-  if (division) {
+  if (division && this->rank_ == dst) {
     NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace, stream, n_param,
                                       this->groups_[group].size(), dw1);
   }
