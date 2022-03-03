@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <nbla/cuda/common.hpp>
+#include <nbla/cuda/cuda.hpp>
 #include <nbla/cuda/utils/reduce.hpp>
 
 namespace nbla {
@@ -172,12 +173,11 @@ void ReduceSetup::operator()(const Shape_t &shape_input,
   // Collect the information about the device
   // Note that using `cuda_get_current_device_properties` is extremely slower,
   // since some props require PCIe reads to query.
-  auto max_threads_per_multi_procesor = cuda_get_current_device_attribute(
-      cudaDeviceAttr::cudaDevAttrMaxThreadsPerMultiProcessor);
-  auto multi_processor_count = cuda_get_current_device_attribute(
-      cudaDeviceAttr::cudaDevAttrMultiProcessorCount);
+  shared_ptr<cudaDeviceProp> device_prop =
+      SingletonManager::get<Cuda>()->get_device_properties();
+
   const auto min_blocks_per_sm =
-      max_threads_per_multi_procesor / NBLA_CUDA_REDUCE_NUM_THREADS;
-  min_blocks = min_blocks_per_sm * multi_processor_count;
+      device_prop->maxThreadsPerMultiProcessor / NBLA_CUDA_REDUCE_NUM_THREADS;
+  auto min_blocks = min_blocks_per_sm * device_prop->multiProcessorCount;
 }
 }

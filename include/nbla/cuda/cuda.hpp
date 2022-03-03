@@ -127,6 +127,10 @@ public:
    */
   void set_vma_chunk_size(size_t size);
 
+  /** get cuda device property
+   */
+  shared_ptr<cudaDeviceProp> get_device_properties(int device = -1);
+
 protected:
   std::mutex mtx_cublas_;
   std::mutex mtx_curand_;
@@ -157,6 +161,8 @@ protected:
   typedef unordered_map<std::thread::id, shared_ptr<cudaStream_t>>
       tid_cuda_stream_t;
   unordered_map<int, unordered_map<int, tid_cuda_stream_t>> streams_;
+
+  shared_ptr<cudaDeviceProp> cuda_device_prop_;
 
 private:
   friend SingletonManager;

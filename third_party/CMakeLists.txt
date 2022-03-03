@@ -45,6 +45,6 @@ if (NOT ${GENERATE_RESULT} EQUAL 0)
 endif()
 
 if(BUILD_TEST)
-  download_and_extract_library(googletest-release-1.7.0 .zip https://github.com/google/googletest/archive/release-1.7.0.zip)
-  add_subdirectory(googletest-release-1.7.0)
+  download_and_extract_library(googletest-release-1.10.0 .zip https://github.com/google/googletest/archive/release-1.10.0.zip)
+  add_subdirectory(googletest-release-1.10.0)
 endif()
