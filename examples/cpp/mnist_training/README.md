@@ -28,7 +28,7 @@ If you want to build it yourself using Makefile you can refer to the following c
 
 ```shell
 export NNABLA_DIR='path to your nnabla directory'
-CUDA_VERSION_SUFFIX=-100_7 make
+CUDA_VERSION_SUFFIX=-102_8 make
 ```
 `CUDA_VERSION_SUFFIX` depends on the CUDA version you are using, you may check it in /usr/local/lib.
 

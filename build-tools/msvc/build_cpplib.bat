@@ -48,10 +48,15 @@ cmake -G "%generate_target%" ^
       -DZLIB_LIBRARY_RELEASE=%zlib_library% ^
       %nnabla_ext_cuda_root% || GOTO :error
 
-msbuild ALL_BUILD.vcxproj /p:Configuration=%build_type% /verbosity:minimal /maxcpucount
+REM We can only use msbuild instead cmake here!
+msbuild ALL_BUILD.vcxproj /p:Configuration=%build_type% /verbosity:minimal /maxcpucount || GOTO :error
+REM cmake --build . --config %build_type% || GOTO :error
+SET OLD_PATH=%PATH%
+SET PATH="%ProgramFiles%\Cmake\bin";%PATH%
 cpack -G ZIP -C %build_type%
-
+SET PATH=%OLD_PATH%
 GOTO :end
+
 :error
 ECHO failed with error code %errorlevel%.
 exit /b %errorlevel%

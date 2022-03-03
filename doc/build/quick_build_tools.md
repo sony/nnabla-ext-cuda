@@ -23,10 +23,10 @@ $ make bwd-cpplib
 Prepare to specify CUDA, cuDNN, and python version.
 ```
 $ export PYTHON_VERSION_MAJOR=3
-$ export PYTHON_VERSION_MINOR=6
+$ export PYTHON_VERSION_MINOR=7
 $ export CUDA_VERSION_MAJOR=10
 $ export CUDA_VERSION_MINOR=2
-$ export CUDNN_VERSION=7
+$ export CUDNN_VERSION=8
 ```
 
 Then you can get with,
@@ -36,7 +36,7 @@ $ make all
 
 Or you can specify every time.
 ```
-$ make PYTHON_VERSION_MAJOR=3 PYTHON_VERSION_MINOR=6 CUDA_VERSION_MAJOR=10 CUDA_VERSION_MINOR=0 CUDNN_VERSION=7 all
+$ make PYTHON_VERSION_MAJOR=3 PYTHON_VERSION_MINOR=7 CUDA_VERSION_MAJOR=10 CUDA_VERSION_MINOR=2 CUDNN_VERSION=8 all
 ```
 
 ## Windows

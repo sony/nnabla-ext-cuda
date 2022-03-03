@@ -1,4 +1,5 @@
-// Copyright (c) 2017 Sony Corporation. All Rights Reserved.
+// Copyright 2017,2018,2019,2020,2021 Sony Corporation.
+// Copyright 2021 Sony Group Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,9 +21,8 @@
 #include <algorithm>
 #include <cstdlib>
 #include <memory>
+#include <nbla/cuda/communicator/dl_mpi.h>
 #include <numeric>
-
-#include "mpi.h"
 #include <stdint.h>
 #include <unistd.h>
 
@@ -552,7 +552,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::reduce(NdArrayPtr ndarray,
   Tc *dw1 = ndarray->cast(dtype, this->ctx_)->pointer<Tc>();
   NBLA_NCCL_CHECK(ncclReduce(dw0, dw1, n_param, get_nccl_dtype<Tc>(), ncclSum,
                              dst, comms_[group], stream));
-  if (division) {
+  if (division && this->rank_ == dst) {
     NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace, stream, n_param,
                                       this->groups_[group].size(), dw1);
   }

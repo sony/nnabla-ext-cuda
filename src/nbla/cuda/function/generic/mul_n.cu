@@ -1,4 +1,4 @@
-// Copyright (c) 2017 Sony Corporation. All Rights Reserved.
+// Copyright 2020,2021 Sony Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -47,6 +47,11 @@ __global__ void kernel_mul_n_backward(const int num, const int num_inputs,
 }
 
 template <typename T>
+__global__ void kernel_accum1_backward(const int size, const T *dy, T *dx) {
+  NBLA_CUDA_KERNEL_LOOP(idx, size) { dx[idx] += dy[idx]; }
+}
+
+template <typename T>
 void MulNCuda<T>::setup_impl(const Variables &inputs,
                              const Variables &outputs) {
   MulN<T>::setup_impl(inputs, outputs);
@@ -57,13 +62,31 @@ template <typename T>
 void MulNCuda<T>::forward_impl(const Variables &inputs,
                                const Variables &outputs) {
   cuda_set_device(this->device_);
-  Tcu *y = outputs[0]->cast_data_and_get_pointer<Tcu>(this->ctx_, true);
-  auto xptrs = get_cuda_pointer_array<Tcu>(inputs, this->ctx_, [&](int i) {
-    return inputs[i]->template get_data_pointer<Tcu>(this->ctx_);
-  });
-  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_mul_n_forward<Tcu>, inputs[0]->size(),
-                                 inputs.size(),
-                                 xptrs->template pointer<const Tcu *>(), y);
+
+  auto input_mask = this->cg_input_mask;
+  auto n_active_inputs = std::count(input_mask.begin(), input_mask.end(), true);
+  if (n_active_inputs == 1) {
+    auto input_index =
+        std::distance(input_mask.begin(),
+                      std::find(input_mask.begin(), input_mask.end(), true));
+    auto x = inputs.at(input_index)->data()->get(get_dtype<Tcu>(), this->ctx_);
+    auto y = outputs.at(0)->data()->cast(get_dtype<Tcu>(), this->ctx_, true);
+    y->copy_from(x);
+  } else if (n_active_inputs > 1) {
+    Variables _inputs;
+    for (size_t i = 0; i < inputs.size(); i++) {
+      if (input_mask.at(i) == true) {
+        _inputs.push_back(inputs[i]);
+      }
+    }
+    auto y = outputs.at(0)->cast_data_and_get_pointer<Tcu>(this->ctx_, true);
+    auto xptrs = get_cuda_pointer_array<Tcu>(_inputs, this->ctx_, [&](int i) {
+      return _inputs[i]->template get_data_pointer<Tcu>(this->ctx_);
+    });
+    auto kernel = kernel_mul_n_forward<Tcu>;
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel, outputs[0]->size(), _inputs.size(),
+                                   xptrs->template pointer<const Tcu *>(), y);
+  }
 }
 
 template <typename T>
@@ -72,25 +95,57 @@ void MulNCuda<T>::backward_impl(const Variables &inputs,
                                 const vector<bool> &propagate_down,
                                 const vector<bool> &accum) {
   cuda_set_device(std::stoi(this->ctx_.device_id));
-  const Tcu *dy = outputs[0]->get_grad_pointer<Tcu>(this->ctx_);
-  const Tcu *y = outputs[0]->get_data_pointer<Tcu>(this->ctx_);
-  auto dxptrs = get_cuda_pointer_array<Tcu>(inputs, this->ctx_, [&](int i) {
-    return inputs[i]->template cast_grad_and_get_pointer<Tcu>(this->ctx_,
-                                                              !accum[i]);
-  });
-  auto xptrs = get_cuda_pointer_array<Tcu>(inputs, this->ctx_, [&](int i) {
-    return inputs[i]->get_data_pointer<Tcu>(this->ctx_);
-  });
-  auto propdown_array =
-      create_ndarray_from_vector<bool, uint8_t>(propagate_down);
-  auto accum_array = create_ndarray_from_vector<bool, uint8_t>(accum);
-  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-      (kernel_mul_n_backward<Tcu>), inputs[0]->size(), inputs.size(),
-      dxptrs->template pointer<Tcu *>(), dy,
-      xptrs->template pointer<const Tcu *>(), y,
-      propdown_array->cast(get_dtype<uint8_t>(), this->ctx_)
-          ->template const_pointer<uint8_t>(),
-      accum_array->cast(get_dtype<uint8_t>(), this->ctx_)
-          ->template const_pointer<uint8_t>());
+
+  auto input_mask = this->cg_input_mask;
+  auto n_active_inputs = std::count(input_mask.begin(), input_mask.end(), true);
+  if (n_active_inputs == 1) {
+    auto input_index =
+        std::distance(input_mask.begin(),
+                      std::find(input_mask.begin(), input_mask.end(), true));
+    if (propagate_down.at(input_index)) {
+      Variable *input = inputs.at(input_index);
+      if (accum.at(input_index)) {
+        auto dx = input->cast_grad_and_get_pointer<Tcu>(this->ctx_, false);
+        auto dy = outputs.at(0)->get_data_pointer<Tcu>(this->ctx_);
+        auto kernel = kernel_accum1_backward<Tcu>;
+        NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel, outputs.at(0)->size(), dy, dx);
+      } else {
+        auto dx = input->grad()->cast(get_dtype<Tcu>(), this->ctx_, true);
+        auto dy = outputs.at(0)->grad()->get(get_dtype<Tcu>(), this->ctx_);
+        dx->copy_from(dy);
+      }
+    }
+  } else if (n_active_inputs > 1) {
+    auto dy = outputs.at(0)->get_grad_pointer<Tcu>(this->ctx_);
+    auto y = outputs[0]->get_data_pointer<Tcu>(this->ctx_);
+
+    Variables _inputs;
+    vector<bool> _propagate_down, _accum;
+    for (size_t i = 0; i < inputs.size(); i++) {
+      if (input_mask.at(i) == true) {
+        _inputs.push_back(inputs[i]);
+        _propagate_down.push_back(propagate_down.at(i));
+        _accum.push_back(accum.at(i));
+      }
+    }
+    auto dxptrs = get_cuda_pointer_array<Tcu>(_inputs, this->ctx_, [&](int i) {
+      return _inputs.at(i)->template cast_grad_and_get_pointer<Tcu>(this->ctx_,
+                                                                    !_accum[i]);
+    });
+    auto xptrs = get_cuda_pointer_array<Tcu>(_inputs, this->ctx_, [&](int i) {
+      return _inputs.at(i)->get_data_pointer<Tcu>(this->ctx_);
+    });
+    auto propdown_array =
+        create_ndarray_from_vector<bool, uint8_t>(_propagate_down);
+    auto accum_array = create_ndarray_from_vector<bool, uint8_t>(_accum);
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
+        (kernel_mul_n_backward<Tcu>), outputs[0]->size(), _inputs.size(),
+        dxptrs->template pointer<Tcu *>(), dy,
+        xptrs->template pointer<const Tcu *>(), y,
+        propdown_array->cast(get_dtype<uint8_t>(), this->ctx_)
+            ->template const_pointer<uint8_t>(),
+        accum_array->cast(get_dtype<uint8_t>(), this->ctx_)
+            ->template const_pointer<uint8_t>());
+  }
 }
 }
