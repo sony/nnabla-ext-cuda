@@ -21,6 +21,15 @@
 namespace nbla {
 
 template <typename T> class SortCuda : public Sort<T> {
+protected:
+  // Members only for cub implementation
+  bool use_cub_;
+  bool need_transpose_;
+  size_t cub_temp_storage_bytes_;
+  int cub_num_items_, cub_num_segments_;
+  Shape_t transposed_shape_;
+  FunctionPtr transpose_converter_, transpose_deconverter_;
+
 public:
   typedef typename CudaType<T>::type Tcu;
 
@@ -36,6 +45,8 @@ public:
 
 protected:
   int device_;
+  virtual void setup_impl(const Variables &inputs, const Variables &outputs);
+  virtual void thrust_sort(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
   virtual void backward_impl(const Variables &inputs, const Variables &outputs,
                              const vector<bool> &propagate_down,
