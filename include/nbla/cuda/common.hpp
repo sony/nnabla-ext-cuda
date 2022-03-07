@@ -22,6 +22,7 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <curand.h>
+#include <cusolverDn.h>
 #if CUDA_VERSION >= 8000
 #include <library_types.h>
 #endif
@@ -109,6 +110,53 @@ inline string cublas_status_to_string(cublasStatus_t status) {
     cudaGetLastError();                                                        \
     NBLA_CHECK(status == CUBLAS_STATUS_SUCCESS, error_code::target_specific,   \
                cublas_status_to_string(status));                               \
+  }
+
+inline string cusolver_status_to_string(cusolverStatus_t status) {
+#define CASE_CUSOLVER_STATUS(NAME)                                             \
+  case CUSOLVER_STATUS_##NAME:                                                 \
+    return #NAME;
+
+  switch (status) {
+    CASE_CUSOLVER_STATUS(SUCCESS);
+    CASE_CUSOLVER_STATUS(NOT_INITIALIZED);
+    CASE_CUSOLVER_STATUS(ALLOC_FAILED);
+    CASE_CUSOLVER_STATUS(INVALID_VALUE);
+    CASE_CUSOLVER_STATUS(ARCH_MISMATCH);
+    CASE_CUSOLVER_STATUS(MAPPING_ERROR);
+    CASE_CUSOLVER_STATUS(EXECUTION_FAILED);
+    CASE_CUSOLVER_STATUS(INTERNAL_ERROR);
+    CASE_CUSOLVER_STATUS(MATRIX_TYPE_NOT_SUPPORTED);
+    CASE_CUSOLVER_STATUS(NOT_SUPPORTED);
+    CASE_CUSOLVER_STATUS(ZERO_PIVOT);
+    CASE_CUSOLVER_STATUS(INVALID_LICENSE);
+#if CUDA_VERSION >= 10020
+    CASE_CUSOLVER_STATUS(IRS_PARAMS_NOT_INITIALIZED);
+    CASE_CUSOLVER_STATUS(IRS_PARAMS_INVALID);
+    CASE_CUSOLVER_STATUS(IRS_INTERNAL_ERROR);
+    CASE_CUSOLVER_STATUS(IRS_NOT_SUPPORTED);
+    CASE_CUSOLVER_STATUS(IRS_OUT_OF_RANGE);
+    CASE_CUSOLVER_STATUS(IRS_NRHS_NOT_SUPPORTED_FOR_REFINE_GMRES);
+    CASE_CUSOLVER_STATUS(IRS_INFOS_NOT_INITIALIZED);
+#endif
+#if CUDA_VERSION >= 11000
+    CASE_CUSOLVER_STATUS(IRS_PARAMS_INVALID_PREC);
+    CASE_CUSOLVER_STATUS(IRS_PARAMS_INVALID_REFINE);
+    CASE_CUSOLVER_STATUS(IRS_PARAMS_INVALID_MAXITER);
+    CASE_CUSOLVER_STATUS(IRS_INFOS_NOT_DESTROYED);
+    CASE_CUSOLVER_STATUS(IRS_MATRIX_SINGULAR);
+    CASE_CUSOLVER_STATUS(INVALID_WORKSPACE);
+#endif
+  }
+  return "UNKNOWN";
+#undef CASE_CUSOLVER_STATUS
+}
+
+#define NBLA_CUSOLVER_CHECK(condition)                                         \
+  {                                                                            \
+    cusolverStatus_t status = condition;                                       \
+    NBLA_CHECK(status == CUSOLVER_STATUS_SUCCESS, error_code::target_specific, \
+               cusolver_status_to_string(status));                             \
   }
 
 inline string curand_status_to_string(curandStatus_t status) {

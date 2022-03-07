@@ -19,6 +19,7 @@
 #include <nbla/common.hpp>
 #include <nbla/cuda/cublas.hpp>
 #include <nbla/cuda/cuda.hpp>
+#include <nbla/cuda/cusolver.hpp>
 
 namespace nbla {
 
@@ -184,6 +185,15 @@ static Size_t next_pow2_floor(Size_t n) {
   return n - (n >> 1);
   // Same as
   // return static_cast<T>(std::pow(2, std::floor(std::log2(n))));
+}
+
+template <typename T>
+void cuda_potrf_batched(int device, int n, T **x, int *info, int batchSize) {
+  _TD();
+  cusolverDnHandle_t handle =
+      SingletonManager::get<Cuda>()->cusolverdn_handle(device);
+  cusolverdn_potrf_batched<Tc>(handle, n, reinterpret_cast<Tc **>(x), n, info,
+                               batchSize);
 }
 }
 #endif

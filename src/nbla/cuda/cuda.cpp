@@ -50,6 +50,9 @@ Cuda::~Cuda() {
       NBLA_CUBLAS_CHECK(cublasDestroy(handle.second));
     }
   }
+  for (auto handle : this->cusolverdn_handles_) {
+    NBLA_CUSOLVER_CHECK(cusolverDnDestroy(handle.second));
+  }
   for (auto gen : this->curand_generators_) {
     curand_destroy_generator(gen.second);
   }
@@ -102,6 +105,22 @@ cublasHandle_t Cuda::cublas_handle(int device) {
     tid_cublas_map.insert({tid, handle});
     return handle;
   }
+}
+
+cusolverDnHandle_t Cuda::cusolverdn_handle(int device) {
+  if (device < 0) {
+    device = cuda_get_device();
+  }
+  std::lock_guard<decltype(mtx_cusolverdn_)> lock(mtx_cusolverdn_);
+  auto it = this->cusolverdn_handles_.find(device);
+  // Create a new one
+  if (it == this->cusolverdn_handles_.end()) {
+    cusolverDnHandle_t handle;
+    NBLA_CUSOLVER_CHECK(cusolverDnCreate(&handle));
+    this->cusolverdn_handles_.insert({device, handle});
+    return handle;
+  }
+  return it->second;
 }
 
 std::shared_ptr<cudaEvent_t> Cuda::cuda_event(unsigned int flags, int device) {

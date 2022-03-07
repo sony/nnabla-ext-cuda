@@ -22,6 +22,7 @@ message("Version: " ${CUDA_VERSION})
 message("Library: " ${CUDA_CUDA_LIBRARY})
 message("Runtime: " ${CUDA_CUDART_LIBRARY})
 message("CUBLAS: " ${CUDA_CUBLAS_LIBRARIES})
+message("CUSOLVER: " ${CUDA_cusolver_LIBRARY})
 message("CURAND: " ${CUDA_curand_LIBRARY})
 message("CUFFT: " ${CUDA_CUFFT_LIBRARIES})
 set(NBLA_CUDA_INCLUDE_DIRS ${CUDA_INCLUDE_DIRS})
@@ -29,6 +30,7 @@ list(APPEND NBLA_CUDA_LINKER_LIBS
   ${CUDA_CUDA_LIBRARY}
   ${CUDA_CUDART_LIBRARY}
   ${CUDA_CUBLAS_LIBRARIES}
+  ${CUDA_cusolver_LIBRARY}
   ${CUDA_curand_LIBRARY}
   ${CUDA_CUFFT_LIBRARIES}
   )
