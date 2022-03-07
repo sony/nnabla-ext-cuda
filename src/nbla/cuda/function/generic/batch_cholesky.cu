@@ -1,4 +1,4 @@
-// Copyright (c) 2017 Sony Corporation. All Rights Reserved.
+// Copyright 2021 Sony Group Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,9 +28,9 @@ __global__ void kernel_set_batch_pointers(int batchSize, int n, const T **ptr,
 
 // A macro that creates an array of pointers of matrices.
 #define NBLA_GET_BATCH_POINTERS(PTR, NAME, BATCH, CONST)                       \
-  CudaCachedArray list_##PTR(sizeof(Tcu *) * BATCH, dtypes::BYTE, this->ctx_); \
-  CONST Tcu **dev_list_##NAME =                                                \
-      reinterpret_cast<CONST Tcu **>(list_##PTR.pointer<void>());              \
+  NdArray list_##PTR(Shape_t{static_cast<Size_t>(sizeof(Tcu *) * BATCH)});     \
+  CONST Tcu **dev_list_##NAME = reinterpret_cast<CONST Tcu **>(                \
+      list_##PTR.cast(dtypes::BYTE, this->ctx_, true)->pointer<void>());       \
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_set_batch_pointers, BATCH, this->dim_, \
                                  (const T **)dev_list_##NAME, (const T *)PTR)
 
@@ -90,8 +90,9 @@ void BatchCholeskyCuda<T>::forward_impl(const Variables &inputs,
                                         const Variables &outputs) {
   cuda_set_device(this->device_);
 
-  shared_ptr<CudaCachedArray> info =
-      make_shared<CudaCachedArray>(this->batch_size_, dtypes::INT, this->ctx_);
+  NdArray info_ndarr(Shape_t{this->batch_size_});
+  shared_ptr<Array> info =
+      info_ndarr.cast_sp(dtypes::INT, this->ctx_, true /*write only*/);
   info->zero();
 
   NdArray lu(Shape_t{inputs[0]->size()});
@@ -103,7 +104,7 @@ void BatchCholeskyCuda<T>::forward_impl(const Variables &inputs,
   NBLA_GET_BATCH_POINTERS(lu_ptr, lu, this->batch_size_, ); // dev_list_lu
 
   // cholesky decomposition
-  // NOTE: cusolver always return upper triangular part of matrix
+  // NOTE: cusolver always return upper triangular part of the matrix
   cuda_potrf_batched<Tcu>(this->device_, this->dim_, dev_list_lu,
                           info->pointer<int>(), this->batch_size_);
   Tcu *y_ptr = outputs[0]->cast_data_and_get_pointer<Tcu>(this->ctx_, true);
