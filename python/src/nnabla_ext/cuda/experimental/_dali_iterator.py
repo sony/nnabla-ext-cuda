@@ -33,10 +33,11 @@ def feed_ndarray(dali_tensor, arr, ctx, non_blocking=False):
     """
     import ctypes
     import numpy as np
+    from nvidia.dali.types import to_numpy_type
     assert dali_tensor.shape() == list(arr.shape), \
         ("Shapes do not match: DALI tensor has size {0}"
          ", but NNabla Tensor has size {1}".format(dali_tensor.shape(), list(arr.size)))
-    dtype = np.dtype(dali_tensor.dtype())
+    dtype = to_numpy_type(dali_tensor.dtype)
     # turn raw int to a c void pointer
     c_type_pointer = ctypes.c_void_p(arr.data_ptr(dtype, ctx))
     kw = {}
