@@ -78,7 +78,13 @@ class DaliIterator(object):
         from nnabla import NdArray
         from nvidia.dali.backend import TensorCPU
 
-        outputs = self.pipeline.run()
+        try:
+            outputs = self.pipeline.run()
+        except StopIteration:
+            # Depending on implementation, StopIteration is raised when you reach the end of an epoch.
+            # Automatically reset to restart a new epoch.
+            self.pipeline.reset()
+            outputs = self.pipeline.run()
 
         # force outputs to be list object.
         if not hasattr(outputs, '__iter__'):
