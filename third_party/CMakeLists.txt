@@ -33,6 +33,10 @@ endfunction()
 
 download_and_extract_library(eigen-3.3.5 .zip https://gitlab.com/libeigen/eigen/-/archive/3.3.5/eigen-3.3.5.zip)
 download_and_extract_library(ompi-3.1.6 .zip https://github.com/open-mpi/ompi/archive/refs/tags/v3.1.6.zip)
+# cub is included for CUDA Toolkit >= 11.0.
+if(CUDA_VERSION VERSION_LESS "11.0")
+  download_and_extract_library(cub-1.8.0 .zip https://github.com/NVIDIA/cub/archive/refs/tags/1.8.0.zip)
+endif()
 
 # Generate dl_mpi.h from ompi.h.in
 execute_process(
