@@ -16,10 +16,10 @@
 #include <nbla/context.hpp>
 #include <nbla/cuda/cudnn/init.hpp>
 #include <nbla/cuda/init.hpp>
-using namespace std;
-using namespace nbla;
 
 #include <mnist_training.hpp>
+
+using namespace nbla;
 
 /******************************************/
 // Example of mnist training
