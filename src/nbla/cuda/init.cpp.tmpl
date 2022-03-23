@@ -33,6 +33,7 @@
 #include <nbla/cuda/array/cuda_dlpack_array.hpp>
 #include <nbla/backend_registry.hpp>
 #include <nbla/cuda/communicator/dl_mpi.h>
+#include <nbla/cuda/nvtx.hpp>
 
 // Todo: avoid including cudnn.h in cuda package.
 #include <cudnn.h>
@@ -261,6 +262,10 @@ void init_cuda() {
     NBLA_REGISTER_COMMUNICATOR_IMPL(MultiProcessDataParallelCommunicator, MultiProcessDataParallelCommunicatorNcclh, "cuda:half");
   }
 #endif
+
+  // nvtx initialization
+  dl_nvtx_init();
+
   is_initialized = true;
 }
 

@@ -1,4 +1,5 @@
-// Copyright 2019,2020,2021 Sony Corporation.
+// Copyright 2021, 2022 Sony Corporation.
+// Copyright 2022 Sony Group Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,18 +17,17 @@
 #define __NBLA_NVTX_HPP__
 
 #include "nbla/cuda/defs.hpp"
-
 #include <string>
 
 namespace nbla {
 using std::string;
 
+int dl_nvtx_init(void);
+int dl_nvtx_finish(void);
+
 NBLA_CUDA_API void nvtx_mark_A(string msg);
-
 NBLA_CUDA_API void nvtx_range_push_A(string msg);
-
 NBLA_CUDA_API void nvtx_range_push_with_C(string msg);
-
 NBLA_CUDA_API void nvtx_range_pop();
 }
 
