@@ -22,8 +22,7 @@
 // Sets head pointers of matrices in mini-batch.
 template <typename T>
 __global__ void kernel_set_batch_pointers(int batchSize, int n, const T **ptr,
-                                          const T *head)
-{
+                                          const T *head) {
   NBLA_CUDA_KERNEL_LOOP(idx, batchSize) { ptr[idx] = head + idx * n * n; }
 }
 
@@ -35,128 +34,105 @@ __global__ void kernel_set_batch_pointers(int batchSize, int n, const T **ptr,
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_set_batch_pointers, BATCH, this->dim_, \
                                  (const T **)dev_list_##NAME, (const T *)PTR)
 
-namespace nbla
-{
+namespace nbla {
 
-  namespace batch_cholesky
-  {
-    template <typename T, bool upper>
-    __global__ void construct_triangular_matrix(int batchSize, int n, const T *lu,
-                                                T *y)
-    {
-      NBLA_CUDA_KERNEL_LOOP(idx, batchSize * n * n)
-      {
-        int matrixSize = (n * n);
-        int batchNum = idx / matrixSize;
-        int idxInMatrix = idx - batchNum * matrixSize;
-        int row = idxInMatrix / n;
-        int col = idxInMatrix % n;
+namespace batch_cholesky {
+template <typename T, bool upper>
+__global__ void construct_triangular_matrix(int batchSize, int n, const T *lu,
+                                            T *y) {
+  NBLA_CUDA_KERNEL_LOOP(idx, batchSize * n * n) {
+    int matrixSize = (n * n);
+    int batchNum = idx / matrixSize;
+    int idxInMatrix = idx - batchNum * matrixSize;
+    int row = idxInMatrix / n;
+    int col = idxInMatrix % n;
 
-        if (row < col)
-        {
-          // upper part
-          y[idx] = upper ? lu[idx] : (T)0.0;
-        }
-        else if (col < row)
-        {
-          // lower part
-          y[idx] = upper ? (T)0.0 : lu[batchNum * matrixSize + col * n + row];
-        }
-        else
-        {
-          // diagonal part
-          y[idx] = lu[idx];
-        }
-      }
-    }
-
-    template <typename T>
-    __global__ void apply_phi(int batchSize, int n, T *y)
-    {
-      NBLA_CUDA_KERNEL_LOOP(idx, batchSize * n * n)
-      {
-        int matrixSize = (n * n);
-        int batchNum = idx / matrixSize;
-        int idxInMatrix = idx - batchNum * matrixSize;
-        int row = idxInMatrix / n;
-        int col = idxInMatrix % n;
-
-        if (row == col)
-        {
-          y[idx] = y[idx] * 0.5;
-        }
-        else if (row < col)
-        {
-          y[idx] = 0.0;
-        }
-      }
+    if (row < col) {
+      // upper part
+      y[idx] = upper ? lu[idx] : (T)0.0;
+    } else if (col < row) {
+      // lower part
+      y[idx] = upper ? (T)0.0 : lu[batchNum * matrixSize + col * n + row];
+    } else {
+      // diagonal part
+      y[idx] = lu[idx];
     }
   }
+}
 
-  template <typename T>
-  void BatchCholeskyCuda<T>::setup_impl(const Variables &inputs,
-                                        const Variables &outputs)
-  {
-    BatchCholesky<T>::setup_impl(inputs, outputs);
+template <typename T> __global__ void apply_phi(int batchSize, int n, T *y) {
+  NBLA_CUDA_KERNEL_LOOP(idx, batchSize * n * n) {
+    int matrixSize = (n * n);
+    int batchNum = idx / matrixSize;
+    int idxInMatrix = idx - batchNum * matrixSize;
+    int row = idxInMatrix / n;
+    int col = idxInMatrix % n;
 
-    cuda_set_device(this->device_);
-  }
-
-  template <typename T>
-  void BatchCholeskyCuda<T>::forward_impl(const Variables &inputs,
-                                          const Variables &outputs)
-  {
-    cuda_set_device(this->device_);
-
-    NdArray info_ndarr(Shape_t{this->batch_size_});
-    shared_ptr<Array> info =
-        info_ndarr.cast_sp(dtypes::INT, this->ctx_, true /*write only*/);
-    info->zero();
-
-    NdArray lu(Shape_t{inputs[0]->size()});
-    ArrayPtr lu_arr = lu.cast_sp(get_dtype<Tcu>(), this->ctx_, true);
-    lu_arr->copy_from(
-        inputs[0]->data()->cast(get_dtype<Tcu>(), this->ctx_, false));
-    Tcu *lu_ptr = lu_arr->pointer<Tcu>();
-
-    NBLA_GET_BATCH_POINTERS(lu_ptr, lu, this->batch_size_, ); // dev_list_lu
-
-    // cholesky decomposition
-    // NOTE: cusolver always return upper triangular part of the matrix
-    cuda_potrf_batched<Tcu>(this->device_, this->dim_, dev_list_lu,
-                            info->pointer<int>(), this->batch_size_);
-    Tcu *y_ptr = outputs[0]->cast_data_and_get_pointer<Tcu>(this->ctx_, true);
-    if (this->upper_)
-    {
-      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-          (batch_cholesky::construct_triangular_matrix<Tcu, true>),
-          this->batch_size_, this->dim_, lu_ptr, y_ptr);
-    }
-    else
-    {
-      NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-          (batch_cholesky::construct_triangular_matrix<Tcu, false>),
-          this->batch_size_, this->dim_, lu_ptr, y_ptr);
+    if (row == col) {
+      y[idx] = y[idx] * 0.5;
+    } else if (row < col) {
+      y[idx] = 0.0;
     }
   }
+}
+}
 
-  template <typename T>
-  void BatchCholeskyCuda<T>::backward_impl(const Variables &inputs,
-                                           const Variables &outputs,
-                                           const vector<bool> &propagate_down,
-                                           const vector<bool> &accum)
-  {
-    cuda_set_device(this->device_);
-    BatchCholesky<T>::backward_impl(inputs, outputs, propagate_down, accum);
+template <typename T>
+void BatchCholeskyCuda<T>::setup_impl(const Variables &inputs,
+                                      const Variables &outputs) {
+  BatchCholesky<T>::setup_impl(inputs, outputs);
+
+  cuda_set_device(this->device_);
+}
+
+template <typename T>
+void BatchCholeskyCuda<T>::forward_impl(const Variables &inputs,
+                                        const Variables &outputs) {
+  cuda_set_device(this->device_);
+
+  NdArray info_ndarr(Shape_t{this->batch_size_});
+  shared_ptr<Array> info =
+      info_ndarr.cast_sp(dtypes::INT, this->ctx_, true /*write only*/);
+  info->zero();
+
+  NdArray lu(Shape_t{inputs[0]->size()});
+  ArrayPtr lu_arr = lu.cast_sp(get_dtype<Tcu>(), this->ctx_, true);
+  lu_arr->copy_from(
+      inputs[0]->data()->cast(get_dtype<Tcu>(), this->ctx_, false));
+  Tcu *lu_ptr = lu_arr->pointer<Tcu>();
+
+  NBLA_GET_BATCH_POINTERS(lu_ptr, lu, this->batch_size_, ); // dev_list_lu
+
+  // cholesky decomposition
+  // NOTE: cusolver always return upper triangular part of the matrix
+  cuda_potrf_batched<Tcu>(this->device_, this->dim_, dev_list_lu,
+                          info->pointer<int>(), this->batch_size_);
+  Tcu *y_ptr = outputs[0]->cast_data_and_get_pointer<Tcu>(this->ctx_, true);
+  if (this->upper_) {
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
+        (batch_cholesky::construct_triangular_matrix<Tcu, true>),
+        this->batch_size_, this->dim_, lu_ptr, y_ptr);
+  } else {
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
+        (batch_cholesky::construct_triangular_matrix<Tcu, false>),
+        this->batch_size_, this->dim_, lu_ptr, y_ptr);
   }
+}
 
-  template <typename T>
-  void BatchCholeskyCuda<T>::phi(Variable &x)
-  {
-    cuda_set_device(this->device_);
-    Tcu *y = x.cast_data_and_get_pointer<Tcu>(this->ctx_, true);
+template <typename T>
+void BatchCholeskyCuda<T>::backward_impl(const Variables &inputs,
+                                         const Variables &outputs,
+                                         const vector<bool> &propagate_down,
+                                         const vector<bool> &accum) {
+  cuda_set_device(this->device_);
+  BatchCholesky<T>::backward_impl(inputs, outputs, propagate_down, accum);
+}
 
-    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((batch_cholesky::apply_phi<Tcu>),
-                                   this->batch_size_, this->dim_, y);
-  }
+template <typename T> void BatchCholeskyCuda<T>::phi(Variable &x) {
+  cuda_set_device(this->device_);
+  Tcu *y = x.cast_data_and_get_pointer<Tcu>(this->ctx_, true);
+
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((batch_cholesky::apply_phi<Tcu>),
+                                 this->batch_size_, this->dim_, y);
+}
 }
