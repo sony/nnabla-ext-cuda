@@ -1,4 +1,5 @@
 // Copyright 2019,2020,2021 Sony Corporation.
+// Copyright 2022 Sony Group Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -133,14 +134,16 @@ void LarsCuda<T>::update_impl(const string &key, VariablePtr param) {
   /* calculate squared sum */
   sq_sum(nullptr, size, data, d_buff, d_sq, grad, g_buff, g_sq);
 
-  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
-      kernel_lars_update, size, data, grad, v, d_sq, g_sq, this->lr_,
-      this->momentum_, this->decay_rate_, this->coefficient_, this->eps_);
+  NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_lars_update, size, data, grad, v, d_sq,
+                                 g_sq, this->lr_, this->momentum_,
+                                 this->weight_decay_rate_, this->coefficient_,
+                                 this->eps_);
 
   auto &t = this->states_.at(key).t;
   t = std::min(t + 1, std::numeric_limits<uint32_t>::max() - 1);
 }
 
+NBLA_DEF_WEIGHT_DECAY(LarsCuda, weight_decay_cuda);
 NBLA_DEF_CLIP_GRAD_BY_NORM(LarsCuda, clip_grad_by_norm_cuda);
 NBLA_DEF_CHECK_INF_GRAD(LarsCuda, check_inf_grad_cuda);
 NBLA_DEF_CHECK_NAN_GRAD(LarsCuda, check_nan_grad_cuda);

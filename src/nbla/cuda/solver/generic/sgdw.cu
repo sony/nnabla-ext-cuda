@@ -1,4 +1,5 @@
 // Copyright 2019,2020,2021 Sony Corporation.
+// Copyright 2022 Sony Group Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -42,19 +43,13 @@ void SgdWCuda<T>::update_impl(const string &key, VariablePtr param) {
   T *data = param->cast_data_and_get_pointer<T>(this->ctx_);
   T eta_t = this->lr_ / this->init_lr_;
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_update, size, data, grad, v, this->lr_,
-                                 this->momentum_, this->wd_, eta_t);
+                                 this->momentum_, this->weight_decay_rate_,
+                                 eta_t);
   auto &t = state.t;
   t = std::min(t + 1, std::numeric_limits<uint32_t>::max() - 1);
 }
 
-template <typename T>
-void SgdWCuda<T>::weight_decay_impl(const string &key, VariablePtr param,
-                                    float decay_rate) {
-  NBLA_CHECK(decay_rate == this->wd_, error_code::value,
-             "Decay rate should remain the same.");
-  weight_decay_cuda<T>(this->ctx_, param, decay_rate);
-}
-
+NBLA_DEF_WEIGHT_DECAY(SgdWCuda, weight_decay_cuda);
 NBLA_DEF_CLIP_GRAD_BY_NORM(SgdWCuda, clip_grad_by_norm_cuda);
 NBLA_DEF_CHECK_INF_GRAD(SgdWCuda, check_inf_grad_cuda);
 NBLA_DEF_CHECK_NAN_GRAD(SgdWCuda, check_nan_grad_cuda);
