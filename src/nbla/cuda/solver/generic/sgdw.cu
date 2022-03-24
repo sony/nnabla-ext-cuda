@@ -27,8 +27,8 @@ __global__ void kernel_update(const int num, T *data, const T *grad, T *v,
                               const float lr, const float momentum,
                               const float wd, T eta_t) {
   NBLA_CUDA_KERNEL_LOOP(idx, num) {
-    v[idx] = momentum * v[idx] + lr * grad[idx] - (eta_t * wd * v[idx]);
-    data[idx] -= v[idx];
+    v[idx] = momentum * v[idx] + lr * grad[idx];
+    data[idx] -= v[idx] + (eta_t * wd * data[idx]);
   }
 }
 
