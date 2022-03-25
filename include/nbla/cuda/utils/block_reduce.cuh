@@ -1,4 +1,5 @@
 // Copyright 2017,2018,2019,2020,2021 Sony Corporation.
+// Copyright 2022 Sony Group Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -151,6 +152,10 @@ __inline__ __device__ float3 blockReduceSumOfFloat3(float3 val) {
     val = warpReduceSumOfFloat3(val); // Final reduce within first warp
   }
   return val;
+}
+
+template <> __inline__ __device__ float2 blockReduceSum(float2 val) {
+  return blockReduceSumOfFloat2(val);
 }
 }
 #endif

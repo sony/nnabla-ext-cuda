@@ -1,4 +1,4 @@
-// Copyright 2019,2020,2021 Sony Corporation.
+// Copyright 2022 Sony Group Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,28 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef __NBLA_CUDA_SOLVER_LARS_HPP__
-#define __NBLA_CUDA_SOLVER_LARS_HPP__
+#ifndef __NBLA_CUDA_SOLVER_LAMB_HPP__
+#define __NBLA_CUDA_SOLVER_LAMB_HPP__
 
 #include <nbla/cuda/cuda.hpp>
-#include <nbla/solver/lars.hpp>
+#include <nbla/solver/lamb.hpp>
 
 namespace nbla {
 
-template <typename T> class LarsCuda : public Lars<T> {
+template <typename T> class LambCuda : public Lamb<T> {
 public:
-  explicit LarsCuda(const Context &ctx, float lr, float momentum,
-                    float coefficient, float eps)
-      : Lars<T>(ctx, lr, momentum, coefficient, eps) {}
-  virtual ~LarsCuda() {}
-  virtual string name() { return "LarsCuda"; }
+public:
+  explicit LambCuda(const Context &ctx, float eta, float beta1, float beta2,
+                    float gamma_l, float gamma_u, float eps,
+                    bool bias_correction)
+      : Lamb<T>(ctx, eta, beta1, beta2, gamma_l, gamma_u, eps,
+                bias_correction) {}
+  virtual ~LambCuda() {}
+  virtual string name() { return "LambCuda"; }
   virtual vector<string> allowed_array_classes() {
     return SingletonManager::get<Cuda>()->array_classes();
   }
 
 protected:
-  std::vector<cudaStream_t> streams_;
-  void update_impl(const string &key, VariablePtr param) override;
+  virtual void update_impl(const string &key, VariablePtr param) override;
   NBLA_DECL_WEIGHT_DECAY();
   NBLA_DECL_CLIP_GRAD_BY_NORM();
   NBLA_DECL_CHECK_INF_GRAD();

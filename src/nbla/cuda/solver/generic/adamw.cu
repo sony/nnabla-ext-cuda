@@ -1,4 +1,5 @@
 // Copyright 2019,2020,2021 Sony Corporation.
+// Copyright 2022 Sony Group Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -56,17 +57,10 @@ void AdamWCuda<T>::update_impl(const string &key, VariablePtr param) {
   const T alpha_t = this->alpha_ * bias_correction;
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_adamw_update, size, theta, m, v, g,
                                  alpha_t, this->beta1_, this->beta2_,
-                                 this->eps_, this->wd_, eta_t);
+                                 this->eps_, this->weight_decay_rate_, eta_t);
 }
 
-template <typename T>
-void AdamWCuda<T>::weight_decay_impl(const string &key, VariablePtr param,
-                                     float decay_rate) {
-  NBLA_CHECK(decay_rate == this->wd_, error_code::value,
-             "Decay rate should remain the same.");
-  weight_decay_cuda<T>(this->ctx_, param, decay_rate);
-}
-
+NBLA_DEF_WEIGHT_DECAY(AdamWCuda, weight_decay_cuda);
 NBLA_DEF_CLIP_GRAD_BY_NORM(AdamWCuda, clip_grad_by_norm_cuda);
 NBLA_DEF_CHECK_INF_GRAD(AdamWCuda, check_inf_grad_cuda);
 NBLA_DEF_CHECK_NAN_GRAD(AdamWCuda, check_nan_grad_cuda);

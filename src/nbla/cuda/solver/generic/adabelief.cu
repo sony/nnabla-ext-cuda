@@ -1,4 +1,5 @@
 // Copyright 2020,2021 Sony Corporation.
+// Copyright 2022 Sony Group Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -87,12 +88,13 @@ void AdaBeliefCuda<T>::update_impl(const string &key, VariablePtr param) {
   const bool sgd_update = (this->rectify_ && rho_t <= 4.0);
   const float alpha_t =
       sgd_update ? this->alpha_ : this->alpha_ * r_t / bias_correction1;
-  const float decay_ratio =
-      (this->fixed_decay_) ? this->wd_ : this->wd_ * this->alpha_;
+  const float decay_ratio = (this->fixed_decay_)
+                                ? this->weight_decay_rate_
+                                : this->weight_decay_rate_ * this->alpha_;
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
       kernel_adabelief_update, size, theta, m, s, s_max, g, alpha_t,
       this->beta1_, this->beta2_, this->eps_, decay_ratio, this->amsgrad_,
-      this->weight_decouple_, sgd_update, bias_correction2);
+      this->weight_decay_is_fused(), sgd_update, bias_correction2);
 }
 NBLA_DEF_WEIGHT_DECAY(AdaBeliefCuda, weight_decay_cuda);
 NBLA_DEF_CLIP_GRAD_BY_NORM(AdaBeliefCuda, clip_grad_by_norm_cuda);
