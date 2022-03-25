@@ -14,8 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
-
 source /etc/shinit_v2
 
 if [ $# -eq 0 ]; then
