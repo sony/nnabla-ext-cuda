@@ -376,6 +376,9 @@ Sort:
 Reshape:
   float: [float]
   half: [Half]
+BatchCholesky:
+  float: [float]
+#  half: [Half]
 BatchInv:
   float: [float]
 #  half: [Half]
