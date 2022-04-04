@@ -669,7 +669,7 @@ void CudnnPooling::backward(const void *alpha, const void *y, const void *dy,
 CudnnSoftmax::CudnnSoftmax(const Shape_t &inshape, int axis,
                            cudnnSoftmaxAlgorithm_t algo, cudnnDataType_t dtype,
                            int device)
-    : algo_(algo), device_(device) {
+    : algo_(algo), mode_(CUDNN_SOFTMAX_MODE_CHANNEL), device_(device) {
   const size_t size = std::accumulate(inshape.cbegin(), inshape.cend(),
                                       (size_t)1, std::multiplies<size_t>());
   const size_t size_axis = ndi::inner_size(inshape, axis);
@@ -681,6 +681,9 @@ CudnnSoftmax::CudnnSoftmax(const Shape_t &inshape, int axis,
   const int stride_h = W * stride_w;
   const int stride_c = H * stride_h;
   const int stride_n = C * stride_c;
+  if (H == 1) {
+    mode_ = CUDNN_SOFTMAX_MODE_INSTANCE;
+  }
   NBLA_CUDNN_CHECK(cudnnSetTensor4dDescriptorEx(input_desc_.desc, dtype, N, C,
                                                 H, W, stride_n, stride_c,
                                                 stride_h, stride_w));
@@ -697,14 +700,14 @@ void CudnnSoftmax::forward(const void *alpha, const void *x, const void *beta,
                            void *y) const {
   auto handle = SingletonManager::get<CudnnHandleManager>()->handle(device_);
   NBLA_CUDNN_CHECK(
-      cudnnSoftmaxForward(handle, algo_, CUDNN_SOFTMAX_MODE_CHANNEL, alpha,
+      cudnnSoftmaxForward(handle, algo_, mode_, alpha,
                           input_desc_.desc, x, beta, output_desc_.desc, y));
 }
 void CudnnSoftmax::backward(const void *alpha, const void *y, const void *dy,
                             const void *beta, void *dx) const {
   auto handle = SingletonManager::get<CudnnHandleManager>()->handle(device_);
   NBLA_CUDNN_CHECK(cudnnSoftmaxBackward(
-      handle, algo_, CUDNN_SOFTMAX_MODE_CHANNEL, alpha, output_desc_.desc, y,
+      handle, algo_, mode_, alpha, output_desc_.desc, y,
       output_desc_.desc, dy, beta, input_desc_.desc, dx));
 }
 

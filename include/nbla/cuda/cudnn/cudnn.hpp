@@ -291,6 +291,7 @@ class CudnnSoftmax {
   CudnnTensorDescriptor input_desc_;
   CudnnTensorDescriptor output_desc_;
   cudnnSoftmaxAlgorithm_t algo_;
+  cudnnSoftmaxMode_t mode_;
   int device_;
 
 public:
