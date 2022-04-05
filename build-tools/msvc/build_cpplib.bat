@@ -13,17 +13,17 @@ REM distributed under the License is distributed on an "AS IS" BASIS,
 REM WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 REM See the License for the specific language governing permissions and
 REM limitations under the License.
-REM 
+REM
 
 SETLOCAL
 
 REM Environment
-CALL %~dp0tools\env.bat 3.6 %1 %2 %3 || GOTO :error
+CALL %~dp0tools\env.bat 3.7 %1 %2 %3 || GOTO :error
 
 IF NOT EXIST %nnabla_build_folder% (
    ECHO nnabla_build_folder ^(%nnabla_build_folder%^) does not exist.
    exit /b 255
-)   
+)
 
 SET third_party_folder=%nnabla_root%\third_party
 REM Build third party libraries.
