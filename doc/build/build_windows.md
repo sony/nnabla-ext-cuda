@@ -4,7 +4,7 @@
 
 At first, clone [nnabla](https://github.com/sony/nnabla) and [nnabla-ext-cuda](https://github.com/sony/nnabla-ext-cuda) into same folder.
 
-Then, install CUDA9.0, CUDA10.0 or CUDA10.2 from following site.
+Then, install CUDA10.2 CUDA11.0 from following site.
 - CUDA
  - https://developer.nvidia.com/cuda-toolkit-archive
 
@@ -27,8 +27,8 @@ build-tools\msvc\build_cpplib.bat CUDA_VERSION CUDNN_VERSION
 
 Tested version
 
-    CUDA: 9.0 10.0 10.2
-    cuDNN: 7
+    CUDA: 10.2 11.0
+    cuDNN: 8
 
 ### Build wheel
 ```
@@ -37,6 +37,6 @@ build-tools\msvc\build_wheel.bat PYTHON_VERSION CUDA_VERSION CUDNN_VERSION
 
 Tested version
 
-    PYTHON: 3.6 3.7 3.8
-    CUDA: 9.0 10.0 10.2
-    cuDNN: 7
+    PYTHON: 3.7 3.8 3.9
+    CUDA: 10.2 11.0
+    cuDNN: 8
