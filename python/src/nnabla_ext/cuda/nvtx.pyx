@@ -1,4 +1,5 @@
 # Copyright 2019,2020,2021 Sony Corporation.
+# Copyright 2022 Sony Group Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +16,6 @@
 from libcpp.string cimport string
 from libcpp cimport bool as cpp_bool
 from nnabla.function cimport Function
-from nnabla.function cimport CgFunctionPtr
 import nnabla.callback as callback
 
 
@@ -86,8 +86,7 @@ cdef class Range:
         self.logging = logging
 
     def _func_pre_hook(self, func):
-        cdef CgFunctionPtr cg_func = (<Function>func).fun
-        name = cg_func.get().function().get().name()
+        name = str(<Function>func)
         range_push(name, self.coloring)
 
     def _func_post_hook(self, func):
