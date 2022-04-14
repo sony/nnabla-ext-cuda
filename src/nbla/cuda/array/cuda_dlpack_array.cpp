@@ -18,8 +18,10 @@
 namespace nbla {
 
 CudaDlpackArray::CudaDlpackArray(const Size_t size, dtypes dtype,
-                                 const Context &ctx)
-    : DlpackArray(size, dtype, ctx) {}
+                                 const Context &ctx,
+                                 const AllocatorMemoryPtr mem,
+                                 const Size_t offset)
+    : DlpackArray(size, dtype, ctx, mem, offset) {}
 
 CudaDlpackArray::~CudaDlpackArray() {}
 

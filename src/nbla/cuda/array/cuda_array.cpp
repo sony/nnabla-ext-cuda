@@ -39,15 +39,14 @@ using std::unique_ptr;
 using std::make_shared;
 
 // CudaArray
-CudaArray::CudaArray(const Size_t size, dtypes dtype, const Context &ctx)
-    : Array(size, dtype, ctx,
-            SingletonManager::get<Cuda>()->naive_allocator()->alloc(
-                Array::size_as_bytes(size, dtype), ctx.device_id)),
-      device_(std::stoi(ctx.device_id)) {}
-
 CudaArray::CudaArray(const Size_t size, dtypes dtype, const Context &ctx,
-                     AllocatorMemory &&mem)
-    : Array::Array(size, dtype, ctx, std::move(mem)),
+                     const AllocatorMemoryPtr mem, const Size_t offset)
+    : Array::Array(
+          size, dtype, ctx,
+          mem ? mem
+              : SingletonManager::get<Cuda>()->naive_allocator()->alloc(
+                    Array::size_as_bytes(size, dtype), ctx.device_id),
+          offset),
       device_(std::stoi(ctx.device_id)) {}
 
 CudaArray::~CudaArray() {}
@@ -239,10 +238,14 @@ void synchronizer_cpu_array_cuda_array(Array *src, Array *dst,
 // CudaCachedArray implementation
 /////////////////////////////////
 CudaCachedArray::CudaCachedArray(const Size_t size, dtypes dtype,
-                                 const Context &ctx)
+                                 const Context &ctx,
+                                 const AllocatorMemoryPtr mem,
+                                 const Size_t offset)
     : CudaArray(size, dtype, ctx,
-                SingletonManager::get<Cuda>()->caching_allocator()->alloc(
-                    Array::size_as_bytes(size, dtype), ctx.device_id)) {}
+                mem ? mem
+                    : SingletonManager::get<Cuda>()->caching_allocator()->alloc(
+                          Array::size_as_bytes(size, dtype), ctx.device_id),
+                offset) {}
 
 CudaCachedArray::~CudaCachedArray() {}
 
@@ -254,10 +257,19 @@ Context CudaCachedArray::filter_context(const Context &ctx) {
 // CudaCachedUnifiedArray implementation
 ////////////////////////////////////////
 CudaCachedUnifiedArray::CudaCachedUnifiedArray(const Size_t size, dtypes dtype,
-                                               const Context &ctx)
+                                               const Context &ctx,
+                                               const AllocatorMemoryPtr mem,
+                                               const Size_t offset)
     : CudaArray(size, dtype, ctx,
-                SingletonManager::get<Cuda>()->unified_allocator()->alloc(
-                    Array::size_as_bytes(size, dtype), ctx.device_id)) {}
+                mem ? mem
+                    : SingletonManager::get<Cuda>()->unified_allocator()->alloc(
+                          Array::size_as_bytes(size, dtype), ctx.device_id),
+                offset) {
+  if (mem) {
+    NBLA_ERROR(error_code::runtime,
+               "Memory sharing is not allowed in this class.");
+  }
+}
 
 CudaCachedUnifiedArray::~CudaCachedUnifiedArray() {}
 
@@ -269,10 +281,19 @@ Context CudaCachedUnifiedArray::filter_context(const Context &ctx) {
 // CudaCachedHostArray implementation
 /////////////////////////////////////
 CudaCachedHostArray::CudaCachedHostArray(const Size_t size, dtypes dtype,
-                                         const Context &ctx)
+                                         const Context &ctx,
+                                         const AllocatorMemoryPtr mem,
+                                         const Size_t offset)
     : CpuArray(size, dtype, ctx,
-               SingletonManager::get<Cuda>()->pinned_allocator()->alloc(
-                   Array::size_as_bytes(size, dtype), "")) {}
+               mem ? mem
+                   : SingletonManager::get<Cuda>()->pinned_allocator()->alloc(
+                         Array::size_as_bytes(size, dtype), ""),
+               offset) {
+  if (mem) {
+    NBLA_ERROR(error_code::runtime,
+               "Memory sharing is not allowed in this class.");
+  }
+}
 
 CudaCachedHostArray::~CudaCachedHostArray() {}
 
@@ -301,13 +322,23 @@ CudaCachedVirtualArray::select_allocator(const size_t size,
 }
 
 CudaCachedVirtualArray::CudaCachedVirtualArray(const Size_t size, dtypes dtype,
-                                               const Context &ctx)
+                                               const Context &ctx,
+                                               const AllocatorMemoryPtr mem,
+                                               const Size_t offset)
     : CudaArray(
           size, dtype, ctx,
-          // select_allocator(Array::size_as_bytes(size, dtype),
-          // ctx.device_id)->alloc(
-          SingletonManager::get<Cuda>()->virtual_caching_allocator()->alloc(
-              Array::size_as_bytes(size, dtype), ctx.device_id)) {}
+          mem ? mem
+              :
+              // select_allocator(Array::size_as_bytes(size, dtype),
+              // ctx.device_id)->alloc(
+              SingletonManager::get<Cuda>()->virtual_caching_allocator()->alloc(
+                  Array::size_as_bytes(size, dtype), ctx.device_id),
+          offset) {
+  if (mem) {
+    NBLA_ERROR(error_code::runtime,
+               "Memory sharing is not allowed in this class.");
+  }
+}
 
 CudaCachedVirtualArray::~CudaCachedVirtualArray() {}
 

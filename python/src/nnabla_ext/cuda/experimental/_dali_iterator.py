@@ -39,7 +39,10 @@ def feed_ndarray(dali_tensor, arr, ctx, non_blocking=False):
          ", but NNabla Tensor has size {1}".format(dali_tensor.shape(), list(arr.size)))
     dtype = to_numpy_type(dali_tensor.dtype)
     # turn raw int to a c void pointer
-    c_type_pointer = ctypes.c_void_p(arr.data_ptr(dtype, ctx))
+    # NOTE : If data_ptr() is called with write_only=False, Array::zero() is executed.
+    # c void pointer obtained here is used by DALI, but it may be accessed at the same time by different
+    # cuda stream than CudaArray::zero(). To prevent this conflict, write_only must be True.
+    c_type_pointer = ctypes.c_void_p(arr.data_ptr(dtype, ctx, True))
     kw = {}
     if non_blocking:
         kw.update(dict(non_blocking=non_blocking))

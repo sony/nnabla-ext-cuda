@@ -38,9 +38,9 @@ protected:
   int device_;
 
 public:
-  explicit CudaArray(const Size_t size, dtypes dtype, const Context &ctx);
   explicit CudaArray(const Size_t size, dtypes dtype, const Context &ctx,
-                     AllocatorMemory &&mem);
+                     const AllocatorMemoryPtr mem = nullptr,
+                     const Size_t offset = 0);
   virtual ~CudaArray();
   virtual void copy_from(const Array *src_array);
   virtual void zero();
@@ -67,7 +67,9 @@ public:
       @param dtype Data type.
       @param ctx Context specifies device ID.
    */
-  explicit CudaCachedArray(const Size_t size, dtypes dtype, const Context &ctx);
+  explicit CudaCachedArray(const Size_t size, dtypes dtype, const Context &ctx,
+                           const AllocatorMemoryPtr mem = nullptr,
+                           const Size_t offset = 0);
   virtual ~CudaCachedArray();
   static Context filter_context(const Context &ctx);
 };
@@ -84,7 +86,9 @@ public:
   @param ctx Context specifies device ID.
   */
   explicit CudaCachedUnifiedArray(const Size_t size, dtypes dtype,
-                                  const Context &ctx);
+                                  const Context &ctx,
+                                  const AllocatorMemoryPtr mem = nullptr,
+                                  const Size_t offset = 0);
   virtual ~CudaCachedUnifiedArray();
   static Context filter_context(const Context &ctx);
 };
@@ -101,7 +105,9 @@ public:
   @param ctx Context.
   */
   explicit CudaCachedHostArray(const Size_t size, dtypes dtype,
-                               const Context &ctx);
+                               const Context &ctx,
+                               const AllocatorMemoryPtr mem = nullptr,
+                               const Size_t offset = 0);
   virtual ~CudaCachedHostArray();
   static Context filter_context(const Context &ctx);
 };
@@ -119,7 +125,9 @@ public:
   @param ctx Context.
   */
   explicit CudaCachedVirtualArray(const Size_t size, dtypes dtype,
-                                  const Context &ctx);
+                                  const Context &ctx,
+                                  const AllocatorMemoryPtr mem = nullptr,
+                                  const Size_t offset = 0);
   virtual ~CudaCachedVirtualArray();
   static Context filter_context(const Context &ctx);
 
