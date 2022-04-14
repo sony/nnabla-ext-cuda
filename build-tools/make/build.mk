@@ -93,26 +93,11 @@ nnabla-ext-cuda-wheel:
 		-f build-tools/make/build.mk, \
 		nnabla-ext-cuda-wheel-local)
 
-.PHONY: create-obsoleted-targz
-create-obsoleted-targz:
-		@mkdir $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/; \
-		cd $(NNABLA_EXT_CUDA_DIRECTORY)/python/obsolete/; \
-		rm -rf src/*.egg-info; \
-		echo $(TARGZ_CUDA_VERSION) > src/info.txt; \
-		sed -i -e 's/^__cuda_version__.\+$$/__cuda_version__ = '\'$(CUDA_VERSION_MAJOR).$(CU_MINOR)\''/' src/_version.py; \
-		sed -i -e 's/^__cudnn_version__.\+$$/__cudnn_version__ = '\'$(CUDNN_VERSION)\''/' src/_version.py; \
-		sed -i -e 's/^__ompi_version__.\+$$/__ompi_version__ = '\'$(OMPI_VERSION)\''/' src/_version.py; \
-		EXT_CUDA_LIB_NAME_SUFFIX=$(EXT_CUDA_LIB_NAME_SUFFIX); \
-		RELEASE_VERSION=`grep __version__ src/_version.py | sed -r 's/^.+'\''([.0-9]+)'\''$$/\1/'`; \
-		python3 setup.py sdist; \
-		tar_fullname=`ls $(NNABLA_EXT_CUDA_DIRECTORY)/python/obsolete/dist/`; \
-		mv  $(NNABLA_EXT_CUDA_DIRECTORY)/python/obsolete/dist/$$tar_fullname $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/
-
-
-.PHONY:create-present-wheel
-create-present-wheel:nnabla-install \
+.PHONY: nnabla-ext-cuda-wheel-local
+nnabla-ext-cuda-wheel-local:nnabla-install \
 		$(BUILD_DIRECTORY_CPPLIB)/lib/libnnabla$(LIB_NAME_SUFFIX).so \
 		$(BUILD_EXT_CUDA_DIRECTORY_CPPLIB)/lib/libnnabla_cuda$(EXT_CUDA_LIB_NAME_SUFFIX).so
+	mkdir -p $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)
 	cd $(BUILD_EXT_CUDA_DIRECTORY_WHEEL) \
 	&& cmake \
 		-DBUILD_CPP_LIB=OFF \
@@ -134,15 +119,6 @@ create-present-wheel:nnabla-install \
 		$(CMAKE_OPTS) \
 		$(NNABLA_EXT_CUDA_DIRECTORY) \
 	&& $(MAKE) -C $(BUILD_EXT_CUDA_DIRECTORY_WHEEL) wheel
-
-.PHONY: nnabla-ext-cuda-wheel-local
-nnabla-ext-cuda-wheel-local:
-	mkdir -p $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)
-ifndef NOT_EMPYT
-	${MAKE} create-obsoleted-targz
-else
-	${MAKE} create-present-wheel
-endif
 
 .PHONY: nnabla-ext-cuda-install
 nnabla-ext-cuda-install:

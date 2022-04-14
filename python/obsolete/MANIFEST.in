@@ -1,3 +1,0 @@
-include src/*.py
-include src/*.txt
-include pyproject.toml
