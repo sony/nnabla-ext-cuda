@@ -38,15 +38,29 @@ if(CUDA_VERSION VERSION_LESS "11.0")
   download_and_extract_library(cub-1.8.0 .zip https://github.com/NVIDIA/cub/archive/refs/tags/1.8.0.zip)
 endif()
 
-# Generate dl_mpi.h from ompi.h.in
-execute_process(
-  COMMAND ${PYTHON_COMMAND}
-          ${CMAKE_SOURCE_DIR}/build-tools/code_generator/dl_head_generate.py
-          OUTPUT_VARIABLE TEST
-          RESULT_VARIABLE GENERATE_RESULT)
-if (NOT ${GENERATE_RESULT} EQUAL 0)
-  message(FATAL_ERROR "mpi header generated failed.")
+if (WIN32)
+else ()
+  # Generate dl_mpi.h from ompi.h.in
+  execute_process(
+    COMMAND ${PYTHON_COMMAND}
+            ${CMAKE_SOURCE_DIR}/build-tools/code_generator/dl_mpi_generate.py
+            OUTPUT_VARIABLE TEST
+            RESULT_VARIABLE GENERATE_RESULT)
+  if (NOT ${GENERATE_RESULT} EQUAL 0)
+    message(FATAL_ERROR "mpi header generated failed.")
+  endif()
+
+  # Generate dl_mpi.h from ompi.h.in
+  execute_process(
+    COMMAND ${PYTHON_COMMAND}
+            ${CMAKE_SOURCE_DIR}/build-tools/code_generator/dl_nccl_generate.py
+            OUTPUT_VARIABLE TEST
+            RESULT_VARIABLE GENERATE_RESULT)
+  if (NOT ${GENERATE_RESULT} EQUAL 0)
+    message(FATAL_ERROR "nccl header and cpp file generated failed.")
+  endif()
 endif()
+
 
 if(BUILD_TEST)
   download_and_extract_library(googletest-release-1.10.0 .zip https://github.com/google/googletest/archive/release-1.10.0.zip)
