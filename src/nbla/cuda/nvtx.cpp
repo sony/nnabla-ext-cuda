@@ -1,4 +1,5 @@
 // Copyright 2019,2020,2021 Sony Corporation.
+// Copyright 2022 Sony Group Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -87,16 +88,15 @@ const vector<uint32_t> colors = {
 static int color_id = 0;
 
 inline void nvtxRangePushWithColorChange(const char *msg) {
-  nvtxEventAttributes_t eventAttrib = {0};
-  eventAttrib.version = NVTX_VERSION;
-  eventAttrib.size = NVTX_EVENT_ATTRIB_STRUCT_SIZE;
-  eventAttrib.colorType = NVTX_COLOR_ARGB;
-  eventAttrib.color = colors[color_id++];
-  color_id %= colors.size();
-  eventAttrib.messageType = NVTX_MESSAGE_TYPE_ASCII;
-  eventAttrib.message.ascii = msg;
-
   if (nvtxRangePushEx != nullptr) {
+    nvtxEventAttributes_t eventAttrib = {0};
+    eventAttrib.version = NVTX_VERSION;
+    eventAttrib.size = NVTX_EVENT_ATTRIB_STRUCT_SIZE;
+    eventAttrib.colorType = NVTX_COLOR_ARGB;
+    eventAttrib.color = colors[color_id++];
+    color_id %= colors.size();
+    eventAttrib.messageType = NVTX_MESSAGE_TYPE_ASCII;
+    eventAttrib.message.ascii = msg;
     nvtxRangePushEx(&eventAttrib);
   }
 }
