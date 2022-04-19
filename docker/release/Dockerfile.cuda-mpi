@@ -25,6 +25,8 @@ ARG CURL_OPTS
 ARG WGET_OPTS
 ARG APT_OPTS
 
+ENV DEBIAN_FRONTEND noninteractive
+
 RUN eval ${APT_OPTS} \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -39,7 +41,7 @@ RUN eval ${APT_OPTS} \
 RUN umask 0 \
     && mkdir -p /tmp/deps \
     && cd /tmp/deps \
-    && git clone https://github.com/google/flatbuffers.git \
+    && git clone -b v2.0.6 --depth 1 https://github.com/google/flatbuffers.git \
     && cd flatbuffers \
     && cmake -G "Unix Makefiles" \
     && make \
@@ -56,6 +58,8 @@ ARG WGET_OPTS
 ARG APT_OPTS
 ARG MPI
 ARG MPI_OPTS
+
+ENV DEBIAN_FRONTEND noninteractive
 
 RUN eval ${APT_OPTS} && apt-get update
 RUN apt-get install -y --no-install-recommends \
