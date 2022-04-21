@@ -125,6 +125,7 @@ RUN eval ${APT_OPTS} && apt-get update \
        libdapl2 \
        libibmad5 \
        librdmacm1 \
+       libcutensor1 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

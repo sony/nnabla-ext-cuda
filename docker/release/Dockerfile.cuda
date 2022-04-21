@@ -85,6 +85,7 @@ RUN eval ${APT_OPTS} && apt-get update \
        python${PYTHON_VER} \
        python3-pip \
        python${PYTHON_VER}-distutils \
+       libcutensor1 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python${PYTHON_VER} 0

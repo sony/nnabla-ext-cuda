@@ -31,32 +31,17 @@ __global__ void transpose_1d(const int size, const T *src, T *dst) {
 }
 
 template <typename T, bool accum = false>
-__global__ void transpose_2d(const int2 shape, const T *src, T *dst) {
-  // One extra column to avoid memory bank conflicts.
-  __shared__ T tile[CUDA_WARP_SIZE][CUDA_WARP_SIZE + 1];
-
-  int x = blockIdx.x * CUDA_WARP_SIZE + threadIdx.x;
-  int y = blockIdx.y * CUDA_WARP_SIZE + threadIdx.y;
-
-#pragma unroll
-  for (int j = 0; j < CUDA_WARP_SIZE; j += 8) {
-    if ((x < shape.x) && (y + j < shape.y)) {
-      tile[threadIdx.y + j][threadIdx.x] = src[(y + j) * shape.x + x];
-    }
-  }
-
-  __syncthreads();
-
-  x = blockIdx.y * CUDA_WARP_SIZE + threadIdx.x; // transpose block offset
-  y = blockIdx.x * CUDA_WARP_SIZE + threadIdx.y;
-
-#pragma unroll
-  for (int j = 0; j < CUDA_WARP_SIZE; j += 8) {
-    if ((x < shape.y) && (y + j < shape.x)) {
-      auto val = tile[threadIdx.x][threadIdx.y + j];
-      auto idx = (y + j) * shape.y + x;
-      dst[idx] = accum ? dst[idx] + val : val;
-    }
+__global__ void transpose_2d(const int size, const int2 ostride,
+                             const int2 tstride, const T *src, T *dst) {
+  // ostride - strides of the transposed input shape
+  // tstride - transpose of the input shape strides
+  // Ex. transpose(ishape=(2, 3), axes=(1, 0)) => oshape (3, 2)
+  //     then ostride is (2, 1) and tstride is (1, 3)
+  NBLA_CUDA_KERNEL_LOOP(idx, size) {
+    auto y = idx / ostride.y;
+    auto x = idx - y * ostride.y;
+    T val = src[y * tstride.y + x * tstride.x];
+    dst[idx] = accum ? dst[idx] + val : val;
   }
 }
 
@@ -143,6 +128,56 @@ void TransposeCuda<T>::setup_impl(const Variables &inputs,
       strides[i + ndim].tstride = this->y_strides_transposed_[i];
     }
   }
+
+  //--------------------------------
+  // Setup for cuTENSOR
+  //--------------------------------
+  // cuTENSOR is available for CC >= 6.0
+  cudaDeviceProp prop;
+  NBLA_CUDA_CHECK(cudaGetDeviceProperties(&prop, this->device_));
+  cutensor_available_ = prop.major >= 6;
+
+  if (cutensor_available_) {
+    const auto ndim_original = inputs[0]->ndim();
+
+    // modeX = [ndim-1, ndim-2, ... , 1, 0]
+    modeX_.resize(ndim_original);
+    std::iota(modeX_.begin(), modeX_.end(), 0);
+    std::reverse(modeX_.begin(), modeX_.end()); // cuTENSOR uses column major
+
+    // modeY = reverse(axes)
+    modeY_ = this->axes_;
+    std::reverse(modeY_.begin(), modeY_.end()); // cuTENSOR uses column major
+
+    int nmodeX = modeX_.size();
+    int nmodeY = modeY_.size();
+
+    // Create extentX and extentY
+    const auto in_shape = inputs[0]->shape();
+    std::vector<int64_t> extentX;
+    for (auto mode : modeX_)
+      extentX.push_back(in_shape[mode]);
+    std::vector<int64_t> extentY;
+    for (auto mode : modeY_)
+      extentY.push_back(in_shape[mode]);
+
+    // Setup handler and descriptor
+    cudaDataType_t dataType = cuda_data_type<T>::type();
+
+    NBLA_CUTENSOR_CHECK(cutensorInit(&handle_));
+
+    NBLA_CUTENSOR_CHECK(cutensorInitTensorDescriptor(
+        &handle_, &descX_, nmodeX, extentX.data(), NULL /* stride */, dataType,
+        CUTENSOR_OP_IDENTITY));
+
+    NBLA_CUTENSOR_CHECK(cutensorInitTensorDescriptor(
+        &handle_, &descY_, nmodeY, extentY.data(), NULL /* stride */, dataType,
+        CUTENSOR_OP_IDENTITY));
+  } else {
+    NBLA_ERROR(error_code::target_specific,
+               "cuTENSOR library is not found. Please check your installation "
+               "or find instructions on https://nnabla.org/install.");
+  }
 }
 
 template <typename T> inline int2 make_int2_from(vector<T> vec, int skip = 0) {
@@ -159,6 +194,57 @@ template <typename T> inline int4 make_int4_from(vector<T> vec, int skip = 0) {
 
 #define WARPS_FOR(N) NBLA_CEIL_INT_DIV(N, CUDA_WARP_SIZE)
 
+template <typename T, typename Tcu>
+void forward_cutensor(cutensorHandle_t &handle, const Tcu *x,
+                      cutensorTensorDescriptor_t &descX,
+                      std::vector<int> &modeX, Tcu *y,
+                      cutensorTensorDescriptor_t &descY,
+                      std::vector<int> &modeY) {
+  using computeType = T;
+
+  const computeType alpha = (computeType)1.0;
+  cudaDataType_t typeScalar = cuda_data_type<Tcu>::type();
+
+  NBLA_CUTENSOR_CHECK(cutensorPermutation(&handle, &alpha, x, &descX,
+                                          modeX.data(), y, &descY, modeY.data(),
+                                          typeScalar, 0 /* stream */));
+}
+
+template <typename T, typename Tcu>
+void backward_cutensor(cutensorHandle_t &handle, const Tcu *dy,
+                       cutensorTensorDescriptor_t &descY,
+                       std::vector<int> &modeY, Tcu *dx,
+                       cutensorTensorDescriptor_t &descX,
+                       std::vector<int> &modeX, const bool accum) {
+  using computeType = T;
+
+  const computeType alpha = (computeType)1.0;
+  const computeType gamma = (computeType)1.0;
+  cudaDataType_t typeScalar = cuda_data_type<Tcu>::type();
+
+  if (accum) {
+    // dx = r_transpose(dy) + dx
+    NBLA_CUTENSOR_CHECK(cutensorElementwiseBinary(
+        &handle, &alpha, dy, &descY, modeY.data(), &gamma, dx, &descX,
+        modeX.data(), dx, &descX, modeX.data(), CUTENSOR_OP_ADD, typeScalar,
+        0 /* stream */));
+  } else {
+    // dx = r_transpose(dy)
+
+    // NOTICE:
+    // We should not use `cutensorElementwiseBinary` with `gamma == 0` here
+    // since extra buffer load may occur. See official documentation of
+    // `cutensorElementwiseBinary` (details are described in
+    // `cutensorElementwiseTrinary` in common). Following explanation is
+    // provided.
+    // > Input tensors may be read even if the value of the corresponding scalar
+    // is zero.
+    NBLA_CUTENSOR_CHECK(
+        cutensorPermutation(&handle, &alpha, dy, &descY, modeY.data(), dx,
+                            &descX, modeX.data(), typeScalar, 0 /* stream */));
+  }
+}
+
 template <class T>
 void TransposeCuda<T>::forward_impl(const Variables &inputs,
                                     const Variables &outputs) {
@@ -168,30 +254,19 @@ void TransposeCuda<T>::forward_impl(const Variables &inputs,
   const int ndim = this->x_shape_.size();
   const int size = outputs[0]->size();
 
+  if (cutensor_available_) {
+    forward_cutensor<T>(handle_, x, descX_, modeX_, y, descY_, modeY_);
+    return;
+  }
   if (ndim == 1) {
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(transpose_1d, size, x, y);
     return;
   }
   if (ndim == 2) {
-    const auto shape = make_int2_from(this->x_shape_);
-    const dim3 grid_dim(WARPS_FOR(shape.x), WARPS_FOR(shape.y));
-    if (grid_dim.y < 65536) {
-      const dim3 block_dim(CUDA_WARP_SIZE, 8);
-      transpose_2d<<<grid_dim, block_dim>>>(shape, x, y);
-      NBLA_CUDA_KERNEL_CHECK();
-      return;
-    }
-  }
-  if (ndim == 3 && this->axes_[0] == 0) {
-    const auto shape = make_int2_from(this->x_shape_, 1);
-    const dim3 grid_dim(WARPS_FOR(shape.x), WARPS_FOR(shape.y));
-    if (grid_dim.y < 65536) {
-      const dim3 block_dim(CUDA_WARP_SIZE, 8);
-      for (int i = 0, w = shape.x * shape.y; i < this->x_shape_[0]; i++)
-        transpose_2d<<<grid_dim, block_dim>>>(shape, x + i * w, y + i * w);
-      NBLA_CUDA_KERNEL_CHECK();
-      return;
-    }
+    const auto ostride = make_int2_from(this->y_strides_);
+    const auto tstride = make_int2_from(this->x_strides_transposed_);
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(transpose_2d, size, ostride, tstride, x, y);
+    return;
   }
   if (ndim == 3) {
     const auto ostride = make_int3_from(this->y_strides_);
@@ -225,33 +300,22 @@ void TransposeCuda<T>::backward_impl(const Variables &inputs,
   const int ndim = this->x_shape_.size();
   const int size = outputs[0]->size();
 
+  if (cutensor_available_) {
+    backward_cutensor<T>(handle_, dy, descY_, modeY_, dx, descX_, modeX_,
+                         accum[0]);
+    return;
+  }
   if (ndim == 1) {
     auto kernel = accum[0] ? transpose_1d<Tcu, true> : transpose_1d<Tcu>;
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel, size, dy, dx);
     return;
   }
   if (ndim == 2) {
-    const auto shape = make_int2_from(this->y_shape_);
-    const dim3 grid_dim(WARPS_FOR(shape.x), WARPS_FOR(shape.y));
-    if (grid_dim.y < 65536) {
-      const dim3 block_dim(CUDA_WARP_SIZE, 8);
-      auto kernel = accum[0] ? transpose_2d<Tcu, true> : transpose_2d<Tcu>;
-      kernel<<<grid_dim, block_dim>>>(shape, dy, dx);
-      NBLA_CUDA_KERNEL_CHECK();
-      return;
-    }
-  }
-  if (ndim == 3 && this->axes_[0] == 0) {
-    const auto shape = make_int2_from(this->y_shape_, 1);
-    const dim3 grid_dim(WARPS_FOR(shape.x), WARPS_FOR(shape.y));
-    if (grid_dim.y < 65536) {
-      const dim3 block_dim(CUDA_WARP_SIZE, 8);
-      auto kernel = accum[0] ? transpose_2d<Tcu, true> : transpose_2d<Tcu>;
-      for (int i = 0, w = shape.x * shape.y; i < this->x_shape_[0]; i++)
-        kernel<<<grid_dim, block_dim>>>(shape, dy + i * w, dx + i * w);
-      NBLA_CUDA_KERNEL_CHECK();
-      return;
-    }
+    const auto ostride = make_int2_from(this->x_strides_);
+    const auto tstride = make_int2_from(this->y_strides_transposed_);
+    auto kernel = accum[0] ? transpose_2d<Tcu, true> : transpose_2d<Tcu>;
+    NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel, size, ostride, tstride, dy, dx);
+    return;
   }
   if (ndim == 3) {
     const auto ostride = make_int3_from(this->x_strides_);

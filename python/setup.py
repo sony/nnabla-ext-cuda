@@ -239,9 +239,11 @@ def cuda_config(root_dir, cuda_lib, ext_opts, lib_dirs):
                     l = l.strip().decode('ascii')
                     if l[:2] == 'cu' and l[-4:] == '.dll':
                         copied = False
+                        if l in libs:
+                            continue
                         for d in lib_dirs:
                             for currentdir, dirs, files in os.walk(d):
-                                if l in files and not copied and l not in libs:
+                                if l in files and not copied:
                                     path_in = join(currentdir, l)
                                     if l.lower() == 'cudnn64_8.dll':
                                         for cudnn_lib in files:
@@ -251,14 +253,15 @@ def cuda_config(root_dir, cuda_lib, ext_opts, lib_dirs):
                                                 shutil.copyfile(join(currentdir, cudnn_lib), join(
                                                     path_cuda_pkg, cudnn_lib))
                                                 libs.append(cudnn_lib)
+                                                copied = True
                                     else:
                                         libs = search_dependencies(
                                             path_in, libs)
-                                    path_out = join(path_cuda_pkg, l)
-                                    print('Copying {}'.format(l))
-                                    shutil.copyfile(path_in, path_out)
-                                    libs.append(l)
-                                    copied = True
+                                        path_out = join(path_cuda_pkg, l)
+                                        print('Copying {}'.format(l))
+                                        shutil.copyfile(path_in, path_out)
+                                        libs.append(l)
+                                        copied = True
                         if not copied:
                             print('Shared library {} is not found.'.format(l))
                             sys.exit(-1)
@@ -267,6 +270,15 @@ def cuda_config(root_dir, cuda_lib, ext_opts, lib_dirs):
             for d in search_dependencies(cuda_lib_out):
                 print('LIB: {}'.format(d))
                 package_data[cuda_pkg].append(d)
+
+            if 'cutensor_dll' in os.environ:
+                lib_cutensor = os.environ['cutensor_dll']
+                print('Copying cutensor.dll')
+                shutil.copyfile(lib_cutensor, join(
+                    path_cuda_pkg, 'cutensor.dll'))
+                package_data[cuda_pkg].append('cutensor_dll')
+            else:
+                print('cuTensor library is not found.')
 
     cuda_ext_opts = copy.deepcopy(ext_opts)
     cuda_ext_opts['libraries'] += [cuda_lib.name]

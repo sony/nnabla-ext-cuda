@@ -49,6 +49,22 @@ if(WITH_NCCL)
 	#  )
 endif()
 
+if(MSVC)
+  list(APPEND NBLA_CUDA_INCLUDE_DIRS
+    ${CUTENSOR_INCLUDE_DIR}/include
+    )
+  list(APPEND NBLA_CUDA_LINKER_LIBS
+    ${CUTENSOR_LIBRARY_RELEASE}
+    )
+else()
+  list(APPEND NBLA_CUDA_INCLUDE_DIRS
+    /usr/local/cuda/include
+    )
+  list(APPEND NBLA_CUDA_LINKER_LIBS
+    /usr/local/cuda/lib64/libcutensor.so
+    )
+endif()
+
 # nvprof support
 option(WITH_NVTX "Build with nvtx API for nvprof support" OFF)
 if(WITH_NVTX)
@@ -118,11 +134,13 @@ file(GLOB CPP_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 
 if(MSVC)
   set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};-Xcompiler /W0")
+  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};-lcutensor")
 else()
   set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};-std=c++14")
   # Do not use `--default-stream per-thread` since some kernel calls are executed strangely in blocking streams other than default stream
   #set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS}; --default-stream per-thread")
   set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};")
+  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};-lcutensor")
 endif()
 
 file(GLOB CU_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} */*.cu cudnn/*/*.cu)
