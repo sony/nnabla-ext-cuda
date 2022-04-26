@@ -30,6 +30,10 @@ SET nnabla_root=%CD%
 POPD
 
 CALL %nnabla_root%\build-tools\msvc\tools\env.bat %1 || GOTO :error
+IF [%TEST_NO_CUDA%] == [True] (
+    ECHO Use test environment without cuda/cudnn for wheel with lib.
+    GOTO :CUDA_CUDNN_SKIP
+)
 set CUDAVER=%2
 set CUDNNVER=%3
 FOR /F "TOKENS=1 DELIMS=." %%A IN ("%CUDAVER%") DO SET CUDA_MAJOR=%%A
@@ -86,6 +90,10 @@ IF NOT [%CUDNN_MAJOR%] == [%CUDNNVER%] (
 )
 
 SET PATH=%CUDNN_PATH%\bin;%PATH%
+GOTO :LIB_WITHOUT_WHL
+:CUDA_CUDNN_SKIP
+SET PATH=%VENV%\Lib\site-packages\nnabla_ext\cuda;%PATH%
+:LIB_WITHOUT_WHL
 
 REM Ext CUDA folders
 SET nnabla_ext_cuda_root=%~dp0..\..\..
@@ -100,6 +108,8 @@ IF NOT DEFINED nnabla_ext_cuda_build_folder              SET nnabla_ext_cuda_bui
 
 IF NOT DEFINED nnabla_ext_cuda_build_wheel_folder_name   SET nnabla_ext_cuda_build_wheel_folder_name=build_wheel
 IF NOT DEFINED nnabla_ext_cuda_build_wheel_folder_suffix SET nnabla_ext_cuda_build_wheel_folder_suffix=_py%PYVER_MAJOR%%PYVER_MINOR%_%CUDA_MAJOR%%CUDA_MINOR%_%CUDNNVER%
+IF [%TEST_NO_CUDA%] == [True]                            SET nnabla_ext_cuda_build_wheel_folder_suffix=_py%PYVER_MAJOR%%PYVER_MINOR%
+IF [%WHL_NO_CUDA_SUFFIX%] == [True]                      SET nnabla_ext_cuda_build_wheel_folder_suffix=_py%PYVER_MAJOR%%PYVER_MINOR%
 IF NOT DEFINED nnabla_ext_cuda_build_wheel_folder        SET nnabla_ext_cuda_build_wheel_folder=%nnabla_ext_cuda_root%\%nnabla_ext_cuda_build_wheel_folder_name%%nnabla_ext_cuda_build_wheel_folder_suffix%
 
 IF NOT DEFINED ext_cuda_lib_name_suffix                  SET ext_cuda_lib_name_suffix=_%CUDA_MAJOR%%CUDA_MINOR%_%CUDNNVER%

@@ -130,6 +130,7 @@ create-present-wheel:nnabla-install \
 		-DWITH_NCCL=$(WITH_NCCL) \
 		-DWHEEL_SUFFIX=$(WHEEL_SUFFIX) \
 		-DCMAKE_LIBRARY_PATH=$(CUDA_ROOT)/lib64/stubs \
+		-DINCLUDE_CUDA_CUDNN_LIB_IN_WHL=$(INCLUDE_CUDA_CUDNN_LIB_IN_WHL) \
 		$(CMAKE_OPTS) \
 		$(NNABLA_EXT_CUDA_DIRECTORY) \
 	&& $(MAKE) -C $(BUILD_EXT_CUDA_DIRECTORY_WHEEL) wheel
@@ -180,6 +181,27 @@ nnabla-ext-cuda-multi-gpu-test-local: nnabla-install nnabla-ext-cuda-install
 			--communicator-gpus=0,1 \
 			$(NNABLA_DIRECTORY)/python/test/communicator
 	cd $(BUILD_EXT_CUDA_DIRECTORY_WHEEL) \
+	&& $(NNABLA_DIRECTORY)/build-tools/make/pytest.sh ${PYTEST_OPTS} $(NNABLA_DIRECTORY)/python/test \
+	&& $(NNABLA_DIRECTORY)/build-tools/make/pytest.sh ${PYTEST_OPTS} $(NNABLA_EXT_CUDA_DIRECTORY)/python/test
+
+.PHONY: nnabla-ext-cuda-cudnn-lib-in-wheel-test-local
+nnabla-ext-cuda-cudnn-lib-in-wheel-test-local: nnabla-install
+	cd $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_IN_LIB) \
+	&& pip install ${PIP_INS_OPTS} *.whl \
+	&& PYTHONPATH=$(NNABLA_EXT_CUDA_DIRECTORY)/python/test \
+	&& $(NNABLA_DIRECTORY)/build-tools/make/pytest.sh ${PYTEST_OPTS} $(NNABLA_DIRECTORY)/python/test \
+	&& $(NNABLA_DIRECTORY)/build-tools/make/pytest.sh ${PYTEST_OPTS} $(NNABLA_EXT_CUDA_DIRECTORY)/python/test
+
+.PHONY: nnabla-ext-cuda-cudnn-lib-in-wheel-multi-gpu-test-local
+nnabla-ext-cuda-cudnn-lib-in-wheel-multi-gpu-test-local: nnabla-install
+	cd $(BUILD_EXT_CUDA_DIRECTORY_WHEEL_IN_LIB) \
+	&& pip install ${PIP_INS_OPTS} *.whl \
+	&& PYTHONPATH=$(NNABLA_EXT_CUDA_DIRECTORY)/python/test:$(NNABLA_DIRECTORY)/python/test \
+		mpiexec -q -n 2 $(NNABLA_DIRECTORY)/build-tools/make/pytest.sh \
+			-c NUL \
+			--test-communicator \
+			--communicator-gpus=0,1 \
+			$(NNABLA_DIRECTORY)/python/test/communicator \
 	&& $(NNABLA_DIRECTORY)/build-tools/make/pytest.sh ${PYTEST_OPTS} $(NNABLA_DIRECTORY)/python/test \
 	&& $(NNABLA_DIRECTORY)/build-tools/make/pytest.sh ${PYTEST_OPTS} $(NNABLA_EXT_CUDA_DIRECTORY)/python/test
 

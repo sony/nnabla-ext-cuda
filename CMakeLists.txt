@@ -343,7 +343,7 @@ if(BUILD_PYTHON_PACKAGE)
                 MULTI_GPU_SUFFIX=${MULTIGPU_SUFFIX}
                 WHEEL_SUFFIX=${WHEEL_SUFFIX}
                 ${PYTHON_COMMAND} ${NBLA_PYTHON_SETUP} -q bdist_wheel
-        COMMAND ${NNABLA_DIR}/build-tools/auditwheel-nnabla ${CMAKE_BINARY_DIR}/dist/*-linux_*.whl
+        COMMAND ${NNABLA_DIR}/build-tools/auditwheel-nnabla ${CMAKE_BINARY_DIR}/dist/*-linux_*.whl ${INCLUDE_CUDA_CUDNN_LIB_IN_WHL}
         COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_BINARY_DIR}/dist/*-linux*.whl
         COMMAND ${CMAKE_COMMAND} -E touch ${NBLA_PYTHON_OUTPUT_WHEEL}
         DEPENDS ${NBLA_WHEEL_DEPENDS})

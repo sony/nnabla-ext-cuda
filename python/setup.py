@@ -205,6 +205,7 @@ def cuda_config(root_dir, cuda_lib, ext_opts, lib_dirs):
     if lib_dirs is not None:
         if sys.platform.startswith('linux'):
             out = subprocess.check_output(['ldd', cuda_lib_out])
+            included_lib = []
             for l in out.splitlines():
                 ls = l.strip().decode('ascii').split()
                 if len(ls) >= 3:
@@ -212,16 +213,30 @@ def cuda_config(root_dir, cuda_lib, ext_opts, lib_dirs):
                     if libname == "libcuda.so.1":
                         continue
                     libfile = ls[2]
-
+                    if (libfile == 'not'):
+                        print('{} is not found. Skip.'.format(libname))
+                        continue
                     # Copy libraries into WHL file.
                     # libcu*   : CUDA/cuDNN
                     # libnccl  : NCCL2
-                    if libname.startswith('libcu') or \
-                            libname.startswith('libnccl'):
+                    if libname.startswith('libcu'):
                         print('Copying {}'.format(libname))
+                        libname_t = libname.split('.')[0:2]
+                        included_lib.append('.'.join(libname_t))
                         path_out = join(path_cuda_pkg, libname)
                         shutil.copyfile(libfile, path_out)
                         package_data[cuda_pkg].append(libname)
+
+            lib_out = subprocess.check_output(
+                'find /usr/lib64/libcudnn_*.so.? /usr/lib64/libnccl.so', shell=True)
+            for lp in lib_out.splitlines():
+                lp = lp.strip().decode('ascii')
+                lps = lp.split('/')
+                if lps[-1] not in included_lib:
+                    print('Copying {}'.format(lps[-1]))
+                    path_out = join(path_cuda_pkg, lps[-1])
+                    shutil.copyfile(lp, path_out)
+                    package_data[cuda_pkg].append(lps[-1])
 
         elif sys.platform == 'win32':
             libdir = dirname(cuda_lib.path)
@@ -239,9 +254,11 @@ def cuda_config(root_dir, cuda_lib, ext_opts, lib_dirs):
                     l = l.strip().decode('ascii')
                     if l[:2] == 'cu' and l[-4:] == '.dll':
                         copied = False
+                        if l in libs:
+                            continue
                         for d in lib_dirs:
                             for currentdir, dirs, files in os.walk(d):
-                                if l in files and not copied and l not in libs:
+                                if l in files and not copied:
                                     path_in = join(currentdir, l)
                                     if l.lower() == 'cudnn64_8.dll':
                                         for cudnn_lib in files:
@@ -251,14 +268,15 @@ def cuda_config(root_dir, cuda_lib, ext_opts, lib_dirs):
                                                 shutil.copyfile(join(currentdir, cudnn_lib), join(
                                                     path_cuda_pkg, cudnn_lib))
                                                 libs.append(cudnn_lib)
+                                                copied = True
                                     else:
                                         libs = search_dependencies(
                                             path_in, libs)
-                                    path_out = join(path_cuda_pkg, l)
-                                    print('Copying {}'.format(l))
-                                    shutil.copyfile(path_in, path_out)
-                                    libs.append(l)
-                                    copied = True
+                                        path_out = join(path_cuda_pkg, l)
+                                        print('Copying {}'.format(l))
+                                        shutil.copyfile(path_in, path_out)
+                                        libs.append(l)
+                                        copied = True
                         if not copied:
                             print('Shared library {} is not found.'.format(l))
                             sys.exit(-1)
@@ -350,7 +368,10 @@ def get_setup_config(root_dir):
     if 'MULTI_GPU_SUFFIX' in os.environ:
         pass
 
-    pkg_name = 'nnabla_ext-cuda{}'.format(cuda_version)
+    if 'INCLUDE_CUDA_CUDNN_LIB_IN_WHL' in os.environ and os.environ['INCLUDE_CUDA_CUDNN_LIB_IN_WHL'] == 'True':
+        pkg_name = 'nnabla_ext-cuda-alllib{}'.format(cuda_version)
+    else:
+        pkg_name = 'nnabla_ext-cuda{}'.format(cuda_version)
 
     if 'WHEEL_SUFFIX' in os.environ:
         pkg_name += os.environ['WHEEL_SUFFIX']
