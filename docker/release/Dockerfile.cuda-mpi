@@ -99,7 +99,6 @@ ARG MPI
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN eval ${APT_OPTS} \
-    && apt-key del 7fa2af80 \
     && apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
