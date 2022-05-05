@@ -13,21 +13,23 @@
 // limitations under the License.
 #define DL_MPI_MAIN
 #include <cstddef>
+#include <ctype.h>
 #include <dlfcn.h>
 #include <nbla/cuda/communicator/dl_mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 extern "C" {
 
-const char *MPI_SO_1 = "/usr/lib64/libmpi.so";
-const char *MPI_SO_2 = "/usr/lib/libmpi.so";
 const char *ENV_HOME_LIST[] = {"OMPI_HOME"};
+const char *MPI_SO = "libmpi.so";
 
 const char *MPI_SO_SEARCH_LIST[] = {
     "/usr/lib64/libmpi.so", "/usr/lib/libmpi.so", "/opt/openmpi/lib/libmpi.so"};
 
 static void *mpi_library_handle = 0;
+static const int MAX_PATH = 4096;
 
 int dl_mpi_init(void) {
   char *error;
@@ -36,10 +38,11 @@ int dl_mpi_init(void) {
 
   dlerror(); // Clear any existing error
 
+  // step 1: Check OMPI_HOME
   for (int i = 0; i < sizeof(ENV_HOME_LIST) / sizeof(char *); ++i) {
     const char *mpi_home = getenv(ENV_HOME_LIST[i]);
     if (mpi_home) {
-      char env_so_path[1024];
+      char env_so_path[MAX_PATH];
       snprintf(env_so_path, sizeof(env_so_path), "%s/lib/libmpi.so", mpi_home);
       mpi_library_handle = dlopen(env_so_path, RTLD_LAZY);
       if (mpi_library_handle) {
@@ -49,10 +52,19 @@ int dl_mpi_init(void) {
     }
   }
 
+  // step 2: check LD_LIBRARY_PATH, then ld.so.cache, according to dlopen()
+  if (errcode < 0) {
+    mpi_library_handle = dlopen(MPI_SO, RTLD_LAZY);
+    if (mpi_library_handle) {
+      errcode = 0;
+    }
+  }
+
+  // step 3: check specified so searching path
   if (errcode < 0) {
     for (int i = 0; i < sizeof(MPI_SO_SEARCH_LIST) / sizeof(char *); ++i) {
       const char *so_path = MPI_SO_SEARCH_LIST[i];
-      mpi_library_handle = dlopen(so_path, RTLD_NOW);
+      mpi_library_handle = dlopen(so_path, RTLD_LAZY);
       if (mpi_library_handle) {
         errcode = 0;
         break;

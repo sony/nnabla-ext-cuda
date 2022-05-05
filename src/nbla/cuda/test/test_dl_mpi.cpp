@@ -11,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#if 0
 #include "gtest/gtest.h"
 #include <nbla/cuda/communicator/dl_mpi.h>
 
@@ -24,12 +23,14 @@ TEST(DlMpiTest, TestInitialize) {
   int provided;
   ASSERT_EQ(0, dl_mpi_init());
   ASSERT_EQ(0, MPI_Initialized(&flag));
-  ASSERT_EQ(0, MPI_Init_thread(&argc, &argv, requiredThreadLevelSupport, &provided));
-  //ASSERT_EQ(0, MPI_Init(&argc, &argv));
+  ASSERT_EQ(
+      0, MPI_Init_thread(&argc, &argv, requiredThreadLevelSupport, &provided));
+  // ASSERT_EQ(0, MPI_Init(&argc, &argv));
   ASSERT_EQ(0, MPI_Comm_rank(MPI_COMM_WORLD, &rank));
-  ASSERT_EQ(0, MPI_Finalize()); 
+  ASSERT_EQ(0, MPI_Finalize());
 }
-#endif
+
+#if 0
 
 #include <gtest/gtest.h>
 #include <mpi.h>
@@ -49,3 +50,4 @@ TEST(DlMpiTest, original) {
   ASSERT_EQ(0, MPI_Finalize());
   printf("rank=%d\n", rank);
 }
+#endif
