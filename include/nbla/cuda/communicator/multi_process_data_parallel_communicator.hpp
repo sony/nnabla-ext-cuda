@@ -31,7 +31,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "nccl.h"
+#include "dl_nccl.h"
 
 namespace nbla {
 

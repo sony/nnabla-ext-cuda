@@ -24,7 +24,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "nccl.h"
+#include "dl_nccl.h"
 
 namespace nbla {
 

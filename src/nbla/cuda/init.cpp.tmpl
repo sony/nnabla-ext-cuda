@@ -32,7 +32,6 @@
 #include <nbla/cuda/array/cuda_array.hpp>
 #include <nbla/cuda/array/cuda_dlpack_array.hpp>
 #include <nbla/backend_registry.hpp>
-#include <nbla/cuda/communicator/dl_mpi.h>
 #include <nbla/cuda/nvtx.hpp>
 
 // Todo: avoid including cudnn.h in cuda package.
@@ -52,6 +51,7 @@
 
 
 #ifdef FEATURE_DIST_TRAIN
+  #include <nbla/cuda/communicator/dl_mpi.h>
   #include <nbla/cuda/communicator/data_parallel_communicator.hpp>
   #include <nbla/cuda/communicator/multi_process_data_parallel_communicator.hpp>
 #endif
@@ -250,7 +250,7 @@ void init_cuda() {
 
   // Communicator registration
 #ifdef FEATURE_DIST_TRAIN
-  if(!dl_mpi_init()){
+  if(!dl_mpi_init() && !dl_nccl_init()){
     typedef DataParallelCommunicatorNccl<float> DataParallelCommunicatorNcclf;
     NBLA_REGISTER_COMMUNICATOR_IMPL(DataParallelCommunicator, DataParallelCommunicatorNcclf, "cuda:float");
     typedef MultiProcessDataParallelCommunicatorNccl<float> MultiProcessDataParallelCommunicatorNcclf;
