@@ -40,6 +40,8 @@ static const char *NCCL_SO_SEARCH_LIST[] = {
     "/usr/local/lib64/libnccl.so",
     "/usr/local/lib/libnccl.so"};
 
+static const char *NCCL_SO = "libnccl.so";
+
 static void *nccl_library_handle = 0;
 
 int dl_nccl_init(void) {
@@ -63,9 +65,16 @@ int dl_nccl_init(void) {
   }
 
   if (errcode < 0) {
+    nccl_library_handle = dlopen(NCCL_SO, RTLD_LAZY);
+    if (nccl_library_handle) {
+      errcode = 0;
+    }
+  }
+
+  if (errcode < 0) {
     for (int i = 0; i < sizeof(NCCL_SO_SEARCH_LIST) / sizeof(char *); ++i) {
       const char *so_path = NCCL_SO_SEARCH_LIST[i];
-      nccl_library_handle = dlopen(so_path, RTLD_NOW);
+      nccl_library_handle = dlopen(so_path, RTLD_LAZY);
       if (nccl_library_handle) {
         errcode = 0;
         break;
