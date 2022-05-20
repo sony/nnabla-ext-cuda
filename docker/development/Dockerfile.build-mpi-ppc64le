@@ -66,6 +66,8 @@ ENV LANG C
 ENV LANGUAGE C
 
 RUN eval ${YUM_OPTS} \
+    && curl ${CURL_OPTS} -L https://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64/D42D0685.pub -o D42D0685.pub \
+    && rpm --import D42D0685.pub \
     && yum install -y \
        epel-release \
        yum-utils \
