@@ -211,7 +211,7 @@ if(BUILD_CPP_LIB)
   ###############################################################################
   # C++ Testing
   ###############################################################################
-  if(BUILD_TEST)
+  if(BUILD_CPP_TEST)
     if (WIN32)
       set(BUILD_SHARED_LIBS ON CACHE BOOL
         "Force to build gtest with dll on Windows.")
