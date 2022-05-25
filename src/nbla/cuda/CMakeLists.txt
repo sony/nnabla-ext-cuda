@@ -39,13 +39,14 @@ list(APPEND NBLA_CUDA_LINKER_LIBS
 option(WITH_NCCL "Use nccl for distributed training" OFF)
 if(WITH_NCCL)
 	add_definitions(-DFEATURE_DIST_TRAIN)
-	find_package(NCCL REQUIRED)
-	list(APPEND NBLA_CUDA_INCLUDE_DIRS 
-		${NCCL_INCLUDE_DIR}
-	  )
-	list(APPEND NBLA_CUDA_LINKER_LIBS
-		${NCCL_LIBRARIES}
-	  )
+	# We expected to dynamically load nccl libraries
+	# find_package(NCCL REQUIRED)
+	# list(APPEND NBLA_CUDA_INCLUDE_DIRS
+	#	${NCCL_INCLUDE_DIR}
+	#  )
+	# list(APPEND NBLA_CUDA_LINKER_LIBS
+	#	${NCCL_LIBRARIES}
+	#  )
 endif()
 
 # nvprof support
