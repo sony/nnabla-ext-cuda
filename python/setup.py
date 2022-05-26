@@ -47,8 +47,6 @@ assert(__author__ is not None)
 assert(__email__ is not None)
 
 setup_requires = [
-    'numpy',
-    'Cython',  # Requires python-dev.
 ]
 
 whl_suffix = ''
