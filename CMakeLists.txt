@@ -221,6 +221,15 @@ if(BUILD_CPP_LIB)
     include_directories(${NBLA_CUDA_INCLUDE_DIRS})
   
     file(GLOB NBLA_TEST_SOURCES src/nbla/cuda/test/test_*.cpp)
+    if(NOT WITH_NCCL)
+      file(GLOB NBLA_NCCL_TEST_SOURCES src/nbla/cuda/test/test_dl_mpi.cpp
+                                       src/nbla/cuda/test/test_watch_dog.cpp
+                                       src/nbla/cuda/test/test_multi_process_data_parallel_communicator.cpp)
+      foreach(d_file ${NBLA_NCCL_TEST_SOURCES})
+        list(REMOVE_ITEM NBLA_TEST_SOURCES ${d_file})
+      endforeach()
+    endif()
+    message(STATUS, ${NBLA_TEST_SOURCES})
     add_executable(clibtest ${NBLA_TEST_SOURCES})
     add_dependencies(clibtest ${NBLA_CUDA_LIBRARY_NAME})
     target_link_libraries(clibtest gtestd gtest_maind pthread)

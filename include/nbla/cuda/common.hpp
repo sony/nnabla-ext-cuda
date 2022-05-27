@@ -108,8 +108,14 @@ inline string cublas_status_to_string(cublasStatus_t status) {
   {                                                                            \
     cublasStatus_t status = condition;                                         \
     cudaGetLastError();                                                        \
-    NBLA_CHECK(status == CUBLAS_STATUS_SUCCESS, error_code::target_specific,   \
-               cublas_status_to_string(status));                               \
+    if (status != CUBLAS_STATUS_SUCCESS) {                                     \
+      NBLA_ERROR(                                                              \
+          error_code::target_specific,                                         \
+          string("CUBLAS_STATUS_") + cublas_status_to_string(status) +         \
+              string(                                                          \
+                  " occured in `" #condition                                   \
+                  "`. Please see CUBLAS API documentation for the cause."));   \
+    }                                                                          \
   }
 
 inline string cusolver_status_to_string(cusolverStatus_t status) {
@@ -155,8 +161,14 @@ inline string cusolver_status_to_string(cusolverStatus_t status) {
 #define NBLA_CUSOLVER_CHECK(condition)                                         \
   {                                                                            \
     cusolverStatus_t status = condition;                                       \
-    NBLA_CHECK(status == CUSOLVER_STATUS_SUCCESS, error_code::target_specific, \
-               cusolver_status_to_string(status));                             \
+    if (status != CUSOLVER_STATUS_SUCCESS) {                                   \
+      NBLA_ERROR(                                                              \
+          error_code::target_specific,                                         \
+          string("CUSOLVER_STATUS_") + cusolver_status_to_string(status) +     \
+              string(                                                          \
+                  " occured in `" #condition                                   \
+                  "`. Please see CUSOLVER API documentation for the cause.")); \
+    }                                                                          \
   }
 
 inline string curand_status_to_string(curandStatus_t status) {
@@ -186,8 +198,14 @@ inline string curand_status_to_string(curandStatus_t status) {
 #define NBLA_CURAND_CHECK(condition)                                           \
   {                                                                            \
     curandStatus_t status = condition;                                         \
-    NBLA_CHECK(status == CURAND_STATUS_SUCCESS, error_code::target_specific,   \
-               curand_status_to_string(status));                               \
+    if (status != CURAND_STATUS_SUCCESS) {                                     \
+      NBLA_ERROR(                                                              \
+          error_code::target_specific,                                         \
+          string("CUBLAS_STATUS_") + curand_status_to_string(status) +         \
+              string(                                                          \
+                  " occured in `" #condition                                   \
+                  "`. Please see CUSOLVER API documentation for the cause.")); \
+    }                                                                          \
   }
 
 /** Data type */
