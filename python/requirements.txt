@@ -9,7 +9,7 @@ Cython
 boto3
 h5py<=3.1.0
 numpy>=1.20.0
-protobuf
+protobuf<=3.20.1
 six
 tqdm
 
