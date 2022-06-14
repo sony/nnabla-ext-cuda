@@ -1,4 +1,4 @@
-// Copyright 2021 Sony Corporation.
+// Copyright 2022 Sony Group Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "gtest/gtest.h"
-#include <nbla/cuda/communicator/dl_mpi.h>
+#include <nbla/cuda/communicator/dl_nccl.h>
 
-TEST(DlMpiTest, TestInitialize) {
-  int flag = 0;
-  int rank = 0;
-  int argc = 0;
-  char **argv = nullptr;
-  int requiredThreadLevelSupport = MPI_THREAD_SERIALIZED;
-  int provided;
-  ASSERT_EQ(0, dl_mpi_init());
-  ASSERT_EQ(0, MPI_Initialized(&flag));
-  ASSERT_EQ(
-      0, MPI_Init_thread(&argc, &argv, requiredThreadLevelSupport, &provided));
-  // ASSERT_EQ(0, MPI_Init(&argc, &argv));
-  ASSERT_EQ(0, MPI_Comm_rank(MPI_COMM_WORLD, &rank));
-  ASSERT_EQ(0, MPI_Finalize());
+TEST(DlNcclTest, TestInitialize) {
+  ASSERT_EQ(0, dl_nccl_init());
+  ncclComm_t comm;
+  ncclUniqueId comm_id;
+  ncclGetUniqueId(&comm_id);
+  ASSERT_EQ(ncclSuccess, ncclCommInitRank(&comm, 1, comm_id, 0));
+  ASSERT_EQ(ncclSuccess, ncclCommDestroy(comm));
 }

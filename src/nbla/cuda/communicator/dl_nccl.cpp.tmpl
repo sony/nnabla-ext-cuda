@@ -30,22 +30,21 @@
 extern "C" {
 
 static const char *ENV_HOME_LIST[] = {"NCCL_HOME"};
+static const int MAX_PATH = 4096;
+static const char *SO_NCCLS[] = {"libnccl.so", "libnccl.so.2"};
 
 static const char *NCCL_SO_SEARCH_LIST[] = {
-    "/usr/lib/x86_64-linux-gnu/libnccl.so",
-    "/usr/lib/libnccl.so",
-    "/usr/lib64/libnccl.so",
-    "/lib/libnccl.so",
-    "/lib64/libnccl.so",
-    "/usr/local/lib64/libnccl.so",
-    "/usr/local/lib/libnccl.so"};
-
-static const char *NCCL_SO = "libnccl.so";
+    "/usr/lib/x86_64-linux-gnu/",
+    "/usr/lib/",
+    "/usr/lib64/",
+    "/lib/",
+    "/lib64/",
+    "/usr/local/lib64/",
+    "/usr/local/lib/"};
 
 static void *nccl_library_handle = 0;
 
 int dl_nccl_init(void) {
-  char *error;
   void *handle;
   int errcode = -1;
 
@@ -54,9 +53,22 @@ int dl_nccl_init(void) {
   for (int i = 0; i < sizeof(ENV_HOME_LIST) / sizeof(char *); ++i) {
     const char *nccl_home = getenv(ENV_HOME_LIST[i]);
     if (nccl_home) {
-      char env_so_path[1024];
-      snprintf(env_so_path, sizeof(env_so_path), "%s/lib/libnccl.so", nccl_home);
-      nccl_library_handle = dlopen(env_so_path, RTLD_LAZY);
+      char env_so_path[MAX_PATH];
+      for (const char* so_nccl : SO_NCCLS) {
+        snprintf(env_so_path, sizeof(env_so_path), "%s/lib/%s", nccl_home, so_nccl);
+        env_so_path[MAX_PATH - 1] = 0;
+        nccl_library_handle = dlopen(env_so_path, RTLD_LAZY);
+        if (nccl_library_handle) {
+          errcode = 0;
+          break;
+        }
+      }
+    }
+  }
+
+  if (errcode < 0) {
+    for (const char* so_nccl: SO_NCCLS) {
+      nccl_library_handle = dlopen(so_nccl, RTLD_LAZY);
       if (nccl_library_handle) {
         errcode = 0;
         break;
@@ -65,19 +77,17 @@ int dl_nccl_init(void) {
   }
 
   if (errcode < 0) {
-    nccl_library_handle = dlopen(NCCL_SO, RTLD_LAZY);
-    if (nccl_library_handle) {
-      errcode = 0;
-    }
-  }
-
-  if (errcode < 0) {
     for (int i = 0; i < sizeof(NCCL_SO_SEARCH_LIST) / sizeof(char *); ++i) {
+      char search_path[MAX_PATH];
       const char *so_path = NCCL_SO_SEARCH_LIST[i];
-      nccl_library_handle = dlopen(so_path, RTLD_LAZY);
-      if (nccl_library_handle) {
-        errcode = 0;
-        break;
+      for (const char* so_nccl : SO_NCCLS) {
+        snprintf(search_path, sizeof(search_path), "%s/%s", so_path, so_nccl);
+        search_path[MAX_PATH - 1] = 0;
+        nccl_library_handle = dlopen(search_path, RTLD_LAZY);
+        if (nccl_library_handle) {
+          errcode = 0;
+          break;
+        }
       }
     }
   }
