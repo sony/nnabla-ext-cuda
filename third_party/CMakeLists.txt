@@ -50,14 +50,16 @@ else ()
     message(FATAL_ERROR "mpi header generated failed.")
   endif()
 
-  # Generate dl_mpi.h from ompi.h.in
-  execute_process(
-    COMMAND ${PYTHON_COMMAND}
-            ${CMAKE_SOURCE_DIR}/build-tools/code_generator/dl_nccl_generate.py
-            OUTPUT_VARIABLE TEST
-            RESULT_VARIABLE GENERATE_RESULT)
-  if (NOT ${GENERATE_RESULT} EQUAL 0)
-    message(FATAL_ERROR "nccl header and cpp file generated failed.")
+  if(WITH_NCCL)
+    # Generate dl_nccl.h from nccl.h
+    execute_process(
+      COMMAND ${PYTHON_COMMAND}
+              ${CMAKE_SOURCE_DIR}/build-tools/code_generator/dl_nccl_generate.py
+              OUTPUT_VARIABLE TEST
+              RESULT_VARIABLE GENERATE_RESULT)
+    if (NOT ${GENERATE_RESULT} EQUAL 0)
+      message(FATAL_ERROR "nccl header and cpp file generated failed.")
+    endif()
   endif()
 endif()
 
