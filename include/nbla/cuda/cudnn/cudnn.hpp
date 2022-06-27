@@ -125,6 +125,9 @@ inline string cudnn_status_to_string(cudnnStatus_t status) {
     CASE_CUDNN_STATUS(RUNTIME_IN_PROGRESS);
     CASE_CUDNN_STATUS(RUNTIME_FP_OVERFLOW);
 #endif
+#if CUDNN_VERSION >= 8000
+    CASE_CUDNN_STATUS(VERSION_MISMATCH);
+#endif
   }
   return "UNKNOWN";
 #undef CASE_CUDNN_STATUS
@@ -133,8 +136,13 @@ inline string cudnn_status_to_string(cudnnStatus_t status) {
 #define NBLA_CUDNN_CHECK(condition)                                            \
   {                                                                            \
     cudnnStatus_t status = condition;                                          \
-    NBLA_CHECK(status == CUDNN_STATUS_SUCCESS, error_code::target_specific,    \
-               cudnn_status_to_string(status));                                \
+    if (status != CUDNN_STATUS_SUCCESS) {                                      \
+      NBLA_ERROR(                                                              \
+          error_code::target_specific,                                         \
+          string("CUDNN_STATUS_") + cudnn_status_to_string(status) +           \
+              string(" occured in `" #condition                                \
+                     "`. Please see CUDNN API documentation for the cause.")); \
+    }                                                                          \
   }
 
 /** Wrapper function of cudnnSetTensorNdDescriptor with ensuring least dims.
