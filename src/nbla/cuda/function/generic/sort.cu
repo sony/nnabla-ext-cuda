@@ -321,7 +321,8 @@ void SortCuda<T>::forward_impl(const Variables &inputs,
       if (!this->only_index) {
         transpose_deconverter_->forward({&transposed_output}, {outputs[0]});
       }
-      transpose_deconverter_->forward({&transposed_index}, {&this->sort_index});
+      Variable &sort_index = this->sort_index;
+      transpose_deconverter_->forward({&transposed_index}, {&sort_index});
     }
   } else {
     // Thrust sort implementation is used for 64 bits indexing cases.
