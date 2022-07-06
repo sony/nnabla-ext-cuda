@@ -1,5 +1,5 @@
 # Copyright 2018,2019,2020,2021 Sony Corporation.
-# Copyright 2021 Sony Group Corporation.
+# Copyright 2021,2022 Sony Group Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -93,11 +93,26 @@ nnabla-ext-cuda-wheel:
 		-f build-tools/make/build.mk, \
 		nnabla-ext-cuda-wheel-local)
 
-.PHONY: nnabla-ext-cuda-wheel-local
-nnabla-ext-cuda-wheel-local: nnabla-install \
+.PHONY: create-obsoleted-targz
+create-obsoleted-targz:
+		@mkdir $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/; \
+		cd $(NNABLA_EXT_CUDA_DIRECTORY)/python/obsolete/; \
+		touch src/info.txt; \
+		echo $(TARGZ_CUDA_VERSION) >> src/info.txt; \
+		EXT_CUDA_LIB_NAME_SUFFIX=$(EXT_CUDA_LIB_NAME_SUFFIX); \
+		RELEASE_VERSION=`cat  $(NNABLA_EXT_CUDA_DIRECTORY)/../nnabla/VERSION.txt`; \
+		python3 $(NNABLA_EXT_CUDA_DIRECTORY)/python/obsolete/setup.py sdist; \
+		tar_fullname=`ls $(NNABLA_EXT_CUDA_DIRECTORY)/python/obsolete/dist/`; \
+		mv  $(NNABLA_EXT_CUDA_DIRECTORY)/python/obsolete/dist/$$tar_fullname $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/; \
+		cd $(BUILD_EXT_CUDA_DIRECTORY_WHEEL); \
+		mv $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/$$tar_fullname \
+		$(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/nnabla_ext_cuda$(TARGZ_CUDA_VERSION)$(MULTIGPU_SUFFIX)-$$RELEASE_VERSION-cp3$(PYTHON_VERSION_MINOR)-cp3$(TARGZ_PYTHON_VERSION_MINOR)-manylinux_2_17_x86_64.tar.gz
+
+
+.PHONY:create-present-wheel
+create-present-wheel:nnabla-install \
 		$(BUILD_DIRECTORY_CPPLIB)/lib/libnnabla$(LIB_NAME_SUFFIX).so \
 		$(BUILD_EXT_CUDA_DIRECTORY_CPPLIB)/lib/libnnabla_cuda$(EXT_CUDA_LIB_NAME_SUFFIX).so
-	mkdir -p $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)
 	cd $(BUILD_EXT_CUDA_DIRECTORY_WHEEL) \
 	&& cmake \
 		-DBUILD_CPP_LIB=OFF \
@@ -105,19 +120,28 @@ nnabla-ext-cuda-wheel-local: nnabla-install \
 		-DCPPLIB_BUILD_DIR=$(BUILD_DIRECTORY_CPPLIB) \
 		-DCPPLIB_CUDA_LIBRARY=$(BUILD_EXT_CUDA_DIRECTORY_CPPLIB)/lib/libnnabla_cuda$(EXT_CUDA_LIB_NAME_SUFFIX).so \
 		-DCPPLIB_LIBRARY=$(BUILD_DIRECTORY_CPPLIB)/lib/libnnabla$(LIB_NAME_SUFFIX).so \
-	        -DEXT_CUDA_LIB_NAME_SUFFIX=$(EXT_CUDA_LIB_NAME_SUFFIX) \
-	        -DLIB_NAME_SUFFIX=$(LIB_NAME_SUFFIX) \
+		-DEXT_CUDA_LIB_NAME_SUFFIX=$(EXT_CUDA_LIB_NAME_SUFFIX) \
+		-DLIB_NAME_SUFFIX=$(LIB_NAME_SUFFIX) \
 		-DMAKE_MANYLINUX_WHEEL=$(MAKE_MANYLINUX_WHEEL) \
 		-DNNABLA_DIR=$(NNABLA_DIRECTORY) \
 		-DPYTHON_VERSION_MAJOR=$(PYTHON_VERSION_MAJOR) \
 		-DPYTHON_VERSION_MINOR=$(PYTHON_VERSION_MINOR) \
 		-DMULTIGPU_SUFFIX=$(MULTIGPU_SUFFIX) \
 		-DWITH_NCCL=$(WITH_NCCL) \
-                -DWHEEL_SUFFIX=$(WHEEL_SUFFIX) \
+		-DWHEEL_SUFFIX=$(WHEEL_SUFFIX) \
 		-DCMAKE_LIBRARY_PATH=$(CUDA_ROOT)/lib64/stubs \
 		$(CMAKE_OPTS) \
 		$(NNABLA_EXT_CUDA_DIRECTORY) \
 	&& $(MAKE) -C $(BUILD_EXT_CUDA_DIRECTORY_WHEEL) wheel
+
+.PHONY: nnabla-ext-cuda-wheel-local
+nnabla-ext-cuda-wheel-local:
+	mkdir -p $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)
+ifndef NOT_EMPYT
+	${MAKE} create-obsoleted-targz
+else
+	${MAKE} create-present-wheel
+endif
 
 .PHONY: nnabla-ext-cuda-install
 nnabla-ext-cuda-install:

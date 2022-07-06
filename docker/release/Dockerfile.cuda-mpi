@@ -145,7 +145,7 @@ ENV LD_LIBRARY_PATH /opt/openmpi/lib:$LD_LIBRARY_PATH
 COPY --from=flatc /usr/local/bin/flatc /usr/local/bin/flatc
 
 ARG NNABLA_VER
-RUN pip install ${PIP_INS_OPTS} nnabla-ext-cuda${CU1_VER}${CU2_VER}-nccl2-mpi${MPI}==${NNABLA_VER} nnabla_converter==${NNABLA_VER}
+RUN pip install ${PIP_INS_OPTS} nnabla-ext-cuda${CU1_VER}${CU2_VER}==${NNABLA_VER} nnabla_converter==${NNABLA_VER}
 
 # cuda compat driver support
 COPY cudalibcheck /usr/local/bin/cudalibcheck
