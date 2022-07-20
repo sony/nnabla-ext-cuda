@@ -104,9 +104,9 @@ void TopKDataCuda<T>::forward_impl(const Variables &inputs,
 
   auto x_data = x->get_data_pointer<Tcu>(this->ctx_);
   auto y_data = y->cast_data_and_get_pointer<Tcu>(this->ctx_, true);
+  auto top_k_idx = this->with_index_ ? outputs[1] : &this->top_k_idx_;
   auto tk_idx =
-      (reinterpret_cast<Variable &>(this->top_k_idx_)
-           .cast_data_and_get_pointer<unsigned int>(this->ctx_, true));
+      top_k_idx->template cast_data_and_get_pointer<unsigned int>(this->ctx_);
 
   if (!this->reduce_)
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(set_to_zero, y->size(), y_data);
@@ -133,8 +133,13 @@ void TopKDataCuda<T>::forward_impl(const Variables &inputs,
       }
 
       thrust::sequence(buffer_ptr, buffer_ptr + this->ss_);
-      thrust::sort_by_key(x_data_vec.begin(), x_data_vec.end(), buffer_ptr,
-                          thrust::greater<Tcu>());
+      if (this->largest_) {
+        thrust::sort_by_key(x_data_vec.begin(), x_data_vec.end(), buffer_ptr,
+                            thrust::greater<Tcu>());
+      } else {
+        thrust::sort_by_key(x_data_vec.begin(), x_data_vec.end(), buffer_ptr,
+                            thrust::less<Tcu>());
+      }
 
       if (this->reduce_) {
         NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(copy_index_and_value<true>, this->k_,
@@ -153,9 +158,9 @@ void TopKDataCuda<T>::forward_impl(const Variables &inputs,
 
     for (int s = 0; s < this->ns_; s++) {
       if (this->abs_) {
-        top_k<Tcu, true>(x_data, this->ss_, this->k_, buffer);
+        top_k<Tcu, true>(x_data, this->ss_, this->k_, buffer, this->largest_);
       } else {
-        top_k<Tcu, false>(x_data, this->ss_, this->k_, buffer);
+        top_k<Tcu, false>(x_data, this->ss_, this->k_, buffer, this->largest_);
       }
       if (this->reduce_) {
         NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(copy_index_and_value<true>, this->k_,
@@ -192,10 +197,11 @@ void TopKDataCuda<T>::backward_impl(const Variables &inputs,
   const auto y = outputs[0];
 
   auto g_y = y->get_grad_pointer<Tcu>(this->ctx_);
-  auto idx = (reinterpret_cast<Variable &>(this->top_k_idx_)
-                  .get_data_pointer<unsigned int>(this->ctx_));
 
   if (this->reduce_) {
+    auto top_k_idx = this->with_index_ ? outputs[1] : &this->top_k_idx_;
+    auto idx = top_k_idx->template get_data_pointer<unsigned int>(this->ctx_);
+
     if (accum_gradient[0]) {
       auto g_x = x->cast_grad_and_get_pointer<Tcu>(this->ctx_, false);
       for (int s = 0; s < this->ns_; s++) {
