@@ -35,6 +35,7 @@ public:
 
 protected:
   int device_;
+  NdArray shape_info_buf_;
   NdArray stride_info_buf_;
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
