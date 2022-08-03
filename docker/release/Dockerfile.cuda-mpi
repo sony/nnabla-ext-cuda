@@ -135,8 +135,8 @@ RUN pip3 install ${PIP_INS_OPTS} --upgrade pip
 RUN pip install ${PIP_INS_OPTS} wheel setuptools
 RUN pip install ${PIP_INS_OPTS} opencv-python || true
 
-RUN pip install ${PIP_INS_OPTS} --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda${CU1_VER}${CU2_VER} \
-    || echo "Skip DALI installation (CUDA=${CU1_VER}.${CU2_VER})"
+RUN pip install ${PIP_INS_OPTS} --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda${CU1_VER}${CU2_VER%.?} \
+    || echo "Skip DALI installation (CUDA=${CU1_VER}.${CU2_VER%.?})"
 
 COPY --from=openmpi /opt/openmpi /opt/openmpi
 ENV PATH /opt/openmpi/bin:$PATH
@@ -145,7 +145,7 @@ ENV LD_LIBRARY_PATH /opt/openmpi/lib:$LD_LIBRARY_PATH
 COPY --from=flatc /usr/local/bin/flatc /usr/local/bin/flatc
 
 ARG NNABLA_VER
-RUN pip install ${PIP_INS_OPTS} nnabla-ext-cuda${CU1_VER}${CU2_VER}-nccl2-mpi${MPI}==${NNABLA_VER} nnabla_converter==${NNABLA_VER}
+RUN pip install ${PIP_INS_OPTS} nnabla-ext-cuda${CU1_VER}${CU2_VER%.?}==${NNABLA_VER} nnabla_converter==${NNABLA_VER}
 
 # cuda compat driver support
 COPY cudalibcheck /usr/local/bin/cudalibcheck

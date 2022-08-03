@@ -1,5 +1,5 @@
 # Copyright 2017,2018,2019,2020,2021 Sony Corporation.
-# Copyright 2021 Sony Group Corporation.
+# Copyright 2021,2022 Sony Group Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -348,7 +348,7 @@ def get_setup_config(root_dir):
         cuda_version = ''
 
     if 'MULTI_GPU_SUFFIX' in os.environ:
-        cuda_version += os.environ['MULTI_GPU_SUFFIX']
+        pass
 
     pkg_name = 'nnabla_ext-cuda{}'.format(cuda_version)
 
