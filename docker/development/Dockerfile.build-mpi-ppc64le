@@ -111,9 +111,8 @@ RUN mkdir /tmp/deps \
     && cd / \
     && rm -rf /tmp/*
 
-ENV CU_MINOR=${CUDA_VERSION_MINOR}
-RUN if [ `echo ${CUDA_VERSION_MINOR} | grep -o '\.' | wc -l` = 1 ]; then CU_MINOR=${CUDA_VERSION_MINOR%.?}; fi \
-    && yum install -y libnccl-*+cuda${CUDA_VERSION_MAJOR}.${CU_MINOR} libnccl-devel-*+cuda${CUDA_VERSION_MAJOR}.${CU_MINOR}
+
+RUN yum install -y libnccl-*+cuda${CUDA_VERSION_MAJOR}.${CUDA_VERSION_MINOR%.?} libnccl-devel-*+cuda${CUDA_VERSION_MAJOR}.${CUDA_VERSION_MINOR%.?}
 
 ################################################### gcc
 RUN mkdir /tmp/deps \
