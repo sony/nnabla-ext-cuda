@@ -30,9 +30,12 @@ SET nnabla_root=%CD%
 POPD
 
 CALL %nnabla_root%\build-tools\msvc\tools\env.bat %1 || GOTO :error
+
+SET NO_CUDA_PATH=
 IF [%TEST_NO_CUDA%] == [True] (
-    ECHO Use test environment without cuda/cudnn for wheel with lib.
-    GOTO :CUDA_CUDNN_SKIP
+   ECHO Use test environment without cuda/cudnn for wheel with lib.
+   SET NO_CUDA_PATH=%VENV%\Lib\site-packages\nnabla_ext\cuda;
+   GOTO :CUDA_CUDNN_SKIP
 )
 set CUDAVER=%2
 set CUDNNVER=%3
@@ -90,10 +93,8 @@ IF NOT [%CUDNN_MAJOR%] == [%CUDNNVER%] (
 )
 
 SET PATH=%CUDNN_PATH%\bin;%PATH%
-GOTO :LIB_WITHOUT_WHL
 :CUDA_CUDNN_SKIP
-SET PATH=%VENV%\Lib\site-packages\nnabla_ext\cuda;%PATH%
-:LIB_WITHOUT_WHL
+SET PATH=%NO_CUDA_PATH%%PATH%
 
 REM Ext CUDA folders
 SET nnabla_ext_cuda_root=%~dp0..\..\..

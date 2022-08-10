@@ -26,7 +26,7 @@ ARG PYTHONWARNINGS
 ARG CURL_OPTS
 ARG WGET_OPTS
 ARG YUM_OPTS
-ARG MPI=3.1.6
+ARG MPIVER=3.1.6
 
 ENV LC_ALL C
 ENV LANG C
@@ -43,9 +43,9 @@ RUN eval ${YUM_OPTS} \
     && yum clean all
 
 RUN mkdir /root/rpmbuild
-RUN cd /root/rpmbuild; curl ${CURL_OPTS} https://download.open-mpi.org/release/open-mpi/v${MPI%.*}/openmpi-${MPI}-1.src.rpm -o openmpi-${MPI}-1.src.rpm
-RUN cd /root/rpmbuild; rpmbuild --rebuild openmpi-${MPI}-1.src.rpm
-RUN mv /root/rpmbuild/RPMS/x86_64/openmpi-${MPI}-1.*.rpm /root
+RUN cd /root/rpmbuild; curl ${CURL_OPTS} https://download.open-mpi.org/release/open-mpi/v${MPIVER%.*}/openmpi-${MPIVER}-1.src.rpm -o openmpi-${MPIVER}-1.src.rpm
+RUN cd /root/rpmbuild; rpmbuild --rebuild openmpi-${MPIVER}-1.src.rpm
+RUN mv /root/rpmbuild/RPMS/x86_64/openmpi-${MPIVER}-1.*.rpm /root
 
 FROM centos:7
 
@@ -135,9 +135,8 @@ ARG PYTHON_VER
 ADD python/requirements.txt /tmp/deps/
 
 ARG ARCH_SUFFIX
-ARG CU1_VER
-ARG CU2_VER
-ARG CUDNN_VER
+ARG CUDA_VERSION_MAJOR
+
 RUN if [ "${PYTHON_VER}" == "3.7" ]; then wget ${WGET_OPTS} https://www.python.org/ftp/python/3.7.10/Python-3.7.10.tgz; fi \
 	&& if [ "${PYTHON_VER}" == "3.8" ]; then wget ${WGET_OPTS} https://www.python.org/ftp/python/3.8.8/Python-3.8.8.tgz; fi \
 	&& if [ "${PYTHON_VER}" == "3.9" ]; then wget ${WGET_OPTS} https://www.python.org/ftp/python/3.9.8/Python-3.9.8.tgz; fi \
@@ -148,8 +147,7 @@ RUN if [ "${PYTHON_VER}" == "3.7" ]; then wget ${WGET_OPTS} https://www.python.o
 	&& ln -s /usr/local/bin/python${PYTHON_VER} /usr/local/bin/python \
 	&& ln -s /usr/local/bin/pip${PYTHON_VER} /usr/local/bin/pip \
 	&& pip install ${PIP_INS_OPTS} -U -r /tmp/deps/requirements.txt \
-	&& pip install ${PIP_INS_OPTS} --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda${CU1_VER}${CU2_VER%.?} \
-        || echo "Skip nvidia dali installation" \
+	&& pip install ${PIP_INS_OPTS} --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda${CUDA_VERSION_MAJOR}0 \
 	&& cd .. \
 	&& rm -rf Python-${PYTHON_VER}* \
 	&& rm -rf /tmp/*
