@@ -24,7 +24,7 @@ SET CUDAVER=11
 :LIB_VER_SET
 
 SET cutensor_folder=%third_party_folder%\libcutensor-windows-x86_64-1.5.0.3-archive
-SET cutensor_library=%cutensor_folder%\lib\%CUDAVER%\cutensor.lib
+SET cutensor_library_dir=%cutensor_folder%\lib\%CUDAVER%
 SET cutensor_dll=%cutensor_folder%\lib\%CUDAVER%\cutensor.dll
 SET cutensor_include_dir=%cutensor_folder%
 
@@ -32,7 +32,7 @@ if NOT EXIST %cutensor_folder%.zip (
     powershell "%nnabla_iwr_script%; iwr %nnabla_iwr_options% -Uri https://developer.download.nvidia.com/compute/cutensor/redist/libcutensor/windows-x86_64/libcutensor-windows-x86_64-1.5.0.3-archive.zip -OutFile %cutensor_folder%.zip" || GOTO :error
 )
 
-IF EXIST %cutensor_library% (
+IF EXIST %cutensor_library_dir% (
    ECHO cutensor already exists. Skipping...
    GOTO :Skip_Cutensor
 )

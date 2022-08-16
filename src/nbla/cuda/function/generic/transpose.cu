@@ -173,10 +173,6 @@ void TransposeCuda<T>::setup_impl(const Variables &inputs,
     NBLA_CUTENSOR_CHECK(cutensorInitTensorDescriptor(
         &handle_, &descY_, nmodeY, extentY.data(), NULL /* stride */, dataType,
         CUTENSOR_OP_IDENTITY));
-  } else {
-    NBLA_ERROR(error_code::target_specific,
-               "cuTENSOR library is not found. Please check your installation "
-               "or find instructions on https://nnabla.org/install.");
   }
 }
 

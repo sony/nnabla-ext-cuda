@@ -32,9 +32,6 @@ IF NOT DEFINED WHLCUDA (
    exit /b 255
 )
 
-SET third_party_folder=%nnabla_root%\third_party
-CALL %~dp0tools\get_cutensor.bat %2 || GOTO :error
-
 pip install %PIP_INS_OPTS% %WHL% || GOTO :error
 pip install %PIP_INS_OPTS% --no-deps %WHLCUDA% || GOTO :error
 pip install %PIP_INS_OPTS% pytest pytest-xdist[psutil]

@@ -49,7 +49,7 @@ cmake -G "%generate_target%" ^
       -DZLIB_INCLUDE_DIR=%zlib_include_dir% ^
       -DZLIB_LIBRARY_RELEASE=%zlib_library% ^
       -DCUTENSOR_INCLUDE_DIR=%cutensor_include_dir% ^
-      -DCUTENSOR_LIBRARY_RELEASE=%cutensor_library% ^
+      -DCUTENSOR_LIBRARY_RELEASE=%cutensor_library_dir% ^
       %nnabla_ext_cuda_root% || GOTO :error
 
 REM We can only use msbuild instead cmake here!

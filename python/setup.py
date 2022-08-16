@@ -271,15 +271,6 @@ def cuda_config(root_dir, cuda_lib, ext_opts, lib_dirs):
                 print('LIB: {}'.format(d))
                 package_data[cuda_pkg].append(d)
 
-            if 'cutensor_dll' in os.environ:
-                lib_cutensor = os.environ['cutensor_dll']
-                print('Copying cutensor.dll')
-                shutil.copyfile(lib_cutensor, join(
-                    path_cuda_pkg, 'cutensor.dll'))
-                package_data[cuda_pkg].append('cutensor_dll')
-            else:
-                print('cuTensor library is not found.')
-
     cuda_ext_opts = copy.deepcopy(ext_opts)
     cuda_ext_opts['libraries'] += [cuda_lib.name]
     cuda_ext_opts['library_dirs'] += [dirname(cuda_lib.path)]
