@@ -149,3 +149,29 @@ docker_image_nnabla_ext_cuda:
 		-t $(DOCKER_IMAGE_NNABLA_EXT_CUDA) . \
 	&& ls $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/* | grep -v nnabla_ext_cuda | xargs rm -f \
 	&& rm -f Dockerfile
+
+########################################################################################################################
+# Docker image installed with wheel included cuda/cudnn libraries
+
+.PHONY: docker_image_cuda_cudnn_lib_in_wheel
+docker_image_cuda_cudnn_lib_in_wheel:
+	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
+	&& docker build $(DOCKER_BUILD_ARGS) \
+		--build-arg CUDA_VERSION_MAJOR=$(CUDA_VERSION_MAJOR) \
+		--build-arg PYTHON_VER=3.$(PYTHON_VERSION_MINOR) \
+		--build-arg MPI=$(OMPI_VERSION) \
+		-f docker/development/Dockerfile.cuda-cudnn-lib-in-wheel-test . -t nnabla-ext-cuda-whl:py3$(PYTHON_VERSION_MINOR)-cuda$(CUDA_VERSION_MAJOR)$(CUDA_VERSION_MINOR)-$(CUDNN_VERSION)-mpi$(OMPI_VERSION)
+
+########################################################################################################################
+# Test with wheel included cuda/cudnn libraries
+.PHONY: bwd-nnabla-ext-cuda-cudnn-lib-in-wheel-test
+bwd-nnabla-ext-cuda-cudnn-lib-in-wheel-test: docker_image_cuda_cudnn_lib_in_wheel
+	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
+	&& docker run --gpus=all $(DOCKER_RUN_OPTS) \
+		nnabla-ext-cuda-whl:py3$(PYTHON_VERSION_MINOR)-cuda$(CUDA_VERSION_MAJOR)$(CUDA_VERSION_MINOR)-$(CUDNN_VERSION)-mpi$(OMPI_VERSION) make -f  build-tools/make/build.mk nnabla-ext-cuda-test-local
+
+.PHONY: bwd-nnabla-ext-cuda-cudnn-lib-in-wheel-multi-gpu-test
+bwd-nnabla-ext-cuda-cudnn-lib-in-wheel-multi-gpu-test: docker_image_cuda_cudnn_lib_in_wheel
+	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
+	&& docker run --gpus=all $(DOCKER_RUN_OPTS) \
+		nnabla-ext-cuda-whl:py3$(PYTHON_VERSION_MINOR)-cuda$(CUDA_VERSION_MAJOR)$(CUDA_VERSION_MINOR)-$(CUDNN_VERSION)-mpi$(OMPI_VERSION) make -f  build-tools/make/build.mk nnabla-ext-cuda-multi-gpu-test-local
