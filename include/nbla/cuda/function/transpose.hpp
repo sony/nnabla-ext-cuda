@@ -20,6 +20,8 @@
 #include <nbla/cuda/cuda.hpp>
 #include <nbla/function/transpose.hpp>
 
+#include <cutensor.h>
+
 namespace nbla {
 
 template <typename T> class TransposeCuda : public Transpose<T> {
@@ -38,6 +40,12 @@ public:
 protected:
   int device_;
   std::shared_ptr<Variable> var_strides_;
+
+  // Members for cuTENSOR
+  bool cutensor_available_;
+  cutensorHandle_t handle_;
+  cutensorTensorDescriptor_t descX_, descY_;
+  std::vector<int> modeX_, modeY_;
 
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);

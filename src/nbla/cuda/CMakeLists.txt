@@ -17,6 +17,9 @@ set(NBLA_CUDA_LIBRARY_NAME nnabla_cuda${EXT_CUDA_LIB_NAME_SUFFIX})
 set(CUDA_SELECT_NVCC_ARCH_ARG "Auto" CACHE STRING "Select NVCC Arch. Options: Common | All | LIST(ARCH_AND_PTX ...). See select_compute_arch.cmake for details.")
 
 find_package(CUDA REQUIRED)
+if (MSVC)
+  find_library(CUDA_cublasLt_LIBRARY cublasLt HINTS "${CUDA_TOOLKIT_ROOT_DIR}/lib/x64")
+endif()
 message("-- CUDA--")
 message("Version: " ${CUDA_VERSION})
 message("Library: " ${CUDA_CUDA_LIBRARY})
@@ -47,6 +50,23 @@ if(WITH_NCCL)
 	# list(APPEND NBLA_CUDA_LINKER_LIBS
 	#	${NCCL_LIBRARIES}
 	#  )
+endif()
+
+if(MSVC)
+  list(APPEND NBLA_CUDA_INCLUDE_DIRS
+    ${CUTENSOR_INCLUDE_DIR}/include
+    )
+  list(APPEND NBLA_CUDA_LINKER_LIBS
+    ${CUTENSOR_LIBRARY_RELEASE}/cutensor_static.lib
+    ${CUDA_cublasLt_LIBRARY}
+    )
+else()
+  list(APPEND NBLA_CUDA_INCLUDE_DIRS
+    /usr/local/cuda/include
+    )
+  list(APPEND NBLA_CUDA_LINKER_LIBS
+    /usr/local/cuda/lib64/libcutensor_static.a
+    )
 endif()
 
 # nvprof support
@@ -118,11 +138,13 @@ file(GLOB CPP_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 
 if(MSVC)
   set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};-Xcompiler /W0")
+  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};-lcutensor")
 else()
   set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};-std=c++14")
   # Do not use `--default-stream per-thread` since some kernel calls are executed strangely in blocking streams other than default stream
   #set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS}; --default-stream per-thread")
   set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};")
+  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};-lcutensor")
 endif()
 
 file(GLOB CU_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} */*.cu cudnn/*/*.cu)

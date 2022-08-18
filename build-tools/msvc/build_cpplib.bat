@@ -18,7 +18,7 @@ REM
 SETLOCAL
 
 REM Environment
-CALL %~dp0tools\env.bat 3.7 %1 %2 %3 || GOTO :error
+CALL %~dp0tools\env.bat 3.7 %1 %2 || GOTO :error
 
 IF NOT EXIST %nnabla_build_folder% (
    ECHO nnabla_build_folder ^(%nnabla_build_folder%^) does not exist.
@@ -27,8 +27,10 @@ IF NOT EXIST %nnabla_build_folder% (
 
 SET third_party_folder=%nnabla_root%\third_party
 REM Build third party libraries.
+PUSHD .
 CALL %nnabla_root%\build-tools\msvc\tools\build_zlib.bat       || GOTO :error
-
+POPD
+CALL %~dp0tools\get_cutensor.bat %1 || GOTO :error
 
 REM Build CUDA extension library
 IF NOT EXIST %nnabla_ext_cuda_build_folder% MKDIR %nnabla_ext_cuda_build_folder%
@@ -46,6 +48,8 @@ cmake -G "%generate_target%" ^
       -DPYTHON_COMMAND_NAME=python ^
       -DZLIB_INCLUDE_DIR=%zlib_include_dir% ^
       -DZLIB_LIBRARY_RELEASE=%zlib_library% ^
+      -DCUTENSOR_INCLUDE_DIR=%cutensor_include_dir% ^
+      -DCUTENSOR_LIBRARY_RELEASE=%cutensor_library_dir% ^
       %nnabla_ext_cuda_root% || GOTO :error
 
 REM We can only use msbuild instead cmake here!

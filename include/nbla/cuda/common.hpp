@@ -23,6 +23,7 @@
 #include <cuda_runtime.h>
 #include <curand.h>
 #include <cusolverDn.h>
+#include <cutensor.h>
 #if CUDA_VERSION >= 8000
 #include <library_types.h>
 #endif
@@ -207,6 +208,13 @@ inline string curand_status_to_string(curandStatus_t status) {
                   "`. Please see CUSOLVER API documentation for the cause.")); \
     }                                                                          \
   }
+
+#define NBLA_CUTENSOR_CHECK(condition)                                         \
+  {                                                                            \
+    cutensorStatus_t status = condition;                                       \
+    NBLA_CHECK(status == CUTENSOR_STATUS_SUCCESS, error_code::target_specific, \
+               cutensorGetErrorString(status));                                \
+  };
 
 /** Data type */
 #if CUDA_VERSION >= 8000
