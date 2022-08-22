@@ -82,6 +82,15 @@ TEST(WatchDogTest, TestDisableWithEnv) {
   setenv("NNABLA_MPI_WATCH_DOG_ENABLE", "1", 1);
 }
 
+TEST(WatchDogTest, TestEnvTimeout) {
+  setenv("NNABLA_MPI_WATCH_DOG_TIMEOUT", "3", 0);
+  Watchdog watch_dog(1);
+  {
+    Watchdog::WatchdogLock lck(watch_dog);
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+  }
+}
+
 #if 0
 // These 2 cases are skipped.
 // This one is due to too long testing time.

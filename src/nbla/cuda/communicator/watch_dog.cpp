@@ -18,8 +18,10 @@
 #include <nbla/cuda/communicator/watch_dog.hpp>
 #include <nbla/exception.hpp>
 #include <stdio.h>
+#include <string.h>
 
 namespace nbla {
+
 void Watchdog::watch_dog_loop() {
   std::unique_lock<std::mutex> lck(mutex_);
   {
@@ -29,19 +31,23 @@ void Watchdog::watch_dog_loop() {
   }
   while (!exit_flag_) {
     if (state_ == START_WATCH_DOG) {
+      int32_t timeout_set = TICK * timeout_ticks_;
+      if (env_timeout_ > 0) {
+        timeout_set = env_timeout_;
+      }
       std::cv_status r =
-          cv_.wait_for(lck, std::chrono::milliseconds(TICK * timeout_ticks_));
+          cv_.wait_for(lck, std::chrono::milliseconds(timeout_set));
       if (r == std::cv_status::timeout) {
         const char *e = std::getenv("NNABLA_MPI_WATCH_DOG_ENABLE");
         if (!e || *e == '0') {
           fprintf(stderr,
                   "WARNING: some node stop response for %8.2f seconds!\n",
-                  (TICK * timeout_ticks_) / 1000.0);
+                  timeout_set / 1000.0);
           break;
         } else {
           NBLA_ERROR(error_code::runtime,
                      "System stop response within %8.2f seconds!",
-                     (TICK * timeout_ticks_) / 1000.0);
+                     timeout_set / 1000.0);
         }
       }
     } else {
@@ -51,9 +57,16 @@ void Watchdog::watch_dog_loop() {
 }
 
 Watchdog::Watchdog(int timeout_ticks)
-    : state_(0), exit_flag_(0), timeout_ticks_(timeout_ticks), mutex_(), cv_(),
-      bootup_flag_(0), bootup_(), bcv_(), in_lock_(false),
+    : state_(0), exit_flag_(0), timeout_ticks_(timeout_ticks), env_timeout_(-1),
+      mutex_(), cv_(), bootup_flag_(0), bootup_(), bcv_(), in_lock_(false),
       thread_(&Watchdog::watch_dog_loop, this) {
+  const char *c_t = std::getenv("NNABLA_MPI_WATCH_DOG_TIMEOUT");
+  if (nullptr != c_t) {
+    int32_t t = std::stoi(c_t);
+    if (t > 0)
+      env_timeout_ = t * 1000; // user setting is n seconds.
+  }
+
   std::unique_lock<std::mutex> lck(bootup_);
   while (!bootup_flag_)
     bcv_.wait(lck);
