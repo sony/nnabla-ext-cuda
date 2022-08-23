@@ -41,10 +41,10 @@ def ref_grad_cumprod(x, dy, axis, exclusive, reverse, **kw):
     masked_x = np.where(first_zero_mask == 1, 1, x)
 
     # Check if masks are correctly generated.
-    assert(np.all(first_zero_mask + before_first_zero_mask +
-           after_first_zero_mask == 1))
-    assert(np.all(masked_x - x == first_zero_mask))
-    assert(np.all(x * first_zero_mask == 0))
+    assert (np.all(first_zero_mask + before_first_zero_mask +
+                   after_first_zero_mask == 1))
+    assert (np.all(masked_x - x == first_zero_mask))
+    assert (np.all(x * first_zero_mask == 0))
 
     normal_cumprod = ref_cumprod(x, axis, exclusive, reverse)
     masked_cumprod = ref_cumprod(masked_x, axis, exclusive, reverse)
