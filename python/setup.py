@@ -42,9 +42,9 @@ if '__author__' in a:
     __author__ = a['__author__']
 if '__email__' in a:
     __email__ = a['__email__']
-assert(__version__ is not None)
-assert(__author__ is not None)
-assert(__email__ is not None)
+assert (__version__ is not None)
+assert (__author__ is not None)
+assert (__email__ is not None)
 
 setup_requires = [
 ]
