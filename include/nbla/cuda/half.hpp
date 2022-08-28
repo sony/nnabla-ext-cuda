@@ -475,6 +475,7 @@ MATHF_F(asinh);
 MATHF_F(acosh);
 MATHF_F(atanh);
 MATHF_F(round);
+MATHF_F(erf);
 MATHF(exp);
 MATHF(log);
 MATHF(sqrt);
