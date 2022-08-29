@@ -17,39 +17,6 @@
 ARG CU1_VER
 ARG CU2_VER
 ARG CUDNN_VER
-FROM ubuntu:18.04 as flatc
-
-ARG PIP_INS_OPTS
-ARG PYTHONWARNINGS
-ARG CURL_OPTS
-ARG WGET_OPTS
-ARG APT_OPTS
-
-ENV DEBIAN_FRONTEND noninteractive
-
-RUN eval ${APT_OPTS} \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends \
-       ca-certificates \
-       curl \
-       cmake \
-       make \
-       g++ \
-       git \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN umask 0 \
-    && mkdir -p /tmp/deps \
-    && cd /tmp/deps \
-    && git clone -b \
-       `curl --silent "https://api.github.com/repos/google/flatbuffers/releases/latest" | grep -Po '"tag_name": "\K.*?(?=")'` \
-       https://github.com/google/flatbuffers.git \
-    && cd flatbuffers \
-    && cmake -G "Unix Makefiles" \
-    && make \
-    && make install \
-    && cd / \
-    && rm -rf /tmp/*
 
 FROM nvidia/cuda:${CU1_VER}.${CU2_VER}-cudnn${CUDNN_VER}-runtime-ubuntu18.04
 
@@ -96,8 +63,6 @@ RUN pip install ${PIP_INS_OPTS} opencv-python || true
 
 RUN pip install ${PIP_INS_OPTS} --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda${CU1_VER}0 \
     || echo "Skip DALI installation (CUDA=${CU1_VER}.${CU2_VER})"
-
-COPY --from=flatc /usr/local/bin/flatc /usr/local/bin/flatc
 
 ARG NNABLA_VER
 RUN pip install ${PIP_INS_OPTS} nnabla-ext-cuda${CU1_VER}${CU2_VER%.?}==${NNABLA_VER} nnabla_converter==${NNABLA_VER}
