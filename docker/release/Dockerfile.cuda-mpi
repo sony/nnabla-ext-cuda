@@ -50,7 +50,8 @@ RUN cd tmp/openmpi/openmpi-${MPI} \
         F77=gfortran \
         FC=gfortran \
     && make -j8 \
-    && make install
+    && make install \
+    && echo btl_openib_allow_ib = 1 >> /opt/openmpi/etc/openmpi-mca-params.conf
 
 FROM nvidia/cuda:${CU1_VER}.${CU2_VER}-cudnn${CUDNN_VER}-runtime-ubuntu18.04
 
