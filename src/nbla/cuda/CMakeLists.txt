@@ -17,7 +17,7 @@ set(NBLA_CUDA_LIBRARY_NAME nnabla_cuda${EXT_CUDA_LIB_NAME_SUFFIX})
 set(CUDA_SELECT_NVCC_ARCH_ARG "Auto" CACHE STRING "Select NVCC Arch. Options: Common | All | LIST(ARCH_AND_PTX ...). See select_compute_arch.cmake for details.")
 
 find_package(CUDA REQUIRED)
-if (MSVC)
+if (WIN32)
   find_library(CUDA_cublasLt_LIBRARY cublasLt HINTS "${CUDA_TOOLKIT_ROOT_DIR}/lib/x64")
 endif()
 message("-- CUDA--")
@@ -37,7 +37,7 @@ list(APPEND NBLA_CUDA_LINKER_LIBS
   ${CUDA_curand_LIBRARY}
   ${CUDA_CUFFT_LIBRARIES}
   )
-  
+
 # Distributed Training
 option(WITH_NCCL "Use nccl for distributed training" OFF)
 if(WITH_NCCL)
@@ -52,7 +52,7 @@ if(WITH_NCCL)
 	#  )
 endif()
 
-if(MSVC)
+if(WIN32)
   list(APPEND NBLA_CUDA_INCLUDE_DIRS
     ${CUTENSOR_INCLUDE_DIR}/include
     )
@@ -62,11 +62,12 @@ if(MSVC)
     )
 else()
   list(APPEND NBLA_CUDA_INCLUDE_DIRS
-    /usr/local/cuda/include
+    ${cutensor_include_path}
     )
   list(APPEND NBLA_CUDA_LINKER_LIBS
-    /usr/local/cuda/lib64/libcutensor_static.a
+    ${cutensor_lib_path}/libcutensor_static.a
     )
+  message("CUTENSOR: " ${cutensor_lib_path})
 endif()
 
 # nvprof support
