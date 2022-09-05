@@ -30,7 +30,9 @@ protected:
   int device_;
 
 public:
-  explicit CudaDlpackArray(const Size_t size, dtypes dtype, const Context &ctx);
+  explicit CudaDlpackArray(const Size_t size, dtypes dtype, const Context &ctx,
+                           const AllocatorMemoryPtr mem = nullptr,
+                           const Size_t offset = 0);
   virtual ~CudaDlpackArray();
   virtual void copy_from(const Array *src_array);
   virtual void zero();
