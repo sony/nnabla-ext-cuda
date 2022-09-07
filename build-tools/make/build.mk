@@ -97,16 +97,16 @@ nnabla-ext-cuda-wheel:
 create-obsoleted-targz:
 		@mkdir $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/; \
 		cd $(NNABLA_EXT_CUDA_DIRECTORY)/python/obsolete/; \
-		touch src/info.txt; \
-		echo $(TARGZ_CUDA_VERSION) >> src/info.txt; \
+		rm -rf src/*.egg-info; \
+		echo $(TARGZ_CUDA_VERSION) > src/info.txt; \
+		sed -i -e 's/^__cuda_version__.\+$$/__cuda_version__ = '\'$(CUDA_VERSION_MAJOR).$(CU_MINOR)\''/' src/_version.py; \
+		sed -i -e 's/^__cudnn_version__.\+$$/__cudnn_version__ = '\'$(CUDNN_VERSION)\''/' src/_version.py; \
+		sed -i -e 's/^__ompi_version__.\+$$/__ompi_version__ = '\'$(OMPI_VERSION)\''/' src/_version.py; \
 		EXT_CUDA_LIB_NAME_SUFFIX=$(EXT_CUDA_LIB_NAME_SUFFIX); \
-		RELEASE_VERSION=`cat  $(NNABLA_EXT_CUDA_DIRECTORY)/../nnabla/VERSION.txt`; \
-		python3 $(NNABLA_EXT_CUDA_DIRECTORY)/python/obsolete/setup.py sdist; \
+		RELEASE_VERSION=`grep __version__ src/_version.py | sed -r 's/^.+'\''([.0-9]+)'\''$$/\1/'`; \
+		python3 setup.py sdist; \
 		tar_fullname=`ls $(NNABLA_EXT_CUDA_DIRECTORY)/python/obsolete/dist/`; \
-		mv  $(NNABLA_EXT_CUDA_DIRECTORY)/python/obsolete/dist/$$tar_fullname $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/; \
-		cd $(BUILD_EXT_CUDA_DIRECTORY_WHEEL); \
-		mv $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/$$tar_fullname \
-		$(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/nnabla_ext_cuda$(TARGZ_CUDA_VERSION)$(MULTIGPU_SUFFIX)-$$RELEASE_VERSION-cp3$(PYTHON_VERSION_MINOR)-cp3$(TARGZ_PYTHON_VERSION_MINOR)-manylinux_2_17_x86_64.tar.gz
+		mv  $(NNABLA_EXT_CUDA_DIRECTORY)/python/obsolete/dist/$$tar_fullname $(BUILD_EXT_CUDA_DIRECTORY_WHEEL)/dist/
 
 
 .PHONY:create-present-wheel

@@ -20,12 +20,15 @@ if '__cuda_version__' in a:
     __cuda_version__ = a['__cuda_version__']
 if '__cudnn_version__' in a:
     __cudnn_version__ = a['__cudnn_version__']
+if '__ompi_version__' in a:
+    __ompi_version__ = a['__ompi_version__']
 if '__author__' in a:
     __author__ = a['__author__']
 if '__email__' in a:
     __email__ = a['__email__']
 
 cuda_version = ''.join(__cuda_version__.split('.'))
+ompi_version = '_'.join(__ompi_version__.split('.'))
 
 whl_suffix = ''
 if 'WHEEL_SUFFIX' in os.environ:
@@ -60,17 +63,10 @@ def get_setup_config(root_dir):
     ext_modules = []
 
     global cuda_version
+    global ompi_version
 
-    if 'WHL_NO_CUDA_SUFFIX' in os.environ and os.environ['WHL_NO_CUDA_SUFFIX'] == 'True':
-        cuda_version = ''
-
-    if 'MULTI_GPU_SUFFIX' in os.environ:
-        cuda_version += os.environ['MULTI_GPU_SUFFIX']
-
-    pkg_name = 'nnabla_ext-cuda{}'.format(cuda_version)
-
-    if 'WHEEL_SUFFIX' in os.environ:
-        pkg_name += os.environ['WHEEL_SUFFIX']
+    pkg_name = 'nnabla_ext_cuda{}_nccl2_mpi{}'.format(
+        cuda_version, ompi_version)
 
     pkg_info = dict(
         name=pkg_name,
