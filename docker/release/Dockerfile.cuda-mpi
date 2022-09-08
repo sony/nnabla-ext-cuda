@@ -13,9 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG CU1_VER
-ARG CU2_VER
-ARG CUDNN_VER
 
 FROM ubuntu:18.04 as openmpi
 
