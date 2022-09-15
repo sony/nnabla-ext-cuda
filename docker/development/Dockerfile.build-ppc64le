@@ -146,19 +146,6 @@ RUN mkdir /tmp/deps \
     && cd / \
     && rm -rf /tmp/*
 
-############################################################ cuTENSOR copy to cuda path
-ARG CUDA_VERSION_MAJOR=10
-ARG CUDA_VERSION_MINOR=2
-
-RUN if [ "${BUILD_WITH_CUTENSOR}" == "True" ]; then \
-        cp -pR /usr/include/cutensor* /usr/local/cuda/include/ \
-        && if [ -d "/usr/lib64/libcutensor/${CUDA_VERSION_MAJOR}.${CUDA_VERSION_MINOR%.?}" ]; \
-                then ver_for_cutensor=${CUDA_VERSION_MAJOR}.${CUDA_VERSION_MINOR%.?}; \
-                else if [ "${CUDA_VERSION_MAJOR}" == "11" ]; then ver_for_cutensor=${CUDA_VERSION_MAJOR}; fi \
-           fi \
-        && cp -pR /usr/lib64/libcutensor/${ver_for_cutensor}/* /usr/local/cuda/lib64/; \
-    fi
-
 ############################################################ build python from source
 ARG PYTHON_VERSION_MAJOR=3
 ARG PYTHON_VERSION_MINOR=7
@@ -181,6 +168,6 @@ RUN if [ "${PYVERNAME}" == "3.7" ]; then wget ${WGET_OPTS} https://www.python.or
 
 RUN rm -f /usr/lib64/libstdc++.so.6
 ENV PATH /tmp/.local/bin:$PATH
-ENV LD_LIBRARY_PATH /usr/local/lib64:$LD_LIBRARY_PATH:/usr/local/cuda/lib64
+ENV LD_LIBRARY_PATH /usr/local/lib64:$LD_LIBRARY_PATH
 ENV CC /usr/local/bin/gcc
 ENV CXX /usr/local/bin/g++
