@@ -36,8 +36,7 @@ import sys
 # From python3.8, PATH and the current working directory are no longer used to load DLL
 # User must use os.add_dll_directory() to add DLLs directory
 if sys.platform == 'win32':
-    py_ver = str(sys.version_info[0]) + '.' + str(sys.version_info[1])
-    if py_ver >= '3.8':
+    if sys.version_info.minor >= 8:
         path_env = os.environ.get('PATH')
         if path_env is not None:
             path_env = path_env.lower().split(';')
