@@ -26,8 +26,8 @@ public:
   typedef typename CudaType<T>::type Tcu;
 
   explicit TopKDataCuda(const Context &ctx, int k, bool abs, bool reduce,
-                        int base_axis)
-      : TopKData<T>(ctx, k, abs, reduce, base_axis),
+                        int base_axis, bool largest, bool with_index)
+      : TopKData<T>(ctx, k, abs, reduce, base_axis, largest, with_index),
         device_(std::stoi(ctx.device_id)) {}
   virtual ~TopKDataCuda() {}
   virtual string name() { return "TopKDataCuda"; }
