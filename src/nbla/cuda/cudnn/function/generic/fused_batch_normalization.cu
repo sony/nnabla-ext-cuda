@@ -68,9 +68,8 @@ void FusedBatchNormalizationCudaCudnn<T>::setup_impl(const Variables &inputs,
   }
 #endif // _WIN32
   if (can_use_bn_ex) {
-    cudaDeviceProp prop;
-    cudaGetDeviceProperties(&prop, this->device_);
-    if ((prop.major == 5) && (prop.minor == 3)) {
+    auto prop = SingletonManager::get<Cuda>()->get_device_properties();
+    if ((prop->major == 5) && (prop->minor == 3)) {
       NBLA_LOG_WARN("FusedBatchNormalization is not supported by CuDNN on "
                     "compute archtitecture 5.3 - "
                     "fallback to composite implementation.")

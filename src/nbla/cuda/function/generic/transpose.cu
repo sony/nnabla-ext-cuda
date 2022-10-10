@@ -133,9 +133,8 @@ void TransposeCuda<T>::setup_impl(const Variables &inputs,
   // Setup for cuTENSOR
   //--------------------------------
   // cuTENSOR is available for CC >= 6.0
-  cudaDeviceProp prop;
-  NBLA_CUDA_CHECK(cudaGetDeviceProperties(&prop, this->device_));
-  cutensor_available_ = prop.major >= 6;
+  auto prop = SingletonManager::get<Cuda>()->get_device_properties();
+  cutensor_available_ = prop->major >= 6;
 
   if (cutensor_available_) {
     const auto ndim_original = inputs[0]->ndim();

@@ -445,9 +445,8 @@ void DepthwiseDeconvolutionCuda<T>::setup_impl(const Variables &inputs,
   backprop_input_max_threads_per_block_ = attr2.maxThreadsPerBlock;
   backprop_weights_max_threads_per_block_ = attr3.maxThreadsPerBlock;
 
-  cudaDeviceProp prop;
-  cudaGetDeviceProperties(&prop, std::stoi(this->ctx_.device_id));
-  warp_size_ = prop.warpSize;
+  auto prop = SingletonManager::get<Cuda>()->get_device_properties();
+  warp_size_ = prop->warpSize;
 }
 
 template <typename T>
