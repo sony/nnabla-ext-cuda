@@ -285,14 +285,16 @@ shared_ptr<cudaDeviceProp> Cuda::get_device_properties(int device) {
   if (device < 0) {
     device = cuda_get_device();
   }
-
-  if (cuda_device_prop_ != nullptr) {
-    return cuda_device_prop_;
+  if (device >= cuda_device_props_.size()) {
+    cuda_device_props_.resize(device + 1, nullptr);
   }
-
-  cuda_device_prop_ = make_shared<cudaDeviceProp>();
-  NBLA_CUDA_CHECK(cudaGetDeviceProperties(cuda_device_prop_.get(), device));
-  return cuda_device_prop_;
+  auto &cuda_device_prop = cuda_device_props_.at(device);
+  if (cuda_device_prop != nullptr) {
+    return cuda_device_prop;
+  }
+  cuda_device_prop = make_shared<cudaDeviceProp>();
+  NBLA_CUDA_CHECK(cudaGetDeviceProperties(cuda_device_prop.get(), device));
+  return cuda_device_prop;
 }
 
 NBLA_INSTANTIATE_SINGLETON(NBLA_CUDA_API, Cuda);
