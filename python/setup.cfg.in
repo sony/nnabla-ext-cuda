@@ -13,3 +13,4 @@ cuda_target_file=$<TARGET_FILE:${NBLA_CUDA_LIBRARY_NAME}>
 
 cuda_toolkit_root_dir=${CUDA_TOOLKIT_ROOT_DIR}
 cudnn_include_dir=${CUDNN_INCLUDE_DIR}
+cutensor_include_dir=${cutensor_include_path}
