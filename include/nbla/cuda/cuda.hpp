@@ -56,6 +56,12 @@ public:
   /** Get cuSOLVER Dn handle of a specified device */
   cusolverDnHandle_t cusolverdn_handle(int device = -1);
 
+  /** Get cuTENSOR handle of a specified device */
+  cutensorHandle_t cutensor_handle(int device = -1);
+
+  /** Get cuTENSOR availability */
+  bool cutensor_available(int device = -1);
+
   /** Get or create cuda event */
   std::shared_ptr<cudaEvent_t> cuda_event(unsigned int flags, int device = -1);
 
@@ -137,6 +143,7 @@ public:
 protected:
   std::mutex mtx_cublas_;
   std::mutex mtx_cusolverdn_;
+  std::mutex mtx_cutensor_;
   std::mutex mtx_curand_;
   std::mutex mtx_stream_;
   typedef unordered_map<std::thread::id, cublasHandle_t> tid_cublas_handle_t;
@@ -144,6 +151,8 @@ protected:
       cublas_handles_; ///< cuBLAS handles for each device.
   unordered_map<int, cusolverDnHandle_t>
       cusolverdn_handles_; ///< cuSOLVER Dn handles for each device.
+  unordered_map<int, cutensorHandle_t>
+      cutensor_handles_; ///< cuTENSOR handles for each device.
   unordered_map<int, curandGenerator_t> curand_generators_;
   unordered_map<int, unordered_map<unsigned int, vector<cudaEvent_t>>>
       cuda_unused_events_;
