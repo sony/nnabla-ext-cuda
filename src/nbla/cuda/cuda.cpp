@@ -129,7 +129,7 @@ cutensorHandle_t Cuda::cutensor_handle(int device) {
   }
 
   // Check cuTENSOR availability for the device
-  if (!this->cutensor_available()) {
+  if (!this->cutensor_available(device)) {
     auto prop = get_device_properties(device);
     NBLA_ERROR(error_code::target_specific,
                "cuTENSOR handle was tried to be created, but aborted since "
@@ -151,6 +151,10 @@ cutensorHandle_t Cuda::cutensor_handle(int device) {
 }
 
 bool Cuda::cutensor_available(int device) {
+  if (device < 0) {
+    device = cuda_get_device();
+  }
+
   auto prop = this->get_device_properties(device);
   // cuTENSOR is available for CC >= 6.0
   // https://docs.nvidia.com/cuda/cutensor/user_guide.html#supported-gpus
