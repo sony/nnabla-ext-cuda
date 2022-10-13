@@ -29,7 +29,7 @@ namespace nbla {
 template <typename T>
 void GroupNormalizationCuda<T>::setup_impl(const Variables &inputs,
                                            const Variables &outputs) {
-  GroupNormalization<T>::setup_impl(inputs, outputs);
+  GroupNormalization<T>::setup_shapes(inputs, outputs);
   cuda_set_device(this->device_);
 
   const auto x = inputs[0];
