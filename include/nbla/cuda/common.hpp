@@ -367,7 +367,9 @@ NBLA_CUDA_API vector<size_t> cuda_mem_get_info();
     Keep in mind that sometime using this function could lead to huge
     slowdowns in your implementation.
  */
-cudaDeviceProp cuda_get_current_device_properties();
+[[deprecated("Use SingletonManager::get<Cuda>()->get_device_properties() "
+             "instead.")]] cudaDeviceProp
+cuda_get_current_device_properties();
 
 int cuda_get_current_device_attribute(cudaDeviceAttr attr);
 }

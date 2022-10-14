@@ -168,7 +168,7 @@ protected:
       tid_cuda_stream_t;
   unordered_map<int, unordered_map<int, tid_cuda_stream_t>> streams_;
 
-  shared_ptr<cudaDeviceProp> cuda_device_prop_;
+  vector<shared_ptr<cudaDeviceProp>> cuda_device_props_;
 
 private:
   friend SingletonManager;
