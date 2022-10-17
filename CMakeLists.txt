@@ -288,8 +288,16 @@ endif() # BUILD_CPP_LIB
 # Python API
 ###############################################################################
 if(BUILD_PYTHON_PACKAGE)
+  if(WIN32)
+    set(cutensor_include_path ${CUTENSOR_INCLUDE_DIR}/include)
+  endif()
 
   if(NOT BUILD_CPP_LIB)
+    ###############################################################################
+    # Third party include path
+    ###############################################################################
+    add_subdirectory(third_party)
+
     if(NOT IS_DIRECTORY ${CPPLIB_BUILD_DIR})
       message(FATAL_ERROR "Invalid CPPLIB_BUILD_DIR :[${CPPLIB_BUILD_DIR}]")
     endif()

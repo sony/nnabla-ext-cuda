@@ -24,7 +24,6 @@ CALL %~dp0tools\env.bat %1 %2 %3 || GOTO :error
 
 SET third_party_folder=%nnabla_root%\third_party
 CALL %~dp0tools\get_cutensor.bat %2 || GOTO :error
-SET INCLUDE=%cutensor_include_dir%\include
 
 IF NOT EXIST %nnabla_build_folder% (
    ECHO nnabla_build_folder ^(%nnabla_build_folder%^) does not exist.
@@ -60,9 +59,10 @@ cmake -G "%generate_target%" ^
       -DNNABLA_DIR=%nnabla_root% ^
       -DPYTHON_COMMAND_NAME=python ^
       -DPYTHON_PKG_DIR=%VENV_PYTHON_PKG_DIR% ^
+      -DCUTENSOR_INCLUDE_DIR=%cutensor_include_dir% ^
       %nnabla_ext_cuda_root% || GOTO :error
 
-msbuild wheel.vcxproj /p:Configuration=%build_type% /verbosity:minimal /p:useenv=true || GOTO :error
+msbuild wheel.vcxproj /p:Configuration=%build_type% /verbosity:minimal || GOTO :error
 
 CALL deactivate.bat || GOTO :error
 
