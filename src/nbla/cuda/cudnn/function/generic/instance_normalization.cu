@@ -33,7 +33,7 @@ void InstanceNormalizationCudaCudnn<T>::setup_impl(const Variables &inputs,
              "fallen back into InstanceNormalizationCuda since cuDNN "
              "BatchNormalization does not exist in this cuDNN version.")
 #endif
-  InstanceNormalizationCuda<T>::setup_impl(inputs, outputs);
+  InstanceNormalizationCuda<T>::setup_shapes(inputs, outputs);
   cuda_set_device(this->device_);
 
   if (outputs.size() == 3) {

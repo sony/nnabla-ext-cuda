@@ -30,7 +30,7 @@ namespace nbla {
 template <typename T>
 void InstanceNormalizationCuda<T>::setup_impl(const Variables &inputs,
                                               const Variables &outputs) {
-  InstanceNormalization<T>::setup_impl(inputs, outputs);
+  InstanceNormalization<T>::setup_shapes(inputs, outputs);
   cuda_set_device(this->device_);
 
   const auto x = inputs[0];
