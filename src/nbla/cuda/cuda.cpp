@@ -123,6 +123,44 @@ cusolverDnHandle_t Cuda::cusolverdn_handle(int device) {
   return it->second;
 }
 
+cutensorHandle_t Cuda::cutensor_handle(int device) {
+  if (device < 0) {
+    device = cuda_get_device();
+  }
+
+  // Check cuTENSOR availability for the device
+  if (!this->cutensor_available(device)) {
+    auto prop = get_device_properties(device);
+    NBLA_ERROR(error_code::target_specific,
+               "cuTENSOR handle was tried to be created, but aborted since "
+               "your CUDA device (id: %d, compute capability: %d < 6) is not "
+               "supported by cuTENSOR library.",
+               device, prop->major)
+  }
+
+  std::lock_guard<decltype(mtx_cutensor_)> lock(mtx_cutensor_);
+  auto it = this->cutensor_handles_.find(device);
+  // Create a new one
+  if (it == this->cutensor_handles_.end()) {
+    cutensorHandle_t handle;
+    NBLA_CUTENSOR_CHECK(cutensorInit(&handle));
+    this->cutensor_handles_.insert({device, handle});
+    return handle;
+  }
+  return it->second;
+}
+
+bool Cuda::cutensor_available(int device) {
+  if (device < 0) {
+    device = cuda_get_device();
+  }
+
+  auto prop = this->get_device_properties(device);
+  // cuTENSOR is available for CC >= 6.0
+  // https://docs.nvidia.com/cuda/cutensor/user_guide.html#supported-gpus
+  return prop->major >= 6;
+}
+
 std::shared_ptr<cudaEvent_t> Cuda::cuda_event(unsigned int flags, int device) {
   if (device < 0) {
     device = cuda_get_device();

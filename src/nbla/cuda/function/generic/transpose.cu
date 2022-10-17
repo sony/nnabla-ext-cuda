@@ -133,8 +133,8 @@ void TransposeCuda<T>::setup_impl(const Variables &inputs,
   // Setup for cuTENSOR
   //--------------------------------
   // cuTENSOR is available for CC >= 6.0
-  auto prop = SingletonManager::get<Cuda>()->get_device_properties();
-  cutensor_available_ = prop->major >= 6;
+  cutensor_available_ =
+      SingletonManager::get<Cuda>()->cutensor_available(this->device_);
 
   if (cutensor_available_) {
     const auto ndim_original = inputs[0]->ndim();
@@ -163,7 +163,7 @@ void TransposeCuda<T>::setup_impl(const Variables &inputs,
     // Setup handler and descriptor
     cudaDataType_t dataType = cuda_data_type<T>::type();
 
-    NBLA_CUTENSOR_CHECK(cutensorInit(&handle_));
+    handle_ = SingletonManager::get<Cuda>()->cutensor_handle(this->device_);
 
     NBLA_CUTENSOR_CHECK(cutensorInitTensorDescriptor(
         &handle_, &descX_, nmodeX, extentX.data(), NULL /* stride */, dataType,
