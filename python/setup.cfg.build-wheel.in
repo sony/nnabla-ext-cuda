@@ -13,3 +13,4 @@ cuda_target_file=${CPPLIB_CUDA_TARGET_FILE}
 
 cuda_toolkit_root_dir=${CUDA_TOOLKIT_ROOT_DIR}
 cudnn_include_dir=${CUDNN_INCLUDE_DIR}
+cutensor_include_dir=${cutensor_include_path}
