@@ -211,9 +211,8 @@ void SyncBatchNormalizationCuda<T>::backward_impl_batch(
   }
 
   // All reduce
-  this->comm_->all_reduce({v_sum_dy_o_.data(), v_sum_dy_xmu_o_.data(),
-                           v_beta_grad_.data(), v_gamma_grad_.data()},
-                          false, false, this->group_);
+  this->comm_->all_reduce({v_sum_dy_o_.data(), v_sum_dy_xmu_o_.data()}, false,
+                          false, this->group_);
 
   // Store beta grad and gamma grad
   auto set_param_grad = [&](Variable *param, Variable *param_grad_global,
