@@ -15,6 +15,8 @@
 /examples/cpp/mnist_collection/train_vae_cuda
 /examples/cpp/mnist_collection/train_vat_cuda
 /examples/cpp/mnist_training/mnist_training_cuda
+/include/nbla/cuda/communicator/dl_mpi.h
+/include/nbla/cuda/communicator/dl_nccl.h
 /python/setup.cfg
 /python/setup.cfg-Debug
 /python/setup.cfg-MinSizeRel
@@ -27,8 +29,10 @@
 /python/src/nnabla_ext/cuda/libnnabla_cuda*.so
 /python/src/nnabla_ext/cuda/nnabla_cuda.dll
 /python/src/nnabla_ext/cuda/nnabla_cuda.lib
+/python/src/nnabla_ext/cuda/doc/
 /python/src/nnabla_ext/cudnn/_version.py
 /python/src/nnabla_ext/cudnn/init.cpp
+/src/nbla/cuda/communicator/dl_nccl.cpp
 /src/nbla/cuda/cudnn/function/*.cu
 /src/nbla/cuda/cudnn/init.cpp
 /src/nbla/cuda/function/*.cu
