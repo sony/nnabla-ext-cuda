@@ -13,6 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+ARG CU1_VER
+ARG CU2_VER
+ARG CUDNN_VER
 
 FROM ubuntu:18.04 as openmpi
 
@@ -53,14 +56,12 @@ FROM nvidia/cuda:${CU1_VER}.${CU2_VER}-cudnn${CUDNN_VER}-runtime-ubuntu18.04
 
 ARG CU1_VER
 ARG CU2_VER
-ARG CUDNN_VER
 ARG PYTHON_VER
 ARG PIP_INS_OPTS
 ARG PYTHONWARNINGS
 ARG CURL_OPTS
 ARG WGET_OPTS
 ARG APT_OPTS
-ARG MPI
 
 ENV DEBIAN_FRONTEND noninteractive
 
