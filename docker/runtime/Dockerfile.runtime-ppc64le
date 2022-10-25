@@ -29,11 +29,10 @@ RUN eval ${APT_OPTS} \
     && apt-get update \
     && apt-get install -y software-properties-common \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
     && add-apt-repository ppa:deadsnakes/ppa \
-    && apt-get update
-
-RUN apt-get install -y --no-install-recommends \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
        cmake \
        g++ \
        gfortran \
@@ -49,6 +48,7 @@ RUN apt-get install -y --no-install-recommends \
        wget \
        curl \
        python${PYVERNAME} \
+    && apt-get install -y --no-install-recommends \
        python${PYVERNAME}-distutils || echo "skip install python-distutils" \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
