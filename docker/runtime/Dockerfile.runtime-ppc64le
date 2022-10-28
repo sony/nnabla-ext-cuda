@@ -26,30 +26,28 @@ ENV PYVERNAME=${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}
 
 RUN eval ${APT_OPTS} \
     && apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/ppc64el/3bf863cc.pub \
-    && apt-get update
-RUN apt install -y software-properties-common
-RUN add-apt-repository ppa:deadsnakes/ppa
-
-RUN apt-get update \
+    && apt-get update \
+    && apt-get install -y software-properties-common \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && add-apt-repository ppa:deadsnakes/ppa \
+    && apt-get update \
     && apt-get install -y --no-install-recommends \
-        cmake \
-        g++ \
-        gfortran \
-        git \
-        libfreetype6-dev \
-        libhdf5-dev \
-        libjpeg-dev \
-        liblapack-dev \
-        libopenmpi-dev \
-        lsb-release \
-        make \
-        pkg-config \
-        wget \
-        curl \
-        python${PYVERNAME} \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN apt-get update \
+       cmake \
+       g++ \
+       gfortran \
+       git \
+       libfreetype6-dev \
+       libhdf5-dev \
+       libjpeg-dev \
+       liblapack-dev \
+       libopenmpi-dev \
+       lsb-release \
+       make \
+       pkg-config \
+       wget \
+       curl \
+       python${PYVERNAME} \
     && apt-get install -y --no-install-recommends \
        python${PYVERNAME}-distutils || echo "skip install python-distutils" \
     && apt-get clean \
