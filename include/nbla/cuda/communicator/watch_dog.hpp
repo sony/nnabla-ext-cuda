@@ -27,6 +27,7 @@ private:
   int state_;
   int exit_flag_;
   int timeout_ticks_;
+  int env_timeout_;
   std::mutex mutex_;
   std::condition_variable cv_;
   int bootup_flag_;
