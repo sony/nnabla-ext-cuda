@@ -54,7 +54,7 @@ endif()
 
 if(WIN32)
   list(APPEND NBLA_CUDA_INCLUDE_DIRS
-    ${CUTENSOR_INCLUDE_DIR}/include
+    ${CUTENSOR_INCLUDE_DIR}
     )
   list(APPEND NBLA_CUDA_LINKER_LIBS
     ${CUTENSOR_LIBRARY_RELEASE}/cutensor_static.lib

@@ -288,9 +288,6 @@ endif() # BUILD_CPP_LIB
 # Python API
 ###############################################################################
 if(BUILD_PYTHON_PACKAGE)
-  if(WIN32)
-    set(cutensor_include_path ${CUTENSOR_INCLUDE_DIR}/include)
-  endif()
 
   if(NOT BUILD_CPP_LIB)
     ###############################################################################
