@@ -46,9 +46,9 @@ template <typename T>
 bool check_inf_grad_cuda(const Context &ctx, const shared_ptr<Variable> param) {
   cuda_set_device(std::stoi(ctx.device_id));
   Size_t size = param->size();
-  T *grad = param->cast_grad_and_get_pointer<T>(ctx);
+  const T *grad = param->get_grad_pointer<T>(ctx);
   bool flag = false;
-  thrust::device_ptr<T> dev_ptr = thrust::device_pointer_cast(grad);
+  thrust::device_ptr<const T> dev_ptr = thrust::device_pointer_cast(grad);
   flag = thrust::transform_reduce(dev_ptr, dev_ptr + size, check_inf<T>(), 0,
                                   thrust::plus<bool>());
   return flag;
@@ -58,9 +58,9 @@ template <typename T>
 bool check_nan_grad_cuda(const Context &ctx, const shared_ptr<Variable> param) {
   cuda_set_device(std::stoi(ctx.device_id));
   Size_t size = param->size();
-  T *grad = param->cast_grad_and_get_pointer<T>(ctx);
+  const T *grad = param->get_grad_pointer<T>(ctx);
   bool flag = false;
-  thrust::device_ptr<T> dev_ptr = thrust::device_pointer_cast(grad);
+  thrust::device_ptr<const T> dev_ptr = thrust::device_pointer_cast(grad);
   flag = thrust::transform_reduce(dev_ptr, dev_ptr + size, check_nan<T>(), 0,
                                   thrust::plus<bool>());
   return flag;
@@ -71,9 +71,9 @@ bool check_inf_or_nan_grad_cuda(const Context &ctx,
                                 const shared_ptr<Variable> param) {
   cuda_set_device(std::stoi(ctx.device_id));
   Size_t size = param->size();
-  T *grad = param->cast_grad_and_get_pointer<T>(ctx);
+  const T *grad = param->get_grad_pointer<T>(ctx);
   bool flag = false;
-  thrust::device_ptr<T> dev_ptr = thrust::device_pointer_cast(grad);
+  thrust::device_ptr<const T> dev_ptr = thrust::device_pointer_cast(grad);
   flag = thrust::transform_reduce(
       dev_ptr, dev_ptr + size, check_inf_or_nan<T>(), 0, thrust::plus<bool>());
   return flag;
