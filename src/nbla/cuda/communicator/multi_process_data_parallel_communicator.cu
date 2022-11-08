@@ -221,12 +221,6 @@ public:
 
 namespace {
 
-template <typename T>
-__global__ void kernel_divide_inplace(const int size, const int n_devices,
-                                      T *dw) {
-  NBLA_CUDA_KERNEL_LOOP(i, size) { dw[i] /= n_devices; }
-}
-
 // TODO: move to cuda/utils?
 __global__ void kernel_null() {}
 
@@ -605,12 +599,9 @@ void MultiProcessDataParallelCommunicatorNccl<T>::reduce(NdArrayPtr ndarray,
   dtypes dtype = get_dtype<Tc>();
   const Tc *dw0 = ndarray->get(dtype, this->ctx_)->const_pointer<Tc>();
   Tc *dw1 = ndarray->cast(dtype, this->ctx_)->pointer<Tc>();
-  NBLA_NCCL_CHECK(ncclReduce(dw0, dw1, n_param, get_nccl_dtype<Tc>(), ncclSum,
-                             dst, comms_[group], stream));
-  if (division && this->rank_ == dst) {
-    NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace, stream, n_param,
-                                      this->groups_[group].size(), dw1);
-  }
+  ncclRedOp_t op = division ? ncclAvg : ncclSum;
+  NBLA_NCCL_CHECK(ncclReduce(dw0, dw1, n_param, get_nccl_dtype<Tc>(), op, dst,
+                             comms_[group], stream));
 }
 
 template <typename T>
@@ -645,15 +636,9 @@ void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division,
       int stream_id = k % num_streams_;
       // AllReduce
 
-      NBLA_NCCL_CHECK(ncclAllReduce(dw0, dw1, n_param, get_nccl_dtype<Tc>(),
-                                    ncclSum, comms_["world"],
-                                    streams_[stream_id]));
-      // Divide
-      if (division) {
-        NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace,
-                                          streams_[stream_id], n_param,
-                                          this->size_, dw1);
-      }
+      ncclRedOp_t op = division ? ncclAvg : ncclSum;
+      NBLA_NCCL_CHECK(ncclAllReduce(dw0, dw1, n_param, get_nccl_dtype<Tc>(), op,
+                                    comms_["world"], streams_[stream_id]));
       k++;
     }
   } else { // out-of-place. use a large array.
@@ -679,20 +664,12 @@ void MultiProcessDataParallelCommunicatorNccl<T>::allreduce(bool division,
     }
 
     // 2. all reduce
+    ncclRedOp_t op = division ? ncclAvg : ncclSum;
     NBLA_NCCL_CHECK(ncclAllReduce(buff_start, buff_start, this->total_params_,
-                                  get_nccl_dtype<Tc>(), ncclSum,
-                                  comms_["world"],
+                                  get_nccl_dtype<Tc>(), op, comms_["world"],
                                   0)); // use default stream
 
-    // 3. divide
-    if (division) {
-      // use default stream
-      NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace, 0,
-                                        this->total_params_, this->size_,
-                                        buff_start);
-    }
-
-    // 4. copy back inside device
+    // 3. copy back inside device
     buff = buff_start;
     k = 0;
     for (auto elm : func_named_param) {
@@ -789,13 +766,10 @@ template <typename T>
 void MultiProcessDataParallelCommunicatorNccl<T>::all_reduce(
     Tc *gpu_buffer, size_t n_param, cudaStream_t stream, bool division,
     bool inplace, const string &group) {
+  ncclRedOp_t op = division ? ncclAvg : ncclSum;
   NBLA_NCCL_CHECK(ncclAllReduce(gpu_buffer, gpu_buffer, n_param,
-                                get_nccl_dtype<Tc>(), ncclSum,
-                                this->comms_[group], stream));
-  if (division) {
-    NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace, stream, n_param,
-                                      this->groups_[group].size(), gpu_buffer);
-  }
+                                get_nccl_dtype<Tc>(), op, this->comms_[group],
+                                stream));
 }
 
 template <typename T>
@@ -823,17 +797,10 @@ void MultiProcessDataParallelCommunicatorNccl<T>::reduce_scatter(
       large_ndarray->get(dtype, this->ctx_)->const_pointer<Tc>();
   Tc *recvbuff = ndarray->cast(dtype, this->ctx_)->pointer<Tc>();
   Size_t recvcount = ndarray->size();
+  ncclRedOp_t op = division ? ncclAvg : ncclSum;
   NBLA_NCCL_CHECK(ncclReduceScatter(sendbuff, recvbuff, recvcount,
-                                    get_nccl_dtype<Tc>(), ncclSum,
-                                    comms_[group],
+                                    get_nccl_dtype<Tc>(), op, comms_[group],
                                     0)); // use default stream
-
-  // divide
-  if (division) {
-    // use default stream
-    NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(kernel_divide_inplace, 0, recvcount,
-                                      this->groups_[group].size(), recvbuff);
-  }
   launch_kernel_null();
 }
 
