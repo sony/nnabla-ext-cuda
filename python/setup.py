@@ -122,16 +122,22 @@ def get_cpu_extopts(lib):
     return ext_opts
 
 
-def get_cpu_include_dir():
+def load_setup_config_file(path_cfg=join(dirname(__file__), "setup.cfg")):
     from six.moves.configparser import ConfigParser
 
     # Parse setup.cfg
-    path_cfg = join(dirname(__file__), "setup.cfg")
     if not isfile(path_cfg):
         raise ValueError(
             "`setup.cfg` does not exist. Read installation document and install using CMake.")
     cfgp = ConfigParser()
     cfgp.read(path_cfg)
+
+    return cfgp
+
+
+def get_cpu_include_dir():
+    # parse setup.cfg
+    cfgp = load_setup_config_file()
 
     # Read cpu lib info
     cpu_include_dir = cfgp.get("cmake", "cpu_include_dir")
@@ -141,15 +147,8 @@ def get_cpu_include_dir():
 
 
 def get_cpu_cython_path():
-    from six.moves.configparser import ConfigParser
-
-    # Parse setup.cfg
-    path_cfg = join(dirname(__file__), "setup.cfg")
-    if not isfile(path_cfg):
-        raise ValueError(
-            "`setup.cfg` does not exist. Read installation document and install using CMake.")
-    cfgp = ConfigParser()
-    cfgp.read(path_cfg)
+    # parse setup.cfg
+    cfgp = load_setup_config_file()
 
     # Read cuda header info
     cpu_cython_path = cfgp.get("cmake", "cpu_cython_path")
@@ -159,22 +158,26 @@ def get_cpu_cython_path():
 
 
 def get_cuda_include_dir():
-    from six.moves.configparser import ConfigParser
+    # parse setup.cfg
+    cfgp = load_setup_config_file()
 
-    # Parse setup.cfg
-    path_cfg = join(dirname(__file__), "setup.cfg")
-    if not isfile(path_cfg):
-        raise ValueError(
-            "`setup.cfg` does not exist. Read installation document and install using CMake.")
-    cfgp = ConfigParser()
-    cfgp.read(path_cfg)
-
-    # Read cpu lib info
+    # Read cuda lib info
     cuda_include_dir = os.path.join(
         cfgp.get("cmake", "cuda_toolkit_root_dir"), "include")
     print("CUDA Include directory:", cuda_include_dir)
 
     return cuda_include_dir
+
+
+def get_cutensor_include_dir():
+    # parse setup.cfg
+    cfgp = load_setup_config_file()
+
+    # Read cutensor lib info
+    cutensor_include_dir = cfgp.get("cmake", "cutensor_include_dir")
+    print("cuTensor Include directory:", cutensor_include_dir)
+
+    return cutensor_include_dir
 
 
 def cuda_config(root_dir, cuda_lib, ext_opts, lib_dirs):
@@ -290,7 +293,8 @@ def cuda_config(root_dir, cuda_lib, ext_opts, lib_dirs):
     cuda_ext_opts['libraries'] += [cuda_lib.name]
     cuda_ext_opts['library_dirs'] += [dirname(cuda_lib.path)]
     cuda_ext_opts['include_dirs'] += [get_cpu_include_dir(),
-                                      get_cuda_include_dir()]
+                                      get_cuda_include_dir(),
+                                      get_cutensor_include_dir()]
     ext_modules = [
         Extension(cuda_pkg + '.init',
                   [join(path_cuda_pkg, 'init.pyx')],
