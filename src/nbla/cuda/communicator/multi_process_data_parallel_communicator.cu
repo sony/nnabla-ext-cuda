@@ -219,6 +219,8 @@ public:
   MpiCommWrapper(MpiCommWrapper &&rhs) = delete;
 };
 
+namespace {
+
 template <typename T>
 __global__ void kernel_divide_inplace(const int size, const int n_devices,
                                       T *dw) {
@@ -229,6 +231,59 @@ __global__ void kernel_divide_inplace(const int size, const int n_devices,
 __global__ void kernel_null() {}
 
 inline void launch_kernel_null() { kernel_null<<<1, 1>>>(); }
+
+template <typename Ta, typename Tb>
+__global__ void kernel_copy_and_scale(const size_t num, Ta *y, const Tb *x,
+                                      float scale) {
+  NBLA_CUDA_KERNEL_LOOP(idx, num) { y[idx] = (Ta)(x[idx] * scale); }
+}
+
+template <typename Ta, typename Tb>
+__global__ void kernel_copy(const size_t num, Ta *y, const Tb *x) {
+  NBLA_CUDA_KERNEL_LOOP(idx, num) { y[idx] = (Ta)(x[idx]); }
+}
+
+void copy_and_scale_dispatch_by_dtype(dtypes src_dt, dtypes dst_dt,
+                                      const void *src, void *dst, size_t length,
+                                      float scale, cudaStream_t stream) {
+  constexpr float fp32_one = 1;
+#define NBLA_DISPATCH_COPY_AND_SCALE_KERNEL(SRC_DT, DST_DT)                    \
+  if (scale == fp32_one) {                                                     \
+    NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM((kernel_copy<DST_DT, SRC_DT>), stream,   \
+                                      length, static_cast<DST_DT *>(dst),      \
+                                      static_cast<const SRC_DT *>(src));       \
+  } else {                                                                     \
+    NBLA_CUDA_LAUNCH_KERNEL_IN_STREAM(                                         \
+        (kernel_copy_and_scale<DST_DT, SRC_DT>), stream, length,               \
+        static_cast<DST_DT *>(dst), static_cast<const SRC_DT *>(src), scale);  \
+  }
+#define NBLA_DISPATCH_COPY_AND_SCALE_KERNEL_SWITCH_DST(SRC_DT)                 \
+  switch (dst_dt) {                                                            \
+  case dtypes::FLOAT:                                                          \
+    NBLA_DISPATCH_COPY_AND_SCALE_KERNEL(SRC_DT, float);                        \
+    break;                                                                     \
+  case dtypes::HALF:                                                           \
+    NBLA_DISPATCH_COPY_AND_SCALE_KERNEL(SRC_DT, nbla::HalfCuda);               \
+    break;                                                                     \
+  default:                                                                     \
+    NBLA_ERROR(error_code::value,                                              \
+               "unsupported dtypes for allreduce callback: %s",                \
+               dtype_to_string(src_dt).c_str());                               \
+  }
+  switch (src_dt) {
+  case dtypes::FLOAT:
+    NBLA_DISPATCH_COPY_AND_SCALE_KERNEL_SWITCH_DST(float);
+    break;
+  case dtypes::HALF:
+    NBLA_DISPATCH_COPY_AND_SCALE_KERNEL_SWITCH_DST(nbla::HalfCuda);
+    break;
+  default:
+    NBLA_ERROR(error_code::value,
+               "unsupported dtypes for allreduce callback: %s",
+               dtype_to_string(src_dt).c_str());
+  }
+}
+} // end of namespace
 
 /*
  * Referred from
@@ -911,7 +966,7 @@ template <typename T>
 CommunicatorBackwardCallbackPtr
 MultiProcessDataParallelCommunicatorNccl<T>::all_reduce_callback(
     const vector<NdArrayPtr> &ndarray_list, size_t pack_size, bool division,
-    const string &group) {
+    const string &group, float scale_grad, bool keep_dtype) {
   dtypes dtype = get_dtype<Tc>();
 
   /* Allocate GPU memory(buffers) for packing. */
@@ -930,13 +985,15 @@ MultiProcessDataParallelCommunicatorNccl<T>::all_reduce_callback(
   unordered_set<NdArrayPtr> device_ptrs(ndarray_list.begin(),
                                         ndarray_list.end());
   return make_shared<AllReduceCallback>(*this, group, pack_size, division,
-                                        gpu_memory, device_ptrs);
+                                        gpu_memory, device_ptrs, scale_grad,
+                                        keep_dtype);
 }
 
 template <typename T>
 CommunicatorBackwardCallbackPtr
 MultiProcessDataParallelCommunicatorNccl<T>::all_reduce_callback(
-    NdArrayPtr ndarray, size_t pack_size, bool division, const string &group) {
+    NdArrayPtr ndarray, size_t pack_size, bool division, const string &group,
+    float scale_grad, bool keep_dtype) {
   /* Not implemented here, only for removing warning... */
   return nullptr;
 }
@@ -946,12 +1003,14 @@ MultiProcessDataParallelCommunicatorNccl<T>::AllReduceCallback::
     AllReduceCallback(MultiProcessDataParallelCommunicatorNccl<T> &parent,
                       const string &group, size_t n_params_threshold,
                       bool division, const NdArrayPtr &gpu_memory,
-                      const unordered_set<NdArrayPtr> &device_ptrs)
+                      const unordered_set<NdArrayPtr> &device_ptrs,
+                      float scale_grad, bool keep_dtype)
     : parent_(parent), group_(group), n_params_threshold_(n_params_threshold),
       division_(division), gpu_memory_(gpu_memory), device_ptrs_(device_ptrs),
       pack_stream_(parent.nonblocking_streams_[0]),
       all_reduce_stream_(parent.nonblocking_streams_[1]),
-      unpack_stream_(parent.nonblocking_streams_[2]) {
+      unpack_stream_(parent.nonblocking_streams_[2]), scale_grad_(scale_grad),
+      keep_dtype_(keep_dtype) {
   dtypes dtype = get_dtype<Tc>();
 
   /* Split gpu_memory into buffers of size n_params_threshold */
@@ -973,7 +1032,7 @@ void MultiProcessDataParallelCommunicatorNccl<T>::AllReduceCallback::
 
   /* Find pointers to send (i.e., find pointers that are contained in
    * this->device_ptrs_) */
-  vector<std::pair<Tc *, size_t>> device_ptr_list;
+  vector<std::tuple<void *, dtypes, size_t>> device_ptr_list;
   device_ptr_list.reserve(ptr->function_inputs().size());
   for (auto &input : ptr->function_inputs()) {
     if (this->device_ptrs_.find(input->grad()) != this->device_ptrs_.end()) {
@@ -981,8 +1040,13 @@ void MultiProcessDataParallelCommunicatorNccl<T>::AllReduceCallback::
         // Skip as the gradient array is not updated.
         continue;
       }
-      Tc *device_ptr = input->cast_grad_and_get_pointer<Tc>(this->parent_.ctx_);
-      device_ptr_list.push_back(std::make_pair(device_ptr, input->size()));
+      dtypes dt = get_dtype<Tc>();
+      if (keep_dtype_) {
+        dt = input->grad()->array()->dtype();
+      }
+      void *device_ptr =
+          input->grad()->cast(dt, this->parent_.ctx_)->template pointer<void>();
+      device_ptr_list.push_back(std::make_tuple(device_ptr, dt, input->size()));
     }
   }
 
@@ -999,8 +1063,9 @@ void MultiProcessDataParallelCommunicatorNccl<T>::AllReduceCallback::
 
   /* Packing phase */
   for (auto &elem : device_ptr_list) {
-    Tc *device_ptr = elem.first;
-    auto n_param = elem.second;
+    void *device_ptr = std::get<0>(elem);
+    dtypes src_dt = std::get<1>(elem);
+    auto n_param = std::get<2>(elem);
 
     while (n_param > 0) {
       /* Pack device_ptr into this->workspace.
@@ -1011,18 +1076,23 @@ void MultiProcessDataParallelCommunicatorNccl<T>::AllReduceCallback::
       auto length =
           std::min<size_t>(n_param, this->n_params_threshold_ -
                                         this->workspace_.n_param_buffered);
-      NBLA_CUDA_CHECK(cudaMemcpyAsync(
-          this->workspace_.gpu_buffer + this->workspace_.n_param_buffered,
-          device_ptr, sizeof(Tc) * length, cudaMemcpyDeviceToDevice,
-          this->pack_stream_));
+      const void *src = device_ptr;
+      void *dst = static_cast<void *>(this->workspace_.gpu_buffer +
+                                      this->workspace_.n_param_buffered);
+      dtypes dst_dt = get_dtype<Tc>();
+      copy_and_scale_dispatch_by_dtype(src_dt, dst_dt, src, dst, length,
+                                       scale_grad_, this->pack_stream_);
       this->workspace_.n_param_buffered +=
           length; //< Update the length of used space.
       this->workspace_.variables.emplace_back(
-          device_ptr, length); //< Store a pointer and size to unpack.
+          device_ptr, src_dt,
+          length); //< Store a pointer, data type and size to unpack.
 
       /* The device_ptr and n_param should refer to the remained data. */
       n_param -= length;
-      device_ptr = device_ptr + length;
+      // Add offset to the void pointer according to the dtype
+      device_ptr = static_cast<void *>(static_cast<char *>(device_ptr) +
+                                       sizeof_dtype(src_dt) * length);
 
       if (this->workspace_.n_param_buffered >= this->n_params_threshold_) {
         /* Finish packing because this->workspace_ is full. */
@@ -1079,12 +1149,13 @@ void MultiProcessDataParallelCommunicatorNccl<T>::AllReduceCallback::unpack(
   /* Unpack the packed data into original space */
   int offset = 0;
   for (auto &variable : data.variables) {
-    auto device_ptr = variable.first;
-    auto n_param = variable.second;
-
-    NBLA_CUDA_CHECK(cudaMemcpyAsync(
-        device_ptr, data.gpu_buffer + offset, sizeof(Tc) * n_param,
-        cudaMemcpyDeviceToDevice, this->unpack_stream_));
+    void *dst = std::get<0>(variable);
+    dtypes dst_dt = std::get<1>(variable);
+    auto n_param = std::get<2>(variable);
+    const void *src = static_cast<void *>(data.gpu_buffer + offset);
+    dtypes src_dt = get_dtype<Tc>();
+    copy_and_scale_dispatch_by_dtype(src_dt, dst_dt, src, dst, n_param, 1.0f,
+                                     this->unpack_stream_);
 
     offset += n_param;
   }
