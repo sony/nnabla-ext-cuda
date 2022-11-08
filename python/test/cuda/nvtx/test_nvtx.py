@@ -18,10 +18,48 @@ import os
 import platform
 import pytest
 from subprocess import check_call, call, CalledProcessError
+from nnabla import logger
 
 
 def command_exists(command):
     return call(['which', command]) == 0
+
+
+# Current nsys command may fail to generate final output files correctly due to some running environment problems.
+# The function will retry 3 times to help generate it from the intermediate file.
+def generate_nvtx_txt(outfile, script):
+    try:
+        check_call(['nsys', 'profile', '-o', outfile,
+                   '--export=text', '-f', 'true', 'python', script])
+    except CalledProcessError:
+        # maybe segfault occured, but it's ok if log is saved correctly.')
+        pass
+
+    outfile_txt = os.path.join(os.getcwd(), f'{outfile}.txt')
+    # if fail to generate final output .txt and .qdrep files but only intermediate .qdstrm file
+    if not os.path.exists(outfile_txt) or os.stat(outfile_txt).st_size == 0:
+        retry = 1
+        outfile_qdrep = os.path.join(os.getcwd(), f'{outfile}.qdrep')
+        interfile_qdstrm = os.path.join(os.getcwd(), f'{outfile}.qdstrm')
+        qdstrm_importer = 'QdstrmImporter'
+        if not (os.path.exists(interfile_qdstrm) and command_exists(qdstrm_importer)):
+            logger.log(
+                99, 'No available .qdstrm file or cannot find QdstrmImporter command')
+            raise FileNotFoundError
+        while True:
+            try:
+                if os.path.exists(outfile_qdrep):
+                    call(['rm', '-f', outfile_qdrep])
+                check_call([qdstrm_importer, '--input-file', interfile_qdstrm])
+                check_call(['nsys', 'export', '-o', outfile_txt,
+                           '--force-overwrite', 'true', '-t', 'text', outfile_qdrep])
+                break
+            except CalledProcessError:
+                retry += 1
+                if retry > 3:
+                    logger.log(
+                        99, 'Could not generate .txt file from intermediate .qdstrm file.')
+                    raise
 
 
 def test_use_nvtx():
@@ -37,12 +75,7 @@ def test_use_nsys():
     if not command_exists('nsys'):
         pytest.skip('nsys command does not exist.')
 
-    try:
-        check_call(['nsys', 'profile', '-o', outfile,
-                   '--export=text', '-f', 'true', 'python', script])
-    except CalledProcessError:
-        # maybe segfault occured, but it's ok if log is saved correctly.')
-        pass
+    generate_nvtx_txt(outfile, script)
 
     with open(os.path.join(os.getcwd(), f'{outfile}.txt')) as f:
         lines = f.readlines()
