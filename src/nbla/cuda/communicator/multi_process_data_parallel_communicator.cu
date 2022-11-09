@@ -357,6 +357,17 @@ MultiProcessDataParallelCommunicatorNccl<
 }
 
 template <typename T> void MultiProcessDataParallelCommunicatorNccl<T>::init() {
+  // NCCL version check.
+  {
+    int nccl_ver;
+    NBLA_NCCL_CHECK(ncclGetVersion(&nccl_ver));
+    NBLA_CHECK(nccl_ver >= 21003, error_code::value,
+               "Incompatible NCCL version (%d.%d.%d). "
+               "MultiProcessDataParallelCommunicatorNccl is compatible with "
+               "NCCL v2.10.3 or later.",
+               nccl_ver / 10000, (nccl_ver % 10000) / 100, nccl_ver % 100);
+  }
+
   Watchdog::WatchdogLock lck(
       watch_dog_); // check if this function is finished within 10s.
   Communicator::init();
