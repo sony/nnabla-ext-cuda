@@ -1,6 +1,6 @@
 # Build CUDA Extension
 
-This document shows how to install CUDA extension on Ubuntu 16.04 LTS. This procedure should work on other Linux distributions. For a build instruction on Windows, go to:
+This document shows how to install CUDA extension on Ubuntu 20.04 LTS. We actually only tested on version: Ubuntu 20.04 LTS, cuda11.4.1, cudnn8.2.4, Python 3.8.10. This procedure should work on other Linux distributions. For a build instruction on Windows, go to:
 
 * [Build on Windows](build_windows.md)
 
@@ -17,11 +17,11 @@ Download and install CUDA and cuDNN library (both runtime library and developmen
 
 ## Build and installation
 
-You needs to [build nnabla](build.md) before build nnabla-ext-cuda.
+You needs to [build nnabla](https://github.com/sony/nnabla/blob/master/doc/build/build.md) before build nnabla-ext-cuda.
 And, you have to let CMake to know where the source and library of NNabla are located by the following options.
 
 - `NNABLA_DIR`: Root directory of NNabla source code.
-- `CPPLIB_LIBRARY`: Path to `libnnabla.so`
+- `CPPLIB_LIBRARY`: Path to `libnnabla.so` of nnabla.
 
 The following will build and create a NNabla CUDA extension Python package (`pip` requires `sudo` if it's on your system's Python).
 
@@ -36,11 +36,17 @@ cd build
 ```
 
 Then, build. You can optionally turn off the Python package build by `-DBUILD_PYTHON_PACKAGE=OFF`
-and also turn on the C++ utils build by `-DBUILD_CPP_UTILS=ON` in `cmake`.
+and also turn on the C++ utils build by `-DBUILD_CPP_UTILS=ON` in `cmake`. But you must [build C++ utility libraries](https://github.com/sony/nnabla/blob/master/doc/build/build_cpp_utils.md) before you turn on the C++ utils build by `-DBUILD_CPP_UTILS=ON` in `cmake`.
 
 ```shell
 cmake -DNNABLA_DIR=../../nnabla -DCPPLIB_LIBRARY=../../nnabla/build/lib/libnnabla.so ..
 make
+```
+
+Note: If the reported error is "`FATAL_ERROR, python [python] not found`" in `cmake`. Please establish a soft connection `python` to `python3.x`, you can refer to the following command:
+
+```shell
+sudo ln -s /usr/bin/python3.x /usr/bin/python
 ```
 
 To install the Python package:
@@ -64,6 +70,7 @@ For unit testing, some additional requirements should be installed.
 
 ```shell
 cd nnabla
+sudo apt install -y liblzma-dev libsndfile1
 pip install -r python/test_requirements.txt
 ```
 
@@ -79,6 +86,8 @@ Then run test of CUDA/cuDNN extension.
 export PYTHONPATH={{PATH TO nnabla-ext-cuda}}/python/test:$PYTHONPATH
 py.test python/test
 ```
+
+Note: `py.test` might not in PATH which might cause `py.test: not found`, you can use `python3 -m pytest` to replace `py.test`.
 
 ## FAQ
 
