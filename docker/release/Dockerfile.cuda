@@ -58,7 +58,7 @@ RUN curl ${CURL_OPTS} https://bootstrap.pypa.io/get-pip.py -o get-pip.py \
     && rm get-pip.py
 
 RUN pip install ${PIP_INS_OPTS} wheel setuptools
-RUN pip install ${PIP_INS_OPTS} opencv-python || true
+RUN pip install ${PIP_INS_OPTS} opencv-python-headless || true
 
 RUN pip install ${PIP_INS_OPTS} --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda${CU1_VER}0 \
     || echo "Skip DALI installation (CUDA=${CU1_VER}.${CU2_VER})"
