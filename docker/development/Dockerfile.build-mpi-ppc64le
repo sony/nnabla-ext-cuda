@@ -100,6 +100,13 @@ RUN eval ${YUM_OPTS} \
         python-backports-lzma \
         openssl11 \
         openssl11-devel \
+        zlib-devel \
+        bzip2 \
+        readline-devel \
+        sqlite \
+        sqlite-devel \
+        tk-devel \
+        xz-devel \
     && if [ "${BUILD_WITH_CUTENSOR}" == "True" ]; then yum install -y libcutensor-devel; fi \
     && yum group install -y "Development Tools" \
     && yum clean all
@@ -209,24 +216,20 @@ ARG PYTHON_VERSION_MAJOR=3
 ARG PYTHON_VERSION_MINOR=7
 ENV PYVERNAME=${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}
 
-############################################################ build python from source
+############################################################ build python from pyenv
 ADD python/requirements.txt /tmp/deps/
-RUN if [ "${PYVERNAME}" == "3.7" ]; then wget ${WGET_OPTS} https://www.python.org/ftp/python/3.7.10/Python-3.7.10.tgz; fi \
-	&& if [ "${PYVERNAME}" == "3.8" ]; then wget ${WGET_OPTS} https://www.python.org/ftp/python/3.8.8/Python-3.8.8.tgz; fi \
-	&& if [ "${PYVERNAME}" == "3.9" ]; then wget ${WGET_OPTS} https://www.python.org/ftp/python/3.9.8/Python-3.9.8.tgz; fi \
-	&& if [ "${PYVERNAME}" == "3.10" ]; then wget ${WGET_OPTS} https://www.python.org/ftp/python/3.10.7/Python-3.10.7.tgz; fi \
-	&& tar -xzf Python-${PYVERNAME}*.tgz \
-	&& cd Python-${PYVERNAME}* \
-	&& if [ "${PYVERNAME}" == "3.10" ]; then sed -i 's/PKG_CONFIG openssl /PKG_CONFIG openssl11 /g' configure; fi \
-	&& ./configure --enable-optimizations \
-	&& make altinstall \
-	&& ln -s /usr/local/bin/python${PYVERNAME} /usr/local/bin/python \
-	&& ln -s /usr/local/bin/pip${PYVERNAME} /usr/local/bin/pip \
-	&& pip install ${PIP_INS_OPTS} -U pip \
-	&& pip install ${PIP_INS_OPTS} -U -r /tmp/deps/requirements.txt \
-	&& cd .. \
-	&& rm -rf Python-${PYVERNAME}* \
-	&& rm -rf /tmp/*
+RUN git clone https://github.com/pyenv/pyenv.git ~/.pyenv \
+    && export PYENV_ROOT="$HOME/.pyenv" \
+    && export PATH="$PYENV_ROOT/bin:$PYENV_ROOT/plugins/python-build/bin:$PATH" \
+    && export PYTHON_BUILD_CURL_OPTS="${CURL_OPTS}" \
+    && export PYTHON_BUILD_WGET_OPTS="${WGET_OPTS}" \
+    && if [ ${PYTHON_VERSION_MINOR} -ge 10 ]; then export CPPFLAGS=-I/usr/include/openssl11 && export LDFLAGS=-L/usr/lib64/openssl11; fi \
+    && eval "$(pyenv init -)" \
+    && python-build `pyenv latest -k ${PYVERNAME}` /usr/local \
+    && pyenv global system \
+    && pip install ${PIP_INS_OPTS} --no-cache-dir -U pip \
+    && pip install ${PIP_INS_OPTS} --no-cache-dir -U -r /tmp/deps/requirements.txt \
+    && rm -rf ~/.pyenv/.git  /tmp/*
 
 RUN rm -f /usr/lib64/libstdc++.so.6
 ENV PATH /tmp/.local/bin:/opt/nvidia/nsight-systems/2021.1.3/host-linux-x64/:$PATH
