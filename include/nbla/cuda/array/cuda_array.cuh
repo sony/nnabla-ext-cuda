@@ -92,7 +92,7 @@ void cuda_array_copy(const Array *src, Array *dst) {
 }
 
 NBLA_DEFINE_COPY_WRAPPER(cuda_array_copy);
-NBLA_DISABLE_TYPE(cuda_array_copy, cuda_fill, long long);
+// NBLA_DISABLE_TYPE(cuda_array_copy, cuda_fill, long long);
 NBLA_DISABLE_TYPE(cuda_array_copy, cuda_fill, long double);
 NBLA_DISABLE_TYPE(cuda_array_copy, cuda_fill, bool);
 NBLA_DEFINE_FUNC_COPY_FROM(CudaArray, cuda_array_copy, cuda);
