@@ -152,7 +152,6 @@ nnabla-ext-cuda-multi-gpu-test-local: nnabla-install nnabla-ext-cuda-install
 	cd $(BUILD_EXT_CUDA_DIRECTORY_WHEEL) \
 	&& PYTHONPATH=$(NNABLA_EXT_CUDA_DIRECTORY)/python/test:$(NNABLA_DIRECTORY)/python/test \
 		mpiexec -q -n 2 $(NNABLA_DIRECTORY)/build-tools/make/pytest.sh \
-			-c NUL \
 			--test-communicator \
 			--communicator-gpus=0,1 \
 			$(NNABLA_DIRECTORY)/python/test/communicator

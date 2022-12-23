@@ -28,6 +28,7 @@
 #include <memory>
 #include <queue>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -41,6 +42,7 @@ using std::shared_ptr;
 using std::unordered_map;
 using std::unordered_set;
 using std::pair;
+using std::tuple;
 
 /** Forward decl. of a wrapper object of MPI_Comm
  */
@@ -149,10 +151,12 @@ public:
                           const string &group = "world");
   virtual CommunicatorBackwardCallbackPtr
   all_reduce_callback(const vector<NdArrayPtr> &ndarray_list, size_t pack_size,
-                      bool division = false, const string &group = "world");
+                      bool division = false, const string &group = "world",
+                      float scale_grad = 1.0, bool keep_dtype = false);
   virtual CommunicatorBackwardCallbackPtr
   all_reduce_callback(NdArrayPtr ndarray, size_t pack_size,
-                      bool division = false, const string &group = "world");
+                      bool division = false, const string &group = "world",
+                      float scale_grad = 1.0, bool keep_dtype = false);
   virtual void reduce_scatter(const vector<NdArrayPtr> &ndarray_list,
                               NdArrayPtr ndarray, bool division = false,
                               const string &group = "world");
@@ -191,7 +195,8 @@ protected:
     AllReduceCallback(MultiProcessDataParallelCommunicatorNccl<T> &parent,
                       const string &group, size_t n_params_threshold,
                       bool division, const NdArrayPtr &gpu_memory,
-                      const unordered_set<NdArrayPtr> &device_ptrs);
+                      const unordered_set<NdArrayPtr> &device_ptrs,
+                      float scale_grad, bool keep_dtype);
 
     virtual void on_finish_function_backward(const CgFunctionPtr &ptr) override;
     virtual void on_finish_backward() override;
@@ -202,7 +207,7 @@ protected:
       Tc *gpu_buffer;
       shared_ptr<cudaEvent_t> event;
       size_t n_param_buffered;
-      vector<pair<Tc *, size_t>> variables;
+      vector<tuple<void *, dtypes, size_t>> variables;
     };
     using Buffer = std::pair<Tc *, shared_ptr<cudaEvent_t>>;
 
@@ -229,6 +234,14 @@ protected:
     cudaStream_t pack_stream_;
     cudaStream_t all_reduce_stream_;
     cudaStream_t unpack_stream_;
+
+    float scale_grad_; //< Factor of gradient scaling applied before all-reduce.
+
+    //< Whether to keep the dtype of grad arrays to be passed to all-reduce.
+    // Default is false. Specifying true is useful if you use the all-reduce
+    // callback with the narrowed arrays that don't allow to perform casting
+    // dtypes.
+    bool keep_dtype_;
   };
 
   void wait_by_device_synchronization();
