@@ -36,6 +36,11 @@ import sys
 # From python3.8, PATH and the current working directory are no longer used to load DLL
 # User must use os.add_dll_directory() to add DLLs directory
 if sys.platform == 'win32':
+    path_env = os.environ.get('PATH').lower()
+    # Under Windows, CUDA libraries in alllib wheel need to be added to PATH
+    if 'cuda' not in path_env or 'cudnn' not in path_env:
+        alllib_cuda_path = os.path.dirname(os.path.realpath(__file__))
+        os.environ['PATH'] += os.pathsep + alllib_cuda_path
     if sys.version_info.minor >= 8:
         path_env = os.environ.get('PATH')
         if path_env is not None:
