@@ -24,6 +24,7 @@ import copy
 import shutil
 import subprocess
 import sys
+import pathlib
 
 root_dir = realpath(dirname(__file__))
 a = dict()
@@ -428,13 +429,17 @@ if __name__ == '__main__':
                                 "c_string_type": 'str',
                                 "c_string_encoding": "ascii"})
 
+    long_description = pathlib.Path(os.path.join(
+        os.path.dirname(__file__), 'README.md')).read_text()
+
     # Setup
     setup(
         setup_requires=setup_requires,
         install_requires=install_requires,
         ext_modules=ext_modules,
+        long_description=long_description,
+        long_description_content_type='text/markdown',
         package_dir=cfg.package_dir,
         packages=cfg.packages,
         package_data=cfg.package_data,
-        namespace_packages=['nnabla_ext'],
         **pkg_info)
