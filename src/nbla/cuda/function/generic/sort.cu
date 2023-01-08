@@ -160,14 +160,16 @@ void SortCuda<T>::setup_impl(const Variables &inputs,
     // calculation of temporal buffer is performed.
     cub_num_items_ = this->total_size;
     cub_num_segments_ = cub_num_items_ / inputs[0]->shape()[this->axis];
+
+    int ofst = 0;
     if (this->reverse) {
       cub::DeviceSegmentedRadixSort::SortPairsDescending<Tcu, int, int *>(
           nullptr, cub_temp_storage_bytes_, nullptr, nullptr, nullptr, nullptr,
-          cub_num_items_, cub_num_segments_, nullptr, nullptr);
+          cub_num_items_, cub_num_segments_, &ofst, &ofst);
     } else {
       cub::DeviceSegmentedRadixSort::SortPairs<Tcu, int, int *>(
           nullptr, cub_temp_storage_bytes_, nullptr, nullptr, nullptr, nullptr,
-          cub_num_items_, cub_num_segments_, nullptr, nullptr);
+          cub_num_items_, cub_num_segments_, &ofst, &ofst);
     }
 
     // Index buffer needs same size as input since cub sort algorithm handles
