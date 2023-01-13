@@ -14,9 +14,9 @@
 # limitations under the License.
 
 
-ARG CUDA_VERSION_MAJOR=10
-ARG CUDA_VERSION_MINOR=0
-ARG CUDNN_VERSION=7
+ARG CUDA_VERSION_MAJOR=11
+ARG CUDA_VERSION_MINOR=0.3
+ARG CUDNN_VERSION=8
 
 ############################################################ OpenMPI
 # CentOS7:  1.10.7-1 (12)
@@ -214,16 +214,12 @@ COPY --from=openmpi /root/openmpi-*.rpm /root
 RUN rpm -i /root/openmpi-*.rpm
 
 ARG PYTHON_VERSION_MAJOR=3
-ARG PYTHON_VERSION_MINOR=7
+ARG PYTHON_VERSION_MINOR=8
 ENV PYVERNAME=${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}
 
 ############################################################ build python from pyenv
 ADD python/requirements.txt /tmp/deps/
 
-ARG ARCH_SUFFIX
-ARG CUDA_VERSION_MAJOR=11
-ARG CUDA_VERSION_MINOR=0
-ARG CUDNN_VERSION=8
 RUN git clone https://github.com/pyenv/pyenv.git ~/.pyenv \
     && export PYENV_ROOT="$HOME/.pyenv" \
     && export PATH="$PYENV_ROOT/bin:$PYENV_ROOT/plugins/python-build/bin:$PATH" \
