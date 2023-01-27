@@ -10,7 +10,7 @@ Please execute the CPU version C++ training sample in `nnabla` repository first.
 In addition to building CPU version in `nnabla` repository, you need to build Cuda version in `nnabla-ext-cuda`.
 Please follow [the installation manual](https://github.com/sony/nnabla-ext-cuda/blob/master/doc/build/build.md).
 
-Also MNIST dataset is required in the same directory.
+Also [MNIST dataset](https://github.com/sony/nnabla/tree/master/examples/cpp/mnist_collection#install-c-libraries) is required in the same level directory.
 If you tried the CPU version of this script, you must have downloaded MNIST data in `nnabla` directory.
 * train-images-idx3-ubyte.gz
 * train-labels-idx1-ubyte.gz
@@ -22,11 +22,12 @@ Please copy them to this directory.
 ## Build training example in C++ code
 You can find executable files `train_lenet_classifier_cuda`, `train_resnet_classifier_cuda`, `train_vae_cuda`, `train_siamese_cuda`, `train_dcgan_cuda` and `train_vat_cuda` under the build directory located at nnabla-ext-cuda/build/bin.
 
+Note: When you build the cuda version in `nnabla-ext-cuda` repository, please turn on the C++ utils build by `-DBUILD_CPP_UTILS=ON` in `cmake`. Otherwise there is no `nnabla-ext-cuda/build/bin` directory.
+
 If you want to build it yourself using Makefile you can refer to the following commands in linux environments.
 
 ```shell
 export NNABLA_DIR='path to your nnabla directory'
-export CUDA_VERSION_SUFFIX='CUDA version suffix, e.g. -102_8'
 make lenet
 ```
 

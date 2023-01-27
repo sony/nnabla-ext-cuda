@@ -1,6 +1,6 @@
 # Build Python Package with distributed execution support powered by NCCL
 
-Distributed execution is only supported on Linux. We tested it on Ubuntu 16.04 LTS.
+Distributed execution is only supported on Linux. We tested it on Ubuntu 20.04 LTS, cuda11.4.1, cudnn8.2.4.
 
 ## Prerequisites
 
@@ -16,12 +16,12 @@ In order to use the distributed training, the only difference, when building, is
 the procedure described here.
 
 Download [NCCL](https://developer.nvidia.com/nccl) according to your environment,
-then install it manually in case of ubuntu16.04,
+then install it manually in case of ubuntu20.04,
 
 ```shell
-sudo dpkg -i nvidia-machine-learning-repo-ubuntu1604_1.0.0-1_amd64.deb
-sudo update
-sudo apt-get install libnccl2 libnccl-dev
+sudo dpkg -i nccl-local-repo-ubuntu2004-2.11.4-cuda11.4_1.0-1_amd64.deb
+sudo apt-get update
+sudo apt-get install libnccl2=2.10.3-1+cuda11.4 libnccl-dev=2.10.3-1+cuda11.4
 ```
 
 For developer, if you want to use another nccl not publicly distributed,
@@ -50,7 +50,13 @@ sudo apt-get install libopenmpi-dev
 Follow [Build CUDA extension](build.md) with a little modification in CMake's option (`-DWITH_NCCL=ON`).
 
 ```shell
-cmake -DNNABLA_DIR=../../nnabla -DCPPLIB_LIBRARY=../../nnabla/build/lib/libnnabla.so -D WITH_NCCL=ON ..
+cmake -DNNABLA_DIR=../../nnabla -DCPPLIB_LIBRARY=../../nnabla/build/lib/libnnabla.so -DWITH_NCCL=ON ..
+```
+
+Note: If the reported error is "`FATAL_ERROR, python [python] not found`" in `cmake`. Please establish a soft connection `python` to `python3.x`, you can refer to the following command:
+
+```shell
+sudo ln -s /usr/bin/python3.x /usr/bin/python
 ```
 
 You can confirm nccl and mpi includes and dependencies found in the output screen,

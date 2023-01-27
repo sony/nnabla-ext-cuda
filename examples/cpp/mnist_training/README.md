@@ -10,7 +10,7 @@ Please execute the CPU version C++ classification model learning sample in `nnab
 In addition to building CPU version in `nnabla` repository, you need to build Cuda version in `nnabla-ext-cuda`.
 Please follow [the installation manual](https://github.com/sony/nnabla-ext-cuda/blob/master/doc/build/build.md).
 
-Also MNIST dataset is required in the same directory.
+Also [MNIST dataset](https://github.com/sony/nnabla/tree/master/examples/cpp/mnist_collection#install-c-libraries) is required in the same level directory.
 If you tried the CPU version of this script, you must have downloaded MNIST data in `nnabla` directory.
 * train-images-idx3-ubyte.gz
 * train-labels-idx1-ubyte.gz
@@ -24,13 +24,14 @@ Please copy it to this directory.
 ## Build MNIST training example in C++ code
 You can find an executable file 'mnist_training_cuda' under the build directory located at nnabla-ext-cuda/build/bin.
 
+Note: When you build the cuda version in `nnabla-ext-cuda` repository, please turn on the C++ utils build by `-DBUILD_CPP_UTILS=ON` in `cmake`. Otherwise there is no `nnabla-ext-cuda/build/bin` directory.
+
 If you want to build it yourself using Makefile you can refer to the following commands in linux environments.
 
 ```shell
 export NNABLA_DIR='path to your nnabla directory'
-CUDA_VERSION_SUFFIX=-102_8 make
+make
 ```
-`CUDA_VERSION_SUFFIX` depends on the CUDA version you are using, you may check it in /usr/local/lib.
 
 The above command generates an executable `mnist_training_cuda` at the current directory.
 
@@ -68,11 +69,8 @@ Following process is temporary and at a later date, we will prepare a save funct
 
 ```shell
  cp lenet_initialized.nnp lenet_learned.nnp
- unzip lenet_learned.nnp
- zip lenet_learned.nnp nnp_version.txt network.nntxt parameter.protobuf
+ zip lenet_learned.nnp parameter.protobuf
 ```
-
-You will be asked "replace parameter.protobuf?" when unzipping, so please answer "n".
 
 After getting learned.nnp, you can use it as a model file for "mnist_runtime".
 
