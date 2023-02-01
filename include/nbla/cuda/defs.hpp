@@ -33,7 +33,9 @@
     defined(nnabla_cuda_110_8_EXPORTS) ||                                      \
     defined(nnabla_cuda_110_8_dbg_EXPORTS) ||                                  \
     defined(nnabla_cuda_114_8_EXPORTS) ||                                      \
-    defined(nnabla_cuda_114_8_dbg_EXPORTS)
+    defined(nnabla_cuda_114_8_dbg_EXPORTS) ||                                  \
+    defined(nnabla_cuda_116_8_EXPORTS) ||                                      \
+    defined(nnabla_cuda_116_8_dbg_EXPORTS)
 #define NBLA_CUDA_API __declspec(dllexport)
 #else
 #define NBLA_CUDA_API __declspec(dllimport)
