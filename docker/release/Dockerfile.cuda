@@ -101,7 +101,7 @@ RUN eval ${APT_OPTS} \
        liblzma-dev \
     && pip install ${PIP_INS_OPTS} --no-cache-dir --upgrade pip \
     && pip install ${PIP_INS_OPTS} --no-cache-dir wheel setuptools \
-    && pip install ${PIP_INS_OPTS} --no-cache-dir opencv-python || true \
+    && pip install ${PIP_INS_OPTS} --no-cache-dir opencv-python-headless || true \
     && pip install ${PIP_INS_OPTS} --no-cache-dir --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda${CU1_VER}0 \
         || echo "Skip DALI installation (CUDA=${CU1_VER}.${CU2_VER})" \
     && pip install ${PIP_INS_OPTS} --no-cache-dir nnabla-ext-cuda${CU1_VER}${CU2_VER%.?}==${NNABLA_VER} nnabla_converter==${NNABLA_VER}
