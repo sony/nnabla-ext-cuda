@@ -108,6 +108,7 @@ void SyncBatchNormalizationCuda<T>::forward_impl_batch(
 
   // Calculate local mean and variance
   if (channel_last) {
+    v_semaphores_for_forward_.data()->zero();
     forward_collect_statistics_channels_last<Tc>(
         size0, size1, size2, x, &v_local_mean_, &v_local_invstd_,
         &v_staging_data_for_forward_, &v_semaphores_for_forward_, this->eps_,
@@ -199,6 +200,7 @@ void SyncBatchNormalizationCuda<T>::backward_impl_batch(
 
   // Reduce channels and calculate grad of beta and gamma to temporally buffers
   if (channel_last) {
+    v_semaphores_for_backward_.data()->zero();
     backward_reduce_channels_last<Tc>(
         size0, size1, size2, x, y, batch_mean, batch_var, &v_sum_dy_o_,
         &v_sum_dy_xmu_o_, &v_beta_grad_, &v_gamma_grad_,
