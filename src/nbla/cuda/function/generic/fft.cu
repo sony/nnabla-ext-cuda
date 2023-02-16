@@ -21,10 +21,7 @@
 
 namespace nbla {
 
-template <typename T> FFTCuda<T>::~FFTCuda() {
-  NBLA_CUFFT_CHECK(cufftDestroy(plan_forward_));
-  NBLA_CUFFT_CHECK(cufftDestroy(plan_backward_));
-}
+template <typename T> FFTCuda<T>::~FFTCuda() {}
 
 template <typename T>
 void FFTCuda<T>::setup_impl(const Variables &inputs, const Variables &outputs) {

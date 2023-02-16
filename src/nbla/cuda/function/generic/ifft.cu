@@ -21,10 +21,7 @@
 
 namespace nbla {
 
-template <typename T> IFFTCuda<T>::~IFFTCuda() {
-  NBLA_CUFFT_CHECK(cufftDestroy(plan_forward_));
-  NBLA_CUFFT_CHECK(cufftDestroy(plan_backward_));
-}
+template <typename T> IFFTCuda<T>::~IFFTCuda() {}
 
 template <typename T>
 void IFFTCuda<T>::setup_impl(const Variables &inputs,

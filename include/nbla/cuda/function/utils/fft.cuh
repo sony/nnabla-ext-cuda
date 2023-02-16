@@ -285,6 +285,9 @@ void exec_cufft(const Context ctx, const Tcu *input_ptr, Tcu *output_ptr,
   // execution_type: execution type
   cudaDataType_t execution_type = get_cufft_dtype<Tcu>(true);
 
+  // Create plan
+  NBLA_CUFFT_CHECK(cufftCreate(&plan));
+
   // Make plan
   NBLA_CUFFT_CHECK(
       cufftSetAutoAllocation(plan, false)); // use nnabla's memory allocation
@@ -299,6 +302,9 @@ void exec_cufft(const Context ctx, const Tcu *input_ptr, Tcu *output_ptr,
   // Execute FFT
   NBLA_CUFFT_CHECK(
       cufftXtExec(plan, (void *)input_ptr, (void *)output_ptr, direction));
+
+  // Destroy plan
+  NBLA_CUFFT_CHECK(cufftDestroy(plan));
 }
 }
 #endif
