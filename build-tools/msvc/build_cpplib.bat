@@ -56,7 +56,7 @@ REM We can only use msbuild instead cmake here!
 msbuild ALL_BUILD.vcxproj /p:Configuration=%build_type% /verbosity:minimal /maxcpucount || GOTO :error
 REM cmake --build . --config %build_type% || GOTO :error
 SET OLD_PATH=%PATH%
-SET PATH="%ProgramFiles%\Cmake\bin";%PATH%
+SET PATH="C:\Program Files "("x86")"\Microsoft Visual Studio\2019\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin";%PATH%
 cpack -G ZIP -C %build_type%
 SET PATH=%OLD_PATH%
 GOTO :end
