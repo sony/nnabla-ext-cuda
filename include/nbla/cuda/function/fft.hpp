@@ -1,4 +1,4 @@
-// Copyright 2018,2019,2020,2021 Sony Corporation.
+// Copyright 2018,2019,2020,2021,2022,2023 Sony Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,8 +15,6 @@
 #ifndef NBLA_CUDA_FUNCTION_FFT_HPP
 #define NBLA_CUDA_FUNCTION_FFT_HPP
 
-#include <cufft.h>
-#include <cufftXt.h>
 #include <nbla/cuda/cuda.hpp>
 #include <nbla/cuda/function/utils/fft.hpp>
 #include <nbla/function/fft.hpp>
@@ -30,10 +28,7 @@ public:
 
   explicit FFTCuda(const Context &ctx, int signal_ndim, bool normalized)
       : FFT<T>(ctx, signal_ndim, normalized), signal_size_(1),
-        device_(std::stoi(ctx.device_id)) {
-    cuda_set_device(this->device_);
-    NBLA_CUFFT_CHECK(cufftCreate(&plan_forward_));
-    NBLA_CUFFT_CHECK(cufftCreate(&plan_backward_));
+        device_(std::stoi(ctx.device_id)), plan_forward_(0), plan_backward_(0) {
   }
   virtual ~FFTCuda();
   virtual string name() { return "FFTCuda"; }

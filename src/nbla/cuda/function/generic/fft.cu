@@ -1,4 +1,4 @@
-// Copyright 2018,2019,2020,2021 Sony Corporation.
+// Copyright 2018,2019,2020,2021,2022,2023 Sony Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 
 namespace nbla {
 
-template <typename T> FFTCuda<T>::~FFTCuda() {
-  NBLA_CUFFT_CHECK(cufftDestroy(plan_forward_));
-  NBLA_CUFFT_CHECK(cufftDestroy(plan_backward_));
-}
+template <typename T> FFTCuda<T>::~FFTCuda() {}
 
 template <typename T>
 void FFTCuda<T>::setup_impl(const Variables &inputs, const Variables &outputs) {
