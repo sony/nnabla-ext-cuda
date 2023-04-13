@@ -81,6 +81,12 @@ if(NOT EXISTS ${PYTHON_COMMAND})
   endif()
 endif()
 
+if (NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING
+    "Build type release is default on single-configuration build system like GNU make."
+    FORCE)
+endif()
+
 ###############################################################################
 # General settings
 ###############################################################################
@@ -143,12 +149,6 @@ if(BUILD_CPP_LIB)
   # Third party libraries
   ###############################################################################
   add_subdirectory(third_party)
-  
-  if (NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Release" CACHE STRING
-      "Build type release is default on single-configuration build system like GNU make."
-      FORCE)
-  endif()
   
   # Flags
   if(MSVC)
@@ -342,9 +342,6 @@ if(BUILD_PYTHON_PACKAGE)
   # Wheel
   if(UNIX)
     if(MAKE_MANYLINUX_WHEEL)
-      if (NOT CMAKE_BUILD_TYPE)
-        set(CMAKE_BUILD_TYPE "Release")
-      endif()
       add_custom_command(OUTPUT ${NBLA_PYTHON_OUTPUT_WHEEL}
         COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_BINARY_DIR}/dist/*.whl
         COMMAND ${CMAKE_COMMAND} -E env
