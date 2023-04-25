@@ -81,6 +81,12 @@ if(NOT EXISTS ${PYTHON_COMMAND})
   endif()
 endif()
 
+if (NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING
+    "Build type release is default on single-configuration build system like GNU make."
+    FORCE)
+endif()
+
 ###############################################################################
 # General settings
 ###############################################################################
@@ -143,12 +149,6 @@ if(BUILD_CPP_LIB)
   # Third party libraries
   ###############################################################################
   add_subdirectory(third_party)
-  
-  if (NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Release" CACHE STRING
-      "Build type release is default on single-configuration build system like GNU make."
-      FORCE)
-  endif()
   
   # Flags
   if(MSVC)
@@ -348,7 +348,7 @@ if(BUILD_PYTHON_PACKAGE)
                 MULTI_GPU_SUFFIX=${MULTIGPU_SUFFIX}
                 WHEEL_SUFFIX=${WHEEL_SUFFIX}
                 ${PYTHON_COMMAND} ${NBLA_PYTHON_SETUP} -q bdist_wheel
-        COMMAND ${NNABLA_DIR}/build-tools/auditwheel-nnabla ${CMAKE_BINARY_DIR}/dist/*-linux_*.whl ${INCLUDE_CUDA_CUDNN_LIB_IN_WHL}
+        COMMAND ${NNABLA_DIR}/build-tools/auditwheel-nnabla ${CMAKE_BINARY_DIR}/dist/*-linux_*.whl ${CMAKE_BUILD_TYPE} ${INCLUDE_CUDA_CUDNN_LIB_IN_WHL}
         COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_BINARY_DIR}/dist/*-linux*.whl
         COMMAND ${CMAKE_COMMAND} -E touch ${NBLA_PYTHON_OUTPUT_WHEEL}
         DEPENDS ${NBLA_WHEEL_DEPENDS})
