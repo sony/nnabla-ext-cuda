@@ -27,15 +27,6 @@ __global__ void kernel_clip_grad_by_norm_copy(int size, T *output,
 }
 
 template <typename T>
-__global__ void kernel_clip_grad_by_norm_forward(const int num, T *y,
-                                                 const T *x, const T *m,
-                                                 const float clip_norm) {
-  NBLA_CUDA_KERNEL_LOOP(idx, num) {
-    y[idx] = (T)clip_norm * x[idx] / sqrtf(m[idx]);
-  }
-}
-
-template <typename T>
 void ClipGradByNormCuda<T>::forward_impl(const Variables &inputs,
                                          const Variables &outputs) {
   cuda_set_device(this->device_);
@@ -51,7 +42,7 @@ __global__ void
 kernel_clip_grad_by_norm_backward_cuda(int size, float clip_norm, T *dx,
                                        const T *dy, const T *m) {
   NBLA_CUDA_KERNEL_LOOP(idx, size) {
-    T _dx = (T)clip_norm * dy[idx] / sqrtf(m[idx]);
+    T _dx = (T)clip_norm * dy[idx] / fmaxf(sqrtf(m[idx]), clip_norm);
     accum ? dx[idx] += _dx : dx[idx] = _dx;
   }
 }
