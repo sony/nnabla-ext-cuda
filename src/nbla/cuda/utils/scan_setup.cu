@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <limits>
 #include <nbla/cuda/utils/scan_setup.hpp>
 
 namespace nbla {
