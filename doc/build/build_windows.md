@@ -24,7 +24,7 @@ Note: parameters `CUDA_VERSION` and `CUDNN_VERSION` are options of cuda/cudnn ve
 ``` cmd
 build-tools\msvc\build_cpplib.bat CUDA_VERSION CUDNN_VERSION
 ``` 
-For exmaples:
+For examples:
 
 ```
 build-tools\msvc\build_cpplib.bat 11.0 8
@@ -43,7 +43,7 @@ Note: parameters `PYTHON_VERSION`, `CUDA_VERSION` and `CUDNN_VERSION` are option
 ```
 build-tools\msvc\build_wheel.bat PYTHON_VERSION CUDA_VERSION CUDNN_VERSION
 ```
-For exmaples:
+For examples:
 
 ```
 build-tools\msvc\build_wheel.bat 3.8 11.0 8
