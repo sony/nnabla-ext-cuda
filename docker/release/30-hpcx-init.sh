@@ -1,6 +1,5 @@
 #!/bin/bash
-# Copyright 2021 Sony Corporation.
-# Copyright 2021,2022 Sony Group Corporation.
+# Copyright 2021 Sony Group Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,24 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-source /etc/shinit_v2
+curdir=$PWD
+cd /opt/mpi/hpcx-v2.12
+. ./hpcx-init.sh
+hpcx_load
+cd $curdir
+unset curdir
+export OPAL_PREFIX=/opt/mpi/hpcx-v2.12/ompi
+export PMIX_INSTALL_PREFIX=/opt/mpi/hpcx-v2.12/ompi
 
-if [ -d "/opt/mpi/hpcx-v2.12" ]; then
-    curdir=$PWD
-    cd /opt/mpi/hpcx-v2.12
-    . ./hpcx-init.sh
-    hpcx_load
-    cd $curdir
-    unset curdir
-    export OPAL_PREFIX=/opt/mpi/hpcx-v2.12/ompi
-    export PMIX_INSTALL_PREFIX=/opt/mpi/hpcx-v2.12/ompi
-else
-    export PATH=/opt/mpi/bin:$PATH
-    export LD_LIBRARY_PATH=/opt/mpi/lib:$LD_LIBRARY_PATH
-fi
-
-if [ $# -eq 0 ]; then
-    exec "/bin/bash"
-else
-    exec "$@"
-fi
