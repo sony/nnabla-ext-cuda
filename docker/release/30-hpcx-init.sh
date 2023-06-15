@@ -19,6 +19,4 @@ cd /opt/mpi/hpcx-v2.12
 hpcx_load
 cd $curdir
 unset curdir
-export OPAL_PREFIX=/opt/mpi/hpcx-v2.12/ompi
-export PMIX_INSTALL_PREFIX=/opt/mpi/hpcx-v2.12/ompi
 

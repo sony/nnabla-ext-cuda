@@ -1,6 +1,5 @@
-diff -r -u old/hpcx-init-ompi.sh new/hpcx-init-ompi.sh
---- old/hpcx-init-ompi.sh	2023-06-09 15:39:09.864237740 +0900
-+++ new/hpcx-init-ompi.sh	2023-06-09 16:27:45.776205618 +0900
+--- old/hpcx-init-ompi.sh	2023-06-14 19:39:44.791319808 +0900
++++ new/hpcx-init-ompi.sh	2023-06-14 19:42:08.339318226 +0900
 @@ -1,5 +1,5 @@
  #!/bin/bash
 -mydir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -8,7 +7,7 @@ diff -r -u old/hpcx-init-ompi.sh new/hpcx-init-ompi.sh
  
  export HPCX_DIR=$mydir
  export HPCX_UCX_DIR=${HPCX_DIR}/ucx
-@@ -20,10 +20,13 @@
+@@ -20,13 +20,18 @@
  export OSHMEM_HOME=${HPCX_MPI_DIR}
  export SHMEM_HOME=${HPCX_MPI_DIR}
  
@@ -25,8 +24,13 @@ diff -r -u old/hpcx-init-ompi.sh new/hpcx-init-ompi.sh
 +    fi
      export OLD_PATH=$PATH
      export OLD_OPAL_PREFIX=${OPAL_PREFIX}
++    export OLD_PMIX_INSTALL_PREFIX=${PMIX_INSTALL_PREFIX}
      export OPAL_PREFIX=${HPCX_MPI_DIR}
-@@ -34,7 +37,9 @@
++    export PMIX_INSTALL_PREFIX=${HPCX_MPI_DIR}
+     export PATH=${HPCX_MPI_DIR}/bin:$PATH
+     export PATH=${HPCX_UCX_DIR}/bin:$PATH
+     export PATH=${HPCX_UCC_DIR}/bin:$PATH
+@@ -34,7 +39,9 @@
      export PATH=${HPCX_CLUSTERKIT_DIR}/bin:$PATH
      export PATH=${HPCX_SHARP_DIR}/bin:$PATH
  
@@ -37,7 +41,7 @@ diff -r -u old/hpcx-init-ompi.sh new/hpcx-init-ompi.sh
      export OLD_LD_LIBRARY_PATH=${LD_LIBRARY_PATH}
      export LD_LIBRARY_PATH=${HPCX_MPI_DIR}/lib:${LD_LIBRARY_PATH}
      export LD_LIBRARY_PATH=${HPCX_HCOLL_DIR}/lib:${LD_LIBRARY_PATH}
-@@ -45,7 +50,9 @@
+@@ -45,7 +52,9 @@
      export LD_LIBRARY_PATH=${HPCX_UCC_DIR}/lib/ucc:${LD_LIBRARY_PATH}
      export LD_LIBRARY_PATH=${HPCX_NCCL_RDMA_SHARP_PLUGIN_DIR}/lib:${LD_LIBRARY_PATH}
  
@@ -48,7 +52,7 @@ diff -r -u old/hpcx-init-ompi.sh new/hpcx-init-ompi.sh
      export OLD_LIBRARY_PATH=${LIBRARY_PATH}
      export LIBRARY_PATH=${HPCX_MPI_DIR}/lib:${LIBRARY_PATH}
      export LIBRARY_PATH=${HPCX_HCOLL_DIR}/lib:${LIBRARY_PATH}
-@@ -55,7 +62,9 @@
+@@ -55,7 +64,9 @@
      export LIBRARY_PATH=${HPCX_MPI_DIR}/lib:${LIBRARY_PATH}
      export LIBRARY_PATH=${HPCX_NCCL_RDMA_SHARP_PLUGIN_DIR}/lib:${LIBRARY_PATH}
  
@@ -59,7 +63,7 @@ diff -r -u old/hpcx-init-ompi.sh new/hpcx-init-ompi.sh
      export OLD_CPATH=$CPATH
      export CPATH=${HPCX_HCOLL_DIR}/include:$CPATH
      export CPATH=${HPCX_SHARP_DIR}/include:$CPATH
-@@ -63,14 +72,15 @@
+@@ -63,18 +74,20 @@
      export CPATH=${HPCX_UCC_DIR}/include:$CPATH
      export CPATH=${HPCX_MPI_DIR}/include:$CPATH
  
@@ -78,3 +82,8 @@ diff -r -u old/hpcx-init-ompi.sh new/hpcx-init-ompi.sh
      export PATH=${OLD_PATH}
      export LD_LIBRARY_PATH=${OLD_LD_LIBRARY_PATH}
      export LIBRARY_PATH=${OLD_LIBRARY_PATH}
+     export OPAL_PREFIX=${OLD_OPAL_PREFIX}
++    export PMIX_INSTALL_PREFIX=${OLD_PMIX_INSTALL_PREFIX}
+     export CPATH=${OLD_CPATH}
+     export PKG_CONFIG_PATH=${OLD_PKG_CONFIG_PATH}
+     for var in $(env|grep HPCX_|cut -f1 -d=) MPI_HOME OSHMEM_HOME SHMEM_HOME OMPI_HOME; do

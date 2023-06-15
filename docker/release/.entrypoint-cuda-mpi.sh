@@ -23,8 +23,6 @@ if [ -d "/opt/mpi/hpcx-v2.12" ]; then
     hpcx_load
     cd $curdir
     unset curdir
-    export OPAL_PREFIX=/opt/mpi/hpcx-v2.12/ompi
-    export PMIX_INSTALL_PREFIX=/opt/mpi/hpcx-v2.12/ompi
 else
     export PATH=/opt/mpi/bin:$PATH
     export LD_LIBRARY_PATH=/opt/mpi/lib:$LD_LIBRARY_PATH
