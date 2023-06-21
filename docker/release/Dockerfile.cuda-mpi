@@ -55,7 +55,7 @@ RUN if [ $(echo "${MPI}" | awk -F. '{ printf("%d%02d%02d\n", $1,$2,$3); }') -gt 
         && cp -ap ./hpcx-rebuild/lib/openmpi/mca_btl_openib.* ./ompi/lib/openmpi/ \
         && cp -ap ./hpcx-rebuild/share/openmpi/*verbs* ./ompi/share/openmpi/ \
         && cp -ap ./hpcx-rebuild/share/openmpi/*openib* ./ompi/share/openmpi/ \
-        && rm -rf ./sources/openmi-gitclone ./hpcx_rebuild ./hpcx_rebuild.sh \
+        && rm -rf ./sources/openmpi-gitclone ./hpcx_rebuild ./hpcx_rebuild.sh \
         && cd ..; \
     else \
         mkdir /tmp/openmpi \
@@ -200,11 +200,6 @@ RUN mkdir -p -m 775 /usr/local/cuda/compat/lib \
 # singularity environment
 RUN mkdir -p -m 775 /.singularity.d/env
 COPY 20-nvidia-cuda-compat.sh /.singularity.d/env/20-nvidia-cuda-compat.sh
-COPY 30-hpcx-init.sh /tmp/30-hpcx-init.sh
-RUN if [ -d /opt/mpi/hpcx* ]; then \
-        mv /tmp/30-hpcx-init.sh /.singularity.d/env/30-hpcx-init.sh; else \
-        rm -f /tmp/30-hpcx-init.sh; \
-    fi
 
 # Solve nccl error that No space left on device
 # while creating shared memory segment.
