@@ -27,21 +27,23 @@ ARG APT_OPTS
 ARG MPI
 ARG MPI_OPTS
 
-ENV DEBIAN_FRONTEND noninteractive
-
-RUN eval ${APT_OPTS} && apt-get update
-RUN apt-get install -y --no-install-recommends \
+RUN eval ${APT_OPTS} \
+    && apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         build-essential \
+        ca-certificates \
         curl \
         gfortran \
         libibverbs-dev \
         librdmacm1 \
         librdmacm-dev \
         libnuma1 \
-        libnuma-dev
+        libnuma-dev \
+        patch \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get install -y --no-install-recommends ca-certificates
-
+COPY hpcx-init.patch /tmp/hpcx-init.patch
+COPY hpcx-ompi-etc.patch /tmp/hpcx-ompi-etc.patch
 RUN if [ $(echo "${MPI}" | awk -F. '{ printf("%d%02d%02d\n", $1,$2,$3); }') -gt 30106 ]; then \
         mkdir /opt/mpi \
         && cd /opt/mpi \
@@ -56,6 +58,8 @@ RUN if [ $(echo "${MPI}" | awk -F. '{ printf("%d%02d%02d\n", $1,$2,$3); }') -gt 
         && cp -ap ./hpcx-rebuild/share/openmpi/*verbs* ./ompi/share/openmpi/ \
         && cp -ap ./hpcx-rebuild/share/openmpi/*openib* ./ompi/share/openmpi/ \
         && rm -rf ./sources/openmpi-gitclone ./hpcx_rebuild ./hpcx_rebuild.sh \
+        && patch -p1 < /tmp/hpcx-init.patch \
+        && patch -p1 < /tmp/hpcx-ompi-etc.patch \
         && cd ..; \
     else \
         mkdir /tmp/openmpi \
@@ -73,6 +77,7 @@ RUN if [ $(echo "${MPI}" | awk -F. '{ printf("%d%02d%02d\n", $1,$2,$3); }') -gt 
         && echo btl_openib_allow_ib = 1 >> /opt/mpi/etc/openmpi-mca-params.conf; \
     fi
 
+
 FROM nvidia/cuda:${CU1_VER}.${CU2_VER}-cudnn${CUDNN_VER}-runtime-ubuntu18.04
 
 ARG CU1_VER
@@ -84,17 +89,15 @@ ARG CURL_OPTS
 ARG WGET_OPTS
 ARG APT_OPTS
 
-ENV DEBIAN_FRONTEND noninteractive
-
 RUN eval ${APT_OPTS} \
     && apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub \
     && apt-get update \
-    && apt-get install -y software-properties-common \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y software-properties-common \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
     && add-apt-repository ppa:deadsnakes/ppa \
     && apt-get update \
-    && apt-get install -y --no-install-recommends \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
        bzip2 \
        ca-certificates \
        curl \
@@ -111,8 +114,8 @@ RUN eval ${APT_OPTS} \
 ################################################## build python from pyenv
 ARG NNABLA_VER
 RUN eval ${APT_OPTS} \
-    && apt update \
-    && apt install -y --no-install-recommends \
+    && apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
        git \
        make \
        build-essential \
@@ -170,22 +173,6 @@ RUN eval ${APT_OPTS} \
     && pip install ${PIP_INS_OPTS} --no-cache-dir nnabla-ext-cuda${CU1_VER}${CU2_VER%.?}==${NNABLA_VER} nnabla_converter==${NNABLA_VER}
 
 COPY --from=openmpi /opt/mpi /opt/mpi
-
-# Modify HPCX init script if needed
-COPY hpcx-init.patch /tmp/hpcx-init.patch
-RUN if [ -d /opt/mpi/hpcx-v2.12 ]; then \
-        eval ${APT_OPTS} \
-        && apt-get update \
-        && apt-get install -y --no-install-recommends patch \
-        && cd /opt/mpi/hpcx-v2.12/ \
-        && patch -p1 < /tmp/hpcx-init.patch \
-        && rm -f /tmp/hpcx-init.patch \
-        && apt-get remove --purge -y patch \
-        && apt-get clean \
-        && rm -rf /var/lib/apt/lists/*; \
-    else \
-        rm -f /tmp/hpcx-init.patch; \
-    fi
 
 # cuda compat driver support
 COPY cudalibcheck /usr/local/bin/cudalibcheck
