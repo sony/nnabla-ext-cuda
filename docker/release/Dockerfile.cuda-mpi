@@ -60,6 +60,7 @@ RUN if [ $(echo "${MPI}" | awk -F. '{ printf("%d%02d%02d\n", $1,$2,$3); }') -gt 
         && rm -rf ./sources/openmpi-gitclone ./hpcx_rebuild ./hpcx_rebuild.sh \
         && patch -p1 < /tmp/hpcx-init.patch \
         && patch -p1 < /tmp/hpcx-ompi-etc.patch \
+        && chmod og+w ./ompi/etc/* \
         && cd ..; \
     else \
         mkdir /tmp/openmpi \
