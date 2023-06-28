@@ -27,30 +27,57 @@ ARG APT_OPTS
 ARG MPI
 ARG MPI_OPTS
 
-ENV DEBIAN_FRONTEND noninteractive
-
-RUN eval ${APT_OPTS} && apt-get update
-RUN apt-get install -y --no-install-recommends \
+RUN eval ${APT_OPTS} \
+    && apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         build-essential \
+        ca-certificates \
         curl \
         gfortran \
-        libibverbs-dev
+        libibverbs-dev \
+        librdmacm1 \
+        librdmacm-dev \
+        libnuma1 \
+        libnuma-dev \
+        patch \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get install -y --no-install-recommends ca-certificates
+COPY hpcx-init.patch /tmp/hpcx-init.patch
+COPY hpcx-ompi-etc.patch /tmp/hpcx-ompi-etc.patch
+RUN if [ $(echo "${MPI}" | awk -F. '{ printf("%d%02d%02d\n", $1,$2,$3); }') -gt 30106 ]; then \
+        mkdir /opt/mpi \
+        && cd /opt/mpi \
+        && curl -LO http://www.mellanox.com/downloads/hpc/hpc-x/v2.12/hpcx-v2.12-gcc-MLNX_OFED_LINUX-5-ubuntu18.04-cuda11-gdrcopy2-nccl2.12-x86_64.tbz \
+        && tar -xvf hpcx*.tbz \
+        && rm -f hpcx*.tbz \
+        && mv hpcx* hpcx-v2.12 \
+        && cd hpcx-v2.12 \
+        && ./utils/hpcx_rebuild.sh --ompi-extra-config --enable-openib-rdmacm-ibaddr \
+        && cp -ap ./hpcx-rebuild/lib/libmca_common_verbs.* ./ompi/lib/ \
+        && cp -ap ./hpcx-rebuild/lib/openmpi/mca_btl_openib.* ./ompi/lib/openmpi/ \
+        && cp -ap ./hpcx-rebuild/share/openmpi/*verbs* ./ompi/share/openmpi/ \
+        && cp -ap ./hpcx-rebuild/share/openmpi/*openib* ./ompi/share/openmpi/ \
+        && rm -rf ./sources/openmpi-gitclone ./hpcx_rebuild ./hpcx_rebuild.sh \
+        && patch -p1 < /tmp/hpcx-init.patch \
+        && patch -p1 < /tmp/hpcx-ompi-etc.patch \
+        && chmod og+w ./ompi/etc/* \
+        && cd ..; \
+    else \
+        mkdir /tmp/openmpi \
+        && curl ${CURL_OPTS} https://download.open-mpi.org/release/open-mpi/v${MPI%.*}/openmpi-${MPI}.tar.bz2 -o /tmp/openmpi/openmpi-${MPI}.tar.bz2 \
+        && tar Cxvf /tmp/openmpi /tmp/openmpi/openmpi-${MPI}.tar.bz2 \
+        && cd tmp/openmpi/openmpi-${MPI} \
+        && ./configure \
+            --prefix=/opt/mpi --enable-orterun-prefix-by-default --with-sge ${MPI_OPTS} \
+            CC=gcc \
+            CXX=g++ \
+            F77=gfortran \
+            FC=gfortran \
+        && make -j8 \
+        && make install \
+        && echo btl_openib_allow_ib = 1 >> /opt/mpi/etc/openmpi-mca-params.conf; \
+    fi
 
-RUN mkdir /tmp/openmpi
-RUN curl ${CURL_OPTS} https://download.open-mpi.org/release/open-mpi/v${MPI%.*}/openmpi-${MPI}.tar.bz2 -o /tmp/openmpi/openmpi-${MPI}.tar.bz2
-RUN tar Cxvf /tmp/openmpi /tmp/openmpi/openmpi-${MPI}.tar.bz2
-RUN cd tmp/openmpi/openmpi-${MPI} \
-    && ./configure \
-        --prefix=/opt/openmpi --enable-orterun-prefix-by-default --with-sge ${MPI_OPTS} \
-        CC=gcc \
-        CXX=g++ \
-        F77=gfortran \
-        FC=gfortran \
-    && make -j8 \
-    && make install \
-    && echo btl_openib_allow_ib = 1 >> /opt/openmpi/etc/openmpi-mca-params.conf
 
 FROM nvidia/cuda:${CU1_VER}.${CU2_VER}-cudnn${CUDNN_VER}-runtime-ubuntu18.04
 
@@ -63,17 +90,15 @@ ARG CURL_OPTS
 ARG WGET_OPTS
 ARG APT_OPTS
 
-ENV DEBIAN_FRONTEND noninteractive
-
 RUN eval ${APT_OPTS} \
     && apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub \
     && apt-get update \
-    && apt-get install -y software-properties-common \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y software-properties-common \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
     && add-apt-repository ppa:deadsnakes/ppa \
     && apt-get update \
-    && apt-get install -y --no-install-recommends \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
        bzip2 \
        ca-certificates \
        curl \
@@ -83,14 +108,15 @@ RUN eval ${APT_OPTS} \
        libdapl2 \
        libibmad5 \
        librdmacm1 \
+       libnuma1 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 ################################################## build python from pyenv
 ARG NNABLA_VER
 RUN eval ${APT_OPTS} \
-    && apt update \
-    && apt install -y --no-install-recommends \
+    && apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
        git \
        make \
        build-essential \
@@ -147,9 +173,7 @@ RUN eval ${APT_OPTS} \
        || echo "Skip DALI installation (CUDA=${CU1_VER}.${CU2_VER})") \
     && pip install ${PIP_INS_OPTS} --no-cache-dir nnabla-ext-cuda${CU1_VER}${CU2_VER%.?}==${NNABLA_VER} nnabla_converter==${NNABLA_VER}
 
-COPY --from=openmpi /opt/openmpi /opt/openmpi
-ENV PATH /opt/openmpi/bin:$PATH
-ENV LD_LIBRARY_PATH /opt/openmpi/lib:$LD_LIBRARY_PATH
+COPY --from=openmpi /opt/mpi /opt/mpi
 
 # cuda compat driver support
 COPY cudalibcheck /usr/local/bin/cudalibcheck

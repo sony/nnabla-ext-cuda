@@ -1,0 +1,19 @@
+--- old/ompi/etc/openmpi-mca-params.conf	2023-06-26 20:44:30.747239585 +0900
++++ new/ompi/etc/openmpi-mca-params.conf	2023-06-26 20:49:55.143401095 +0900
+@@ -59,8 +59,7 @@
+ # parameters available and their default values.
+ #rmaps_base_mapping_policy = dist:auto
+ coll = ^ml
+-hwloc_base_binding_policy = core
+-btl = self
++hwloc_base_binding_policy = none # core
+ pml_ucx_tls = any
+ pml_ucx_devices = any
+ opal_common_ucx_opal_mem_hooks = 0
+@@ -92,4 +91,6 @@
+ coll_tuned_scatter_large_msg               = 250000
+ coll_tuned_scatter_min_procs               = 1048510
+ coll_tuned_scatter_algorithm_max_requests  = 64
++coll_hcoll_enable                          = 0
+ 
++btl_openib_allow_ib = 1
