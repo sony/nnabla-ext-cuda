@@ -246,7 +246,7 @@ RUN mkdir /tmp/deps \
 ############################################################ Copy OpenMPI
 COPY --from=openmpi /root/openmpi-* /root
 RUN if [ -e /root/openmpi-*.rpm ]; then rpm -i /root/openmpi-*.rpm; fi
-RUN if [ -d /root/openmpi-hpcx ]; then mv /root/openmpi-hpcx /opt/mpi; fi
+RUN if [ -d /root/hpcx-v2.12 ]; then mkdir /opt/mpi; mv /root/hpcx-v2.12 /opt/mpi/hpcx-v2.12; fi
 
 ARG PYTHON_VERSION_MAJOR=3
 ARG PYTHON_VERSION_MINOR=8
