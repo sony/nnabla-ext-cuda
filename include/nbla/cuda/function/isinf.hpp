@@ -21,7 +21,7 @@
 namespace nbla {
 
 /** @copydoc IsInf
-*/
+ */
 NBLA_DECLARE_TRANSFORM_UNARY_CUDA(IsInf);
-}
+} // namespace nbla
 #endif

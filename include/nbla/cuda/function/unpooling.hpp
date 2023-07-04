@@ -21,7 +21,7 @@
 #include <nbla/function/unpooling.hpp>
 namespace nbla {
 /** @copydoc Unpooling
-*/
+ */
 
 template <typename T> class UnpoolingCuda : public Unpooling<T> {
 
@@ -44,6 +44,6 @@ protected:
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
 };
-}
+} // namespace nbla
 
 #endif

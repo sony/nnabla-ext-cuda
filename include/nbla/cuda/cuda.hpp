@@ -14,7 +14,7 @@
 // limitations under the License.
 
 /** Cpu resources
-*/
+ */
 #ifndef __NBLA_CUDA_CUDA_HPP__
 #define __NBLA_CUDA_CUDA_HPP__
 
@@ -103,11 +103,11 @@ public:
   shared_ptr<Allocator> pinned_allocator();
 
   /** Get a caching virtual-memory allocator.
- */
+   */
   shared_ptr<Allocator> virtual_caching_allocator();
 
   /** Free all unused host memory caches
-  */
+   */
   void free_unused_host_caches();
 
   /** Synchronize host to device.
@@ -185,5 +185,5 @@ private:
   Cuda();
   DISABLE_COPY_AND_ASSIGN(Cuda);
 };
-}
+} // namespace nbla
 #endif

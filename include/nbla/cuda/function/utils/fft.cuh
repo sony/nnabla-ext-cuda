@@ -31,11 +31,11 @@
 
 namespace nbla {
 
-using std::string;
-using std::vector;
-using std::shared_ptr;
-using std::unordered_map;
 using std::pair;
+using std::shared_ptr;
+using std::string;
+using std::unordered_map;
+using std::vector;
 
 template <typename T>
 __global__ void kernel_add_cufft_result(const Size_t size, const T *dx_tmp,
@@ -306,5 +306,5 @@ void exec_cufft(const Context ctx, const Tcu *input_ptr, Tcu *output_ptr,
   // Destroy plan
   NBLA_CUFFT_CHECK(cufftDestroy(plan));
 }
-}
+} // namespace nbla
 #endif

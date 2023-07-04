@@ -52,5 +52,5 @@ shared_ptr<NdArray> create_ndarray_from_vector(const vector<SRC_T> &src) {
   std::copy_n(src.cbegin(), src.size(), cpu_ptr);
   return ret;
 }
-}
+} // namespace nbla
 #endif

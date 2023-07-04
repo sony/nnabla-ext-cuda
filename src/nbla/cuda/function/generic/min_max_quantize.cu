@@ -88,4 +88,4 @@ void MinMaxQuantizeCuda<T>::nudge_qr_min_max(Variable *qr_min, Variable *qr_max,
                                  ql_max_data, scale_data, qr_min_nudged_data,
                                  qr_max_nudged_data);
 }
-}
+} // namespace nbla

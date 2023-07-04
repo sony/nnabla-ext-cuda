@@ -54,7 +54,7 @@ public:
 };
 
 /** CUDA memory implementation using unified memory
-*/
+ */
 class NBLA_CUDA_API CudaUnifiedMemory : public CudaMemory {
 private:
   CudaUnifiedMemory(size_t bytes, const string &device, void *ptr);
@@ -67,7 +67,7 @@ public:
 };
 
 /** Pinned host memory implementation
-*/
+ */
 class NBLA_CUDA_API CudaPinnedHostMemory : public CpuMemory {
   CudaPinnedHostMemory(size_t bytes, const string &device_id, void *ptr);
 
@@ -79,5 +79,5 @@ protected:
   bool alloc_impl() override;
   shared_ptr<Memory> divide_impl(size_t second_start) override;
 };
-}
+} // namespace nbla
 #endif

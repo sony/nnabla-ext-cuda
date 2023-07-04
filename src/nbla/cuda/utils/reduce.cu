@@ -180,4 +180,4 @@ void ReduceSetup::operator()(const Shape_t &shape_input,
       device_prop->maxThreadsPerMultiProcessor / NBLA_CUDA_REDUCE_NUM_THREADS;
   auto min_blocks = min_blocks_per_sm * device_prop->multiProcessorCount;
 }
-}
+} // namespace nbla

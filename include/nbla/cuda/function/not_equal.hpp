@@ -23,8 +23,8 @@
 namespace nbla {
 
 /** @copydoc NotEqual
-*/
+ */
 NBLA_DECLARE_TRANSFORM_BINARY_CUDA(NotEqual);
-}
+} // namespace nbla
 
 #endif

@@ -56,4 +56,4 @@ void ScanSetup::operator()(const Shape_t &shape_input, const int axis,
     require_64bit_index = false;
   }
 }
-}
+} // namespace nbla

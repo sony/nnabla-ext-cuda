@@ -64,4 +64,4 @@ void IdentityCuda<T>::backward_impl(const Variables &inputs,
     }
   }
 }
-}
+} // namespace nbla

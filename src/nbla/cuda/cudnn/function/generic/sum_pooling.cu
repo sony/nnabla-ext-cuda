@@ -33,7 +33,7 @@ __global__ void kernel_accum(const int size, T *dx, const T *dx_tmp) {
     dx[idx] = accum ? dx[idx] + dx_tmp[idx] : dx_tmp[idx];
   }
 }
-}
+} // namespace sum_pooling
 
 template <typename T>
 void SumPoolingCudaCudnn<T>::setup_impl(const Variables &inputs,
@@ -98,4 +98,4 @@ void SumPoolingCudaCudnn<T>::backward_impl(const Variables &inputs,
                                    pool_size_);
   }
 }
-}
+} // namespace nbla

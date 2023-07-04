@@ -303,4 +303,4 @@ void INQAffineCuda<T, T1>::backward_impl(const Variables &inputs,
                                          const vector<bool> &accum) {
   INQAffine<T, T1>::backward_impl(inputs, outputs, propagate_down, accum);
 }
-}
+} // namespace nbla

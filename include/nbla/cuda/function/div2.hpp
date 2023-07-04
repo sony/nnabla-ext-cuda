@@ -22,8 +22,8 @@
 namespace nbla {
 
 /** @copydoc Div2
-*/
+ */
 // In-placing is obsoleted.
 NBLA_DECLARE_TRANSFORM_BINARY_CUDA_INPLACE(Div2, true);
-}
+} // namespace nbla
 #endif

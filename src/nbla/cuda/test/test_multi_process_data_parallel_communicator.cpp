@@ -166,5 +166,5 @@ TEST(MultiProcessDataParallelCommunicatorTest, PackingAndUnpacking) {
              1 * sizeof(float), cudaMemcpyDeviceToHost);
   EXPECT_FLOAT_EQ(51.0f, data[0]);
 }
-}
+} // namespace nbla
 #endif

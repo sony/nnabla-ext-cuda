@@ -41,7 +41,7 @@ __global__ void kernel_bool_fill_data_backward(const int N, T *g_data,
                       : g_output[i] * (T(1) - mask_i);
   }
 }
-}
+} // namespace bool_fill_cuda
 
 template <typename T>
 void BoolFillCuda<T>::setup_impl(const Variables &inputs,
@@ -109,4 +109,4 @@ void BoolFillCuda<T>::backward_impl(const Variables &inputs,
     }
   }
 }
-}
+} // namespace nbla

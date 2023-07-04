@@ -117,7 +117,7 @@ kernel_fused_reduce_per_block_to_buff(int N, const F &f,
                                       ReduceTarget<Ts>... targets) {
   device_fused_reduce_per_block_to_buff(N, f, targets...);
 }
-}
+} // namespace internal
 
 template <typename F, typename... T>
 void fused_reduce(cudaStream_t stream, int num, ReduceTarget<T>... targets) {
@@ -125,19 +125,17 @@ void fused_reduce(cudaStream_t stream, int num, ReduceTarget<T>... targets) {
   constexpr int MAX_BLOCKS = 1024;
   if (num >= MAX_THREADS) {
     int blocks = min(NBLA_CUDA_GET_BLOCKS(num), MAX_BLOCKS);
-    internal::kernel_fused_reduce_per_block_to_buff<
-        F, T...><<<blocks, NBLA_CUDA_NUM_THREADS, 0, stream>>>(num, F(),
-                                                               targets...);
+    internal::kernel_fused_reduce_per_block_to_buff<F, T...>
+        <<<blocks, NBLA_CUDA_NUM_THREADS, 0, stream>>>(num, F(), targets...);
     NBLA_CUDA_KERNEL_CHECK();
-    internal::kernel_fused_reduce_per_block_from_buff<
-        Id<float>, T...><<<1, MAX_THREADS, 0, stream>>>(blocks, Id<float>(),
-                                                        targets...);
+    internal::kernel_fused_reduce_per_block_from_buff<Id<float>, T...>
+        <<<1, MAX_THREADS, 0, stream>>>(blocks, Id<float>(), targets...);
     NBLA_CUDA_KERNEL_CHECK();
   } else {
-    internal::kernel_fused_reduce_per_block<
-        F, T...><<<1, MAX_THREADS, 0, stream>>>(num, F(), targets...);
+    internal::kernel_fused_reduce_per_block<F, T...>
+        <<<1, MAX_THREADS, 0, stream>>>(num, F(), targets...);
     NBLA_CUDA_KERNEL_CHECK();
   }
 }
-}
+} // namespace nbla
 #endif

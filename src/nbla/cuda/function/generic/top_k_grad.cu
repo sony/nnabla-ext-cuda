@@ -70,7 +70,7 @@ __global__ void set_gradient(const int k, const unsigned int *sorted_idx,
   }
 }
 
-} // namspace top_k_grad
+} // namespace top_k_grad
 
 template <typename T>
 void TopKGradCuda<T>::setup_impl(const Variables &inputs,
@@ -182,4 +182,4 @@ void TopKGradCuda<T>::backward_impl(const Variables &inputs,
     }
   }
 }
-}
+} // namespace nbla

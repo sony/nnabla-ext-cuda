@@ -44,4 +44,4 @@ void TensorNormalizationCuda<T>::backward_impl(
   cuda_set_device(this->device_);
   TensorNormalization<T>::backward_impl(inputs, outputs, propagate_down, accum);
 }
-}
+} // namespace nbla

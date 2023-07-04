@@ -370,7 +370,7 @@ template <> struct CudaNativeType<Half> { typedef half type; };
 template <> struct CudaNativeType<HalfCuda> { typedef half type; };
 
 /** Get a scalar value of CUDA's native type from NNabla's data type.
-*/
+ */
 template <typename T>
 typename CudaNativeType<T>::type get_native_arg(const T &v) {
   return v;
@@ -406,7 +406,7 @@ get_cuda_native_scalar<HalfCuda>(float val) {
   return HalfCuda(Half(val)).h;
 }
 
-} // End of nbla
+} // namespace nbla
 
 #if NBLA_CUDA_HALF
 // ----------------------------------------------------------------------------
@@ -447,7 +447,7 @@ HALF_CUDA_PREFIX nbla::HalfCuda atan2(const nbla::HalfCuda &a,
 }
 #undef MATHF
 #undef MATHF_F
-} // End of std
+} // namespace std
 #define MATHF_F(FUNC)                                                          \
   HALF_CUDA_PREFIX nbla::HalfCuda FUNC(const nbla::HalfCuda &h) {              \
     return nbla::HalfCuda{FUNC((float)h)};                                     \

@@ -451,4 +451,4 @@ void SliceCuda<T>::backward_impl(const Variables &inputs,
           start, step);
   }
 }
-}
+} // namespace nbla

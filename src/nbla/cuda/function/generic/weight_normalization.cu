@@ -206,4 +206,4 @@ void WeightNormalizationCuda<T>::backward_impl(
                                    data_sum_dw_WN_x_w, grad_g, this->eps_);
   }
 }
-}
+} // namespace nbla

@@ -23,7 +23,7 @@
 namespace nbla {
 
 /** @copydoc Round
-*/
+ */
 NBLA_DECLARE_TRANSFORM_UNARY_CUDA(Round);
-}
+} // namespace nbla
 #endif

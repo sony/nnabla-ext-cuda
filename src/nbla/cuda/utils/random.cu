@@ -61,4 +61,4 @@ void curand_initialize(const int size, const int seed, const int offset,
                        curandState *state) {
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_curand_init, size, seed, offset, state);
 }
-}
+} // namespace nbla

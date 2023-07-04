@@ -336,4 +336,4 @@ shared_ptr<cudaDeviceProp> Cuda::get_device_properties(int device) {
 }
 
 NBLA_INSTANTIATE_SINGLETON(NBLA_CUDA_API, Cuda);
-}
+} // namespace nbla

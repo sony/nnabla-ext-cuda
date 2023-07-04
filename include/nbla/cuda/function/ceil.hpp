@@ -23,7 +23,7 @@
 namespace nbla {
 
 /** @copydoc Ceil
-*/
+ */
 NBLA_DECLARE_TRANSFORM_UNARY_CUDA(Ceil);
-}
+} // namespace nbla
 #endif

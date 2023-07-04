@@ -22,7 +22,7 @@
 #include <nbla/function/binary_connect_affine.hpp>
 namespace nbla {
 /** @copydoc BinaryConnectAffine
-*/
+ */
 
 template <typename T>
 class BinaryConnectAffineCuda : public BinaryConnectAffine<T> {
@@ -47,6 +47,6 @@ protected:
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
 };
-}
+} // namespace nbla
 
 #endif

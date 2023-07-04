@@ -23,7 +23,7 @@
 #include <nbla/function/inq_convolution.hpp>
 namespace nbla {
 /** @copydoc INQConvolution
-*/
+ */
 
 template <typename T, typename T1>
 class INQConvolutionCuda : public INQConvolution<T, T1> {
@@ -60,6 +60,6 @@ protected:
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
 };
-}
+} // namespace nbla
 
 #endif

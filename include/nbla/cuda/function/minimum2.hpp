@@ -21,7 +21,7 @@
 namespace nbla {
 
 /** @copydoc Minimum2
-*/
+ */
 NBLA_DECLARE_TRANSFORM_BINARY_CUDA(Minimum2);
-}
+} // namespace nbla
 #endif

@@ -44,4 +44,4 @@ void WeightStandardizationCuda<T>::backward_impl(
   WeightStandardization<T>::backward_impl(inputs, outputs, propagate_down,
                                           accum);
 }
-}
+} // namespace nbla

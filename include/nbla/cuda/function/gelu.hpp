@@ -21,7 +21,7 @@
 namespace nbla {
 
 /** @copydoc GELU
-*/
+ */
 NBLA_DECLARE_TRANSFORM_UNARY_CUDA(GELU);
-}
+} // namespace nbla
 #endif

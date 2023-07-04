@@ -33,10 +33,10 @@
 
 namespace nbla {
 
-using std::vector;
+using std::make_shared;
 using std::shared_ptr;
 using std::unique_ptr;
-using std::make_shared;
+using std::vector;
 
 // CudaArray
 CudaArray::CudaArray(const Size_t size, dtypes dtype, const Context &ctx,
@@ -327,8 +327,7 @@ CudaCachedVirtualArray::CudaCachedVirtualArray(const Size_t size, dtypes dtype,
                                                const Size_t offset)
     : CudaArray(
           size, dtype, ctx,
-          mem ? mem
-              :
+          mem ? mem :
               // select_allocator(Array::size_as_bytes(size, dtype),
               // ctx.device_id)->alloc(
               SingletonManager::get<Cuda>()->virtual_caching_allocator()->alloc(

@@ -135,5 +135,5 @@ public:
                                          const string &device_id);
 };
 #endif // CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000
-}
+} // namespace nbla
 #endif

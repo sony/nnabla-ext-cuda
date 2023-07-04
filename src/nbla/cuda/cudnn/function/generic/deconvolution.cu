@@ -211,4 +211,4 @@ void DeconvolutionCudaCudnn<T>::backward_impl(
   }
 #endif
 }
-}
+} // namespace nbla

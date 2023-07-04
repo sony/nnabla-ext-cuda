@@ -72,7 +72,7 @@ __global__ void accum_grad(const int size, const int *idx, const T *y_grad,
                            T *x_grad) {
   NBLA_CUDA_KERNEL_LOOP(i, size) { atomic_add(x_grad + idx[i], y_grad[i]); }
 }
-}
+} // namespace gather_nd_cuda
 
 template <typename T>
 void GatherNdCuda<T>::setup_impl(const Variables &inputs,
@@ -137,4 +137,4 @@ void GatherNdCuda<T>::backward_impl(const Variables &inputs,
                                  g_y, inputs[0]->size(), g_x, x_shape_ptr,
                                  x_stride_ptr, idx, idx_rows, idx_cols);
 }
-}
+} // namespace nbla

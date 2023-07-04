@@ -67,5 +67,5 @@ public:
     sum_dyx_[idx] = v.y;
   }
 };
-}
+} // namespace nbla
 #endif

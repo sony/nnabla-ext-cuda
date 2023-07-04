@@ -48,5 +48,5 @@ public:
     y_[j] = thread_data;
   }
 };
-}
+} // namespace nbla
 #endif

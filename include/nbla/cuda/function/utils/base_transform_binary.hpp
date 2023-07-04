@@ -122,5 +122,5 @@ protected:                                                                     \
   protected:                                                                   \
     virtual bool grad_depends_input_data_impl(int i, int j) const;             \
   }
-}
+} // namespace nbla
 #endif

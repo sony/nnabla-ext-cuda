@@ -57,4 +57,4 @@ void ReduceSumCuda<T>::backward_impl(const Variables &inputs,
   const Size_t size = inputs[0]->size();
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_reduce_sum_backward, size, dx, dy);
 }
-}
+} // namespace nbla

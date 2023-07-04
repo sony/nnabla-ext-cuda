@@ -39,5 +39,5 @@ public:
   virtual void fill(float value);
   static Context filter_context(const Context &ctx);
 };
-}
+} // namespace nbla
 #endif

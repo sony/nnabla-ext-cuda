@@ -30,11 +30,11 @@
 
 namespace nbla {
 
-using std::string;
-using std::vector;
-using std::shared_ptr;
-using std::unordered_map;
 using std::pair;
+using std::shared_ptr;
+using std::string;
+using std::unordered_map;
+using std::vector;
 
 /** \addtogroup NNablaCoreGrp */
 /*@{*/
@@ -83,7 +83,7 @@ public:
   /** Initall or initrank, depending multi-threads or multi-processes.
    * This function MUST be called after all parameters communicated
    * are added by `add_context_and_parameters` method.
-  */
+   */
   virtual void init();
 
   virtual void reduce(const vector<NdArrayPtr> &ndarray_list, int dst,
@@ -121,7 +121,7 @@ public:
   void sync_all_params();
 
   /** Get array classes that are allowed to be specified by Context
-  */
+   */
   vector<string> allowed_array_classes();
 
 protected:
@@ -131,5 +131,5 @@ protected:
 
   DISABLE_COPY_AND_ASSIGN(DataParallelCommunicatorNccl);
 };
-}
+} // namespace nbla
 #endif

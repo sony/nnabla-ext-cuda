@@ -185,4 +185,4 @@ void BroadcastCuda<T>::backward_impl(const Variables &inputs,
   Tc *dx = inputs[0]->cast_grad_and_get_pointer<Tc>(this->ctx_, false);
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_add_grad, inputs[0]->size(), g, dx);
 }
-}
+} // namespace nbla

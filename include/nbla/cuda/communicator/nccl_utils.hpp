@@ -28,11 +28,11 @@
 
 namespace nbla {
 
-using std::string;
-using std::vector;
-using std::shared_ptr;
-using std::unordered_map;
 using std::pair;
+using std::shared_ptr;
+using std::string;
+using std::unordered_map;
+using std::vector;
 
 #define NBLA_NCCL_CHECK(EXPRESSION)                                            \
   do {                                                                         \
@@ -51,5 +51,5 @@ template <> inline ncclDataType_t get_nccl_dtype<Half>() { return ncclHalf; }
 template <> inline ncclDataType_t get_nccl_dtype<HalfCuda>() {
   return ncclHalf;
 }
-}
+} // namespace nbla
 #endif

@@ -32,6 +32,6 @@ __global__ void kernel_add2_backward(const int num, T *d, const T *dy) {
     d[idx] = (accum ? d[idx] : (T)0) + dy[idx];
   }
 }
-}
+} // namespace nbla
 
 #endif

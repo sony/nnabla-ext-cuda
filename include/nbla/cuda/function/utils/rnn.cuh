@@ -170,9 +170,9 @@ inline void unpack(const Context &ctx, const U *packed_sequence,
   }
 }
 
-} // rnn
-} // utils
-} // function
-} // cuda
-} // nbla
+} // namespace rnn
+} // namespace utils
+} // namespace function
+} // namespace cuda
+} // namespace nbla
 #endif

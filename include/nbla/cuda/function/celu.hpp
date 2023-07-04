@@ -21,7 +21,7 @@
 #include <nbla/function/celu.hpp>
 namespace nbla {
 /** @copydoc CELU
-*/
+ */
 
 template <typename T> class CELUCuda : public CELU<T> {
 
@@ -43,6 +43,6 @@ protected:
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
 };
-}
+} // namespace nbla
 
 #endif

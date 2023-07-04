@@ -105,4 +105,4 @@ Watchdog::WatchdogLock::~WatchdogLock() {
   wd_.cv_.notify_all();
   wd_.in_lock_ = false;
 }
-}
+} // namespace nbla

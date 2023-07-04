@@ -21,7 +21,7 @@
 namespace nbla {
 
 /** @copydoc BinaryTanh
-*/
+ */
 NBLA_DECLARE_TRANSFORM_UNARY_CUDA(BinaryTanh);
-}
+} // namespace nbla
 #endif

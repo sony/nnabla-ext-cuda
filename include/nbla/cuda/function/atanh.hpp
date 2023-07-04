@@ -21,7 +21,7 @@
 namespace nbla {
 
 /** @copydoc ATanh
-*/
+ */
 NBLA_DECLARE_TRANSFORM_UNARY_CUDA(ATanh);
-}
+} // namespace nbla
 #endif

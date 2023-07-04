@@ -112,4 +112,4 @@ void SearchSortedCuda<T>::backward_impl(const Variables &inputs,
              "SearchSorted is a search and lookup function. It is not intended "
              "to be differentiable");
 }
-}
+} // namespace nbla

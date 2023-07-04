@@ -115,4 +115,4 @@ void FlipCuda<T>::backward_impl(const Variables &inputs,
                                    inputs[0]->ndim(), dx, dy, shape_info_gpu);
   }
 }
-}
+} // namespace nbla

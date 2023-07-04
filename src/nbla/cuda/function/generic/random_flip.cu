@@ -156,4 +156,4 @@ void RandomFlipCuda<T>::backward_impl(const Variables &inputs,
                                    this->base_axis_, this->size_);
   }
 }
-}
+} // namespace nbla

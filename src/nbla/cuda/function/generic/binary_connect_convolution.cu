@@ -39,4 +39,4 @@ void BinaryConnectConvolutionCuda<T>::backward_impl(
   BinaryConnectConvolution<T>::backward_impl(inputs, outputs, propagate_down,
                                              accum);
 }
-}
+} // namespace nbla

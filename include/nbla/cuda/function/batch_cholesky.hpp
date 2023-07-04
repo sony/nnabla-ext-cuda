@@ -41,5 +41,5 @@ protected:
                              const vector<bool> &accum);
   virtual void phi(Variable &x);
 };
-}
+} // namespace nbla
 #endif

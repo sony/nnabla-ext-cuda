@@ -22,8 +22,8 @@
 
 namespace nbla {
 /** @copydoc SwishCuda
-*/
+ */
 NBLA_DECLARE_TRANSFORM_UNARY_CUDA(Swish);
-}
+} // namespace nbla
 
 #endif

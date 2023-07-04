@@ -161,8 +161,8 @@ void PReLUCuda<T>::backward_impl(const Variables &inputs,
         arr_buff2.reshape(Shape_t{blocks}, true);
         buff2 =
             arr_buff2.cast(get_dtype<Tc>(), this->ctx_, true)->pointer<Tc>();
-        kernel_reduce_per_block<Tc, false><<<blocks, NBLA_CUDA_NUM_THREADS>>>(
-            insize, buff, buff2);
+        kernel_reduce_per_block<Tc, false>
+            <<<blocks, NBLA_CUDA_NUM_THREADS>>>(insize, buff, buff2);
       }
       if (accum[1]) {
         kernel_reduce_per_block<Tc, true><<<1, 1024>>>(blocks, buff, dw);
@@ -179,4 +179,4 @@ void PReLUCuda<T>::backward_impl(const Variables &inputs,
     }
   }
 }
-}
+} // namespace nbla

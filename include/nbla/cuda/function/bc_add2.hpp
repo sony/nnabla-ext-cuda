@@ -22,7 +22,7 @@
 namespace nbla {
 
 /** @copydoc BcAdd2
-*/
+ */
 NBLA_DECLARE_TRANSFORM_BINARY_CUDA_INPLACE(BcAdd2, true);
-}
+} // namespace nbla
 #endif

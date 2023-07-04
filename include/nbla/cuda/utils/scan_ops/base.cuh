@@ -53,6 +53,6 @@ public:
   virtual __device__ void intermediate_store(const IndexT idx,
                                              const StorageT &v) = 0;
 };
-}
+} // namespace nbla
 
 #endif

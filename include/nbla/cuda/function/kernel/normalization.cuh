@@ -63,4 +63,4 @@ __global__ void reduce_2d_x(Op op, IndexT outer_size, IndexT reduce_size) {
     }
   }
 }
-}
+} // namespace nbla

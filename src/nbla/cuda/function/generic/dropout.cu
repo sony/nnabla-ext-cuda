@@ -117,4 +117,4 @@ void DropoutCuda<T>::backward_impl(const Variables &inputs,
 
   this->clear_buffer();
 }
-}
+} // namespace nbla

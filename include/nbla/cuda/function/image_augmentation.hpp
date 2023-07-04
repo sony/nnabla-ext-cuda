@@ -23,7 +23,7 @@
 #include <nbla/function/image_augmentation.hpp>
 namespace nbla {
 /** @copydoc ImageAugmentation
-*/
+ */
 
 template <typename T>
 class ImageAugmentationCuda : public ImageAugmentation<T> {
@@ -66,6 +66,6 @@ protected:
   virtual void recompute_impl(const Variables &inputs,
                               const Variables &outputs);
 };
-}
+} // namespace nbla
 
 #endif

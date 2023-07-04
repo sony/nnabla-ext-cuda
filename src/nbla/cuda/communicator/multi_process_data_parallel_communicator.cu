@@ -30,9 +30,9 @@
 
 namespace nbla {
 
-using std::vector;
 using std::make_shared;
 using std::unordered_set;
+using std::vector;
 
 /** Get MPI error string from error code.
  */
@@ -44,7 +44,7 @@ std::string get_mpi_error_string(int error) {
 }
 
 /** MPI error handler which throws an exception
-*/
+ */
 #define NBLA_MPI_CHECK(condition)                                              \
   {                                                                            \
     int error = condition;                                                     \
@@ -1204,4 +1204,4 @@ void MultiProcessDataParallelCommunicatorNccl<T>::sync_all_params() {
 
 template class MultiProcessDataParallelCommunicatorNccl<float>;
 template class MultiProcessDataParallelCommunicatorNccl<Half>;
-}
+} // namespace nbla

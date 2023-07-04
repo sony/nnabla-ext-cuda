@@ -180,9 +180,8 @@ void GroupNormalizationCuda<T>::forward_channel_first(
         NBLA_CEIL_SIZE_T_DIV(size, num_threads * NBLA_CUDA_GN_N_UNROLL),
         static_cast<Size_t>(NBLA_CUDA_GN_MAX_BLOCKS));
 
-    group_norm_forward_normalization<Tc, Size_t,
-                                     NBLA_CUDA_GN_N_UNROLL><<<grid, block>>>(
-        size, spatial_size, x, a, b, y);
+    group_norm_forward_normalization<Tc, Size_t, NBLA_CUDA_GN_N_UNROLL>
+        <<<grid, block>>>(size, spatial_size, x, a, b, y);
     NBLA_CUDA_KERNEL_CHECK();
 
     // Clear internal buffers
@@ -281,10 +280,9 @@ void GroupNormalizationCuda<T>::backward_channel_first(
         static_cast<Size_t>(NBLA_CUDA_GN_MAX_BLOCKS));
     const auto block = num_threads;
 
-    group_norm_backward_gamma_invstd<Tc, Size_t,
-                                     NBLA_CUDA_GN_N_UNROLL><<<grid, block>>>(
-        size, channel_size_, this->num_groups_, gamma, var, gamma_invstd,
-        this->eps_);
+    group_norm_backward_gamma_invstd<Tc, Size_t, NBLA_CUDA_GN_N_UNROLL>
+        <<<grid, block>>>(size, channel_size_, this->num_groups_, gamma, var,
+                          gamma_invstd, this->eps_);
     NBLA_CUDA_KERNEL_CHECK();
   }
 
@@ -401,4 +399,4 @@ void GroupNormalizationCuda<T>::backward_channel_first(
   sum_dy_.data()->array()->clear();
   sum_dyx_.data()->array()->clear();
 }
-}
+} // namespace nbla

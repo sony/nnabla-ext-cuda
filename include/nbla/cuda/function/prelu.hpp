@@ -21,7 +21,7 @@
 #include <nbla/function/prelu.hpp>
 namespace nbla {
 /** @copydoc PReLU
-*/
+ */
 
 template <typename T> class PReLUCuda : public PReLU<T> {
 
@@ -43,6 +43,6 @@ protected:
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
 };
-}
+} // namespace nbla
 
 #endif

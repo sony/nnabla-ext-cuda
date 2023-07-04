@@ -64,5 +64,5 @@ protected:
   virtual void apply_inv_window_backward(Variable *x, Variable *y,
                                          const bool accum);
 };
-}
+} // namespace nbla
 #endif

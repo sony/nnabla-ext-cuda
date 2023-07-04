@@ -25,7 +25,7 @@
 
 namespace nbla {
 /** @copydoc Randn
-*/
+ */
 
 template <typename T> class RandnCuda : public Randn<T> {
 public:
@@ -64,6 +64,6 @@ protected:
   virtual void recompute_impl(const Variables &inputs,
                               const Variables &outputs);
 };
-}
+} // namespace nbla
 
 #endif

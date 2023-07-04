@@ -41,5 +41,5 @@ __device__ __inline__ int64_t atomic_min(int64_t *dst_adr, int64_t val) {
   }
   return old;
 }
-}
+} // namespace nbla
 #endif

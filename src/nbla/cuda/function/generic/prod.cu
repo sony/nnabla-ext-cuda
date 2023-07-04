@@ -71,4 +71,4 @@ void ProdCuda<T>::backward_impl_reduce_prod(const T *dy_, const T *x_,
                                    dy, x, y, dx);
   }
 }
-}
+} // namespace nbla

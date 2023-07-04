@@ -21,7 +21,6 @@
 #include <iostream>
 #include <nbla/exception.hpp>
 #include <random>
-#include <random>
 #include <stdio.h>
 #include <string>
 #include <thread>

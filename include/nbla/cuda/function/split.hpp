@@ -21,7 +21,7 @@
 #include <nbla/function/split.hpp>
 namespace nbla {
 /** @copydoc Split
-*/
+ */
 
 template <typename T> class SplitCuda : public Split<T> {
 public:
@@ -42,6 +42,6 @@ protected:
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
 };
-}
+} // namespace nbla
 
 #endif

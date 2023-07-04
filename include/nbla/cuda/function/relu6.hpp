@@ -21,7 +21,7 @@
 namespace nbla {
 
 /** @copydoc ReLU6
-*/
+ */
 NBLA_DECLARE_TRANSFORM_UNARY_CUDA(ReLU6);
-}
+} // namespace nbla
 #endif

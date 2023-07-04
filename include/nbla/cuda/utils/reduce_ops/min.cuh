@@ -74,5 +74,5 @@ public:
     return storage_type{this->x_[i], bind_[i]};
   }
 };
-}
+} // namespace nbla
 #endif

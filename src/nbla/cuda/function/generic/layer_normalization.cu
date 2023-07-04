@@ -277,4 +277,4 @@ void LayerNormalizationCuda<T>::backward_impl(
     NBLA_CUDA_KERNEL_CHECK();
   }
 }
-}
+} // namespace nbla

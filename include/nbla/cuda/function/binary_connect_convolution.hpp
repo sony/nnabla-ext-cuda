@@ -22,7 +22,7 @@
 #include <nbla/function/binary_connect_convolution.hpp>
 namespace nbla {
 /** @copydoc BinaryConnectConvolution
-*/
+ */
 
 template <typename T>
 class BinaryConnectConvolutionCuda : public BinaryConnectConvolution<T> {
@@ -51,6 +51,6 @@ protected:
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
 };
-}
+} // namespace nbla
 
 #endif

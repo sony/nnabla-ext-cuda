@@ -21,7 +21,7 @@
 namespace nbla {
 
 /** @copydoc LogicalXorScalar
-*/
+ */
 NBLA_DECLARE_TRANSFORM_UNARY_CUDA_1(LogicalXorScalar, bool);
-}
+} // namespace nbla
 #endif

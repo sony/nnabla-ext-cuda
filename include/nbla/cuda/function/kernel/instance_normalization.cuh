@@ -128,4 +128,4 @@ __global__ void instance_norm_backward_accum_affine_param(const IndexT size,
     grad_out[idx] = grad_in[idx] + (accum ? grad_out[idx] : (T)0);
   }
 }
-}
+} // namespace nbla

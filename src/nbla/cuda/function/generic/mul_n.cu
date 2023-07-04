@@ -148,4 +148,4 @@ void MulNCuda<T>::backward_impl(const Variables &inputs,
             ->template const_pointer<uint8_t>());
   }
 }
-}
+} // namespace nbla

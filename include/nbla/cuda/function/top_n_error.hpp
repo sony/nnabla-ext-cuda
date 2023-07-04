@@ -21,7 +21,7 @@
 #include <nbla/function/top_n_error.hpp>
 namespace nbla {
 /** @copydoc TopNError
-*/
+ */
 
 template <typename T, typename T1>
 class TopNErrorCuda : public TopNError<T, T1> {
@@ -43,6 +43,6 @@ protected:
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
 };
-}
+} // namespace nbla
 
 #endif

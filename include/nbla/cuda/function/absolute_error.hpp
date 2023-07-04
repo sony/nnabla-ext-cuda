@@ -25,7 +25,7 @@
 
 namespace nbla {
 /** @copydoc AbsoluteError
-*/
+ */
 NBLA_DECLARE_TRANSFORM_BINARY_CUDA(AbsoluteError);
-}
+} // namespace nbla
 #endif

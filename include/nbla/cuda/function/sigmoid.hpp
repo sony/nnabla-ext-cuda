@@ -21,7 +21,7 @@
 namespace nbla {
 
 /** @copydoc Sigmoid
-*/
+ */
 NBLA_DECLARE_TRANSFORM_UNARY_CUDA(Sigmoid);
-}
+} // namespace nbla
 #endif

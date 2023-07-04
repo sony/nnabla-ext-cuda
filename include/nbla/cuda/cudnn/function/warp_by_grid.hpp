@@ -32,7 +32,7 @@ inline bool cudnn_condition(const int size, const std::string mode,
              ? true
              : false;
 }
-}
+} // namespace warp_by_grid
 
 template <typename T> class WarpByGridCudaCudnn : public WarpByGridCuda<T> {
 public:
@@ -73,5 +73,5 @@ protected:
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
 };
-}
+} // namespace nbla
 #endif

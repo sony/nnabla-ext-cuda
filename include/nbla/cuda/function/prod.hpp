@@ -22,7 +22,7 @@
 
 namespace nbla {
 /** @copydoc Prod
-*/
+ */
 
 template <typename T> class ProdCuda : public Prod<T> {
 
@@ -44,6 +44,6 @@ protected:
                                          T *dx, int outer_size,
                                          int reduction_size, bool accum);
 };
-}
+} // namespace nbla
 
 #endif

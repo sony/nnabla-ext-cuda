@@ -24,7 +24,7 @@
 
 namespace nbla {
 /** @copydoc Sum
-*/
+ */
 
 template <typename T> class SumCuda : public Sum<T> {
   ReduceSetup reduce_setup_;
@@ -47,6 +47,6 @@ protected:
   virtual void backward_impl_reduce(const T *dy, T *dx, int outer_size,
                                     int reduction_size, bool accum);
 };
-}
+} // namespace nbla
 
 #endif

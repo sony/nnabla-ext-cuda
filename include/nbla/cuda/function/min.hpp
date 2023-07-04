@@ -22,7 +22,7 @@
 
 namespace nbla {
 /** @copydoc Min
-*/
+ */
 
 template <typename T> class MinCuda : public Min<T> {
 
@@ -46,6 +46,6 @@ protected:
   virtual void backward_impl_reduce(const T *dy, T *dx, int outer_size,
                                     int reduction_size, bool accum);
 };
-}
+} // namespace nbla
 
 #endif

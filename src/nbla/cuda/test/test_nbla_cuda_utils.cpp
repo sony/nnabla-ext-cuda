@@ -48,4 +48,4 @@ TEST(NBLA_CURAND_CHECK_Test, CheckCurandFailed) {
     std::cout << "Caught exception \"" << e.what() << "\"\n";
   }
 }
-}
+} // namespace nbla

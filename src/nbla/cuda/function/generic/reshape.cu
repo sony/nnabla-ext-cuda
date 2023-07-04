@@ -71,4 +71,4 @@ void ReshapeCuda<T>::backward_impl(const Variables &inputs,
                                    dx, dy);
   }
 }
-}
+} // namespace nbla

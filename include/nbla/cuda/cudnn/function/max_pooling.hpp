@@ -13,7 +13,7 @@
 // limitations under the License.
 
 /** MaxPooling
-*/
+ */
 #ifndef __NBLA_CUDA_CUDNN_FUNCTION_MAXPOOLING_HPP__
 #define __NBLA_CUDA_CUDNN_FUNCTION_MAXPOOLING_HPP__
 
@@ -54,5 +54,5 @@ public:
                              this->channel_last_);
   }
 };
-}
+} // namespace nbla
 #endif

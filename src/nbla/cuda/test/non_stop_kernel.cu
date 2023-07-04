@@ -31,4 +31,4 @@ __global__ void non_stop_kernel(volatile bool *flag) {
 void stop_null_stream_until_flag_set(bool *d_flag) {
   non_stop_kernel<<<1, 1>>>(d_flag);
 }
-}
+} // namespace nbla

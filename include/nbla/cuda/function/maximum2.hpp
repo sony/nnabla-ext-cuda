@@ -21,7 +21,7 @@
 namespace nbla {
 
 /** @copydoc Maximum2
-*/
+ */
 NBLA_DECLARE_TRANSFORM_BINARY_CUDA(Maximum2);
-}
+} // namespace nbla
 #endif

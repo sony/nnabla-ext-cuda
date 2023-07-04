@@ -809,4 +809,4 @@ void GRUCudaCudnn<T>::backward_impl(const Variables &inputs,
                                  w_init_accum, w_accum, b_accum,
                                  propagate_down[2], w_prop, b_prop);
 }
-}
+} // namespace nbla

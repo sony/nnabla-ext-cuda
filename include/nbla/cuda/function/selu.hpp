@@ -22,7 +22,7 @@
 #include <nbla/function/selu.hpp>
 namespace nbla {
 /** @copydoc SELU
-*/
+ */
 
 template <typename T> class SELUCuda : public SELU<T> {
 public:
@@ -44,6 +44,6 @@ protected:
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
 };
-}
+} // namespace nbla
 
 #endif

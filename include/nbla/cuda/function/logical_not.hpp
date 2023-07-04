@@ -23,8 +23,8 @@
 namespace nbla {
 
 /** @copydoc LogicalNot
-*/
+ */
 NBLA_DECLARE_TRANSFORM_UNARY_CUDA(LogicalNot);
-}
+} // namespace nbla
 
 #endif

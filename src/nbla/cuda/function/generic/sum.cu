@@ -66,4 +66,4 @@ void SumCuda<T>::backward_impl_reduce(const T *dy_, T *dx_, int outer_size,
   cuda_gemm<Tc>(this->device_, dx, true, dy, outer_size, 1, false, ones, 1,
                 reduction_size, false, 1, accum ? 1 : 0);
 }
-}
+} // namespace nbla

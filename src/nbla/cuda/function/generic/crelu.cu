@@ -86,4 +86,4 @@ void CReLUCuda<T>::backward_impl(const Variables &inputs,
                                    dy, dx);
   }
 }
-}
+} // namespace nbla

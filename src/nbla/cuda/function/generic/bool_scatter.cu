@@ -65,7 +65,7 @@ __global__ void kernel_masked_identity(int B, int D, T *g_gdata_inp,
     }
   }
 }
-}
+} // namespace bool_scatter_cuda
 
 template <typename T>
 void BoolScatterCuda<T>::backward_impl(const Variables &inputs,
@@ -105,4 +105,4 @@ void BoolScatterCuda<T>::backward_impl(const Variables &inputs,
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel, B, D, g_gdata_inp, g_gdata, mask);
   }
 }
-}
+} // namespace nbla

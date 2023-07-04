@@ -199,5 +199,5 @@ void backward_impl_transform_unary(const Variables &inputs,
   NBLA_DEFINE_TRANSFORM_UNARY_CUDA_FORWARD_BACKWARD(NAME)                      \
   NBLA_DEFINE_UNARY_GRAD_DEPENDS_OUTPUT_DATA(NAME, false)                      \
   NBLA_DEFINE_UNARY_GRAD_DEPENDS_INPUT_DATA(NAME, false)
-}
+} // namespace nbla
 #endif

@@ -314,4 +314,4 @@ void BatchNormalizationCuda<T>::backward_impl_batch(
 #endif
   }
 }
-}
+} // namespace nbla

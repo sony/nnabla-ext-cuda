@@ -23,7 +23,7 @@
 namespace nbla {
 
 /** @copydoc Abs
-*/
+ */
 NBLA_DECLARE_TRANSFORM_UNARY_CUDA(Abs);
-}
+} // namespace nbla
 #endif

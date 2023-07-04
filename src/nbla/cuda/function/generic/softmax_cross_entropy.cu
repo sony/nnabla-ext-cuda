@@ -117,4 +117,4 @@ void SoftmaxCrossEntropyCuda<T, Tl>::backward_impl(
         dx);
   }
 }
-}
+} // namespace nbla

@@ -34,7 +34,7 @@ __forceinline__ __device__ int sampling_grid(const int sampling_ratio,
   return sampling_ratio > 0 ? sampling_ratio
                             : static_cast<int>(ceil(step_size));
 }
-}
+} // namespace
 
 template <typename T, typename SIZE_T>
 __global__ void roi_align_forward_kernel_nchw(
@@ -539,4 +539,4 @@ void RoiAlignCuda<T>::backward_impl(const Variables &inputs,
     }
   }
 }
-}
+} // namespace nbla

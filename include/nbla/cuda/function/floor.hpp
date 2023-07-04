@@ -24,7 +24,7 @@
 namespace nbla {
 
 /** @copydoc Floor
-*/
+ */
 NBLA_DECLARE_TRANSFORM_UNARY_CUDA(Floor);
-}
+} // namespace nbla
 #endif

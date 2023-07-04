@@ -24,8 +24,8 @@
 
 namespace nbla {
 /** @copydoc EpsilonInsensitiveLoss
-*/
+ */
 NBLA_DECLARE_TRANSFORM_BINARY_CUDA_1(EpsilonInsensitiveLoss, float);
-}
+} // namespace nbla
 
 #endif

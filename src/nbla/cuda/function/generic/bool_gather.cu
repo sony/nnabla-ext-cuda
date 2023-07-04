@@ -71,4 +71,4 @@ void BoolGatherCuda<T>::backward_impl(const Variables &inputs,
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel, D, B, nnz, g_gdata, g_sdata, mask);
   }
 }
-}
+} // namespace nbla

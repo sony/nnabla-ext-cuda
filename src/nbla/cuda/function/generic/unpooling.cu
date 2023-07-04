@@ -330,4 +330,4 @@ void UnpoolingCuda<T>::backward_impl(const Variables &inputs,
     NBLA_ERROR(error_code::value, "Only 1D, 2D, 3D unpooling are supported.");
   }
 }
-}
+} // namespace nbla

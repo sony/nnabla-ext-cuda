@@ -21,7 +21,7 @@
 namespace nbla {
 
 /** @copydoc SoftSign
-*/
+ */
 NBLA_DECLARE_TRANSFORM_UNARY_CUDA(SoftSign);
-}
+} // namespace nbla
 #endif

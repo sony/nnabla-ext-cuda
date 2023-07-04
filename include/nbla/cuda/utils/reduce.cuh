@@ -71,6 +71,6 @@ __host__ void sum_prod(const Context &ctx, const T *x, const T *y, T *sum_xy,
     }
   }
 }
-}
+} // namespace nbla
 
 #endif

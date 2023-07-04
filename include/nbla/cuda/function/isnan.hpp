@@ -21,7 +21,7 @@
 namespace nbla {
 
 /** @copydoc IsNaN
-*/
+ */
 NBLA_DECLARE_TRANSFORM_UNARY_CUDA(IsNaN);
-}
+} // namespace nbla
 #endif

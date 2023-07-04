@@ -14,7 +14,7 @@
 // limitations under the License.
 
 /** Utilities for CUDA
-*/
+ */
 #ifndef __NBLA_CUDA_COMMON_HPP__
 #define __NBLA_CUDA_COMMON_HPP__
 
@@ -104,7 +104,7 @@ inline string cublas_status_to_string(cublasStatus_t status) {
 }
 
 /**
-*/
+ */
 #define NBLA_CUBLAS_CHECK(condition)                                           \
   {                                                                            \
     cublasStatus_t status = condition;                                         \
@@ -372,5 +372,5 @@ NBLA_CUDA_API vector<size_t> cuda_mem_get_info();
 cuda_get_current_device_properties();
 
 int cuda_get_current_device_attribute(cudaDeviceAttr attr);
-}
+} // namespace nbla
 #endif

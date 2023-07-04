@@ -109,4 +109,4 @@ void SoftmaxCuda<T>::backward_impl(const Variables &inputs,
                                    this->size2_, y, dy, dx);
   }
 }
-}
+} // namespace nbla

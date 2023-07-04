@@ -202,9 +202,9 @@ void ImageAugmentationCuda<T>::forward_impl(const Variables &inputs,
     // std::cout << "scale : min=" << min_scale_ << ", max=" << max_scale_ << ",
     // v=" << scale << ", inv=" << i_scale << "\n";
 
-    const float angle = -this->angle_ +
-                        ((this->rgen_() % 1001) * 0.001f) * this->angle_ *
-                            2; // [-angle_, angle_]
+    const float angle = -this->angle_ + ((this->rgen_() % 1001) * 0.001f) *
+                                            this->angle_ *
+                                            2; // [-angle_, angle_]
     // std::cout << "angle : " << angle << "\n";
 
     // Preparation
@@ -246,11 +246,10 @@ void ImageAugmentationCuda<T>::forward_impl(const Variables &inputs,
       // "\n";
 
       const float ch_contrast =
-          this->contrast_each_
-              ? std::exp((this->rgen_() % 1001) * 0.001f *
-                         std::log(this->contrast_) * 2.0f) /
-                    this->contrast_
-              : global_contrast;
+          this->contrast_each_ ? std::exp((this->rgen_() % 1001) * 0.001f *
+                                          std::log(this->contrast_) * 2.0f) /
+                                     this->contrast_
+                               : global_contrast;
       channel_contrast[ic] = ch_contrast;
       // std::cout << "channel_contrast : " << channel_contrast[ic] << "\n";
     }
@@ -308,4 +307,4 @@ void ImageAugmentationCuda<T>::backward_impl(const Variables &inputs,
                                              const vector<bool> &accum) {
   // Not supported
 }
-}
+} // namespace nbla

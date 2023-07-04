@@ -58,4 +58,4 @@ void SpectralNormCuda<T>::backward_impl(const Variables &inputs,
   }
   SpectralNorm<T>::backward_impl(inputs, outputs, propagate_down, accum);
 }
-}
+} // namespace nbla

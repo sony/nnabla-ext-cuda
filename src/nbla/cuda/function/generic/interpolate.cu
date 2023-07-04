@@ -22,8 +22,9 @@
 namespace nbla {
 
 inline float compute_scale(int isize, int osize, bool align_corners) {
-  return (osize <= 1) ? 0.0f : (align_corners ? float(isize - 1) / (osize - 1)
-                                              : float(isize) / osize);
+  return (osize <= 1) ? 0.0f
+                      : (align_corners ? float(isize - 1) / (osize - 1)
+                                       : float(isize) / osize);
 }
 
 inline float compute_scale_for_nn(int isize, int osize, bool align_corners,
@@ -813,4 +814,4 @@ void InterpolateCuda<T>::backward_impl(const Variables &inputs,
     }
   }
 }
-}
+} // namespace nbla

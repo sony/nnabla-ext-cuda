@@ -72,8 +72,8 @@ void PadPackedSequenceCuda<U>::forward_impl(const Variables &inputs,
                                   : _cast_data(padded_sequence);
   auto data_lengths = lengths->cast_data_and_get_pointer<int>(cpu_ctx);
 
-  using utils::rnn::compute_lengths;
   using cuda::function::utils::rnn::unpack;
+  using utils::rnn::compute_lengths;
   compute_lengths(data_batch_sizes, batch_sizes->size(), data_lengths);
   unpack<Tcu, false>(this->ctx_, data_packed_sequence, data_batch_sizes,
                      data_padded_sequence, T, B, D, N, TL);
@@ -137,4 +137,4 @@ void PadPackedSequenceCuda<U>::backward_impl(const Variables &inputs,
                      grad_packed_sequence, T, B, D, N);
   }
 }
-}
+} // namespace nbla

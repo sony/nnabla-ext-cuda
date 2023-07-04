@@ -39,7 +39,7 @@ template <typename Ta, typename Tb>
 __global__ void kernel_copy(const int num, Ta *y, const Tb *x) {
   NBLA_CUDA_KERNEL_LOOP(idx, num) { y[idx] = (Ta)x[idx]; }
 }
-}
+} // namespace
 
 template <typename T> void cuda_fill(Array *self, float value) {
   typedef typename CudaType<T>::type TT;
@@ -97,5 +97,5 @@ NBLA_DISABLE_TYPE(cuda_array_copy, cuda_fill, long double);
 NBLA_DISABLE_TYPE(cuda_array_copy, cuda_fill, bool);
 NBLA_DEFINE_FUNC_COPY_FROM(CudaArray, cuda_array_copy, cuda);
 NBLA_DEFINE_FUNC_FILL(CudaArray, cuda_fill, cuda);
-}
+} // namespace nbla
 #endif

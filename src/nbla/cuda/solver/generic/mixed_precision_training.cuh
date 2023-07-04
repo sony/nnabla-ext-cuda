@@ -87,5 +87,5 @@ void scale_grad_impl_cuda(const Context &ctx, const shared_ptr<Variable> param,
   T *grad = param->cast_grad_and_get_pointer<T>(ctx);
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_scale_grad_impl, size, scale, grad);
 }
-}
+} // namespace nbla
 #endif

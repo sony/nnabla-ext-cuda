@@ -409,18 +409,16 @@ void BatchNormalizationCudaCudnn<T>::backward_impl_batch(
 
   // Specify write only flag to prevent unnecessary memset.
   const bool param_diff_write = b_param == 0;
-  void *db = pd_beta
-                 ? inputs[this->b_idx_]
-                       ->grad()
-                       ->cast(DRV_BN_T(), this->ctx_, param_diff_write)
-                       ->pointer()
-                 : prop_down_buf;
-  void *dg = pd_gamma
-                 ? inputs[this->g_idx_]
-                       ->grad()
-                       ->cast(DRV_BN_T(), this->ctx_, param_diff_write)
-                       ->pointer()
-                 : prop_down_buf;
+  void *db = pd_beta ? inputs[this->b_idx_]
+                           ->grad()
+                           ->cast(DRV_BN_T(), this->ctx_, param_diff_write)
+                           ->pointer()
+                     : prop_down_buf;
+  void *dg = pd_gamma ? inputs[this->g_idx_]
+                            ->grad()
+                            ->cast(DRV_BN_T(), this->ctx_, param_diff_write)
+                            ->pointer()
+                      : prop_down_buf;
   double eps = std::max((double)this->eps_, CUDNN_BN_MIN_EPSILON);
 #if CUDNN_VERSION >= 7400
   if (can_use_bn_ex_) {

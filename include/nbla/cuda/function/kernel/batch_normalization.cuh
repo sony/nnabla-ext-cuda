@@ -54,9 +54,9 @@ forward_batch_running_mean_var_kernel(const int size1, const int size02,
       rm[i1] = decay_rate * rm[i1] + (1. - decay_rate) * m[i1];
     }
     if (rv) {
-      rv[i1] = decay_rate * rv[i1] +
-               (1. - decay_rate) * v[i1] * (n_procs * size02) /
-                   ((n_procs * size02) - 1);
+      rv[i1] = decay_rate * rv[i1] + (1. - decay_rate) * v[i1] *
+                                         (n_procs * size02) /
+                                         ((n_procs * size02) - 1);
     }
   }
 }
@@ -373,9 +373,10 @@ __global__ void backward_batch_data_mean_variance_kernel(
       tmp += cx;
     }
     T tmp_v = v[i1];
-    dvar[i1] = tmp_dvar * -0.5 * pow(static_cast<float>(tmp_v + eps),
-                                     static_cast<float>(-1.5)) +
-               (dv ? dv[i1] : (T)0);
+    dvar[i1] =
+        tmp_dvar * -0.5 *
+            pow(static_cast<float>(tmp_v + eps), static_cast<float>(-1.5)) +
+        (dv ? dv[i1] : (T)0);
     dmean[i1] = tmp_dmean * (-1. / sqrt(tmp_v + eps)) +
                 dvar[i1] * (-2) * tmp / (size02) + (dm ? dm[i1] : (T)0);
   }
@@ -537,4 +538,4 @@ __global__ void backward_batch_kernel_gamma_beta_postprocess(
       db[blockIdx.x] += gamma_beta.y;
   }
 }
-}
+} // namespace nbla

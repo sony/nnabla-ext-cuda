@@ -62,4 +62,4 @@ void ReLUCuda<T>::backward_impl(const Variables &inputs,
                                           size, dx, y, dy);
   }
 }
-}
+} // namespace nbla

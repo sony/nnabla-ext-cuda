@@ -71,5 +71,5 @@ public:
     sum_dyxgamma_[idx] = v.y;
   }
 };
-}
+} // namespace nbla
 #endif

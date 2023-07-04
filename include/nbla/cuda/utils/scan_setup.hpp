@@ -62,6 +62,6 @@ public:
   void operator()(const Shape_t &shape_input, const int axis,
                   const bool exclusive, const bool reverse);
 };
-}
+} // namespace nbla
 
 #endif

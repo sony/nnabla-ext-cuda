@@ -22,8 +22,8 @@
 namespace nbla {
 
 /** @copydoc PowScalar
-*/
+ */
 // In-placing is obsoleted.
 NBLA_DECLARE_TRANSFORM_UNARY_CUDA_1_INPLACE(PowScalar, double, true);
-}
+} // namespace nbla
 #endif

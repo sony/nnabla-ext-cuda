@@ -235,18 +235,16 @@ void InstanceNormalizationCudaCudnn<T>::backward_channel_first(
 
   // Specify write only flag to prevent unnecessary memset.
   const bool param_diff_write = b_param == 0;
-  void *db = pd_beta
-                 ? inputs[this->b_idx_]
-                       ->grad()
-                       ->cast(DRV_BN_T(), this->ctx_, param_diff_write)
-                       ->pointer()
-                 : prop_down_buf;
-  void *dg = pd_gamma
-                 ? inputs[this->g_idx_]
-                       ->grad()
-                       ->cast(DRV_BN_T(), this->ctx_, param_diff_write)
-                       ->pointer()
-                 : prop_down_buf;
+  void *db = pd_beta ? inputs[this->b_idx_]
+                           ->grad()
+                           ->cast(DRV_BN_T(), this->ctx_, param_diff_write)
+                           ->pointer()
+                     : prop_down_buf;
+  void *dg = pd_gamma ? inputs[this->g_idx_]
+                            ->grad()
+                            ->cast(DRV_BN_T(), this->ctx_, param_diff_write)
+                            ->pointer()
+                      : prop_down_buf;
   double eps = std::max((double)this->eps_, CUDNN_BN_MIN_EPSILON);
   NBLA_CUDNN_CHECK(cudnnBatchNormalizationBackward(
       cudnn_handle_, mode_, &a_data, &b_data, &a_param, &b_param,
@@ -257,4 +255,4 @@ void InstanceNormalizationCudaCudnn<T>::backward_channel_first(
              "Falling back into CUDA C implementation.")
 #endif
 }
-}
+} // namespace nbla

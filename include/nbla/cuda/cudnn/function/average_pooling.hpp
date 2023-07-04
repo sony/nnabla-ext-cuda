@@ -13,7 +13,7 @@
 // limitations under the License.
 
 /** AveragePooling
-*/
+ */
 #ifndef __NBLA_CUDA_CUDNN_FUNCTION_AVERAGEPOOLING_HPP__
 #define __NBLA_CUDA_CUDNN_FUNCTION_AVERAGEPOOLING_HPP__
 
@@ -42,5 +42,5 @@ public:
                                 : CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
   }
 };
-}
+} // namespace nbla
 #endif

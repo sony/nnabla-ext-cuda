@@ -160,4 +160,4 @@ shared_ptr<Memory> CudaPinnedHostMemory::divide_impl(size_t second_start) {
   return shared_ptr<Memory>(
       new CudaPinnedHostMemory(out_bytes, this->device_id(), out_ptr));
 }
-}
+} // namespace nbla

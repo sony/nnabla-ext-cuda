@@ -21,7 +21,7 @@
 namespace nbla {
 
 /** @copydoc HuberLoss
-*/
+ */
 NBLA_DECLARE_TRANSFORM_BINARY_CUDA_1(HuberLoss, float);
-}
+} // namespace nbla
 #endif

@@ -26,7 +26,7 @@ __global__ void adjust_index(const int size, T *data,
                              const int reduction_size) {
   NBLA_CUDA_KERNEL_LOOP(i, size) { data[i] -= i * reduction_size; }
 }
-}
+} // namespace
 
 template <typename T>
 void MinCuda<T>::forward_impl(const Variables &inputs,
@@ -84,4 +84,4 @@ void MinCuda<T>::backward_impl_reduce(const T *dy_, T *dx_, int outer_size,
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_reduce_index_backward, outer_size, dx,
                                  ind, dy);
 }
-}
+} // namespace nbla

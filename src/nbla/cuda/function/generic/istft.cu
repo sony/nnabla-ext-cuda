@@ -177,4 +177,4 @@ void ISTFTCuda<T>::backward_impl(const Variables &inputs,
   cuda_set_device(this->device_);
   ISTFT<T>::backward_impl(inputs, outputs, propagate_down, accum);
 }
-}
+} // namespace nbla

@@ -36,13 +36,13 @@
 
 namespace nbla {
 
-using std::string;
-using std::vector;
+using std::pair;
 using std::shared_ptr;
+using std::string;
+using std::tuple;
 using std::unordered_map;
 using std::unordered_set;
-using std::pair;
-using std::tuple;
+using std::vector;
 
 /** Forward decl. of a wrapper object of MPI_Comm
  */
@@ -115,7 +115,7 @@ public:
   /** Initall or initrank, depending multi-threads or multi-processes.
    * This function MUST be called after all parameters communicated
    * are added by `add_context_and_parameters` method.
-  */
+   */
   virtual void init();
 
   virtual void barrier();
@@ -183,7 +183,7 @@ public:
   void sync_all_params();
 
   /** Get array classes that are allowed to be specified by Context
-  */
+   */
   vector<string> allowed_array_classes();
 
 protected:
@@ -250,5 +250,5 @@ protected:
 
   DISABLE_COPY_AND_ASSIGN(MultiProcessDataParallelCommunicatorNccl);
 };
-}
+} // namespace nbla
 #endif

@@ -92,4 +92,4 @@ void ClipGradByValueCuda<T>::backward_impl(const Variables &inputs,
         max);
   }
 }
-}
+} // namespace nbla

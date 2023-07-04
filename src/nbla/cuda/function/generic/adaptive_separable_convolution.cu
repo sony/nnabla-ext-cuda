@@ -266,4 +266,4 @@ void AdaptiveSeparableConvolutionCuda<T>::backward_impl(
                                    kv_filters, o_sshape);
   }
 }
-}
+} // namespace nbla

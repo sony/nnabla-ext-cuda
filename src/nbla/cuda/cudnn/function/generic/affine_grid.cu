@@ -106,4 +106,4 @@ void AffineGridCudaCudnn<T>::backward_impl(const Variables &inputs,
     }
   }
 }
-}
+} // namespace nbla

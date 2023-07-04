@@ -22,7 +22,7 @@
 namespace nbla {
 
 /** @copydoc Add2
-*/
+ */
 template <typename T> class Add2CudaCudnn : public Add2Cuda<T> {
 public:
   typedef typename CudaType<T>::type Tw;
@@ -52,5 +52,5 @@ protected:
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
 };
-}
+} // namespace nbla
 #endif

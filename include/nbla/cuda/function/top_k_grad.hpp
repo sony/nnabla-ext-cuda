@@ -44,5 +44,5 @@ protected:
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum_gradient);
 };
-}
+} // namespace nbla
 #endif

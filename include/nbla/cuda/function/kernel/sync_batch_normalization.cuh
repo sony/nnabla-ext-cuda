@@ -1033,4 +1033,4 @@ __global__ void batch_norm_backward_elemt_channels_last_kernel(
     }
   }
 }
-}
+} // namespace nbla

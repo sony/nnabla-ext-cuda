@@ -91,4 +91,4 @@ im2col_kernel(const int col_size, const HalfCuda *img, const int height,
                    : (HalfCuda)0;
   }
 }
-}
+} // namespace nbla

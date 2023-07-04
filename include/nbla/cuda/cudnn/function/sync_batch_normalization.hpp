@@ -57,5 +57,5 @@ protected:
   virtual void forward_impl_global(const Variables &inputs,
                                    const Variables &outputs) override;
 };
-}
+} // namespace nbla
 #endif

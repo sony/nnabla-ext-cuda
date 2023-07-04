@@ -77,7 +77,7 @@ __global__ void set_gradient(const int size, const unsigned int *idx,
                              const T *g_y, T *g_x) {
   NBLA_CUDA_KERNEL_LOOP(i, size) { g_x[idx[i]] = g_y[i]; }
 }
-} // namspace top_k_data
+} // namespace top_k_data
 
 template <typename T>
 void TopKDataCuda<T>::setup_impl(const Variables &inputs,
@@ -231,4 +231,4 @@ void TopKDataCuda<T>::backward_impl(const Variables &inputs,
   }
 }
 
-} // namespace nnabla
+} // namespace nbla

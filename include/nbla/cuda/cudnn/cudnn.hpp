@@ -14,7 +14,7 @@
 // limitations under the License.
 
 /** Utilities for CUDA CUDNN
-*/
+ */
 #ifndef __NBLA_CUDA_CUDNN_HPP__
 #define __NBLA_CUDA_CUDNN_HPP__
 
@@ -39,12 +39,12 @@
 
 namespace nbla {
 
+using std::hash;
 using std::shared_ptr;
 using std::unordered_map;
-using std::hash;
 
 /** Convert template type to cudnnDataType_t
-*/
+ */
 template <class T> class cudnn_data_type;
 
 template <> class cudnn_data_type<float> {
@@ -182,7 +182,7 @@ inline void cudnn_set_tensor_descriptor(cudnnTensorDescriptor_t desc,
 
 /** cuDNN Convolution Descriptor used as a key to find previously used
  * (cached) config.
-*/
+ */
 struct NBLA_CUDA_API CudnnConvDesc {
   int ndim;              ///< Dimension of spatial samples.
   int device;            ///< Device ID.
@@ -495,5 +495,5 @@ private:
   CudnnHandleManager();
   DISABLE_COPY_AND_ASSIGN(CudnnHandleManager);
 };
-}
+} // namespace nbla
 #endif

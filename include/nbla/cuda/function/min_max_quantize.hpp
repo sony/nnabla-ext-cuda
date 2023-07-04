@@ -44,5 +44,5 @@ protected:
                                          Variable *qr_min_nudged,
                                          Variable *qr_max_nudged);
 };
-}
+} // namespace nbla
 #endif

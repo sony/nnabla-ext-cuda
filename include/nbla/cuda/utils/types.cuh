@@ -76,6 +76,6 @@ template <class T, class U> struct ScanOpSumType {
  * @tparam U the type of the size, shape, and indices of the input and output.
  */
 template <class T, class U> using ScanOpProdType = ScanOpSumType<T, U>;
-}
+} // namespace nbla
 
 #endif

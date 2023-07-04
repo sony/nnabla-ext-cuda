@@ -161,6 +161,6 @@ kernel_relu_backward<false>(const Size_t size2, const Size_t size, HalfCuda *dx,
                             const HalfCuda *y, const HalfCuda *dy) {
   kernel_relu_backward_half2<false>(size2, size, dx, y, dy);
 }
-}
+} // namespace nbla
 
 #endif

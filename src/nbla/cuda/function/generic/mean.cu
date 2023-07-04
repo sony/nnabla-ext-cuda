@@ -52,8 +52,8 @@ void MeanCuda<T>::forward_impl_reduce(const T *x_, T *y_, int outer_size,
     NdArray arr_buff({blocks});
     Tc *buff = arr_buff.cast(get_dtype<Tc>(), this->ctx_, true)->pointer<Tc>();
     while (outer_size--) {
-      kernel_reduce_per_block<Tc><<<blocks, threads>>>(reduction_size, x, buff,
-                                                       scale);
+      kernel_reduce_per_block<Tc>
+          <<<blocks, threads>>>(reduction_size, x, buff, scale);
       NBLA_CUDA_KERNEL_CHECK();
       kernel_reduce_per_block<Tc><<<1, 1024>>>(blocks, buff, y);
       NBLA_CUDA_KERNEL_CHECK();
@@ -102,4 +102,4 @@ void MeanCuda<T>::backward_impl_reduce(const T *dy_, T *dx_, int outer_size,
   cuda_gemm<Tc>(this->device_, dx, true, dy, outer_size, 1, false, ones, 1,
                 reduction_size, false, 1. / reduction_size, accum ? 1 : 0);
 }
-}
+} // namespace nbla

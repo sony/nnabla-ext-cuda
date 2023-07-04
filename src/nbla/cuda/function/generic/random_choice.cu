@@ -270,4 +270,4 @@ void RandomChoiceCuda<T>::backward_impl(const Variables &inputs,
                                    w_size, u_size, idxbuf, y_grad, w_grad);
   }
 }
-}
+} // namespace nbla

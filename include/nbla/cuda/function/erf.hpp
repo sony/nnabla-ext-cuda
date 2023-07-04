@@ -21,7 +21,7 @@
 namespace nbla {
 
 /** @copydoc Erf
-*/
+ */
 NBLA_DECLARE_TRANSFORM_UNARY_CUDA(Erf);
-}
+} // namespace nbla
 #endif

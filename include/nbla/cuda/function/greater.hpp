@@ -23,8 +23,8 @@
 namespace nbla {
 
 /** @copydoc Greater
-*/
+ */
 NBLA_DECLARE_TRANSFORM_BINARY_CUDA(Greater);
-}
+} // namespace nbla
 
 #endif

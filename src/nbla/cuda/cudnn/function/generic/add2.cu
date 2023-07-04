@@ -116,4 +116,4 @@ void Add2CudaCudnn<T>::backward_impl(const Variables &inputs,
 #endif
   }
 }
-}
+} // namespace nbla

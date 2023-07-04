@@ -21,7 +21,7 @@
 namespace nbla {
 
 /** @copydoc LeakyReLU
-*/
+ */
 template <typename T> class LeakyReLUCuda : public LeakyReLU<T> {
 
 public:
@@ -40,5 +40,5 @@ protected:
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
 };
-}
+} // namespace nbla
 #endif
