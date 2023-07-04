@@ -34,12 +34,8 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN eval ${APT_OPTS} \
     && apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub \
     && apt-get update \
-    && apt-get install -y software-properties-common \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && add-apt-repository ppa:deadsnakes/ppa \
-    && apt-get update \
     && apt-get install -y --no-install-recommends \
+       software-properties-common \
        bzip2 \
        ca-certificates \
        curl \
