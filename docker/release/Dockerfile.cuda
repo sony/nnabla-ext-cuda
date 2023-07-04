@@ -18,7 +18,7 @@ ARG CU1_VER
 ARG CU2_VER
 ARG CUDNN_VER
 
-FROM nvidia/cuda:${CU1_VER}.${CU2_VER}-cudnn${CUDNN_VER}-runtime-ubuntu18.04
+FROM nvidia/cuda:${CU1_VER}.${CU2_VER}-cudnn${CUDNN_VER}-runtime-ubuntu20.04
 
 ARG CU1_VER
 ARG CU2_VER
@@ -32,7 +32,7 @@ ARG APT_OPTS
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN eval ${APT_OPTS} \
-    && apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub \
+    && apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub \
     && apt-get update \
     && apt-get install -y software-properties-common \
     && apt-get clean \
