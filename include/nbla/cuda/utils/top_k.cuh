@@ -144,7 +144,8 @@ __global__ void bucket_reduce(const unsigned int K, Bucket<T> *bucket_data) {
   randomly distributed `data` values the final pivot will yield
   exactly `K` elements with high probability. Convergence to exatly
   `K` elements may not be reached for highly repetitive `data` values,
-  e.g. quantized or clipped values.
+  e.g. quantized or clipped values. For such cases, the data to be sorted
+  might be larger than K.
 
   The `bucket_data` pointer must reference a memory block that can
   accomodate 32 elements (32 * sizeof(Bucket<T>) bytes). Upon return,
@@ -222,7 +223,8 @@ template <typename T, bool Largest> struct ValIdxBitonic {
 template <typename T, bool UseAbsVal, bool Largest>
 __global__ void init_val_idx_list(const T *data, const int size,
                                   Bucket<T> *bucket, ValIdx<T> *sort_data,
-                                  const unsigned int sort_data_size) {
+                                  const unsigned int sort_data_size,
+                                  unsigned int *k) {
   TopKGreater<Largest> greater;
 
   const auto thread = blockIdx.x * blockDim.x + threadIdx.x;
@@ -234,29 +236,34 @@ __global__ void init_val_idx_list(const T *data, const int size,
       sort_data[atomicInc(&bucket->count, sort_data_size)] = {value, index};
     }
   }
+  *k = bucket->count;
 }
+
+const unsigned int MAX_K = 1024;
 
 template <typename T, bool UseAbsVal, bool Largest>
 __host__ void find_top_k_index(const T *data, const int size, Bucket<T> *bucket,
-                               ValIdx<T> *sort_data, const unsigned int K) {
+                               ValIdx<T> *sort_data, unsigned int *valid_k) {
   auto threads = NBLA_CUDA_NUM_THREADS;
   auto blocks = NBLA_CUDA_GET_BLOCKS(size);
 
   init_val_idx_list<T, UseAbsVal, Largest>
-      <<<blocks, threads>>>(data, size, bucket, sort_data, 1024);
+      <<<blocks, threads>>>(data, size, bucket, sort_data, MAX_K, valid_k);
   NBLA_CUDA_KERNEL_CHECK();
 
   // The memory layout of ValIdxBitonic is exactly the same as ValIdx.
   auto actual_sort_data =
       reinterpret_cast<ValIdxBitonic<T, Largest> *>(sort_data);
-  bitonic_sort<<<1, 1024>>>(actual_sort_data, K);
+  bitonic_sort<<<1, MAX_K>>>(actual_sort_data, valid_k);
+
   NBLA_CUDA_KERNEL_CHECK();
 }
 
 template <typename T> struct Buffer {
-  MinMax<T> minmax[32];
-  Bucket<T> bucket[32];
-  ValIdx<T> sorted[1024];
+  MinMax<T> minmax[CUDA_WARP_SIZE];
+  Bucket<T> bucket[CUDA_WARP_SIZE];
+  ValIdx<T> sorted[MAX_K];
+  unsigned int valid_k; // Used for transferring the valid K number
 };
 
 template <typename T, bool UseAbsVal, bool Largest>
@@ -266,7 +273,7 @@ __host__ void top_k_body(const T *data, const unsigned int size,
   find_top_k_value<T, UseAbsVal, Largest>(data, size, &buffer->minmax[0],
                                           &buffer->bucket[0], K);
   find_top_k_index<T, UseAbsVal, Largest>(data, size, &buffer->bucket[0],
-                                          &buffer->sorted[0], K);
+                                          &buffer->sorted[0], &buffer->valid_k);
 }
 
 template <typename T, bool UseAbsVal = false>

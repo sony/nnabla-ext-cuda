@@ -152,6 +152,56 @@ __global__ void bitonic_sort(T *data, const int size) {
   }
   data[tid] = shared[tid];
 }
+
+/**
+ * Sometime the size is defined in cuda memeory
+*/
+template <typename T, unsigned N = 1024>
+__global__ void bitonic_sort(T *data, unsigned int *p_size) {
+  using namespace bitonic_sort_details;
+  static_assert(N == 32 || N == 64 || N == 128 || N == 256 || N == 512 ||
+                    N == 1024,
+                "bitonic_sort supports only N=2^n with n=5..10");
+
+  static __shared__ T shared[1024];
+  const unsigned int tid = threadIdx.x;
+  unsigned int size = *p_size;
+
+  shared[tid] = tid < size & 1023 ? data[tid] : T::extrema();
+  warp_bitonic_sort<T>(shared, tid);
+
+  if (N > 32) {
+    bitonic_merge<T, 1>(shared, tid, bfe(tid, 6));
+    bitonic_merge<T>(shared, tid, bfe(tid, 6));
+  }
+  if (N > 64) {
+    bitonic_merge<T, 2>(shared, tid, bfe(tid, 7));
+    bitonic_merge<T, 1>(shared, tid, bfe(tid, 7));
+    bitonic_merge<T>(shared, tid, bfe(tid, 7));
+  }
+  if (N > 128) {
+    bitonic_merge<T, 3>(shared, tid, bfe(tid, 8));
+    bitonic_merge<T, 2>(shared, tid, bfe(tid, 8));
+    bitonic_merge<T, 1>(shared, tid, bfe(tid, 8));
+    bitonic_merge<T>(shared, tid, bfe(tid, 8));
+  }
+  if (N > 256) {
+    bitonic_merge<T, 4>(shared, tid, bfe(tid, 9));
+    bitonic_merge<T, 3>(shared, tid, bfe(tid, 9));
+    bitonic_merge<T, 2>(shared, tid, bfe(tid, 9));
+    bitonic_merge<T, 1>(shared, tid, bfe(tid, 9));
+    bitonic_merge<T>(shared, tid, bfe(tid, 9));
+  }
+  if (N > 512) {
+    bitonic_merge<T, 5>(shared, tid, bfe(tid, 10));
+    bitonic_merge<T, 4>(shared, tid, bfe(tid, 10));
+    bitonic_merge<T, 3>(shared, tid, bfe(tid, 10));
+    bitonic_merge<T, 2>(shared, tid, bfe(tid, 10));
+    bitonic_merge<T, 1>(shared, tid, bfe(tid, 10));
+    bitonic_merge<T>(shared, tid, bfe(tid, 10));
+  }
+  data[tid] = shared[tid];
+}
 } // namespace nbla
 
 #endif
