@@ -25,7 +25,6 @@ ARG CURL_OPTS
 ARG WGET_OPTS
 ARG APT_OPTS
 ARG MPI
-ARG MPI_OPTS
 
 RUN eval ${APT_OPTS} \
     && apt-get update \
@@ -50,8 +49,8 @@ RUN if [ $(echo "${MPI}" | awk -F. '{ printf("%d%02d%02d\n", $1,$2,$3); }') -gt 
         && curl ${CURL_OPTS} -LO http://www.mellanox.com/downloads/hpc/hpc-x/v2.12/hpcx-v2.12-gcc-MLNX_OFED_LINUX-5-ubuntu18.04-cuda11-gdrcopy2-nccl2.12-x86_64.tbz \
         && tar -xvf hpcx*.tbz \
         && rm -f hpcx*.tbz \
-        && mv hpcx* hpcx-v2.12 \
-        && cd hpcx-v2.12 \
+        && mv hpcx* hpcx \
+        && cd hpcx \
         && ./utils/hpcx_rebuild.sh --ompi-extra-config --enable-openib-rdmacm-ibaddr \
         && cp -ap ./hpcx-rebuild/lib/libmca_common_verbs.* ./ompi/lib/ \
         && cp -ap ./hpcx-rebuild/lib/openmpi/mca_btl_openib.* ./ompi/lib/openmpi/ \
@@ -68,7 +67,7 @@ RUN if [ $(echo "${MPI}" | awk -F. '{ printf("%d%02d%02d\n", $1,$2,$3); }') -gt 
         && tar Cxvf /tmp/openmpi /tmp/openmpi/openmpi-${MPI}.tar.bz2 \
         && cd tmp/openmpi/openmpi-${MPI} \
         && ./configure \
-            --prefix=/opt/mpi --enable-orterun-prefix-by-default --with-sge ${MPI_OPTS} \
+            --prefix=/opt/mpi --enable-orterun-prefix-by-default --with-sge \
             CC=gcc \
             CXX=g++ \
             F77=gfortran \

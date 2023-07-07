@@ -13,9 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if [ -d "/opt/mpi/hpcx-v2.12" ]; then
+if [ -d "/opt/mpi/hpcx" ]; then
     curdir=$PWD
-    cd /opt/mpi/hpcx-v2.12
+    cd /opt/mpi/hpcx
     . ./hpcx-init.sh
     hpcx_load
     cd $curdir

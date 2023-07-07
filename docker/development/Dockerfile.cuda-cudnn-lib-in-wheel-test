@@ -60,8 +60,8 @@ RUN if [ $(echo "${MPIVER}" | awk -F. '{ printf("%d%02d%02d\n", $1,$2,$3); }') -
         && curl ${CURL_OPTS} -LO https://content.mellanox.com/hpc/hpc-x/v2.12/hpcx-v2.12-gcc-MLNX_OFED_LINUX-5-redhat7-cuda11-gdrcopy2-nccl2.12-x86_64.tbz \
         && tar -xvf hpcx*.tbz \
         && rm -f hpcx*.tbz \
-        && mv hpcx* hpcx-v2.12 \
-        && cd hpcx-v2.12 \
+        && mv hpcx* hpcx \
+        && cd hpcx \
         && ./utils/hpcx_rebuild.sh --ompi-extra-config --enable-openib-rdmacm-ibaddr \
         && cp -ap ./hpcx-rebuild/lib/libmca_common_verbs.* ./ompi/lib/ \
         && cp -ap ./hpcx-rebuild/lib/openmpi/mca_btl_openib.* ./ompi/lib/openmpi/ \
@@ -171,7 +171,7 @@ RUN mkdir /tmp/deps \
 ############################################################ Copy OpenMPI
 COPY --from=openmpi /root/openmpi-* /root
 RUN if [ -e /root/openmpi-*.rpm ]; then rpm -i /root/openmpi-*.rpm; fi
-RUN if [ -d /root/hpcx-v2.12 ]; then mkdir /opt/mpi; mv /root/hpcx-v2.12 /opt/mpi/hpcx-v2.12; fi
+RUN if [ -d /root/hpcx ]; then mkdir /opt/mpi; mv /root/hpcx /opt/mpi/hpcx; fi
 
 ############################################################ build python from source
 ARG PYTHON_VER
