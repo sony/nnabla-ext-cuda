@@ -29,6 +29,7 @@ DOCKER_RUN_OPTS += -e CMAKE_OPTS=$(CMAKE_OPTS)
 DOCKER_RUN_OPTS += -e INCLUDE_CUDA_CUDNN_LIB_IN_WHL=$(INCLUDE_CUDA_CUDNN_LIB_IN_WHL)
 
 include $(NNABLA_EXT_CUDA_DIRECTORY)/build-tools/make/options.mk
+include $(NNABLA_EXT_CUDA_DIRECTORY)/build-tools/make/hpcx_url.mk
 ifndef NNABLA_BUILD_INCLUDED
   include $(NNABLA_DIRECTORY)/build-tools/make/build.mk
 endif
@@ -58,9 +59,9 @@ docker_image_build_cuda:
 		--build-arg CUDA_VERSION_MAJOR=$(CUDA_VERSION_MAJOR) \
 		--build-arg CUDA_VERSION_MINOR=$(CUDA_VERSION_MINOR) \
 		--build-arg CUDNN_VERSION=$(CUDNN_VERSION) \
-		--build-arg ARCH_SUFFIX=$(ARCH_SUFFIX) \
 		--build-arg PYTHON_VERSION_MAJOR=$(PYTHON_VERSION_MAJOR) \
 		--build-arg PYTHON_VERSION_MINOR=$(PYTHON_VERSION_MINOR) \
+		--build-arg HPCX_URL_centos=$(HPCX_URL_centos_$(OMPI_VERSION)) \
 		-t $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA) \
 		-f docker/development/Dockerfile.build-mpi$(ARCH_SUFFIX) \
 		.
@@ -72,11 +73,11 @@ docker_image_build_cuda_test:
 		--build-arg CUDA_VERSION_MAJOR=$(CUDA_VERSION_MAJOR) \
 		--build-arg CUDA_VERSION_MINOR=$(CUDA_VERSION_MINOR) \
 		--build-arg CUDNN_VERSION=$(CUDNN_VERSION) \
-		--build-arg ARCH_SUFFIX=$(ARCH_SUFFIX) \
 		--build-arg MPIVER=$(OMPI_VERSION) \
 		--build-arg PYTHON_VERSION_MAJOR=$(PYTHON_VERSION_MAJOR) \
 		--build-arg PYTHON_VERSION_MINOR=$(PYTHON_VERSION_MINOR) \
 		--build-arg BUILD_WITH_CUTENSOR=False \
+		--build-arg HPCX_URL_centos=$(HPCX_URL_centos_$(OMPI_VERSION)) \
 		-t $(DOCKER_IMAGE_TEST_NNABLA_EXT_CUDA) \
 		-f docker/development/Dockerfile.build-mpi$(ARCH_SUFFIX) \
 		.
@@ -175,6 +176,7 @@ docker_image_cuda_cudnn_lib_in_wheel:
 		--build-arg CUDA_VERSION_MAJOR=$(CUDA_VERSION_MAJOR) \
 		--build-arg PYTHON_VER=3.$(PYTHON_VERSION_MINOR) \
 		--build-arg MPIVER=$(OMPI_VERSION) \
+		--build-arg HPCX_URL_centos=$(HPCX_URL_centos_$(OMPI_VERSION)) \
 		-f $(DOCKERFILE_PATH_LIB_IN_WHEEL) . -t nnabla-ext-cuda-lib-in-whl-py3$(PYTHON_VERSION_MINOR)-cuda$(CUDA_SUFFIX)-mpi$(OMPI_VERSION):$(DOCKER_IMAGE_ID_NNABLA_EXT_CUDA_LIB_IN_WHEEL)
 
 ########################################################################################################################

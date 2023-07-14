@@ -27,6 +27,7 @@ ARG CURL_OPTS
 ARG WGET_OPTS
 ARG YUM_OPTS
 ARG MPIVER=3.1.6
+ARG HPCX_URL_centos
 
 ENV LC_ALL C
 ENV LANG C
@@ -57,7 +58,7 @@ COPY docker/release/hpcx-ompi-etc.patch /tmp/hpcx-ompi-etc.patch
 RUN if [ $(echo "${MPIVER}" | awk -F. '{ printf("%d%02d%02d\n", $1,$2,$3); }') -gt 30106 ]; then \
         mkdir /root/openmpi-hpcx \
         && cd /root/openmpi-hpcx \
-        && curl ${CURL_OPTS} -LO https://content.mellanox.com/hpc/hpc-x/v2.12/hpcx-v2.12-gcc-MLNX_OFED_LINUX-5-redhat7-cuda11-gdrcopy2-nccl2.12-x86_64.tbz \
+        && curl ${CURL_OPTS} -LO ${HPCX_URL_centos} \
         && tar -xvf hpcx*.tbz \
         && rm -f hpcx*.tbz \
         && mv hpcx* hpcx \
