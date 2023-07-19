@@ -42,9 +42,8 @@ NVIDIA_DOCKER_WRAPPER=$(NNABLA_EXT_CUDA_DIRECTORY)/build-tools/scripts/nvidia-do
 CU_MINOR = $(shell echo $(word 1, $(subst ., ,${CUDA_VERSION_MINOR})))
 CUDA_SUFFIX = $(CUDA_VERSION_MAJOR)$(CU_MINOR)-cudnn$(CUDNN_VERSION)
 
-EXT_CUDA_REQUIREMENT_PATH ?= $(NNABLA_EXT_CUDA_DIRECTORY)/python/requirements.txt
 DOCKERFILE_PATH_NNABLA_EXT_CUDA=$(NNABLA_EXT_CUDA_DIRECTORY)/docker/development/Dockerfile.build-mpi$(ARCH_SUFFIX)
-DOCKER_IMAGE_ID_BUILD_NNABLA_EXT_CUDA = $(shell $(NNABLA_DIRECTORY)/build-tools/make/image_id_checksum.sh $(DOCKERFILE_PATH_NNABLA_EXT_CUDA) $(EXT_CUDA_REQUIREMENT_PATH))
+DOCKER_IMAGE_ID_BUILD_NNABLA_EXT_CUDA = $(shell md5sum $(DOCKERFILE_PATH_NNABLA_EXT_CUDA) |cut -d \  -f 1)
 DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA ?= $(DOCKER_IMAGE_NAME_BASE)-build-cuda$(CUDA_SUFFIX)-mpi$(ARCH_SUFFIX):$(DOCKER_IMAGE_ID_BUILD_NNABLA_EXT_CUDA)
 DOCKER_IMAGE_TEST_NNABLA_EXT_CUDA ?= $(DOCKER_IMAGE_NAME_BASE)-test-cuda$(CUDA_SUFFIX)$(OMPI_SUFFIX)$(ARCH_SUFFIX):$(DOCKER_IMAGE_ID_BUILD_NNABLA_EXT_CUDA)
 DOCKER_IMAGE_NNABLA_EXT_CUDA ?= $(DOCKER_IMAGE_NAME_BASE)-nnabla-ext-cuda$(CUDA_SUFFIX)$(OMPI_SUFFIX)$(ARCH_SUFFIX)
@@ -54,39 +53,33 @@ DOCKER_IMAGE_NNABLA_EXT_CUDA ?= $(DOCKER_IMAGE_NAME_BASE)-nnabla-ext-cuda$(CUDA_
 
 .PHONY: docker_image_build_cuda
 docker_image_build_cuda:
-	docker pull nvidia/cuda$(ARCH_SUFFIX):$(CUDA_VERSION_MAJOR).$(CUDA_VERSION_MINOR)-cudnn$(CUDNN_VERSION)-devel-centos7
-	if ! docker image inspect $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA) >/dev/null 2>/dev/null; then \
-		echo "Building: $(DOCKERFILE_PATH_NNABLA_EXT_CUDA)"; \
-		(cd $(NNABLA_EXT_CUDA_DIRECTORY) && docker build $(DOCKER_BUILD_ARGS)\
-			--build-arg CUDA_VERSION_MAJOR=$(CUDA_VERSION_MAJOR) \
-			--build-arg CUDA_VERSION_MINOR=$(CUDA_VERSION_MINOR) \
-			--build-arg CUDNN_VERSION=$(CUDNN_VERSION) \
-			--build-arg ARCH_SUFFIX=$(ARCH_SUFFIX) \
-			--build-arg PYTHON_VERSION_MAJOR=$(PYTHON_VERSION_MAJOR) \
-			--build-arg PYTHON_VERSION_MINOR=$(PYTHON_VERSION_MINOR) \
-			-t $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA) \
-			-f docker/development/Dockerfile.build-mpi$(ARCH_SUFFIX) \
-			.); \
-	fi
+	echo "Building: $(DOCKERFILE_PATH_NNABLA_EXT_CUDA)"
+	cd $(NNABLA_EXT_CUDA_DIRECTORY) && docker build $(DOCKER_BUILD_ARGS)\
+		--build-arg CUDA_VERSION_MAJOR=$(CUDA_VERSION_MAJOR) \
+		--build-arg CUDA_VERSION_MINOR=$(CUDA_VERSION_MINOR) \
+		--build-arg CUDNN_VERSION=$(CUDNN_VERSION) \
+		--build-arg ARCH_SUFFIX=$(ARCH_SUFFIX) \
+		--build-arg PYTHON_VERSION_MAJOR=$(PYTHON_VERSION_MAJOR) \
+		--build-arg PYTHON_VERSION_MINOR=$(PYTHON_VERSION_MINOR) \
+		-t $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA) \
+		-f docker/development/Dockerfile.build-mpi$(ARCH_SUFFIX) \
+		.
 
 .PHONY: docker_image_build_cuda_test
 docker_image_build_cuda_test:
-	docker pull nvidia/cuda$(ARCH_SUFFIX):$(CUDA_VERSION_MAJOR).$(CUDA_VERSION_MINOR)-cudnn$(CUDNN_VERSION)-devel-centos7
-	if ! docker image inspect $(DOCKER_IMAGE_TEST_NNABLA_EXT_CUDA) >/dev/null 2>/dev/null; then \
-		echo "Building: $(DOCKERFILE_PATH_NNABLA_EXT_CUDA)"; \
-		(cd $(NNABLA_EXT_CUDA_DIRECTORY) && docker build $(DOCKER_BUILD_ARGS)\
-			--build-arg CUDA_VERSION_MAJOR=$(CUDA_VERSION_MAJOR) \
-			--build-arg CUDA_VERSION_MINOR=$(CUDA_VERSION_MINOR) \
-			--build-arg CUDNN_VERSION=$(CUDNN_VERSION) \
-			--build-arg ARCH_SUFFIX=$(ARCH_SUFFIX) \
-			--build-arg MPIVER=$(OMPI_VERSION) \
-			--build-arg PYTHON_VERSION_MAJOR=$(PYTHON_VERSION_MAJOR) \
-			--build-arg PYTHON_VERSION_MINOR=$(PYTHON_VERSION_MINOR) \
-			--build-arg BUILD_WITH_CUTENSOR=False \
-			-t $(DOCKER_IMAGE_TEST_NNABLA_EXT_CUDA) \
-			-f docker/development/Dockerfile.build-mpi$(ARCH_SUFFIX) \
-			.); \
-	fi
+	echo "Building: $(DOCKERFILE_PATH_NNABLA_EXT_CUDA)"
+	cd $(NNABLA_EXT_CUDA_DIRECTORY) && docker build $(DOCKER_BUILD_ARGS)\
+		--build-arg CUDA_VERSION_MAJOR=$(CUDA_VERSION_MAJOR) \
+		--build-arg CUDA_VERSION_MINOR=$(CUDA_VERSION_MINOR) \
+		--build-arg CUDNN_VERSION=$(CUDNN_VERSION) \
+		--build-arg ARCH_SUFFIX=$(ARCH_SUFFIX) \
+		--build-arg MPIVER=$(OMPI_VERSION) \
+		--build-arg PYTHON_VERSION_MAJOR=$(PYTHON_VERSION_MAJOR) \
+		--build-arg PYTHON_VERSION_MINOR=$(PYTHON_VERSION_MINOR) \
+		--build-arg BUILD_WITH_CUTENSOR=False \
+		-t $(DOCKER_IMAGE_TEST_NNABLA_EXT_CUDA) \
+		-f docker/development/Dockerfile.build-mpi$(ARCH_SUFFIX) \
+		.
 
 ##############################################################################
 # Auto Format
