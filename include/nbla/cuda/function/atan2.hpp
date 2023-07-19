@@ -21,7 +21,7 @@
 namespace nbla {
 
 /** @copydoc ATan2
-*/
+ */
 NBLA_DECLARE_TRANSFORM_BINARY_CUDA(ATan2);
-}
+} // namespace nbla
 #endif

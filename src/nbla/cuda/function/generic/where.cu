@@ -96,4 +96,4 @@ void WhereCuda<T>::backward_impl(const Variables &inputs,
                                  condition, g_x_true, g_x_false, g_y, accum[1],
                                  accum[2]);
 }
-}
+} // namespace nbla

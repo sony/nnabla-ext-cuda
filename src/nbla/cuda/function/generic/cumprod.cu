@@ -60,4 +60,4 @@ void CumProdCuda<T>::backward_impl(const Variables &inputs,
 
   device_cumprod_backward(this->ctx_, g_y, x, g_x, scan_setup_, accum[0]);
 }
-}
+} // namespace nbla

@@ -100,4 +100,4 @@ void ConcatenateCuda<T>::backward_impl(const Variables &inputs,
     inner_offset += inner_size;
   }
 }
-}
+} // namespace nbla

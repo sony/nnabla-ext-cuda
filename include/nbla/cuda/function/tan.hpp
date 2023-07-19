@@ -21,7 +21,7 @@
 namespace nbla {
 
 /** @copydoc Tan
-*/
+ */
 NBLA_DECLARE_TRANSFORM_UNARY_CUDA(Tan);
-}
+} // namespace nbla
 #endif

@@ -21,7 +21,7 @@
 namespace nbla {
 
 /** @copydoc MaximumScalar
-*/
+ */
 NBLA_DECLARE_TRANSFORM_UNARY_CUDA_1(MaximumScalar, double);
-}
+} // namespace nbla
 #endif

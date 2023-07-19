@@ -26,9 +26,7 @@
 
 #include <cassert>
 #include <fstream>
-#include <fstream>
 #include <iomanip>
-#include <iostream>
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <sstream>

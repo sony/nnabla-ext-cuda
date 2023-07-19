@@ -44,4 +44,4 @@ void BinaryErrorCuda<T>::backward_impl(const Variables &inputs,
                                        const vector<bool> &accum) {
   // not supported
 }
-}
+} // namespace nbla

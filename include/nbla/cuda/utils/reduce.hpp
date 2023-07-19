@@ -71,5 +71,5 @@ public:
    */
   void operator()(const Shape_t &shape_input, const Shape_t &reduce_axes);
 };
-}
+} // namespace nbla
 #endif

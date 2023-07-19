@@ -191,4 +191,4 @@ void MeanSubtractionCuda<T>::backward_impl_global(
         (kernel_mean_subtraction_backward_global<Tc, false>), size, dx, dy);
   }
 }
-}
+} // namespace nbla

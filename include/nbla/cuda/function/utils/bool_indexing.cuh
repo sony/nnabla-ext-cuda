@@ -62,7 +62,7 @@ __global__ void kernel_bool_scatter(int D, int B, int nnz, T *gdata,
     }
   }
 }
-}
-}
+} // namespace bool_indexing_cuda
+} // namespace nbla
 
 #endif

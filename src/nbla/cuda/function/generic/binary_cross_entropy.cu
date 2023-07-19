@@ -108,4 +108,4 @@ void BinaryCrossEntropyCuda<T>::backward_impl(
     }
   }
 }
-}
+} // namespace nbla

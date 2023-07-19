@@ -31,4 +31,4 @@ void cusolverdn_potrf_batched(cusolverDnHandle_t handle, int n, float **x,
   NBLA_CUSOLVER_CHECK(cusolverDnSpotrfBatched(handle, CUBLAS_FILL_MODE_UPPER, n,
                                               x, lda, info, batchSize));
 }
-}
+} // namespace nbla

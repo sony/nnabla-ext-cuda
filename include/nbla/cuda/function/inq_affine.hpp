@@ -23,7 +23,7 @@
 #include <nbla/function/inq_affine.hpp>
 namespace nbla {
 /** @copydoc INQAffine
-*/
+ */
 
 template <typename T, typename T1>
 class INQAffineCuda : public INQAffine<T, T1> {
@@ -57,6 +57,6 @@ protected:
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
 };
-}
+} // namespace nbla
 
 #endif

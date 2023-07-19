@@ -370,4 +370,4 @@ void cublas_getri_batched<float>(cublasHandle_t handle, int n, const float **x,
   NBLA_CUBLAS_CHECK(
       cublasSgetriBatched(handle, n, x, lda, pivot, y, ldc, info, batchSize));
 }
-}
+} // namespace nbla

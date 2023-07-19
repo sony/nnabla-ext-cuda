@@ -148,7 +148,7 @@ OMPI_BUILD_FLAGS_V4="--enable-orterun-prefix-by-default --with-sge "
 
 .PHONY: docker_image_nnabla_ext_cuda
 docker_image_nnabla_ext_cuda:
-	BASE=nvidia/cuda$(ARCH_SUFFIX):$(CUDA_VERSION_MAJOR).$(CUDA_VERSION_MINOR)-cudnn$(CUDNN_VERSION)-runtime-ubuntu18.04 \
+	BASE=nvidia/cuda$(ARCH_SUFFIX):$(CUDA_VERSION_MAJOR).$(CUDA_VERSION_MINOR)-cudnn$(CUDNN_VERSION)-runtime-ubuntu20.04 \
 	&& docker pull $${BASE} \
 	&& cd $(NNABLA_EXT_CUDA_DIRECTORY) \
 	&& if [ "$(OMPI_SUFFIX)" = "" ]; then \

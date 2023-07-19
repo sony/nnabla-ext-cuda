@@ -205,4 +205,4 @@ void device_cumprod_backward(const Context &ctx, const Tcu *g_y, const Tcu *x,
                                                          setup, accum);
   }
 }
-}
+} // namespace nbla

@@ -60,4 +60,4 @@ void ReduceMeanCuda<T>::backward_impl(const Variables &inputs,
   const Size_t size = inputs[0]->size();
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_reduce_mean_backward, size, dx, dy);
 }
-}
+} // namespace nbla

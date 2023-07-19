@@ -36,5 +36,5 @@ void weight_decay_cuda(const Context &ctx, const shared_ptr<Variable> param,
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_weight_decay, size, grad, data,
                                  decay_rate);
 }
-}
+} // namespace nbla
 #endif

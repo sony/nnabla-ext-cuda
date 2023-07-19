@@ -32,9 +32,9 @@
 // (e.g. float instead of half) to keep the numerical precision.
 
 namespace nbla {
-using std::tuple;
-using std::string;
 using std::is_same;
+using std::string;
+using std::tuple;
 
 // ----------------------------------------------------------------------------
 // Base class to store a binary operation
@@ -634,8 +634,8 @@ void forward_impl(const Context &ctx, BinaryOp op, const Variables &inputs,
           NBLA_CEIL_SIZE_T_DIV(x_size, blockDim.x),
           NBLA_CEIL_SIZE_T_DIV(y_size, blockDim.y),
           NBLA_CEIL_SIZE_T_DIV(z_size, blockDim.z));
-      kernel_forward_dim3<T, PRECISE_T, BinaryOp><<<gridDim, blockDim>>>(
-          op, x0, x1, y, params);
+      kernel_forward_dim3<T, PRECISE_T, BinaryOp>
+          <<<gridDim, blockDim>>>(op, x0, x1, y, params);
       NBLA_CUDA_KERNEL_CHECK();
     } else {
       // Not broadcast
@@ -678,9 +678,8 @@ void backward_impl_dim3_without_reduction(
         NBLA_CEIL_SIZE_T_DIV(y_size, blockDim.y),
         NBLA_CEIL_SIZE_T_DIV(z_size, blockDim.z));
 
-    kernel_backward_dim3_broadcasted_other_term<T, PRECISE_T, BinaryOp,
-                                                term><<<gridDim, blockDim>>>(
-        op, dy, x0, x1, y, dx, inplace, params);
+    kernel_backward_dim3_broadcasted_other_term<T, PRECISE_T, BinaryOp, term>
+        <<<gridDim, blockDim>>>(op, dy, x0, x1, y, dx, inplace, params);
     NBLA_CUDA_KERNEL_CHECK();
   } else {
     // The other term is not broadcasted too. The computation becomes easier.
@@ -709,16 +708,15 @@ void backward_impl_dim3_reduce_x(BinaryOp op, const T *dy, const T *x0,
   if (z_reduced_buff) {
     // z axis is reduced previously.
     dim3 gridDim = get_strided_grids_dim3<T, BinaryOp>(1, y_size, 1);
-    kernel_backward_dim3_reduce_x_after_z<
-        T, PRECISE_T, blockSize><<<gridDim, blockDim, smem_size>>>(
-        z_reduced_buff, dx, x_size, y_size);
+    kernel_backward_dim3_reduce_x_after_z<T, PRECISE_T, blockSize>
+        <<<gridDim, blockDim, smem_size>>>(z_reduced_buff, dx, x_size, y_size);
     NBLA_CUDA_KERNEL_CHECK();
   } else {
     // x axis is only reduced.
     dim3 gridDim = get_strided_grids_dim3<T, BinaryOp>(1, y_size, z_size);
-    kernel_backward_dim3_reduce_x<T, PRECISE_T, BinaryOp, term,
-                                  blockSize><<<gridDim, blockDim, smem_size>>>(
-        op, dy, x0, x1, y, dx, inplace, params, x_size, y_size, z_size);
+    kernel_backward_dim3_reduce_x<T, PRECISE_T, BinaryOp, term, blockSize>
+        <<<gridDim, blockDim, smem_size>>>(op, dy, x0, x1, y, dx, inplace,
+                                           params, x_size, y_size, z_size);
     NBLA_CUDA_KERNEL_CHECK();
   }
 }
@@ -739,10 +737,10 @@ void backward_impl_dim3_reduce_y(const Context &ctx, BinaryOp op, const T *dy,
       NBLA_CEIL_SIZE_T_DIV(z_size, blockDim.z));
 
   if (is_same<T, PRECISE_T>::value) {
-    kernel_backward_dim3_reduce_y<
-        T, T, BinaryOp, term,
-        TRANSFORM_BINARY_CUDA_GRID_DIV><<<gridDim, blockDim>>>(
-        op, dy, x0, x1, y, dx, inplace, params, x_size, y_size, z_size);
+    kernel_backward_dim3_reduce_y<T, T, BinaryOp, term,
+                                  TRANSFORM_BINARY_CUDA_GRID_DIV>
+        <<<gridDim, blockDim>>>(op, dy, x0, x1, y, dx, inplace, params, x_size,
+                                y_size, z_size);
     NBLA_CUDA_KERNEL_CHECK();
   } else {
     const auto dx_shape = Shape_t{z_size, 1, x_size};
@@ -751,10 +749,10 @@ void backward_impl_dim3_reduce_y(const Context &ctx, BinaryOp op, const T *dy,
     tmp_arr.zero();
     auto tmp = tmp_arr.cast(get_dtype<PRECISE_T>(), ctx)->pointer<PRECISE_T>();
 
-    kernel_backward_dim3_reduce_y<
-        T, PRECISE_T, BinaryOp, term,
-        TRANSFORM_BINARY_CUDA_GRID_DIV><<<gridDim, blockDim>>>(
-        op, dy, x0, x1, y, tmp, inplace, params, x_size, y_size, z_size);
+    kernel_backward_dim3_reduce_y<T, PRECISE_T, BinaryOp, term,
+                                  TRANSFORM_BINARY_CUDA_GRID_DIV>
+        <<<gridDim, blockDim>>>(op, dy, x0, x1, y, tmp, inplace, params, x_size,
+                                y_size, z_size);
     NBLA_CUDA_KERNEL_CHECK();
 
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((kernel_precise_add<T, PRECISE_T, true>),
@@ -776,10 +774,10 @@ PRECISE_T *backward_impl_dim3_reduce_z(
       NBLA_CEIL_SIZE_T_DIV(y_size, blockDim.y),
       NBLA_CEIL_SIZE_T_DIV(z_size, TRANSFORM_BINARY_CUDA_GRID_DIV));
   if (is_same<T, PRECISE_T>::value && !reduce_x) {
-    kernel_backward_dim3_reduce_z<
-        T, T, BinaryOp, term,
-        TRANSFORM_BINARY_CUDA_GRID_DIV><<<gridDim, blockDim>>>(
-        op, dy, x0, x1, y, dx, inplace, params, x_size, y_size, z_size);
+    kernel_backward_dim3_reduce_z<T, T, BinaryOp, term,
+                                  TRANSFORM_BINARY_CUDA_GRID_DIV>
+        <<<gridDim, blockDim>>>(op, dy, x0, x1, y, dx, inplace, params, x_size,
+                                y_size, z_size);
     NBLA_CUDA_KERNEL_CHECK();
     return nullptr;
   } else {
@@ -789,10 +787,10 @@ PRECISE_T *backward_impl_dim3_reduce_z(
     tmp_arr.zero();
     auto tmp = tmp_arr.cast(get_dtype<PRECISE_T>(), ctx)->pointer<PRECISE_T>();
 
-    kernel_backward_dim3_reduce_z<
-        T, PRECISE_T, BinaryOp, term,
-        TRANSFORM_BINARY_CUDA_GRID_DIV><<<gridDim, blockDim>>>(
-        op, dy, x0, x1, y, tmp, inplace, params, x_size, y_size, z_size);
+    kernel_backward_dim3_reduce_z<T, PRECISE_T, BinaryOp, term,
+                                  TRANSFORM_BINARY_CUDA_GRID_DIV>
+        <<<gridDim, blockDim>>>(op, dy, x0, x1, y, tmp, inplace, params, x_size,
+                                y_size, z_size);
     NBLA_CUDA_KERNEL_CHECK();
 
     if (reduce_x) {
@@ -994,7 +992,7 @@ void backward_impl(const Context &ctx, BinaryOp op, const Variables &inputs,
     }
   }
 }
-} // end of namespace "nbla::transform_binary_cuda"
+} // namespace transform_binary_cuda
 
 // ----------------------------------------------------------------------------
 // Common
@@ -1104,5 +1102,5 @@ void backward_impl(const Context &ctx, BinaryOp op, const Variables &inputs,
   NBLA_DEFINE_TRANSFORM_BINARY_CUDA_FORWARD_BACKWARD(NAME)                     \
   NBLA_DEFINE_BINARY_GRAD_DEPENDS_OUTPUT_DATA(NAME, DEP_Y_0, DEP_Y_1)          \
   NBLA_DEFINE_BINARY_GRAD_DEPENDS_INPUT_DATA(NAME, DEP_X_0, DEP_X_1)
-}
+} // namespace nbla
 #endif

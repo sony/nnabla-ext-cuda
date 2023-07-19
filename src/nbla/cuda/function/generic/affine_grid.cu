@@ -218,4 +218,4 @@ void AffineGridCuda<T>::backward_impl(const Variables &inputs,
     grid_s->reshape(Shape_t{B, D, H, W, 3}, false);
   }
 }
-}
+} // namespace nbla

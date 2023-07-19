@@ -75,7 +75,7 @@ template <typename T> __global__ void apply_phi(int batchSize, int n, T *y) {
     }
   }
 }
-}
+} // namespace batch_cholesky
 
 template <typename T>
 void BatchCholeskyCuda<T>::setup_impl(const Variables &inputs,
@@ -135,4 +135,4 @@ template <typename T> void BatchCholeskyCuda<T>::phi(Variable &x) {
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE((batch_cholesky::apply_phi<Tcu>),
                                  this->batch_size_, this->dim_, y);
 }
-}
+} // namespace nbla

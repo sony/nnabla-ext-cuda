@@ -34,7 +34,7 @@ __forceinline__ __device__ T lerp(const T a, const T b, const float t) {
 template <typename T> __forceinline__ __device__ int sign(const T x) {
   return (x > T(0)) - (x < T(0));
 }
-}
+} // namespace
 
 template <typename T>
 __global__ void kernel_lion_update(const int num, const T *g, T *m, T *w,
@@ -73,4 +73,4 @@ NBLA_DEF_CHECK_INF_GRAD(LionCuda, check_inf_grad_cuda);
 NBLA_DEF_CHECK_NAN_GRAD(LionCuda, check_nan_grad_cuda);
 NBLA_DEF_CHECK_INF_OR_NAN_GRAD(LionCuda, check_inf_or_nan_grad_cuda);
 NBLA_DEF_SCALE_GRAD(LionCuda, scale_grad_impl_cuda);
-}
+} // namespace nbla

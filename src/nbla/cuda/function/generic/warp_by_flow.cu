@@ -130,7 +130,7 @@ __global__ void grad2flow(const int size, const int4 oshape, const int4 stride,
     out[index] = accum ? out[index] + value : value;
   }
 }
-}
+} // namespace warp_by_flow
 
 template <typename T>
 void WarpByFlowCuda<T>::setup_impl(const Variables &inputs,
@@ -201,4 +201,4 @@ void WarpByFlowCuda<T>::backward_impl(const Variables &inputs,
                                    data, flow, grad, g_flow);
   }
 }
-}
+} // namespace nbla

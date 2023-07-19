@@ -22,7 +22,7 @@
 #include <nbla/function/matrix_diag.hpp>
 namespace nbla {
 /** @copydoc MatrixDiag
-*/
+ */
 
 template <typename T> class MatrixDiagCuda : public MatrixDiag<T> {
 
@@ -43,6 +43,6 @@ protected:
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
 };
-}
+} // namespace nbla
 
 #endif

@@ -21,7 +21,7 @@
 namespace nbla {
 
 /** @copydoc ACos
-*/
+ */
 NBLA_DECLARE_TRANSFORM_UNARY_CUDA(ACos);
-}
+} // namespace nbla
 #endif

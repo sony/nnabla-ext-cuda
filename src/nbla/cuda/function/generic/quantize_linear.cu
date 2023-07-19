@@ -72,4 +72,4 @@ void QuantizeLinearCuda<T>::round(Variable *inp, std::string round_mode) {
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_round_half_to_even, size, x);
   }
 }
-}
+} // namespace nbla

@@ -157,5 +157,5 @@ __inline__ __device__ float3 blockReduceSumOfFloat3(float3 val) {
 template <> __inline__ __device__ float2 blockReduceSum(float2 val) {
   return blockReduceSumOfFloat2(val);
 }
-}
+} // namespace nbla
 #endif

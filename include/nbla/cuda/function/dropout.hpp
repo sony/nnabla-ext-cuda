@@ -67,5 +67,5 @@ protected:
 
   void dropout(const Variables &inputs, const Variables &outputs);
 };
-}
+} // namespace nbla
 #endif

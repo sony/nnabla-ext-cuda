@@ -91,4 +91,4 @@ void ReLUCudaCudnn<T>::backward_impl(const Variables &inputs,
 #endif
 }
 #endif
-}
+} // namespace nbla

@@ -21,7 +21,7 @@
 namespace nbla {
 
 /** @copydoc RSubScalar
-*/
+ */
 NBLA_DECLARE_TRANSFORM_UNARY_CUDA_1(RSubScalar, double);
-}
+} // namespace nbla
 #endif

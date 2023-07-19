@@ -93,4 +93,4 @@ void CELUCuda<T>::backward_impl(const Variables &inputs,
                                    this->alpha_, x, dy, dx);
   }
 }
-}
+} // namespace nbla

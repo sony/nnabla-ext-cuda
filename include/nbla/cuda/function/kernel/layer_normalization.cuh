@@ -118,4 +118,4 @@ __global__ void layer_norm_backward_dbeta_dgamma(
     }
   }
 }
-}
+} // namespace nbla

@@ -21,7 +21,7 @@
 namespace nbla {
 
 /** @copydoc HardTanh
-*/
+ */
 NBLA_DECLARE_TRANSFORM_UNARY_CUDA(HardTanh);
-}
+} // namespace nbla
 #endif

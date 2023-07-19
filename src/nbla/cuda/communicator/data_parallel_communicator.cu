@@ -349,4 +349,4 @@ template <typename T> void DataParallelCommunicatorNccl<T>::sync_all_params() {
 
 template class DataParallelCommunicatorNccl<float>;
 template class DataParallelCommunicatorNccl<Half>;
-}
+} // namespace nbla

@@ -157,4 +157,4 @@ void CategoricalCrossEntropyCuda<T, Tl>::backward_impl(
                                  this->size2_, p, dy, l, dx);
 #endif
 }
-}
+} // namespace nbla

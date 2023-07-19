@@ -42,4 +42,4 @@ void LayerNormalizationCudaCudnn<T>::backward_impl(
   NBLA_ERROR(error_code::not_implemented,
              "Falling back into CUDA C implementation.")
 }
-}
+} // namespace nbla

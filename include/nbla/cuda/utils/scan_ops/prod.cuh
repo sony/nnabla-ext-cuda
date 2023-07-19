@@ -68,6 +68,6 @@ void device_cumprod(const Context &ctx, const T *const x, T *const y,
     scan(ctx, op, scan_setup, accum);
   }
 }
-}
+} // namespace nbla
 
 #endif

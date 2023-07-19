@@ -79,4 +79,4 @@ void BatchInvCuda<T>::forward_impl(const Variables &inputs,
   cuda_getri_batched<Tc>(this->device_, dim_, (const Tc **)dev_list_lu,
                          pivot_ptr, dev_list_y, info_ptr, batch_size_);
 }
-}
+} // namespace nbla

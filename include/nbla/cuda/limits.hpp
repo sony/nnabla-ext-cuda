@@ -38,5 +38,5 @@ public:
   //__device__ float quiet_NaN();
   //__device__ float signaling_NaN();
 };
-}
+} // namespace nbla
 #endif /* NBLA_CUDA_NUMERIC_LIMITS_HPP_ */

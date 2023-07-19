@@ -51,4 +51,4 @@ public:
     int previous_timeout_;
   };
 };
-}
+} // namespace nbla

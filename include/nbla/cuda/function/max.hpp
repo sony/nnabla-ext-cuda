@@ -24,7 +24,7 @@
 
 namespace nbla {
 /** @copydoc Max
-*/
+ */
 
 template <typename T> class MaxCuda : public Max<T> {
   ReduceSetup reduce_setup_;
@@ -48,6 +48,6 @@ protected:
   virtual void backward_impl_reduce(const T *dy, T *dx, int outer_size,
                                     int reduction_size, bool accum);
 };
-}
+} // namespace nbla
 
 #endif

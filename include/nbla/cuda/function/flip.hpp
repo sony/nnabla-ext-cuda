@@ -21,7 +21,7 @@
 #include <nbla/function/flip.hpp>
 namespace nbla {
 /** @copydoc Flip
-*/
+ */
 
 template <typename T> class FlipCuda : public Flip<T> {
 
@@ -44,6 +44,6 @@ protected:
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
 };
-}
+} // namespace nbla
 
 #endif

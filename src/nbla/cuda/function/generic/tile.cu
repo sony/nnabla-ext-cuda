@@ -74,4 +74,4 @@ void TileCuda<T>::backward_impl(const Variables &inputs,
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_tile_backward, this->idxmap_.size(),
                                  idx, g_y, g_x);
 }
-}
+} // namespace nbla

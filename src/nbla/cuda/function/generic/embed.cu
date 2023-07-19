@@ -88,4 +88,4 @@ void EmbedCuda<T, T1>::backward_impl(const Variables &inputs,
                                  inputs[0]->size() * stride0, dw, x, dy,
                                  stride0);
 }
-}
+} // namespace nbla

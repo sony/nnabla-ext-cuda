@@ -95,7 +95,7 @@ __global__ void backward(const int x_size, T *x_grad, const int y_size,
     }
   }
 }
-}
+} // namespace scatter_nd_cuda
 
 template <typename T>
 void ScatterNdCuda<T>::setup_impl(const Variables &inputs,
@@ -195,4 +195,4 @@ void ScatterNdCuda<T>::backward_impl(const Variables &inputs,
     }
   }
 }
-}
+} // namespace nbla

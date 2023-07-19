@@ -87,4 +87,4 @@ void batch_det_forward(const Context &ctx, int device, const Variables &inputs,
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel, batch_size, dim, y, lu_ptr,
                                  pivot->pointer<int>());
 }
-}
+} // namespace nbla

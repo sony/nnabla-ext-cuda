@@ -75,4 +75,4 @@ void MatrixDiagCuda<T>::backward_impl(const Variables &inputs,
                                    size, this->last_ndim_, dx, dy);
   }
 }
-}
+} // namespace nbla

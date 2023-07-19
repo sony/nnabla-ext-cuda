@@ -606,5 +606,5 @@ void fast_reduce(const Context &ctx, Op op, const ReduceSetup &setup) {
     fast_reduce_y(ctx, op, setup);
   }
 }
-}
+} // namespace nbla
 #endif

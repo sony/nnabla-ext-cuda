@@ -51,4 +51,4 @@ __global__ void transpose_2value_kernel(const int num, const int ndim,
     out2[o] = in2[i];
   }
 }
-}
+} // namespace nbla

@@ -25,4 +25,4 @@ void DequantizeLinearCuda<T>::setup_impl(const Variables &inputs,
   DequantizeLinear<T>::setup_impl(inputs, outputs);
   cuda_set_device(this->device_);
 }
-}
+} // namespace nbla

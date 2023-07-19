@@ -171,4 +171,4 @@ void backward_batch_gamma_beta_parallel_reduction(
         dg ? dg + i : nullptr, db ? db + i : nullptr);
   }
 }
-}
+} // namespace nbla

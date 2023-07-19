@@ -26,7 +26,7 @@ namespace affine_grid {
 inline bool cudnn_condition(int size, bool align_corners) {
   return (size == 2 && align_corners == true) ? true : false;
 }
-}
+} // namespace affine_grid
 
 template <typename T> class AffineGridCudaCudnn : public AffineGridCuda<T> {
 public:
@@ -63,5 +63,5 @@ protected:
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
 };
-}
+} // namespace nbla
 #endif

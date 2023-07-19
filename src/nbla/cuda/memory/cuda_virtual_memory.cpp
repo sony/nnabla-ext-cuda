@@ -285,6 +285,6 @@ DeviceMemoryState CudaVirtualMemory::get_device_memory_state() {
 }
 
 void CudaVirtualMemory::lock_device_memory() { event_.record(0); }
-}
+} // namespace nbla
 
 #endif // CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000

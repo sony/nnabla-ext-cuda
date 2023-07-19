@@ -60,4 +60,4 @@ void CumSumCuda<T>::backward_impl(const Variables &inputs,
   // d_x = cumsum_reverse(d_y)
   device_cumsum(this->ctx_, g_y, g_x, scan_setup_backward_, accum[0]);
 }
-}
+} // namespace nbla

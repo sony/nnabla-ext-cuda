@@ -484,6 +484,6 @@ void scan(const Context &ctx, Op &op, const ScanSetup &setup,
     scan_dispatch_exclusive<Op, false>(ctx, op, setup);
   }
 }
-}
+} // namespace nbla
 
 #endif

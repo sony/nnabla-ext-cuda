@@ -117,4 +117,4 @@ TEST(WatchDogTest, TestFinishedOutTime) {
   }
 }
 #endif
-}
+} // namespace nbla

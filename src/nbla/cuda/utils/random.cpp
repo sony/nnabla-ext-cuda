@@ -57,4 +57,4 @@ void curand_generate_randn<float>(curandGenerator_t gen, float mu, float sigma,
   }
   NBLA_CURAND_CHECK(curandGenerateNormal(gen, dev_ptr, size, mu, sigma));
 }
-}
+} // namespace nbla

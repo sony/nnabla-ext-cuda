@@ -217,7 +217,7 @@ __global__ void kernel_max_pooling_3d_backward(
     }
   }
 }
-}
+} // namespace max_pooling_backward
 
 template <typename T>
 void MaxPoolingBackwardCuda<T>::setup_impl(const Variables &inputs,
@@ -354,17 +354,16 @@ void MaxPoolingBackwardCuda<T>::backward_impl(
         this->channel_last_ ? make_int2(Wx * Cx, Cx) : make_int2(Hx * Wx, Wx);
     // pool
     auto backward =
-        accum[0]
-            ? this->channel_last_
-                  ? max_pooling_backward::kernel_max_pooling_2d_backward<
-                        Tcu, true, true>
-                  : max_pooling_backward::kernel_max_pooling_2d_backward<
-                        Tcu, true, false>
-            : this->channel_last_
-                  ? max_pooling_backward::kernel_max_pooling_2d_backward<
-                        Tcu, false, true>
-                  : max_pooling_backward::kernel_max_pooling_2d_backward<
-                        Tcu, false, false>;
+        accum[0] ? this->channel_last_
+                       ? max_pooling_backward::kernel_max_pooling_2d_backward<
+                             Tcu, true, true>
+                       : max_pooling_backward::kernel_max_pooling_2d_backward<
+                             Tcu, true, false>
+                 : this->channel_last_
+                       ? max_pooling_backward::kernel_max_pooling_2d_backward<
+                             Tcu, false, true>
+                       : max_pooling_backward::kernel_max_pooling_2d_backward<
+                             Tcu, false, false>;
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(
         backward, y_isize, x_isize, gdy, gdx, x, Cx, Hx, Wx, xstride, By, Cy,
         Hy, Wy, ystride, wkernel, hkernel, wstride, hstride, wpad, hpad);
@@ -396,21 +395,20 @@ void MaxPoolingBackwardCuda<T>::backward_impl(
                                        : make_int3(Dx * Hx * Wx, Hx * Wx, Wx);
     // pool
     auto backward =
-        accum[0]
-            ? this->channel_last_
-                  ? max_pooling_backward::kernel_max_pooling_3d_backward<
-                        Tcu, true, true>
-                  : max_pooling_backward::kernel_max_pooling_3d_backward<
-                        Tcu, true, false>
-            : this->channel_last_
-                  ? max_pooling_backward::kernel_max_pooling_3d_backward<
-                        Tcu, false, true>
-                  : max_pooling_backward::kernel_max_pooling_3d_backward<
-                        Tcu, false, false>;
+        accum[0] ? this->channel_last_
+                       ? max_pooling_backward::kernel_max_pooling_3d_backward<
+                             Tcu, true, true>
+                       : max_pooling_backward::kernel_max_pooling_3d_backward<
+                             Tcu, true, false>
+                 : this->channel_last_
+                       ? max_pooling_backward::kernel_max_pooling_3d_backward<
+                             Tcu, false, true>
+                       : max_pooling_backward::kernel_max_pooling_3d_backward<
+                             Tcu, false, false>;
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(backward, y_isize, x_isize, gdy, gdx, x, Cx,
                                    Dx, Hx, Wx, xstride, By, Cy, Dy, Hy, Wy,
                                    ystride, wkernel, hkernel, dkernel, wstride,
                                    hstride, dstride, wpad, hpad, dpad);
   }
 }
-}
+} // namespace nbla

@@ -36,5 +36,5 @@ protected:
   int device_;
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
 };
-}
+} // namespace nbla
 #endif

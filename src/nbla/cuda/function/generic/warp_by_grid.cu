@@ -212,9 +212,10 @@ backward_data_3d(T *igrad, const T ograd, const T p, const T q, const T r,
   Forward implementations
  */
 
-template <typename T, warp_by_grid::PADDING_MODE padding_mode =
-                          warp_by_grid::PADDING_MODE::zero,
-          bool align_corners = false, bool channel_last = false>
+template <
+    typename T,
+    warp_by_grid::PADDING_MODE padding_mode = warp_by_grid::PADDING_MODE::zero,
+    bool align_corners = false, bool channel_last = false>
 __global__ void kernel_warp_linear_forward_2d(
     const int oisize, const int iisize, const int gisize, T *output,
     const T *input, const T *grid, const int3 ishape, const int2 istride,
@@ -279,9 +280,10 @@ __global__ void kernel_warp_linear_forward_2d(
   }
 }
 
-template <typename T, warp_by_grid::PADDING_MODE padding_mode =
-                          warp_by_grid::PADDING_MODE::zero,
-          bool align_corners = false, bool channel_last = false>
+template <
+    typename T,
+    warp_by_grid::PADDING_MODE padding_mode = warp_by_grid::PADDING_MODE::zero,
+    bool align_corners = false, bool channel_last = false>
 __global__ void kernel_warp_linear_forward_3d(
     const int oisize, const int iisize, const int gisize, T *output,
     const T *input, const T *grid, const int4 ishape, const int3 istride,
@@ -365,9 +367,10 @@ __global__ void kernel_warp_linear_forward_3d(
   }
 }
 
-template <typename T, warp_by_grid::PADDING_MODE padding_mode =
-                          warp_by_grid::PADDING_MODE::zero,
-          bool align_corners = false, bool channel_last = false>
+template <
+    typename T,
+    warp_by_grid::PADDING_MODE padding_mode = warp_by_grid::PADDING_MODE::zero,
+    bool align_corners = false, bool channel_last = false>
 __global__ void kernel_warp_nearest_forward_2d(
     const int oisize, const int iisize, const int gisize, T *output,
     const T *input, const T *grid, const int3 ishape, const int2 istride,
@@ -417,9 +420,10 @@ __global__ void kernel_warp_nearest_forward_2d(
   }
 }
 
-template <typename T, warp_by_grid::PADDING_MODE padding_mode =
-                          warp_by_grid::PADDING_MODE::zero,
-          bool align_corners = false, bool channel_last = false>
+template <
+    typename T,
+    warp_by_grid::PADDING_MODE padding_mode = warp_by_grid::PADDING_MODE::zero,
+    bool align_corners = false, bool channel_last = false>
 __global__ void kernel_warp_nearest_forward_3d(
     const int oisize, const int iisize, const int gisize, T *output,
     const T *input, const T *grid, const int4 ishape, const int3 istride,
@@ -479,9 +483,10 @@ __global__ void kernel_warp_nearest_forward_3d(
   Backward implementations wrt data.
  */
 
-template <typename T, warp_by_grid::PADDING_MODE padding_mode =
-                          warp_by_grid::PADDING_MODE::zero,
-          bool align_corners = false, bool channel_last = false>
+template <
+    typename T,
+    warp_by_grid::PADDING_MODE padding_mode = warp_by_grid::PADDING_MODE::zero,
+    bool align_corners = false, bool channel_last = false>
 __global__ void kernel_warp_linear_backward_data_2d(
     const int oisize, const int iisize, const int gisize, T *igrad,
     const T *ograd, const T *grid, const int3 ishape, const int2 istride,
@@ -543,9 +548,10 @@ __global__ void kernel_warp_linear_backward_data_2d(
   }
 }
 
-template <typename T, warp_by_grid::PADDING_MODE padding_mode =
-                          warp_by_grid::PADDING_MODE::zero,
-          bool align_corners = false, bool channel_last = false>
+template <
+    typename T,
+    warp_by_grid::PADDING_MODE padding_mode = warp_by_grid::PADDING_MODE::zero,
+    bool align_corners = false, bool channel_last = false>
 __global__ void kernel_warp_nearest_backward_data_2d(
     const int oisize, const int iisize, const int gisize, T *igrad,
     const T *ograd, const T *grid, const int3 ishape, const int2 istride,
@@ -595,9 +601,10 @@ __global__ void kernel_warp_nearest_backward_data_2d(
   }
 }
 
-template <typename T, warp_by_grid::PADDING_MODE padding_mode =
-                          warp_by_grid::PADDING_MODE::zero,
-          bool align_corners = false, bool channel_last = false>
+template <
+    typename T,
+    warp_by_grid::PADDING_MODE padding_mode = warp_by_grid::PADDING_MODE::zero,
+    bool align_corners = false, bool channel_last = false>
 __global__ void kernel_warp_linear_backward_data_3d(
     const int oisize, const int iisize, const int gisize, T *igrad,
     const T *ograd, const T *grid, const int4 ishape, const int3 istride,
@@ -695,9 +702,10 @@ __global__ void kernel_warp_linear_backward_data_3d(
   }
 }
 
-template <typename T, warp_by_grid::PADDING_MODE padding_mode =
-                          warp_by_grid::PADDING_MODE::zero,
-          bool align_corners = false, bool channel_last = false>
+template <
+    typename T,
+    warp_by_grid::PADDING_MODE padding_mode = warp_by_grid::PADDING_MODE::zero,
+    bool align_corners = false, bool channel_last = false>
 __global__ void kernel_warp_nearest_backward_data_3d(
     const int oisize, const int iisize, const int gisize, T *igrad,
     const T *ograd, const T *grid, const int4 ishape, const int3 istride,
@@ -758,9 +766,10 @@ __global__ void kernel_warp_nearest_backward_data_3d(
   Backward implementations wrt grid.
  */
 
-template <typename T, warp_by_grid::PADDING_MODE padding_mode =
-                          warp_by_grid::PADDING_MODE::zero,
-          bool align_corners = false, bool channel_last = false>
+template <
+    typename T,
+    warp_by_grid::PADDING_MODE padding_mode = warp_by_grid::PADDING_MODE::zero,
+    bool align_corners = false, bool channel_last = false>
 __global__ void kernel_warp_linear_backward_grid_2d(
     const int oisize, const int iisize, const int gisize, T *ggrad,
     const T *ograd, const T *input, const T *grid, const int3 ishape,
@@ -845,9 +854,10 @@ __global__ void kernel_warp_linear_backward_grid_2d(
   }
 }
 
-template <typename T, warp_by_grid::PADDING_MODE padding_mode =
-                          warp_by_grid::PADDING_MODE::zero,
-          bool align_corners = false, bool channel_last = false>
+template <
+    typename T,
+    warp_by_grid::PADDING_MODE padding_mode = warp_by_grid::PADDING_MODE::zero,
+    bool align_corners = false, bool channel_last = false>
 __global__ void kernel_warp_linear_backward_grid_3d(
     const int oisize, const int iisize, const int gisize, T *ggrad,
     const T *ograd, const T *input, const T *grid, const int4 ishape,
@@ -2068,4 +2078,4 @@ void WarpByGridCuda<T>::backward_impl(const Variables &inputs,
     }
   }
 }
-}
+} // namespace nbla

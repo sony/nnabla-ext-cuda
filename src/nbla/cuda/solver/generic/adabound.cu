@@ -68,4 +68,4 @@ NBLA_DEF_CHECK_INF_GRAD(AdaBoundCuda, check_inf_grad_cuda);
 NBLA_DEF_CHECK_NAN_GRAD(AdaBoundCuda, check_nan_grad_cuda);
 NBLA_DEF_CHECK_INF_OR_NAN_GRAD(AdaBoundCuda, check_inf_or_nan_grad_cuda);
 NBLA_DEF_SCALE_GRAD(AdaBoundCuda, scale_grad_impl_cuda);
-}
+} // namespace nbla

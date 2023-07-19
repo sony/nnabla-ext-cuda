@@ -128,5 +128,5 @@ void reduce_2d_parallel_reduction(const int outer_size,
     NBLA_CUDA_KERNEL_CHECK();
   }
 }
-}
+} // namespace nbla
 #endif

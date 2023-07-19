@@ -58,4 +58,4 @@ int cuda_get_current_device_attribute(cudaDeviceAttr attr) {
 
   return value;
 }
-}
+} // namespace nbla

@@ -424,8 +424,9 @@ void InstanceNormalizationCuda<T>::backward_channel_first_dbeta_dgamma(
   NBLA_CUDA_KERNEL_CHECK();
 
   // Support function for affine param broadcast backward.
-  auto affine_param_broadcast_backward = [&](
-      Tc *d_affine_param_ptr, const int param_idx, const bool accum) {
+  auto affine_param_broadcast_backward = [&](Tc *d_affine_param_ptr,
+                                             const int param_idx,
+                                             const bool accum) {
     // Reduction as broadcast backward
     ReduceSetup reduce_setup;
     reduce_setup(Shape_t{outer_size_ / channel_size_, channel_size_},
@@ -462,4 +463,4 @@ void InstanceNormalizationCuda<T>::backward_channel_first_dbeta_dgamma(
     affine_param_broadcast_backward(dgamma, gamma_idx, accum_gamma);
   }
 }
-}
+} // namespace nbla

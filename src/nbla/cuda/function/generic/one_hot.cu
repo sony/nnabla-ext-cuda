@@ -95,4 +95,4 @@ void OneHotCuda<TI, T>::backward_impl(const Variables &inputs,
   NBLA_CHECK(!propagate_down[0], error_code::value,
              "Index array can not be propagated down.");
 }
-}
+} // namespace nbla

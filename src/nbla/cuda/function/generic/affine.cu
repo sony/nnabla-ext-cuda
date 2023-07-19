@@ -83,4 +83,4 @@ void AffineCuda<T>::backward_impl(const Variables &inputs,
                   this->o_row_, 1, (accum[2] ? 1 : 0));
   }
 }
-}
+} // namespace nbla

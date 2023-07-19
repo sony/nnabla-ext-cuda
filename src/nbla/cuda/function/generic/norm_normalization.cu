@@ -159,4 +159,4 @@ void NormNormalizationCuda<T>::backward_impl(const Variables &inputs,
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_abs_pow_backward, x_size, data_x,
                                  grad_out_abs_pow, grad_x, this->p_);
 }
-}
+} // namespace nbla

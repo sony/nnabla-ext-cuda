@@ -22,7 +22,7 @@
 #include <nbla/function/mean_subtraction.hpp>
 namespace nbla {
 /** @copydoc MeanSubtraction
-*/
+ */
 
 template <typename T> class MeanSubtractionCuda : public MeanSubtraction<T> {
 public:
@@ -59,6 +59,6 @@ protected:
   virtual void recompute_impl(const Variables &inputs,
                               const Variables &outputs);
 };
-}
+} // namespace nbla
 
 #endif

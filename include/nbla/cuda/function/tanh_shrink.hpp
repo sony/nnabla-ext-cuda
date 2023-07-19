@@ -21,7 +21,7 @@
 namespace nbla {
 
 /** @copydoc TanhShrink
-*/
+ */
 NBLA_DECLARE_TRANSFORM_UNARY_CUDA(TanhShrink);
-}
+} // namespace nbla
 #endif

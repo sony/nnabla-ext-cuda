@@ -21,7 +21,7 @@
 namespace nbla {
 
 /** @copydoc Cosh
-*/
+ */
 NBLA_DECLARE_TRANSFORM_UNARY_CUDA(Cosh);
-}
+} // namespace nbla
 #endif

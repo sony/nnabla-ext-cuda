@@ -18,4 +18,4 @@
 namespace nbla {
 NBLA_DEFINE_FUNC_COPY_FROM(CudaDlpackArray, cuda_array_copy, cuda);
 NBLA_DEFINE_FUNC_FILL(CudaDlpackArray, cuda_fill, cuda);
-}
+} // namespace nbla

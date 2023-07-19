@@ -308,4 +308,4 @@ void INQConvolutionCuda<T, T1>::backward_impl(
 
   INQConvolution<T, T1>::backward_impl(inputs, outputs, propagate_down, accum);
 }
-}
+} // namespace nbla

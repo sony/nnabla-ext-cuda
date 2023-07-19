@@ -136,7 +136,7 @@ __global__ void backward(const int size, const InputShapeAndStride input,
     }
   }
 }
-}
+} // namespace patch_correlation
 
 template <typename T>
 void PatchCorrelationCuda<T>::setup_impl(const Variables &inputs,
@@ -230,4 +230,4 @@ void PatchCorrelationCuda<T>::backward_impl(const Variables &inputs,
         shift_step, padding, out_g, in1_d, nullptr, nullptr, in2_g);
   }
 }
-}
+} // namespace nbla

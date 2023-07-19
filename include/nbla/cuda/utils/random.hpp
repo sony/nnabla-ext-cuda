@@ -90,6 +90,6 @@ void restore_output_data(const Context &ctx, NdArray &buffer,
   y->copy_from(buffer_array);
   buffer.array()->clear();
 }
-}
+} // namespace nbla
 
 #endif

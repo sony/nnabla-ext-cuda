@@ -176,4 +176,4 @@ void GatherCuda<T>::backward_impl(const Variables &inputs,
                                  xstrides_f, istrides_f, ystrides_f,
                                  lstrides_f);
 }
-}
+} // namespace nbla

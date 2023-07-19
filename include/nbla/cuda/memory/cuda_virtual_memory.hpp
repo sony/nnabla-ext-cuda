@@ -121,6 +121,6 @@ protected:
   void merge_next_impl(Memory *from) override{/* do nothing */};
   void merge_prev_impl(Memory *from) override{/* do nothing */};
 };
-}
+} // namespace nbla
 
 #endif // CUDA_VERSION >= 10020 && CUDNN_VERSION >= 8000

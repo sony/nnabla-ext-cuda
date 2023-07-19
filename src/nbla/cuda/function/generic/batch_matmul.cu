@@ -193,4 +193,4 @@ void BatchMatmulCuda<T>::backward_impl(const Variables &inputs,
   }
 }
 #endif // CUDA_VERSION >= 8000
-}
+} // namespace nbla

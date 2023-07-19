@@ -22,7 +22,7 @@
 
 namespace nbla {
 /** @copydoc Mean
-*/
+ */
 
 template <typename T> class MeanCuda : public Mean<T> {
 public:
@@ -42,6 +42,6 @@ protected:
   virtual void backward_impl_reduce(const T *dy, T *dx, int outer_size,
                                     int reduction_size, bool accum);
 };
-}
+} // namespace nbla
 
 #endif

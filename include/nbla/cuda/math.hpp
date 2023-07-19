@@ -28,7 +28,7 @@ namespace nbla {
 #define _RCC(X) reinterpret_cast<const Tc *>(X)
 
 /**
-*/
+ */
 template <typename T>
 void cuda_gemm(int device, T *z, bool transpose_z, const T *x, int row_x,
                int col_x, bool transpose_x, const T *y, int row_y, int col_y,
@@ -52,7 +52,7 @@ void cuda_gemm(int device, T *z, bool transpose_z, const T *x, int row_x,
 }
 
 /**
-*/
+ */
 template <typename T>
 void cuda_gemv(int device, T *z, const T *x, int row_x, int col_x,
                bool transpose_x, const T *y, int row_y, float alpha, float beta,
@@ -90,7 +90,7 @@ void cuda_dot(int device, T *z, const T *x, int n, const T *y, int incx = 1,
 }
 
 /**
-*/
+ */
 template <typename T>
 void cuda_gemm_batched(int device, T **z, bool transpose_z, const T **x,
                        int row_x, int col_x, bool transpose_x, const T **y,
@@ -118,7 +118,7 @@ void cuda_gemm_batched(int device, T **z, bool transpose_z, const T **x,
 
 #if CUDA_VERSION >= 8000
 /**
-*/
+ */
 template <typename T>
 void cuda_gemm_strided_batched(int device, T *z, bool transpose_z, const T *x,
                                int row_x, int col_x, bool transpose_x,
@@ -195,5 +195,5 @@ void cuda_potrf_batched(int device, int n, T **x, int *info, int batchSize) {
   cusolverdn_potrf_batched<Tc>(handle, n, reinterpret_cast<Tc **>(x), n, info,
                                batchSize);
 }
-}
+} // namespace nbla
 #endif

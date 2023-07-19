@@ -102,4 +102,4 @@ NBLA_DEF_CHECK_INF_GRAD(AdaBeliefCuda, check_inf_grad_cuda);
 NBLA_DEF_CHECK_NAN_GRAD(AdaBeliefCuda, check_nan_grad_cuda);
 NBLA_DEF_CHECK_INF_OR_NAN_GRAD(AdaBeliefCuda, check_inf_or_nan_grad_cuda);
 NBLA_DEF_SCALE_GRAD(AdaBeliefCuda, scale_grad_impl_cuda);
-}
+} // namespace nbla

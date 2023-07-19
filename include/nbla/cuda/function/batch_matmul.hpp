@@ -22,7 +22,7 @@
 #include <nbla/function/batch_matmul.hpp>
 namespace nbla {
 /** @copydoc BatchMatmul
-*/
+ */
 
 template <typename T> class BatchMatmulCuda : public BatchMatmul<T> {
 
@@ -45,6 +45,6 @@ protected:
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
 };
-}
+} // namespace nbla
 
 #endif

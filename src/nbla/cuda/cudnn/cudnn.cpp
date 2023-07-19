@@ -879,4 +879,4 @@ bool CudnnHandleManager::check_conv_algo_blacklist(int id, ConvOpType op) {
 }
 
 NBLA_INSTANTIATE_SINGLETON(NBLA_CUDA_API, CudnnHandleManager);
-}
+} // namespace nbla

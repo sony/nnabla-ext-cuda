@@ -23,5 +23,5 @@ namespace nbla {
 /** @copydoc Mish
  * */
 NBLA_DECLARE_TRANSFORM_UNARY_CUDA(Mish);
-}
+} // namespace nbla
 #endif

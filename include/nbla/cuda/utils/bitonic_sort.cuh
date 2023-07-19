@@ -105,7 +105,7 @@ __device__ __forceinline__ void bitonic_merge(T *data, unsigned int tid,
   data[idx] = cmp_swap(data[idx], 0x10, dir ^ bfe(tid, 4));
   __syncthreads();
 }
-} // namespace details
+} // namespace bitonic_sort_details
 
 template <typename T, unsigned N = 1024>
 __global__ void bitonic_sort(T *data, const int size) {
@@ -152,6 +152,6 @@ __global__ void bitonic_sort(T *data, const int size) {
   }
   data[tid] = shared[tid];
 }
-}
+} // namespace nbla
 
 #endif

@@ -28,4 +28,4 @@ void increment_vector(cudaStream_t stream, float *vec, size_t size) {
     cuda_increment_vector<<<size / 512, 512, 0, stream>>>(vec);
   }
 }
-}
+} // namespace nbla

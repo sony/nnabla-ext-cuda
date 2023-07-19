@@ -23,7 +23,7 @@ ARG BASE
 # Ubuntu20: 4.0.3  (40)
 # CentOS7:  3.1.3  (40)
 # ABCI:     2.1.6  (20)
-FROM ubuntu:18.04 as openmpi
+FROM ubuntu:20.04 as openmpi
 
 ARG PIP_INS_OPTS
 ARG PYTHONWARNINGS
@@ -73,14 +73,10 @@ ARG PYTHON_VERSION_MINOR
 ENV PYVERNAME=${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}
 
 RUN eval ${APT_OPTS} \
-    && apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub \
-    && apt-get update \
-    && apt-get install -y software-properties-common \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && add-apt-repository ppa:deadsnakes/ppa \
+    && apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
+       software-properties-common \
        bzip2 \
        ca-certificates \
        openssh-client \

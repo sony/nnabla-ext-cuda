@@ -236,9 +236,9 @@ __global__ void modulated_deformable_col2im_gpu_kernel(
     const int deformable_group_index = c / channel_per_deformable_group;
 
     // Set offset pointer to base coordinate based on n
-    const T *data_offset_ptr =
-        data_offset +
-        deformable_group_index * 2 * kernel_h * kernel_w * height * width;
+    const T *data_offset_ptr = data_offset + deformable_group_index * 2 *
+                                                 kernel_h * kernel_w * height *
+                                                 width;
 
     // Adjust offsets pointer to correct value
     const int data_offset_h_ptr =
@@ -254,9 +254,8 @@ __global__ void modulated_deformable_col2im_gpu_kernel(
     // get gradient with mask applied
     T cur_top_grad;
     if (MODULATED) {
-      const T *data_mask_ptr =
-          data_mask +
-          deformable_group_index * kernel_h * kernel_w * height * width;
+      const T *data_mask_ptr = data_mask + deformable_group_index * kernel_h *
+                                               kernel_w * height * width;
       const int data_mask_hw_ptr =
           ((i * kernel_w + j) * height + h_in) * width + w_in;
       const T mask = data_mask_ptr[data_mask_hw_ptr];
@@ -305,21 +304,18 @@ __global__ void modulated_deformable_col2im_coord_gpu_kernel(
     const int deformable_group_index = c / (2 * kernel_h * kernel_w);
     const int col_step = kernel_h * kernel_w;
     int cnt = 0;
-    const T *data_col_ptr = data_col +
-                            deformable_group_index *
-                                channel_per_deformable_group * width_col *
-                                height_col;
-    const T *data_im_ptr = data_im +
-                           deformable_group_index *
-                               channel_per_deformable_group / kernel_h /
-                               kernel_w * height * width;
-    const T *data_offset_ptr =
-        data_offset +
-        deformable_group_index * 2 * kernel_h * kernel_w * height * width;
+    const T *data_col_ptr = data_col + deformable_group_index *
+                                           channel_per_deformable_group *
+                                           width_col * height_col;
+    const T *data_im_ptr = data_im + deformable_group_index *
+                                         channel_per_deformable_group /
+                                         kernel_h / kernel_w * height * width;
+    const T *data_offset_ptr = data_offset + deformable_group_index * 2 *
+                                                 kernel_h * kernel_w * height *
+                                                 width;
 
-    T *grad_offset_ptr =
-        grad_offset +
-        deformable_group_index * 2 * kernel_h * kernel_w * width * height;
+    T *grad_offset_ptr = grad_offset + deformable_group_index * 2 * kernel_h *
+                                           kernel_w * width * height;
 
     const T *data_mask_ptr = data_mask;
     T *grad_mask_ptr = grad_mask;
@@ -401,12 +397,12 @@ void modulated_deformable_im2col_cuda(const T *data_im, const T *data_offset,
   const int w_o = (shape[1] + 2 * p[1] - (d[1] * (k[1] - 1) + 1)) / s[1] + 1;
   const int num_kernels = c_i * h_o * w_o;
 
-  modulated_deformable_im2col_gpu_kernel<
-      T,
-      MODULATED><<<NBLA_CUDA_GET_BLOCKS(num_kernels), NBLA_CUDA_NUM_THREADS>>>(
-      num_kernels, data_im, data_offset, data_mask, shape[0], shape[1], k[0],
-      k[1], p[0], p[1], s[0], s[1], d[0], d[1], channel_per_deformable_group,
-      c_i, deformable_group, h_o, w_o, data_col);
+  modulated_deformable_im2col_gpu_kernel<T, MODULATED>
+      <<<NBLA_CUDA_GET_BLOCKS(num_kernels), NBLA_CUDA_NUM_THREADS>>>(
+          num_kernels, data_im, data_offset, data_mask, shape[0], shape[1],
+          k[0], k[1], p[0], p[1], s[0], s[1], d[0], d[1],
+          channel_per_deformable_group, c_i, deformable_group, h_o, w_o,
+          data_col);
 }
 
 template <typename T, bool MODULATED>
@@ -420,12 +416,11 @@ void modulated_deformable_col2im_cuda(const T *data_col, const T *data_offset,
   const int h_o = (shape[0] + 2 * p[0] - (d[0] * (k[0] - 1) + 1)) / s[0] + 1;
   const int w_o = (shape[1] + 2 * p[1] - (d[1] * (k[1] - 1) + 1)) / s[1] + 1;
   const int num_kernels = c_i * k[0] * k[1] * h_o * w_o;
-  modulated_deformable_col2im_gpu_kernel<
-      T,
-      MODULATED><<<NBLA_CUDA_GET_BLOCKS(num_kernels), NBLA_CUDA_NUM_THREADS>>>(
-      num_kernels, data_col, data_offset, data_mask, c_i, shape[0], shape[1],
-      k[0], k[1], p[0], p[1], s[0], s[1], d[0], d[1],
-      channel_per_deformable_group, deformable_group, h_o, w_o, grad_im);
+  modulated_deformable_col2im_gpu_kernel<T, MODULATED>
+      <<<NBLA_CUDA_GET_BLOCKS(num_kernels), NBLA_CUDA_NUM_THREADS>>>(
+          num_kernels, data_col, data_offset, data_mask, c_i, shape[0],
+          shape[1], k[0], k[1], p[0], p[1], s[0], s[1], d[0], d[1],
+          channel_per_deformable_group, deformable_group, h_o, w_o, grad_im);
 }
 
 template <typename T, bool MODULATED>
@@ -441,12 +436,11 @@ void modulated_deformable_col2im_coord_cuda(
   const int num_kernels = h_o * w_o * 2 * k[0] * k[1] * deformable_group;
   const int channel_per_deformable_group = c_i * k[0] * k[1] / deformable_group;
 
-  modulated_deformable_col2im_coord_gpu_kernel<
-      T,
-      MODULATED><<<NBLA_CUDA_GET_BLOCKS(num_kernels), NBLA_CUDA_NUM_THREADS>>>(
-      num_kernels, data_col, data_im, data_offset, data_mask, c_i, shape[0],
-      shape[1], k[0], k[1], p[0], p[1], s[0], s[1], d[0], d[1],
-      channel_per_deformable_group, deformable_group, h_o, w_o, grad_offset,
-      grad_mask);
+  modulated_deformable_col2im_coord_gpu_kernel<T, MODULATED>
+      <<<NBLA_CUDA_GET_BLOCKS(num_kernels), NBLA_CUDA_NUM_THREADS>>>(
+          num_kernels, data_col, data_im, data_offset, data_mask, c_i, shape[0],
+          shape[1], k[0], k[1], p[0], p[1], s[0], s[1], d[0], d[1],
+          channel_per_deformable_group, deformable_group, h_o, w_o, grad_offset,
+          grad_mask);
 }
-}
+} // namespace nbla

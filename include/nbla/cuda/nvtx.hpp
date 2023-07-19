@@ -29,6 +29,6 @@ NBLA_CUDA_API void nvtx_mark_A(string msg);
 NBLA_CUDA_API void nvtx_range_push_A(string msg);
 NBLA_CUDA_API void nvtx_range_push_with_C(string msg);
 NBLA_CUDA_API void nvtx_range_pop();
-}
+} // namespace nbla
 
 #endif //__NBLA_NVTX_HPP__

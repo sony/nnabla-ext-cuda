@@ -102,5 +102,5 @@ public:
     var_[idx] = v.m2 / reduce_size_;
   }
 };
-}
+} // namespace nbla
 #endif

@@ -151,5 +151,5 @@ void device_max(const Context &ctx, const T *const x, T *const y,
     fast_reduce(ctx, ReduceOpMax<T, uint32_t>(x, y, idx), reduce_setup);
   }
 }
-}
+} // namespace nbla
 #endif

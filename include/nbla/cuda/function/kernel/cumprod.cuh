@@ -156,4 +156,4 @@ __global__ void kernel_dx(const IndexT size_input, const IndexT size_scan,
     dx[idx] = grad + (accum ? dx[idx] : (T)0);
   }
 }
-}
+} // namespace nbla

@@ -42,4 +42,4 @@ TEST(get_device_properties, TestIfGetProp) {
   ASSERT_EQ(min_blocks_per_sm, device_prop->maxThreadsPerMultiProcessor);
   printf("assert {%d} > {%d} is true!\n", dur1, dur2);
 }
-}
+} // namespace nbla

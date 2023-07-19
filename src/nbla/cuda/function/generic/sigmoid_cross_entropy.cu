@@ -85,4 +85,4 @@ void SigmoidCrossEntropyCuda<T, Tl>::backward_impl(
     }
   }
 }
-}
+} // namespace nbla

@@ -146,7 +146,7 @@ kernel_random_erase(const int size, T *y, const T *x, int3 dstride, int N,
     func_state[idx] = local_state;
   }
 }
-}
+} // namespace random_erase
 
 template <typename T>
 void RandomEraseCuda<T>::setup_impl(const Variables &inputs,
@@ -341,4 +341,4 @@ void RandomEraseCuda<T>::backward_impl(const Variables &inputs,
   // Release memory
   this->random_coordinates_ = nullptr;
 }
-}
+} // namespace nbla

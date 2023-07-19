@@ -272,4 +272,4 @@ void DeformableConvolutionCuda<T>::backward_impl(
     }
   }
 }
-}
+} // namespace nbla

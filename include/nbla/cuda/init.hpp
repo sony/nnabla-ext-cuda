@@ -24,9 +24,9 @@
 
 namespace nbla {
 
-using std::vector;
-using std::string;
 using std::shared_ptr;
+using std::string;
+using std::vector;
 
 /**
 Initialize CUDA features.
@@ -34,7 +34,7 @@ Initialize CUDA features.
 NBLA_CUDA_API void init_cuda();
 
 /** Clear all CUDA memory from cache.
-*/
+ */
 NBLA_CUDA_API void clear_cuda_memory_cache();
 /**
  * Print cache map for CUDA cached memory .
@@ -77,19 +77,19 @@ get_cuda_virtual_memory_used_counts(const string &device_id);
 NBLA_CUDA_API bool is_cuda_tf32_enabled();
 
 /** Get CUDA array classes.
-*/
+ */
 NBLA_CUDA_API vector<string> cuda_array_classes();
 
 /** Set CUDA array classes
-*/
+ */
 NBLA_CUDA_API void _cuda_set_array_classes(const vector<string> &a);
 
 /** Wrapper of cudaDeviceSynchronize
-*/
+ */
 NBLA_CUDA_API void cuda_device_synchronize(const string &device);
 
 /** Wrapper of cudaGetDeviceCount
-*/
+ */
 NBLA_CUDA_API int cuda_get_device_count();
 
 /** get available devices.
@@ -97,7 +97,7 @@ NBLA_CUDA_API int cuda_get_device_count();
 NBLA_CUDA_API vector<string> cuda_get_devices();
 
 /** cudaStream wrapper functions.
-*/
+ */
 NBLA_CUDA_API shared_ptr<void> cuda_create_stream(int device_id = -1);
 
 NBLA_CUDA_API void *cuda_stream_shared_to_void(shared_ptr<void> stream);
@@ -108,7 +108,7 @@ NBLA_CUDA_API void cuda_nullstream_synchronize();
 NBLA_CUDA_API void cuda_stream_destroy(shared_ptr<void> stream);
 
 /** cudaEvent wrapper functions.
-*/
+ */
 NBLA_CUDA_API shared_ptr<void> cuda_create_event(int device_id = -1,
                                                  unsigned int flags = 0x02);
 NBLA_CUDA_API void cuda_default_stream_event(shared_ptr<void> event);
@@ -121,5 +121,5 @@ NBLA_CUDA_API float cuda_event_elapsed_time(shared_ptr<void> event_s,
 
 /** Utils for Virtual memory allocator **/
 NBLA_CUDA_API void set_cuda_vma_chunk_size(size_t size);
-}
+} // namespace nbla
 #endif

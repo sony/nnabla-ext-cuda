@@ -71,5 +71,5 @@ static const char *cufftGetErrorString(cufftResult error) {
                  cufftGetErrorString(ret));                                    \
     }                                                                          \
   } while (0)
-}
+} // namespace nbla
 #endif

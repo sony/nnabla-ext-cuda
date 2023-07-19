@@ -27,4 +27,4 @@ NBLA_DEFINE_TRANSFORM_BINARY_CUDA(Pow2, std::pow(x0, x1),
                                   dy *x1 *std::pow(x0, x1 - (T)1),
                                   dy *std::log(x0) * std::pow(x0, x1), false,
                                   false, true, true);
-}
+} // namespace nbla

@@ -41,14 +41,16 @@ void forward_collect_statistics(const Size_t size0, const Size_t size1,
 
   if (can_use_int_as_index_t(size0, size1, size2)) {
     using index_t = int;
-    batch_norm_collect_statistics_kernel<
-        InvStd, input_scalar_t, stat_accscalar_t, index_t><<<blocks, threads>>>(
-        x_ptr, epsilon, local_mean_ptr, local_invstd_ptr, size0, size1, size2);
+    batch_norm_collect_statistics_kernel<InvStd, input_scalar_t,
+                                         stat_accscalar_t, index_t>
+        <<<blocks, threads>>>(x_ptr, epsilon, local_mean_ptr, local_invstd_ptr,
+                              size0, size1, size2);
   } else {
     using index_t = Size_t;
-    batch_norm_collect_statistics_kernel<
-        InvStd, input_scalar_t, stat_accscalar_t, index_t><<<blocks, threads>>>(
-        x_ptr, epsilon, local_mean_ptr, local_invstd_ptr, size0, size1, size2);
+    batch_norm_collect_statistics_kernel<InvStd, input_scalar_t,
+                                         stat_accscalar_t, index_t>
+        <<<blocks, threads>>>(x_ptr, epsilon, local_mean_ptr, local_invstd_ptr,
+                              size0, size1, size2);
   }
   NBLA_CUDA_KERNEL_CHECK();
 }
@@ -87,17 +89,17 @@ void forward_collect_statistics_channels_last(
   if (can_use_int_as_index_t(size0, size1, size2)) {
     using index_t = int;
     batch_norm_collect_statistics_channels_last_kernel<
-        InvStd, scalar_t, accscalar_t, index_t,
-        SYNC_BN_ELEMENTS_PER_ITER><<<grid, block>>>(
-        x_ptr, local_mean_ptr, local_invstd_ptr, staging_data_ptr,
-        semaphores_ptr, reduction_size, stride, epsilon);
+        InvStd, scalar_t, accscalar_t, index_t, SYNC_BN_ELEMENTS_PER_ITER>
+        <<<grid, block>>>(x_ptr, local_mean_ptr, local_invstd_ptr,
+                          staging_data_ptr, semaphores_ptr, reduction_size,
+                          stride, epsilon);
   } else {
     using index_t = Size_t;
     batch_norm_collect_statistics_channels_last_kernel<
-        InvStd, scalar_t, accscalar_t, index_t,
-        SYNC_BN_ELEMENTS_PER_ITER><<<grid, block>>>(
-        x_ptr, local_mean_ptr, local_invstd_ptr, staging_data_ptr,
-        semaphores_ptr, reduction_size, stride, epsilon);
+        InvStd, scalar_t, accscalar_t, index_t, SYNC_BN_ELEMENTS_PER_ITER>
+        <<<grid, block>>>(x_ptr, local_mean_ptr, local_invstd_ptr,
+                          staging_data_ptr, semaphores_ptr, reduction_size,
+                          stride, epsilon);
   }
   NBLA_CUDA_KERNEL_CHECK();
 }
@@ -136,18 +138,16 @@ void forward_reduce_statistics(const Size_t size0, const Size_t size1,
 
   if (can_use_int_as_index_t(size0, size1, size2)) {
     using index_t = int;
-    batch_norm_reduce_statistics_kernel<scalar_t, accscalar_t,
-                                        index_t><<<grid, block>>>(
-        all_mean_ptr, all_invstd_ptr, global_mean_ptr, global_var_ptr,
-        r_mean_ptr, r_var_ptr, epsilon, decay_rate, all_count_ptr, feature_size,
-        n_workers);
+    batch_norm_reduce_statistics_kernel<scalar_t, accscalar_t, index_t>
+        <<<grid, block>>>(all_mean_ptr, all_invstd_ptr, global_mean_ptr,
+                          global_var_ptr, r_mean_ptr, r_var_ptr, epsilon,
+                          decay_rate, all_count_ptr, feature_size, n_workers);
   } else {
     using index_t = Size_t;
-    batch_norm_reduce_statistics_kernel<scalar_t, accscalar_t,
-                                        index_t><<<grid, block>>>(
-        all_mean_ptr, all_invstd_ptr, global_mean_ptr, global_var_ptr,
-        r_mean_ptr, r_var_ptr, epsilon, decay_rate, all_count_ptr, feature_size,
-        n_workers);
+    batch_norm_reduce_statistics_kernel<scalar_t, accscalar_t, index_t>
+        <<<grid, block>>>(all_mean_ptr, all_invstd_ptr, global_mean_ptr,
+                          global_var_ptr, r_mean_ptr, r_var_ptr, epsilon,
+                          decay_rate, all_count_ptr, feature_size, n_workers);
   }
   NBLA_CUDA_KERNEL_CHECK();
 }
@@ -189,17 +189,17 @@ void forward_normalization(const Size_t size0, const Size_t size1,
   if (can_use_int_as_index_t(size0, size1, size2)) {
     using index_t = int;
     batch_norm_transform_input_kernel<input_scalar_t, stat_scalar_t,
-                                      stat_accscalar_t,
-                                      index_t><<<blocks_trans, threads_trans>>>(
-        x_ptr, y_ptr, global_mean_ptr, global_var_ptr, weight_ptr, bias_ptr,
-        epsilon, size0, size1, size2);
+                                      stat_accscalar_t, index_t>
+        <<<blocks_trans, threads_trans>>>(x_ptr, y_ptr, global_mean_ptr,
+                                          global_var_ptr, weight_ptr, bias_ptr,
+                                          epsilon, size0, size1, size2);
   } else {
     using index_t = Size_t;
     batch_norm_transform_input_kernel<input_scalar_t, stat_scalar_t,
-                                      stat_accscalar_t,
-                                      index_t><<<blocks_trans, threads_trans>>>(
-        x_ptr, y_ptr, global_mean_ptr, global_var_ptr, weight_ptr, bias_ptr,
-        epsilon, size0, size1, size2);
+                                      stat_accscalar_t, index_t>
+        <<<blocks_trans, threads_trans>>>(x_ptr, y_ptr, global_mean_ptr,
+                                          global_var_ptr, weight_ptr, bias_ptr,
+                                          epsilon, size0, size1, size2);
   }
   NBLA_CUDA_KERNEL_CHECK();
 }
@@ -236,18 +236,18 @@ void forward_normalization_channel_last(const Size_t size0, const Size_t size1,
 
   if (can_use_int_as_index_t(size0, size1, size2)) {
     using index_t = int;
-    batch_norm_transform_input_channels_last_kernel<
-        scalar_t, accscalar_t, layerscalar_t, index_t,
-        SYNC_BN_ELEMENTS_PER_ITER><<<grid, block>>>(
-        x_ptr, global_mean_ptr, global_var_ptr, gamma_ptr, beta_ptr, y_ptr,
-        epsilon, reduction_size, stride);
+    batch_norm_transform_input_channels_last_kernel<scalar_t, accscalar_t,
+                                                    layerscalar_t, index_t,
+                                                    SYNC_BN_ELEMENTS_PER_ITER>
+        <<<grid, block>>>(x_ptr, global_mean_ptr, global_var_ptr, gamma_ptr,
+                          beta_ptr, y_ptr, epsilon, reduction_size, stride);
   } else {
     using index_t = Size_t;
-    batch_norm_transform_input_channels_last_kernel<
-        scalar_t, accscalar_t, layerscalar_t, index_t,
-        SYNC_BN_ELEMENTS_PER_ITER><<<grid, block>>>(
-        x_ptr, global_mean_ptr, global_var_ptr, gamma_ptr, beta_ptr, y_ptr,
-        epsilon, reduction_size, stride);
+    batch_norm_transform_input_channels_last_kernel<scalar_t, accscalar_t,
+                                                    layerscalar_t, index_t,
+                                                    SYNC_BN_ELEMENTS_PER_ITER>
+        <<<grid, block>>>(x_ptr, global_mean_ptr, global_var_ptr, gamma_ptr,
+                          beta_ptr, y_ptr, epsilon, reduction_size, stride);
   }
   NBLA_CUDA_KERNEL_CHECK();
 }
@@ -293,19 +293,17 @@ void backward_reduce(const Size_t size0, const Size_t size1, const Size_t size2,
   if (can_use_int_as_index_t(size0, size1, size2)) {
     using index_t = int;
     batch_norm_backward_reduce_kernel<input_scalar_t, stat_scalar_t,
-                                      stat_accscalar_t,
-                                      index_t><<<grid, block>>>(
-        x_ptr, dy_ptr, global_mean_ptr, global_var_ptr, sum_dy_ptr,
-        sum_dy_xmu_ptr, grad_weight_ptr, grad_bias_ptr, epsilon, size0, size1,
-        size2);
+                                      stat_accscalar_t, index_t>
+        <<<grid, block>>>(x_ptr, dy_ptr, global_mean_ptr, global_var_ptr,
+                          sum_dy_ptr, sum_dy_xmu_ptr, grad_weight_ptr,
+                          grad_bias_ptr, epsilon, size0, size1, size2);
   } else {
     using index_t = Size_t;
     batch_norm_backward_reduce_kernel<input_scalar_t, stat_scalar_t,
-                                      stat_accscalar_t,
-                                      index_t><<<grid, block>>>(
-        x_ptr, dy_ptr, global_mean_ptr, global_var_ptr, sum_dy_ptr,
-        sum_dy_xmu_ptr, grad_weight_ptr, grad_bias_ptr, epsilon, size0, size1,
-        size2);
+                                      stat_accscalar_t, index_t>
+        <<<grid, block>>>(x_ptr, dy_ptr, global_mean_ptr, global_var_ptr,
+                          sum_dy_ptr, sum_dy_xmu_ptr, grad_weight_ptr,
+                          grad_bias_ptr, epsilon, size0, size1, size2);
   }
   NBLA_CUDA_KERNEL_CHECK();
 }
@@ -351,20 +349,22 @@ void backward_reduce_channels_last(const Size_t size0, const Size_t size1,
 
   if (can_use_int_as_index_t(size0, size1, size2)) {
     using index_t = int;
-    batch_norm_backward_reduce_channels_last_kernel<
-        SYNC_BN_ELEMENTS_PER_ITER, scalar_t, accscalar_t, layerscalar_t,
-        index_t><<<grid, block>>>(
-        x_ptr, dy_ptr, mean_ptr, var_ptr, sum_dy_o_ptr, sum_dy_xmu_o_ptr,
-        grad_weight_ptr, grad_bias_ptr, staging_data_ptr, semaphores_ptr,
-        reduction_size, stride, epsilon);
+    batch_norm_backward_reduce_channels_last_kernel<SYNC_BN_ELEMENTS_PER_ITER,
+                                                    scalar_t, accscalar_t,
+                                                    layerscalar_t, index_t>
+        <<<grid, block>>>(x_ptr, dy_ptr, mean_ptr, var_ptr, sum_dy_o_ptr,
+                          sum_dy_xmu_o_ptr, grad_weight_ptr, grad_bias_ptr,
+                          staging_data_ptr, semaphores_ptr, reduction_size,
+                          stride, epsilon);
   } else {
     using index_t = Size_t;
-    batch_norm_backward_reduce_channels_last_kernel<
-        SYNC_BN_ELEMENTS_PER_ITER, scalar_t, accscalar_t, layerscalar_t,
-        index_t><<<grid, block>>>(
-        x_ptr, dy_ptr, mean_ptr, var_ptr, sum_dy_o_ptr, sum_dy_xmu_o_ptr,
-        grad_weight_ptr, grad_bias_ptr, staging_data_ptr, semaphores_ptr,
-        reduction_size, stride, epsilon);
+    batch_norm_backward_reduce_channels_last_kernel<SYNC_BN_ELEMENTS_PER_ITER,
+                                                    scalar_t, accscalar_t,
+                                                    layerscalar_t, index_t>
+        <<<grid, block>>>(x_ptr, dy_ptr, mean_ptr, var_ptr, sum_dy_o_ptr,
+                          sum_dy_xmu_o_ptr, grad_weight_ptr, grad_bias_ptr,
+                          staging_data_ptr, semaphores_ptr, reduction_size,
+                          stride, epsilon);
   }
   NBLA_CUDA_KERNEL_CHECK();
 }
@@ -414,19 +414,19 @@ void backward_dx_post(const Size_t size0, const Size_t size1,
   if (can_use_int_as_index_t(size0, size1, size2)) {
     using index_t = int;
     batch_norm_backward_elemt_kernel<accum, input_scalar_t, stat_scalar_t,
-                                     stat_accscalar_t,
-                                     index_t><<<blocks_trans, threads_trans>>>(
-        x_ptr, dy_ptr, global_mean_ptr, global_var_ptr, dmean_ptr, dvar_ptr,
-        weight_ptr, sum_dy_ptr, sum_dy_xmu_ptr, dx_ptr, epsilon, all_count_ptr,
-        all_count_numel, size0, size1, size2);
+                                     stat_accscalar_t, index_t>
+        <<<blocks_trans, threads_trans>>>(
+            x_ptr, dy_ptr, global_mean_ptr, global_var_ptr, dmean_ptr, dvar_ptr,
+            weight_ptr, sum_dy_ptr, sum_dy_xmu_ptr, dx_ptr, epsilon,
+            all_count_ptr, all_count_numel, size0, size1, size2);
   } else {
     using index_t = Size_t;
     batch_norm_backward_elemt_kernel<accum, input_scalar_t, stat_scalar_t,
-                                     stat_accscalar_t,
-                                     index_t><<<blocks_trans, threads_trans>>>(
-        x_ptr, dy_ptr, global_mean_ptr, global_var_ptr, dmean_ptr, dvar_ptr,
-        weight_ptr, sum_dy_ptr, sum_dy_xmu_ptr, dx_ptr, epsilon, all_count_ptr,
-        all_count_numel, size0, size1, size2);
+                                     stat_accscalar_t, index_t>
+        <<<blocks_trans, threads_trans>>>(
+            x_ptr, dy_ptr, global_mean_ptr, global_var_ptr, dmean_ptr, dvar_ptr,
+            weight_ptr, sum_dy_ptr, sum_dy_xmu_ptr, dx_ptr, epsilon,
+            all_count_ptr, all_count_numel, size0, size1, size2);
   }
   NBLA_CUDA_KERNEL_CHECK();
 }
@@ -472,21 +472,21 @@ void backward_dx_post_channels_last(const Size_t size0, const Size_t size1,
 
   if (can_use_int_as_index_t(size0, size1, size2)) {
     using index_t = int;
-    batch_norm_backward_elemt_channels_last_kernel<
-        SYNC_BN_ELEMENTS_PER_ITER, accum, scalar_t, accscalar_t, layerscalar_t,
-        index_t><<<grid, block>>>(dy_ptr, x_ptr, mean_ptr, var_ptr, dmean_ptr,
-                                  dvar_ptr, weight_ptr, sum_dy_ptr,
-                                  sum_dy_xmu_ptr, numel_ptr, dx_ptr, world_size,
-                                  reduction_size, stride, epsilon);
+    batch_norm_backward_elemt_channels_last_kernel<SYNC_BN_ELEMENTS_PER_ITER,
+                                                   accum, scalar_t, accscalar_t,
+                                                   layerscalar_t, index_t>
+        <<<grid, block>>>(dy_ptr, x_ptr, mean_ptr, var_ptr, dmean_ptr, dvar_ptr,
+                          weight_ptr, sum_dy_ptr, sum_dy_xmu_ptr, numel_ptr,
+                          dx_ptr, world_size, reduction_size, stride, epsilon);
   } else {
     using index_t = Size_t;
-    batch_norm_backward_elemt_channels_last_kernel<
-        SYNC_BN_ELEMENTS_PER_ITER, accum, scalar_t, accscalar_t, layerscalar_t,
-        index_t><<<grid, block>>>(dy_ptr, x_ptr, mean_ptr, var_ptr, dmean_ptr,
-                                  dvar_ptr, weight_ptr, sum_dy_ptr,
-                                  sum_dy_xmu_ptr, numel_ptr, dx_ptr, world_size,
-                                  reduction_size, stride, epsilon);
+    batch_norm_backward_elemt_channels_last_kernel<SYNC_BN_ELEMENTS_PER_ITER,
+                                                   accum, scalar_t, accscalar_t,
+                                                   layerscalar_t, index_t>
+        <<<grid, block>>>(dy_ptr, x_ptr, mean_ptr, var_ptr, dmean_ptr, dvar_ptr,
+                          weight_ptr, sum_dy_ptr, sum_dy_xmu_ptr, numel_ptr,
+                          dx_ptr, world_size, reduction_size, stride, epsilon);
   }
   NBLA_CUDA_KERNEL_CHECK();
 }
-}
+} // namespace nbla

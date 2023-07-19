@@ -83,4 +83,4 @@ void SigmoidCudaCudnn<T>::backward_impl(const Variables &inputs,
       this->output_desc_, dy, input_desc_, x, &beta, input_desc_, dx));
 #endif
 }
-}
+} // namespace nbla

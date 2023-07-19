@@ -73,4 +73,4 @@ col2im_kernel(const int ckhkw, const T *col, const int height, const int width,
     }
   }
 }
-}
+} // namespace nbla

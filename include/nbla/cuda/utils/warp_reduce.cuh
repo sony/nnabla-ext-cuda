@@ -68,5 +68,5 @@ __inline__ __device__ float4 warpReduceSumOfFloat4(float4 val) {
   }
   return val;
 }
-}
+} // namespace nbla
 #endif

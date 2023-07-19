@@ -66,4 +66,4 @@ void RandintCuda<T>::backward_impl(const Variables &inputs,
                                    const vector<bool> &accum) {
   // Pass
 }
-}
+} // namespace nbla

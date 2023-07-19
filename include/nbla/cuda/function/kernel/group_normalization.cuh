@@ -204,4 +204,4 @@ __global__ void group_norm_backward_dbeta_dgamma(
     }
   }
 }
-}
+} // namespace nbla

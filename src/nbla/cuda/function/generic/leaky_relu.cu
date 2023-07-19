@@ -88,4 +88,4 @@ void LeakyReLUCuda<T>::backward_impl(const Variables &inputs,
                                    size, dx, sign, dy, this->alpha_);
   }
 }
-}
+} // namespace nbla

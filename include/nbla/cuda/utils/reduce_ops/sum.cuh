@@ -70,5 +70,5 @@ void device_sum(const Context &ctx, const T *const x, T *const y,
     fast_reduce(ctx, ReduceOpSum<T, uint32_t>(x, y), reduce_setup);
   }
 }
-}
+} // namespace nbla
 #endif

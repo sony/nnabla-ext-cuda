@@ -23,8 +23,8 @@
 namespace nbla {
 
 /** @copydoc LogicalXor
-*/
+ */
 NBLA_DECLARE_TRANSFORM_BINARY_CUDA(LogicalXor);
-}
+} // namespace nbla
 
 #endif

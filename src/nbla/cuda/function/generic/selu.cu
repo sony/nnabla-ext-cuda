@@ -81,4 +81,4 @@ void SELUCuda<T>::backward_impl(const Variables &inputs,
                                    this->scale_, coef, dx, x, dy);
   }
 }
-}
+} // namespace nbla

@@ -92,5 +92,5 @@ protected:
   void wait_default_on_dgrad();
   void wait_dgrad_on_default();
 };
-}
+} // namespace nbla
 #endif

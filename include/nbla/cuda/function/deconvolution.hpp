@@ -21,7 +21,7 @@
 #include <nbla/function/deconvolution.hpp>
 namespace nbla {
 /** @copydoc Deconvolution
-*/
+ */
 
 template <typename T> class DeconvolutionCuda : public Deconvolution<T> {
 
@@ -49,6 +49,6 @@ protected:
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
 };
-}
+} // namespace nbla
 
 #endif

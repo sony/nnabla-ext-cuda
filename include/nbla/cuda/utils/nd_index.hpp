@@ -70,6 +70,6 @@ __host__ NdIndex<NDIM> to_nd_index(const T &vec) {
   }
   return nd_index;
 }
-}
+} // namespace nbla
 
 #endif

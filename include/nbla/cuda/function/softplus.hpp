@@ -22,7 +22,7 @@
 namespace nbla {
 
 /** @copydoc SoftPlus
-*/
+ */
 NBLA_DECLARE_TRANSFORM_UNARY_CUDA_1(SoftPlus, double);
-}
+} // namespace nbla
 #endif

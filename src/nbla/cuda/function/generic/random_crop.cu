@@ -178,4 +178,4 @@ void RandomCropCuda<T>::backward_impl(const Variables &inputs,
                                  random_values, this->base_axis_, this->size_,
                                  this->shape_.size(), this->dim_offset_);
 }
-}
+} // namespace nbla

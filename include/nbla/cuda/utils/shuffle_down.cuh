@@ -54,7 +54,7 @@ __forceinline__ __device__ T shuffle_down(T val, int offset, int width = 32) {
 #else  // !(CUDA_VERSION >= 9000)
   return __shfl_down(val, offset, width);
 #endif // CUDA_VERSION >= 9000
-#else // !(__CUDA_ARCH__ >= 300)
+#else  // !(__CUDA_ARCH__ >= 300)
   return pre_fermi_shfl_down(val, offset, width);
 #endif
 }
@@ -87,7 +87,7 @@ __forceinline__ __device__ HalfCuda shuffle_down<HalfCuda>(HalfCuda val,
   return half{(unsigned short)(__shfl_down(val_, offset, width))};
 #endif
 #endif // CUDA_VERSION >= 9000
-#else // !(__CUDA_ARCH__ >= 300)
+#else  // !(__CUDA_ARCH__ >= 300)
   return pre_fermi_shfl_down(val.h, offset, width);
 #endif
 }
@@ -140,5 +140,5 @@ shuffle_down(WelfordType<Size_t> val, int offset, int width) {
   buff.n = shuffle_down(val.n, offset, width);
   return buff;
 }
-}
+} // namespace nbla
 #endif

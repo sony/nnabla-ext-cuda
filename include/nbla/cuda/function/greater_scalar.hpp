@@ -21,7 +21,7 @@
 namespace nbla {
 
 /** @copydoc GreaterScalar
-*/
+ */
 NBLA_DECLARE_TRANSFORM_UNARY_CUDA_1(GreaterScalar, double);
-}
+} // namespace nbla
 #endif

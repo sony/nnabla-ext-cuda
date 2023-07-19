@@ -46,4 +46,4 @@ void LinspaceCuda<T>::forward_impl(const Variables &inputs,
     outputs[0]->data()->fill(this->start_);
   }
 }
-}
+} // namespace nbla

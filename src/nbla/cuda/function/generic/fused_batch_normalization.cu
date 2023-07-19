@@ -71,4 +71,4 @@ void FusedBatchNormalizationCuda<T>::relu_add2_backward(
     fused_batch_normalization_cuda::add2_backward<Tcu>(size, dx1, dx, accum[5]);
   }
 }
-}
+} // namespace nbla

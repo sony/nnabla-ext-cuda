@@ -66,5 +66,5 @@ protected:
   virtual void sample_without_replace(const Variables &inputs,
                                       const Variables &outputs);
 };
-}
+} // namespace nbla
 #endif

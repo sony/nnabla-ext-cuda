@@ -21,5 +21,5 @@ namespace nbla {
 
 // InstanceNormalization can use a same operator for backward reduction.
 template <typename Tcu, typename IndexT> using INGradOp = GNGradOp<Tcu, IndexT>;
-}
+} // namespace nbla
 #endif

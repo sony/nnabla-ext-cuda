@@ -21,7 +21,7 @@
 #include <nbla/function/stack.hpp>
 namespace nbla {
 /** @copydoc Stack
-*/
+ */
 
 template <typename T> class StackCuda : public Stack<T> {
 public:
@@ -42,6 +42,6 @@ protected:
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
 };
-}
+} // namespace nbla
 
 #endif

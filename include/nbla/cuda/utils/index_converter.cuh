@@ -123,5 +123,5 @@ public:
     return base_idx;
   }
 };
-}
+} // namespace nbla
 #endif

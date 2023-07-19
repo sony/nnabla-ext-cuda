@@ -60,5 +60,5 @@ protected:
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
 #endif
 };
-}
+} // namespace nbla
 #endif

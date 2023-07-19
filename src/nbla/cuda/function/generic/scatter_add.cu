@@ -93,7 +93,7 @@ __global__ void backward_x1(const int indices_size, const int *indices_data,
     }
   }
 }
-}
+} // namespace scatter_add_cuda
 
 template <typename T>
 void ScatterAddCuda<T>::setup_impl(const Variables &inputs,
@@ -201,4 +201,4 @@ void ScatterAddCuda<T>::backward_impl(const Variables &inputs,
     }
   }
 }
-}
+} // namespace nbla

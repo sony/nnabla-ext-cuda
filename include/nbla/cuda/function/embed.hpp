@@ -21,7 +21,7 @@
 #include <nbla/function/embed.hpp>
 namespace nbla {
 /** @copydoc Embed
-*/
+ */
 
 template <typename T, typename T1> class EmbedCuda : public Embed<T, T1> {
 
@@ -43,6 +43,6 @@ protected:
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
 };
-}
+} // namespace nbla
 
 #endif

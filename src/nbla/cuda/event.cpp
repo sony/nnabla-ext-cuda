@@ -50,4 +50,4 @@ void CudaEvent::record(cudaStream_t stream) {
 void CudaEvent::sync() { NBLA_CUDA_CHECK(cudaEventSynchronize(raw_event_)); }
 
 cudaError_t CudaEvent::query() { return cudaEventQuery(raw_event_); }
-}
+} // namespace nbla

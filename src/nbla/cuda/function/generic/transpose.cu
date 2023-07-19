@@ -98,7 +98,7 @@ __global__ void transpose_nd(const int size, const T *src, T *dst,
   }
 }
 
-} // end local namespace
+} // namespace
 
 template <typename T>
 void TransposeCuda<T>::setup_impl(const Variables &inputs,
@@ -332,4 +332,4 @@ void TransposeCuda<T>::backward_impl(const Variables &inputs,
   auto kernel = accum[0] ? transpose_nd<Tcu, true> : transpose_nd<Tcu>;
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel, size, dy, dx, strides + ndim, ndim);
 }
-}
+} // namespace nbla

@@ -85,4 +85,4 @@ void MaxCuda<T>::backward_impl_reduce(const T *dy_, T *dx_, int outer_size,
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_reduce_index_backward, outer_size,
                                  reduction_size, dx, ind, dy);
 }
-}
+} // namespace nbla

@@ -21,7 +21,7 @@
 namespace nbla {
 
 /** @copydoc Sinc
-*/
+ */
 NBLA_DECLARE_TRANSFORM_UNARY_CUDA(Sinc);
-}
+} // namespace nbla
 #endif

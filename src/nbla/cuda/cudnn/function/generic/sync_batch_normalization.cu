@@ -32,4 +32,4 @@ void SyncBatchNormalizationCudaCudnn<T>::forward_impl_global(
     const Variables &inputs, const Variables &outputs) {
   this->batch_norm_cudnn_.forward(inputs, outputs);
 }
-}
+} // namespace nbla

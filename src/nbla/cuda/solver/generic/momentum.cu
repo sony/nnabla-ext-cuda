@@ -52,4 +52,4 @@ NBLA_DEF_CHECK_INF_GRAD(MomentumCuda, check_inf_grad_cuda);
 NBLA_DEF_CHECK_NAN_GRAD(MomentumCuda, check_nan_grad_cuda);
 NBLA_DEF_CHECK_INF_OR_NAN_GRAD(MomentumCuda, check_inf_or_nan_grad_cuda);
 NBLA_DEF_SCALE_GRAD(MomentumCuda, scale_grad_impl_cuda);
-}
+} // namespace nbla

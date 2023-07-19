@@ -283,4 +283,4 @@ void SyncBatchNormalizationCuda<T>::backward_impl_batch(
     v_all_count_.data()->array()->clear(); // Calculated in forwrad
   }
 }
-}
+} // namespace nbla

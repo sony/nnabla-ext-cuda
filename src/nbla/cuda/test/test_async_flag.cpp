@@ -107,4 +107,4 @@ TEST(AsyncFalgTest, AsyncAndSafe) {
 
   NBLA_CUDA_CHECK(cudaFree(d_flag));
 }
-}
+} // namespace nbla

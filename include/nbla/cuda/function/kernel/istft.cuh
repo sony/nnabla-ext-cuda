@@ -98,4 +98,4 @@ __global__ void kernel_conv_weight(const int fft_size, const int stride,
     conv_i[idx] = mat_sin * w;
   }
 }
-}
+} // namespace nbla

@@ -22,7 +22,7 @@
 #include <nbla/function/batch_inv.hpp>
 namespace nbla {
 /** @copydoc BatchInv
-*/
+ */
 
 template <typename T> class BatchInvCuda : public BatchInv<T> {
 
@@ -43,6 +43,6 @@ protected:
   virtual void setup_impl(const Variables &inputs, const Variables &outputs);
   virtual void forward_impl(const Variables &inputs, const Variables &outputs);
 };
-}
+} // namespace nbla
 
 #endif

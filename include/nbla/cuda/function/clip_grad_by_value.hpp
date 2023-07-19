@@ -22,7 +22,7 @@
 #include <nbla/function/clip_grad_by_value.hpp>
 namespace nbla {
 /** @copydoc ClipGradByValue
-*/
+ */
 
 template <typename T> class ClipGradByValueCuda : public ClipGradByValue<T> {
 public:
@@ -42,6 +42,6 @@ protected:
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
 };
-}
+} // namespace nbla
 
 #endif

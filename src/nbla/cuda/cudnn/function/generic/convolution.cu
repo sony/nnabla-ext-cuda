@@ -206,11 +206,11 @@ void ConvolutionCudaCudnn<T>::backward_impl(const Variables &inputs,
   }
   if (propagate_down[1]) {
     /** Note:
-    * When the bwd of first layer convolution is slower, check the value of
-    * beta.
-    * In the case of beta = 1, Not first_layer_wgrad_kernel which is faster than
-    * any others but a slower kernel would be called in cudnn API.
-    */
+     * When the bwd of first layer convolution is slower, check the value of
+     * beta.
+     * In the case of beta = 1, Not first_layer_wgrad_kernel which is faster
+     * than any others but a slower kernel would be called in cudnn API.
+     */
     auto beta = get_cudnn_scalar_arg<T>(accum[1] ? 1 : 0);
     NBLA_CUDNN_CHECK(cudnnConvolutionBackwardFilter(
         cudnn_handle_, &alpha, rsc_->x_desc, x, rsc_->y_desc, dy,
@@ -347,4 +347,4 @@ void ConvolutionCudaCudnn<T>::set_cudnn_convolution_mode(std::string mode) {
   }
 }
 */
-}
+} // namespace nbla

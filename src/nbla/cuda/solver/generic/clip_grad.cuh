@@ -59,5 +59,5 @@ void clip_grad_by_norm_cuda(const Context &ctx,
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE(kernel_clip_grad_by_norm, size, grad, l2sum,
                                  clip_norm);
 }
-}
+} // namespace nbla
 #endif

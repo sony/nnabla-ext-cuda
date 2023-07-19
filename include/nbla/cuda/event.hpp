@@ -24,11 +24,11 @@
 namespace nbla {
 
 /** Flags which can be used to create cudaEvent.
-*   - cudaEventDefault 0x00
-*   - cudaEventBlockingSync 0x01
-*   - cudaEventDisableTiming 0x02
-*   - cudaEventInterprocess 0x04
-*/
+ *   - cudaEventDefault 0x00
+ *   - cudaEventBlockingSync 0x01
+ *   - cudaEventDisableTiming 0x02
+ *   - cudaEventInterprocess 0x04
+ */
 enum CudaEventFlag {
   Default = cudaEventDefault,
   BlockingSync = cudaEventBlockingSync,
@@ -72,5 +72,5 @@ private:
 };
 
 typedef shared_ptr<CudaEvent> CudaEventPtr;
-}
+} // namespace nbla
 #endif

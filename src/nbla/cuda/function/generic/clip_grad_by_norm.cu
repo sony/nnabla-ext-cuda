@@ -107,4 +107,4 @@ void ClipGradByNormCuda<T>::backward_impl(const Variables &inputs,
         this->clip_norm_, dx, dy, m);
   }
 }
-}
+} // namespace nbla

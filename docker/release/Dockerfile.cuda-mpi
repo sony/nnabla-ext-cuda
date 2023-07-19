@@ -17,7 +17,7 @@ ARG CU1_VER
 ARG CU2_VER
 ARG CUDNN_VER
 
-FROM ubuntu:18.04 as openmpi
+FROM ubuntu:20.04 as openmpi
 
 ARG PIP_INS_OPTS
 ARG PYTHONWARNINGS
@@ -47,7 +47,7 @@ COPY hpcx-ompi-etc.patch /tmp/hpcx-ompi-etc.patch
 RUN if [ $(echo "${MPI}" | awk -F. '{ printf("%d%02d%02d\n", $1,$2,$3); }') -gt 30106 ]; then \
         mkdir /opt/mpi \
         && cd /opt/mpi \
-        && curl -LO http://www.mellanox.com/downloads/hpc/hpc-x/v2.12/hpcx-v2.12-gcc-MLNX_OFED_LINUX-5-ubuntu18.04-cuda11-gdrcopy2-nccl2.12-x86_64.tbz \
+        && curl -LO http://www.mellanox.com/downloads/hpc/hpc-x/v2.12/hpcx-v2.12-gcc-MLNX_OFED_LINUX-5-ubuntu20.04-cuda11-gdrcopy2-nccl2.12-x86_64.tbz \
         && tar -xvf hpcx*.tbz \
         && rm -f hpcx*.tbz \
         && mv hpcx* hpcx-v2.12 \
@@ -79,7 +79,7 @@ RUN if [ $(echo "${MPI}" | awk -F. '{ printf("%d%02d%02d\n", $1,$2,$3); }') -gt 
     fi
 
 
-FROM nvidia/cuda:${CU1_VER}.${CU2_VER}-cudnn${CUDNN_VER}-runtime-ubuntu18.04
+FROM nvidia/cuda:${CU1_VER}.${CU2_VER}-cudnn${CUDNN_VER}-runtime-ubuntu20.04
 
 ARG CU1_VER
 ARG CU2_VER
@@ -91,14 +91,10 @@ ARG WGET_OPTS
 ARG APT_OPTS
 
 RUN eval ${APT_OPTS} \
-    && apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub \
-    && apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -y software-properties-common \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && add-apt-repository ppa:deadsnakes/ppa \
+    && apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub \
     && apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+       software-properties-common \
        bzip2 \
        ca-certificates \
        curl \

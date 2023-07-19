@@ -47,5 +47,5 @@ protected:
                                   const vector<bool> &accum,
                                   Variable &relu_buf);
 };
-}
+} // namespace nbla
 #endif
