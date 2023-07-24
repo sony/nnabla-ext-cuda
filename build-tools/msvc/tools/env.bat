@@ -40,6 +40,12 @@ set CUDNNVER=%3
 FOR /F "TOKENS=1 DELIMS=." %%A IN ("%CUDAVER%") DO SET CUDA_MAJOR=%%A
 FOR /F "TOKENS=2 DELIMS=." %%A IN ("%CUDAVER%") DO SET CUDA_MINOR=%%A
 
+REM Installing Zlib needed by cuDNN
+SET third_party_folder=%nnabla_root%\third_party
+PUSHD .
+CALL %nnabla_root%\build-tools\msvc\tools\build_zlib.bat || GOTO :error
+POPD
+
 REM CHECK CUDA installation
 
 SET NVIDIA_TOOLKIT_PATH=%ProgramFiles%\NVIDIA GPU Computing Toolkit
