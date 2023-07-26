@@ -161,8 +161,8 @@ __host__ void find_top_k_value(const T *data, const int size, MinMax<T> *minmax,
 
   for (int i = 0; i < CUDA_WARP_SIZE; i++) {
     // count values > min + 0.5 * (max - min)
-    bucket_count<UseAbsVal, Largest>
-        <<<blocks, threads>>>(data, size, K, i, minmax, bucket_data);
+    bucket_count<UseAbsVal, Largest><<<blocks, threads>>>(data, size, K, i,
+                                                          minmax, bucket_data);
     NBLA_CUDA_KERNEL_CHECK();
   }
 
@@ -247,8 +247,8 @@ __host__ void find_top_k_index(const T *data, const int size, Bucket<T> *bucket,
   auto threads = NBLA_CUDA_NUM_THREADS;
   auto blocks = NBLA_CUDA_GET_BLOCKS(size);
 
-  init_val_idx_list<T, UseAbsVal, Largest>
-      <<<blocks, threads>>>(data, size, bucket, sort_data, MAX_K, valid_k);
+  init_val_idx_list<T, UseAbsVal, Largest><<<blocks, threads>>>(
+      data, size, bucket, sort_data, MAX_K, valid_k);
   NBLA_CUDA_KERNEL_CHECK();
 
   // The memory layout of ValIdxBitonic is exactly the same as ValIdx.
