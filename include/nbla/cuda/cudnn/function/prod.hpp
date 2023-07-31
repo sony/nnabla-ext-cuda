@@ -29,18 +29,18 @@ public:
                          bool keep_dims)
       : ProdCuda<T>(ctx, axes, keep_dims) {
 #if CUDNN_VERSION >= 6000
-    NBLA_CUDNN_CHECK(cudnnCreateReduceTensorDescriptor(&reduce_desc_));
-    NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&x_desc_));
-    NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&y_desc_));
+    NBLA_CUDNN_FORCE_ASSERT(cudnnCreateReduceTensorDescriptor(&reduce_desc_));
+    NBLA_CUDNN_FORCE_ASSERT(cudnnCreateTensorDescriptor(&x_desc_));
+    NBLA_CUDNN_FORCE_ASSERT(cudnnCreateTensorDescriptor(&y_desc_));
 #else
     this->fall_back_func_ = make_shared<ProdCuda<T>>(ctx, axes, keep_dims);
 #endif
   }
   virtual ~ProdCudaCudnn() {
 #if CUDNN_VERSION >= 6000
-    NBLA_CUDNN_CHECK(cudnnDestroyReduceTensorDescriptor(reduce_desc_));
-    NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(x_desc_));
-    NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(y_desc_));
+    NBLA_CUDNN_FORCE_ASSERT(cudnnDestroyReduceTensorDescriptor(reduce_desc_));
+    NBLA_CUDNN_FORCE_ASSERT(cudnnDestroyTensorDescriptor(x_desc_));
+    NBLA_CUDNN_FORCE_ASSERT(cudnnDestroyTensorDescriptor(y_desc_));
 #endif
   }
   virtual string name() { return "ProdCudaCudnn"; }

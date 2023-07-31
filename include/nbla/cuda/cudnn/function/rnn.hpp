@@ -42,14 +42,14 @@ public:
 
   WCudnnTensorDescArray(size_t size) : initialized_(true), desc_array_(size) {
     for (auto &desc : desc_array_) {
-      NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&desc));
+      NBLA_CUDNN_FORCE_ASSERT(cudnnCreateTensorDescriptor(&desc));
     }
   }
 
   ~WCudnnTensorDescArray() {
     if (initialized_) {
       for (auto &desc : desc_array_) {
-        NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(desc));
+        NBLA_CUDNN_FORCE_ASSERT(cudnnDestroyTensorDescriptor(desc));
       }
     }
   }
@@ -57,28 +57,28 @@ public:
 };
 struct WCudnnTensorDesc {
   cudnnTensorDescriptor_t desc;
-  WCudnnTensorDesc() { NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&desc)); }
-  ~WCudnnTensorDesc() { NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(desc)); }
+  WCudnnTensorDesc() { NBLA_CUDNN_FORCE_ASSERT(cudnnCreateTensorDescriptor(&desc)); }
+  ~WCudnnTensorDesc() { NBLA_CUDNN_FORCE_ASSERT(cudnnDestroyTensorDescriptor(desc)); }
 };
 
 struct WCudnnFilterDesc {
   cudnnFilterDescriptor_t desc;
-  WCudnnFilterDesc() { NBLA_CUDNN_CHECK(cudnnCreateFilterDescriptor(&desc)); }
-  ~WCudnnFilterDesc() { NBLA_CUDNN_CHECK(cudnnDestroyFilterDescriptor(desc)); }
+  WCudnnFilterDesc() { NBLA_CUDNN_FORCE_ASSERT(cudnnCreateFilterDescriptor(&desc)); }
+  ~WCudnnFilterDesc() { NBLA_CUDNN_FORCE_ASSERT(cudnnDestroyFilterDescriptor(desc)); }
 };
 
 struct WCudnnDropoutDesc {
   cudnnDropoutDescriptor_t desc;
-  WCudnnDropoutDesc() { NBLA_CUDNN_CHECK(cudnnCreateDropoutDescriptor(&desc)); }
+  WCudnnDropoutDesc() { NBLA_CUDNN_FORCE_ASSERT(cudnnCreateDropoutDescriptor(&desc)); }
   ~WCudnnDropoutDesc() {
-    NBLA_CUDNN_CHECK(cudnnDestroyDropoutDescriptor(desc));
+    NBLA_CUDNN_FORCE_ASSERT(cudnnDestroyDropoutDescriptor(desc));
   }
 };
 
 struct WCudnnRNNDesc {
   cudnnRNNDescriptor_t desc;
-  WCudnnRNNDesc() { NBLA_CUDNN_CHECK(cudnnCreateRNNDescriptor(&desc)); }
-  ~WCudnnRNNDesc() { NBLA_CUDNN_CHECK(cudnnDestroyRNNDescriptor(desc)); }
+  WCudnnRNNDesc() { NBLA_CUDNN_FORCE_ASSERT(cudnnCreateRNNDescriptor(&desc)); }
+  ~WCudnnRNNDesc() { NBLA_CUDNN_FORCE_ASSERT(cudnnDestroyRNNDescriptor(desc)); }
 };
 
 template <typename T> class RNNCudaCudnn : public RNN<T> {

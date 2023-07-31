@@ -43,17 +43,17 @@ public:
                                bool channel_last)
       : WarpByGridCuda<T>(ctx, mode, padding_mode, align_corners, channel_last),
         device_(std::stoi(ctx.device_id)) {
-    NBLA_CUDNN_CHECK(
+    NBLA_CUDNN_FORCE_ASSERT(
         cudnnCreateSpatialTransformerDescriptor(&spatial_tf_desc_));
-    NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&x_desc_));
-    NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&y_desc_));
+    NBLA_CUDNN_FORCE_ASSERT(cudnnCreateTensorDescriptor(&x_desc_));
+    NBLA_CUDNN_FORCE_ASSERT(cudnnCreateTensorDescriptor(&y_desc_));
   }
 
   virtual ~WarpByGridCudaCudnn() {
-    NBLA_CUDNN_CHECK(
+    NBLA_CUDNN_FORCE_ASSERT(
         cudnnDestroySpatialTransformerDescriptor(spatial_tf_desc_));
-    NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(x_desc_));
-    NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(y_desc_));
+    NBLA_CUDNN_FORCE_ASSERT(cudnnDestroyTensorDescriptor(x_desc_));
+    NBLA_CUDNN_FORCE_ASSERT(cudnnDestroyTensorDescriptor(y_desc_));
   }
   virtual string name() { return "WarpByGridCudaCudnn"; }
   virtual vector<string> allowed_array_classes() {

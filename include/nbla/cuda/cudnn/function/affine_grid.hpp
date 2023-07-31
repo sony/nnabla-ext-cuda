@@ -38,13 +38,13 @@ public:
         device_(std::stoi(ctx.device_id)) {
     if (affine_grid::cudnn_condition(this->size_.size(),
                                      this->align_corners_)) {
-      NBLA_CUDNN_CHECK(cudnnCreateSpatialTransformerDescriptor(&theta_desc_));
+      NBLA_CUDNN_FORCE_ASSERT(cudnnCreateSpatialTransformerDescriptor(&theta_desc_));
     }
   }
   virtual ~AffineGridCudaCudnn() {
     if (affine_grid::cudnn_condition(this->size_.size(),
                                      this->align_corners_)) {
-      NBLA_CUDNN_CHECK(cudnnDestroySpatialTransformerDescriptor(theta_desc_));
+      NBLA_CUDNN_FORCE_ASSERT(cudnnDestroySpatialTransformerDescriptor(theta_desc_));
     }
   }
   virtual string name() { return "AffineGridCudaCudnn"; }

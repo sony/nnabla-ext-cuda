@@ -42,16 +42,16 @@ public:
 
   TanhCudaCudnn(const Context &ctx)
       : Tanh<T>(ctx), device_(std::stoi(ctx.device_id)) {
-    NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&input_desc_));
-    NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&output_desc_));
-    NBLA_CUDNN_CHECK(cudnnCreateActivationDescriptor(&activation_desc_));
-    NBLA_CUDNN_CHECK(cudnnSetActivationDescriptor(
+    NBLA_CUDNN_FORCE_ASSERT(cudnnCreateTensorDescriptor(&input_desc_));
+    NBLA_CUDNN_FORCE_ASSERT(cudnnCreateTensorDescriptor(&output_desc_));
+    NBLA_CUDNN_FORCE_ASSERT(cudnnCreateActivationDescriptor(&activation_desc_));
+    NBLA_CUDNN_FORCE_ASSERT(cudnnSetActivationDescriptor(
         activation_desc_, CUDNN_ACTIVATION_TANH, CUDNN_PROPAGATE_NAN, T(0)));
   }
   virtual ~TanhCudaCudnn() {
-    NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(input_desc_));
-    NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(output_desc_));
-    NBLA_CUDNN_CHECK(cudnnDestroyActivationDescriptor(activation_desc_));
+    NBLA_CUDNN_FORCE_ASSERT(cudnnDestroyTensorDescriptor(input_desc_));
+    NBLA_CUDNN_FORCE_ASSERT(cudnnDestroyTensorDescriptor(output_desc_));
+    NBLA_CUDNN_FORCE_ASSERT(cudnnDestroyActivationDescriptor(activation_desc_));
   }
   virtual string name() { return "TanhCudaCudnn"; }
   virtual vector<string> allowed_array_classes() {

@@ -145,6 +145,18 @@ inline string cudnn_status_to_string(cudnnStatus_t status) {
     }                                                                          \
   }
 
+#define NBLA_CUDNN_FORCE_ASSERT(condition)                                     \
+  {                                                                            \
+    cudnnStatus_t status = condition;                                          \
+    if (status != CUDNN_STATUS_SUCCESS) {                                      \
+      NBLA_FORCE_ASSERT(                                                       \
+          status != CUDNN_STATUS_SUCCESS,                                      \
+          string("CUDNN_STATUS_") + cudnn_status_to_string(status) +           \
+              string(" occured in `" #condition                                \
+                     "`. Please see CUDNN API documentation for the cause.")); \
+    }                                                                          \
+  }
+
 /** Wrapper function of cudnnSetTensorNdDescriptor with ensuring least dims.
 
 http://docs.nvidia.com/deeplearning/sdk/cudnn-developer-guide/index.html#cudnnSetTensorNdDescriptor
