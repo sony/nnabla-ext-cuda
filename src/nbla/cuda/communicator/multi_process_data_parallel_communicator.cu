@@ -345,13 +345,13 @@ MultiProcessDataParallelCommunicatorNccl<
     T>::~MultiProcessDataParallelCommunicatorNccl() {
   if (this->initialized_) {
     for (int i = 0; i < streams_.size(); ++i) {
-      NBLA_CUDA_CHECK(cudaStreamDestroy(streams_[i]));
+      NBLA_CUDA_FORCE_ASSERT(cudaStreamDestroy(streams_[i]));
     }
     for (auto e : this->comms_) {
       ncclCommDestroy(e.second);
     }
     for (auto &stream : this->nonblocking_streams_) {
-      NBLA_CUDA_CHECK(cudaStreamDestroy(stream));
+      NBLA_CUDA_FORCE_ASSERT(cudaStreamDestroy(stream));
     }
   }
 }

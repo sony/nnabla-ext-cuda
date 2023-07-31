@@ -63,6 +63,18 @@ cudaGetLastError is used to clear previous error happening at "condition".
     }                                                                          \
   }
 
+#define NBLA_CUDA_FORCE_ASSERT(condition)                                      \
+  {                                                                            \
+    cudaError_t error = condition;                                             \
+    if (error != cudaSuccess) {                                                \
+      cudaGetLastError();                                                      \
+      NBLA_FORCE_ASSERT(error != cudaSuccess,                                  \
+                        "(%s) failed with \"%s\" (%s).",                       \
+                        #condition, cudaGetErrorString(error),                 \
+                        cudaGetErrorName(error))                               \
+    }                                                                          \
+  }
+
 /**
 Check CUDA driver error.
 */

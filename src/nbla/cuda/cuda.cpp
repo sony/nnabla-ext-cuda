@@ -59,7 +59,7 @@ Cuda::~Cuda() {
   for (auto &all_events : this->cuda_unused_events_) {
     for (auto &events : all_events.second) {
       for (auto &event : events.second) {
-        NBLA_CUDA_CHECK(cudaEventDestroy(event));
+        NBLA_CUDA_FORCE_ASSERT(cudaEventDestroy(event));
       }
     }
   }
@@ -67,17 +67,17 @@ Cuda::~Cuda() {
   for (auto &all_streams : this->streams_) {
     for (auto &tid_stream : all_streams.second) {
       for (auto &stream : tid_stream.second) {
-        NBLA_CUDA_CHECK(cudaStreamDestroy(*(stream.second)));
+        NBLA_CUDA_FORCE_ASSERT(cudaStreamDestroy(*(stream.second)));
       }
     }
   }
 
   if (stream_HtoD != 0) {
-    NBLA_CUDA_CHECK(cudaStreamDestroy(stream_HtoD));
+    NBLA_CUDA_FORCE_ASSERT(cudaStreamDestroy(stream_HtoD));
   }
 
   if (stream_DtoH != 0) {
-    NBLA_CUDA_CHECK(cudaStreamDestroy(stream_DtoH));
+    NBLA_CUDA_FORCE_ASSERT(cudaStreamDestroy(stream_DtoH));
   }
 }
 
