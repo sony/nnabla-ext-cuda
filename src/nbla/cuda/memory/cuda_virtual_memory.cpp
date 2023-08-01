@@ -101,7 +101,7 @@ size_t round_up_by_chunk(size_t x, int device_id) {
 // ----------------------------------------------------------------------
 CudaPhysicalMemory::~CudaPhysicalMemory() {
   if (allocated_)
-    NBLA_CUDA_DRIVER_CHECK(cuMemRelease(handle_));
+    NBLA_CUDA_DRIVER_FORCE_ASSERT(cuMemRelease(handle_));
 }
 
 size_t CudaPhysicalMemory::alloc() {
