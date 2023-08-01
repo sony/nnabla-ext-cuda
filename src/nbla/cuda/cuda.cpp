@@ -51,7 +51,7 @@ Cuda::~Cuda() {
     }
   }
   for (auto handle : this->cusolverdn_handles_) {
-    NBLA_CUSOLVER_CHECK(cusolverDnDestroy(handle.second));
+    NBLA_CUSOLVER_FORCE_ASSERT(cusolverDnDestroy(handle.second));
   }
   for (auto gen : this->curand_generators_) {
     curand_destroy_generator(gen.second);

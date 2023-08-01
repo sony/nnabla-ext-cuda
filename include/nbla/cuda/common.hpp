@@ -198,6 +198,19 @@ inline string cusolver_status_to_string(cusolverStatus_t status) {
     }                                                                          \
   }
 
+#define NBLA_CUSOLVER_FORCE_ASSERT(condition)                                  \
+  {                                                                            \
+    cusolverStatus_t status = condition;                                       \
+    if (status != CUSOLVER_STATUS_SUCCESS) {                                   \
+      NBLA_FORCE_ASSERT(                                                       \
+          status != CUSOLVER_STATUS_SUCCESS,                                   \
+          string("CUSOLVER_STATUS_") + cusolver_status_to_string(status) +     \
+              string(                                                          \
+                  " occured in `" #condition                                   \
+                  "`. Please see CUSOLVER API documentation for the cause.")); \
+    }                                                                          \
+  }
+
 inline string curand_status_to_string(curandStatus_t status) {
 #define CASE_CURAND_STATUS(NAME)                                               \
   case CURAND_STATUS_##NAME:                                                   \
