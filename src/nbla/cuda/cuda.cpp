@@ -47,7 +47,7 @@ Cuda::Cuda()
 Cuda::~Cuda() {
   for (auto &tid_handles : this->cublas_handles_) {
     for (auto &handle : tid_handles.second) {
-      NBLA_CUBLAS_CHECK(cublasDestroy(handle.second));
+      NBLA_CUBLAS_FORCE_ASSERT(cublasDestroy(handle.second));
     }
   }
   for (auto handle : this->cusolverdn_handles_) {

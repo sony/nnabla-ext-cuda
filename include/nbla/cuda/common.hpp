@@ -131,6 +131,20 @@ inline string cublas_status_to_string(cublasStatus_t status) {
     }                                                                          \
   }
 
+#define NBLA_CUBLAS_FORCE_ASSERT(condition)                                    \
+  {                                                                            \
+    cublasStatus_t status = condition;                                         \
+    cudaGetLastError();                                                        \
+    if (status != CUBLAS_STATUS_SUCCESS) {                                     \
+      NBLA_FORCE_ASSERT(                                                       \
+          status != CUBLAS_STATUS_SUCCESS,                                     \
+          string("CUBLAS_STATUS_") + cublas_status_to_string(status) +         \
+              string(                                                          \
+                  " occured in `" #condition                                   \
+                  "`. Please see CUBLAS API documentation for the cause."));   \
+    }                                                                          \
+  }
+
 inline string cusolver_status_to_string(cusolverStatus_t status) {
 #define CASE_CUSOLVER_STATUS(NAME)                                             \
   case CUSOLVER_STATUS_##NAME:                                                 \
