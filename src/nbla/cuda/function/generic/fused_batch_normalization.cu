@@ -26,8 +26,10 @@ namespace fused_batch_normalization_cuda {
 template <typename T>
 void relu_backward(const Size_t size, T *dx, const T *dy, const T *y) {
   const Size_t size2 = interpret_size<T>(size);
+  NBLA_DIAG_SUPPRESS(inline_qualifier_ignored);
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE_SIZE_T((kernel_relu_backward<false>), size2,
                                         size, dx, y, dy);
+  NBLA_DIAG_DEFAULT(inline_qualifier_ignored);
 }
 
 template <typename T>

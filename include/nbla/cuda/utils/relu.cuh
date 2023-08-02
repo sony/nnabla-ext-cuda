@@ -27,6 +27,8 @@
 
 namespace nbla {
 
+NBLA_DIAG_SUPPRESS(inline_qualifier_ignored);
+
 template <class T> inline Size_t interpret_size(const Size_t size) {
   return size; // interpreted as half type
 }
@@ -161,6 +163,9 @@ kernel_relu_backward<false>(const Size_t size2, const Size_t size, HalfCuda *dx,
                             const HalfCuda *y, const HalfCuda *dy) {
   kernel_relu_backward_half2<false>(size2, size, dx, y, dy);
 }
+
+NBLA_DIAG_DEFAULT(inline_qualifier_ignored);
+
 } // namespace nbla
 
 #endif

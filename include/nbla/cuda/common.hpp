@@ -39,6 +39,27 @@
 
 namespace nbla {
 
+#define STRINGIFY(str) #str
+#if CUDA_VERSION >= 11010
+  #ifndef _MSC_VER
+    #define NBLA_DIAG_SUPPRESS(warn) _Pragma(STRINGIFY(nv_diag_suppress warn))
+    #define NBLA_DIAG_DEFAULT(warn)  _Pragma(STRINGIFY(nv_diag_default warn))
+  #else
+    #define NBLA_DIAG_SUPPRESS(warn)
+    #define NBLA_DIAG_DEFAULT(warn)
+  #endif
+  #define inline_qualifier_ignored 20050
+#else
+  #ifndef _MSC_VER
+    #define NBLA_DIAG_SUPPRESS(warn) _Pragma(STRINGIFY(diag_suppress warn))
+    #define NBLA_DIAG_DEFAULT(warn)  _Pragma(STRINGIFY(diag_default warn))
+  #else
+    #define NBLA_DIAG_SUPPRESS(warn)
+    #define NBLA_DIAG_DEFAULT(warn)
+  #endif
+  #define inline_qualifier_ignored 3095
+#endif
+
 namespace cuda {
 typedef int Index_t;
 }

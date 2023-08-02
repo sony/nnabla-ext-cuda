@@ -35,7 +35,10 @@ void ReLUCuda<T>::forward_impl(const Variables &inputs,
   Tc *y = outputs[0]->cast_data_and_get_pointer<Tc>(this->ctx_, true);
   const Size_t size = inputs[0]->size();
   const Size_t size2 = interpret_size<T>(size);
+
+  NBLA_DIAG_SUPPRESS(inline_qualifier_ignored);
   NBLA_CUDA_LAUNCH_KERNEL_SIMPLE_SIZE_T(kernel_relu_forward, size2, size, y, x);
+  NBLA_DIAG_DEFAULT(inline_qualifier_ignored);
 }
 
 template <class T>
@@ -54,6 +57,7 @@ void ReLUCuda<T>::backward_impl(const Variables &inputs,
   const Size_t size = inputs[0]->size();
   const Size_t size2 = interpret_size<T>(size);
 
+  NBLA_DIAG_SUPPRESS(inline_qualifier_ignored);
   if (dx != dy && accum[0]) {
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE_SIZE_T((kernel_relu_backward<true>), size2,
                                           size, dx, y, dy);
@@ -61,5 +65,6 @@ void ReLUCuda<T>::backward_impl(const Variables &inputs,
     NBLA_CUDA_LAUNCH_KERNEL_SIMPLE_SIZE_T((kernel_relu_backward<false>), size2,
                                           size, dx, y, dy);
   }
+  NBLA_DIAG_DEFAULT(inline_qualifier_ignored);
 }
 } // namespace nbla
