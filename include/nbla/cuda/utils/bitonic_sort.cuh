@@ -155,7 +155,7 @@ __global__ void bitonic_sort(T *data, const int size) {
 
 /**
  * Sometime the size is defined in cuda memeory
-*/
+ */
 template <typename T, unsigned N = 1024>
 __global__ void bitonic_sort(T *data, unsigned int *p_size) {
   using namespace bitonic_sort_details;
