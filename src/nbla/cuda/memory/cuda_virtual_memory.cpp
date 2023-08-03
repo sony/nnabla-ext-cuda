@@ -276,12 +276,20 @@ bool CudaVirtualMemory::grow_impl(VecPhysicalMemoryPtr &p_mems) {
 DeviceMemoryState CudaVirtualMemory::get_device_memory_state() {
   cudaError_t status = event_.query();
 
-  if (status == cudaSuccess)
-    return DeviceMemoryState::Unlocked;
-  else if (status == cudaErrorNotReady)
-    return DeviceMemoryState::Locked;
-  else
-    NBLA_CUDA_CHECK(status); // raise by message
+  DeviceMemoryState dms(DeviceMemoryState::Locked);
+  switch (status) {
+    case cudaSuccess:
+      dms = DeviceMemoryState::Unlocked;
+      break;
+    case cudaErrorNotReady:
+      dms = DeviceMemoryState::Locked;
+      break;
+    default:
+      NBLA_CUDA_CHECK(status); // raise by message
+      break;
+  }
+
+  return dms;
 }
 
 void CudaVirtualMemory::lock_device_memory() { event_.record(0); }
