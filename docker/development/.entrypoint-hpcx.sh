@@ -14,12 +14,8 @@
 # limitations under the License.
 
 if [ -d "/opt/mpi/hpcx" ]; then
-    curdir=$PWD
-    cd /opt/mpi/hpcx
-    . ./hpcx-init.sh
+    . /opt/mpi/hpcx/hpcx-init.sh
     hpcx_load
-    cd $curdir
-    unset curdir
 fi
 
 if [ $# -eq 0 ]; then

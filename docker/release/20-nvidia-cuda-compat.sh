@@ -16,12 +16,8 @@
 test -f /etc/shinit_v2 && . /etc/shinit_v2
 
 if [ -d "/opt/mpi/hpcx" ]; then
-    curdir=$PWD
-    cd /opt/mpi/hpcx
-    . ./hpcx-init.sh
+    . /opt/mpi/hpcx/hpcx-init.sh
     hpcx_load
-    cd $curdir
-    unset curdir
 else
     export PATH=/opt/mpi/bin:$PATH
     export LD_LIBRARY_PATH=/opt/mpi/lib:$LD_LIBRARY_PATH
