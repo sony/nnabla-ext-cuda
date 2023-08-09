@@ -70,7 +70,7 @@ class DaliIterator(object):
     def __init__(self, pipeline, non_blocking=False):
 
         # TODO: Enable non_blocking option when it's in DALI.
-        assert not non_blocking,\
+        assert not non_blocking, \
             "The option `non_blocking` is not in DALI yet (https://github.com/NVIDIA/DALI/pull/1254)."
         self.pipeline = pipeline
         self.pipeline.build()
