@@ -22,7 +22,7 @@ ARG APT_OPTS
 
 RUN eval ${APT_OPTS} \
     && apt-get update \
-    && apt-get install -y --no-install-recommends \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
        bzip2 \
        ca-certificates \
        curl \
