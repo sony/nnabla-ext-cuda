@@ -25,11 +25,7 @@ IF NOT EXIST %nnabla_build_folder% (
    exit /b 255
 )
 
-SET third_party_folder=%nnabla_root%\third_party
 REM Build third party libraries.
-PUSHD .
-CALL %nnabla_root%\build-tools\msvc\tools\build_zlib.bat       || GOTO :error
-POPD
 CALL %~dp0tools\get_cutensor.bat %1 || GOTO :error
 
 REM Build CUDA extension library

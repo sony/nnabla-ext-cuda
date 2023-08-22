@@ -914,3 +914,30 @@ This supplement is an exhibit to the Agreement and is incorporated as an integra
 
 3. Licensing. If the distribution terms in this Agreement are not suitable for your organization, or for any questions regarding this Agreement, please contact NVIDIA at nvidia-compute-license-questions@nvidia.com
 ```
+
+## [zlib](https://www.zlib.net/zlib.html)
+
+`Neural Network Libraries CUDA extension` will use [zlib](https://www.zlib.net/zlib.html) for CUDA 11.6 or newer versions on Windows. nnabla_ext_cuda_alllib wheel for Windows will contain a copy of `zlibwapi.dll` as a part of the packed CUDA runtime environment.
+
+```
+Copyright (C) 1995-2022 Jean-loup Gailly and Mark Adler
+
+This software is provided 'as-is', without any express or implied
+warranty.  In no event will the authors be held liable for any damages
+arising from the use of this software.
+
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not
+     claim that you wrote the original software. If you use this software
+     in a product, an acknowledgment in the product documentation would be
+     appreciated but is not required.
+2. Altered source versions must be plainly marked as such, and must not be
+     misrepresented as being the original software.
+3. This notice may not be removed or altered from any source distribution.
+
+Jean-loup Gailly        Mark Adler
+jloup@gzip.org          madler@alumni.caltech.edu
+```

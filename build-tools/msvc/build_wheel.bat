@@ -22,7 +22,6 @@ SETLOCAL
 REM Environment
 CALL %~dp0tools\env.bat %1 %2 %3 || GOTO :error
 
-SET third_party_folder=%nnabla_root%\third_party
 CALL %~dp0tools\get_cutensor.bat %2 || GOTO :error
 
 IF NOT EXIST %nnabla_build_folder% (

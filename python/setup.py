@@ -286,6 +286,13 @@ def cuda_config(root_dir, cuda_lib, ext_opts, lib_dirs):
                             sys.exit(-1)
                 return libs
 
+            if 'zlib_dll' in os.environ:
+                zlib_lib_path = os.environ['zlib_dll']
+                print('Copying zlibwapi.dll')
+                shutil.copyfile(zlib_lib_path, join(
+                    path_cuda_pkg, 'zlibwapi.dll'))
+                package_data[cuda_pkg].append('zlibwapi.dll')
+
             for d in search_dependencies(cuda_lib_out):
                 print('LIB: {}'.format(d))
                 package_data[cuda_pkg].append(d)
