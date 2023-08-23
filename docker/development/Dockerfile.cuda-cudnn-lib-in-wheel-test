@@ -27,6 +27,7 @@ ARG CURL_OPTS
 ARG WGET_OPTS
 ARG YUM_OPTS
 ARG MPIVER=3.1.6
+ARG HPCX_URL_centos
 
 ENV LC_ALL C
 ENV LANG C
@@ -39,13 +40,46 @@ RUN eval ${YUM_OPTS} \
     && yum install -y \
         curl \
         rpm-build \
+    && if [ $(echo "${MPIVER}" | awk -F. '{ printf("%d%02d%02d\n", $1,$2,$3); }') -gt 30106 ]; then \
+        yum install -y libibverbs \
+        librdmacm \
+        rdma-core-devel \
+        numactl-libs \
+        numactl-devel \
+        binutils-devel \
+        patch; \
+    fi \
     && yum group install -y "Development Tools" \
     && yum clean all
 
-RUN mkdir /root/rpmbuild
-RUN cd /root/rpmbuild; curl ${CURL_OPTS} https://download.open-mpi.org/release/open-mpi/v${MPIVER%.*}/openmpi-${MPIVER}-1.src.rpm -o openmpi-${MPIVER}-1.src.rpm
-RUN cd /root/rpmbuild; rpmbuild --rebuild openmpi-${MPIVER}-1.src.rpm
-RUN mv /root/rpmbuild/RPMS/x86_64/openmpi-${MPIVER}-1.*.rpm /root
+COPY docker/release/hpcx-init.patch /tmp/hpcx-init.patch
+COPY docker/release/hpcx-ompi-etc.patch /tmp/hpcx-ompi-etc.patch
+
+RUN if [ $(echo "${MPIVER}" | awk -F. '{ printf("%d%02d%02d\n", $1,$2,$3); }') -gt 30106 ]; then \
+        mkdir /root/openmpi-hpcx \
+        && cd /root/openmpi-hpcx \
+        && curl ${CURL_OPTS} -LO ${HPCX_URL_centos} \
+        && tar -xvf hpcx*.tbz \
+        && rm -f hpcx*.tbz \
+        && mv hpcx* hpcx \
+        && cd hpcx \
+        && ./utils/hpcx_rebuild.sh --ompi-extra-config --enable-openib-rdmacm-ibaddr \
+        && cp -ap ./hpcx-rebuild/lib/libmca_common_verbs.* ./ompi/lib/ \
+        && cp -ap ./hpcx-rebuild/lib/openmpi/mca_btl_openib.* ./ompi/lib/openmpi/ \
+        && cp -ap ./hpcx-rebuild/share/openmpi/*verbs* ./ompi/share/openmpi/ \
+        && cp -ap ./hpcx-rebuild/share/openmpi/*openib* ./ompi/share/openmpi/ \
+        && rm -rf ./sources/openmpi-gitclone ./hpcx_rebuild ./hpcx_rebuild.sh \
+        && patch -p1 < /tmp/hpcx-init.patch \
+        && patch -p1 < /tmp/hpcx-ompi-etc.patch \
+        && chmod og+w ./ompi/etc/* \
+        && cd ..; \
+    else \
+        mkdir /root/rpmbuild \
+        && cd /root/rpmbuild \
+        && curl ${CURL_OPTS} https://download.open-mpi.org/release/open-mpi/v${MPIVER%.*}/openmpi-${MPIVER}-1.src.rpm -o openmpi-${MPIVER}-1.src.rpm \
+        && rpmbuild --rebuild openmpi-${MPIVER}-1.src.rpm \
+        && mv /root/rpmbuild/RPMS/x86_64/openmpi-${MPIVER}-1.*.rpm /root; \
+    fi
 
 FROM centos:7
 
@@ -100,6 +134,7 @@ RUN eval ${YUM_OPTS} \
         sqlite \
         sqlite-devel \
         tk-devel \
+        numactl-libs \
     && yum group install -y "Development Tools" \
     && yum clean all
 
@@ -135,8 +170,9 @@ RUN mkdir /tmp/deps \
     && rm -rf /tmp/*
 
 ############################################################ Copy OpenMPI
-COPY --from=openmpi /root/openmpi-*.rpm /root
-RUN rpm -i /root/openmpi-*.rpm
+COPY --from=openmpi /root/openmpi-* /root
+RUN if [ -e /root/openmpi-*.rpm ]; then rpm -i /root/openmpi-*.rpm; fi
+RUN if [ -d /root/hpcx ]; then mkdir /opt/mpi; mv /root/hpcx /opt/mpi/hpcx; fi
 
 ############################################################ build python from source
 ARG PYTHON_VER
@@ -173,5 +209,9 @@ ENV CXX /usr/local/bin/g++
 RUN echo NCCL_SHM_DISABLE=1 >> /etc/nccl.conf
 RUN echo NCCL_P2P_LEVEL=SYS >> /etc/nccl.conf
 
-WORKDIR /home
-CMD [ "/bin/bash" ]
+
+# Entrypoint
+COPY docker/development/.entrypoint-hpcx.sh /opt/.entrypoint.sh
+RUN chmod +x /opt/.entrypoint.sh
+
+ENTRYPOINT ["/bin/bash", "-c", "/opt/.entrypoint.sh \"${@}\"", "--"]

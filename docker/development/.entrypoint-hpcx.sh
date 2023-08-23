@@ -1,5 +1,5 @@
-#!/bin/sh
-# Copyright 2021 Sony Group Corporation.
+#!/bin/bash
+# Copyright 2023 Sony Group Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,12 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-test -f /etc/shinit_v2 && . /etc/shinit_v2
-
 if [ -d "/opt/mpi/hpcx" ]; then
     . /opt/mpi/hpcx/hpcx-init.sh
     hpcx_load
+fi
+
+if [ $# -eq 0 ]; then
+    exec "/bin/bash"
 else
-    export PATH=/opt/mpi/bin:$PATH
-    export LD_LIBRARY_PATH=/opt/mpi/lib:$LD_LIBRARY_PATH
+    exec "$@"
 fi

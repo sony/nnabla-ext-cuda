@@ -3,7 +3,7 @@
 @@ -1,5 +1,5 @@
  #!/bin/bash
 -mydir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-+mydir="/opt/mpi/hpcx-v2.12"
++mydir="/opt/mpi/hpcx"
  
  export HPCX_DIR=$mydir
  export HPCX_UCX_DIR=${HPCX_DIR}/ucx
