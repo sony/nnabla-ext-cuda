@@ -55,5 +55,5 @@ build-tools\msvc\build_wheel.bat 3.8 11.4 8
 
 Tested version
 
-    PYTHON: 3.7 3.8 3.9 3.10
+    PYTHON: 3.8 3.9 3.10
     CUDA/cuDNN: 11.0/8.0 11.4/8.2
