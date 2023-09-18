@@ -18,5 +18,5 @@
 
 # Map specific openmpi version to HPCX download url
 
-export HPCX_URL_ubuntu_4.1.5='http://www.mellanox.com/downloads/hpc/hpc-x/v2.12/hpcx-v2.12-gcc-MLNX_OFED_LINUX-5-ubuntu20.04-cuda11-gdrcopy2-nccl2.12-x86_64.tbz'
+export HPCX_URL_ubuntu_4.1.5='https://content.mellanox.com/hpc/hpc-x/v2.12/hpcx-v2.12-gcc-MLNX_OFED_LINUX-5-ubuntu20.04-cuda11-gdrcopy2-nccl2.12-x86_64.tbz'
 export HPCX_URL_centos_4.1.5='https://content.mellanox.com/hpc/hpc-x/v2.12/hpcx-v2.12-gcc-MLNX_OFED_LINUX-5-redhat7-cuda11-gdrcopy2-nccl2.12-x86_64.tbz'

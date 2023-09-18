@@ -19,7 +19,9 @@ REM Download pre-built cuTENSOR library
 SET CUDAVER=%1
 IF %CUDAVER% == 10.2 GOTO :LIB_VER_SET
 IF %CUDAVER% == 11.0 GOTO :LIB_VER_SET
-SET CUDAVER=11
+for /f "delims=." %%i in ("%CUDAVER%") do (
+    SET CUDAVER=%%i
+)
 
 :LIB_VER_SET
 
@@ -29,7 +31,7 @@ SET cutensor_dll=%cutensor_folder%\lib\%CUDAVER%\cutensor.dll
 SET cutensor_include_dir=%cutensor_folder%\include
 
 if NOT EXIST %cutensor_folder%.zip (
-    powershell "%nnabla_iwr_script%; iwr %nnabla_iwr_options% -Uri https://developer.download.nvidia.com/compute/cutensor/redist/libcutensor/windows-x86_64/libcutensor-windows-x86_64-1.7.0.1-archive.zip -OutFile %cutensor_folder%.zip" || GOTO :error
+    powershell -ExecutionPolicy Bypass "%nnabla_iwr_script%; iwr %nnabla_iwr_options% -Uri https://developer.download.nvidia.com/compute/cutensor/redist/libcutensor/windows-x86_64/libcutensor-windows-x86_64-1.7.0.1-archive.zip -OutFile %cutensor_folder%.zip" || GOTO :error
 )
 
 IF EXIST %cutensor_library_dir% (
