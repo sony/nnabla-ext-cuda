@@ -69,6 +69,8 @@ im2col_kernel(const int col_size, const T *img, const int height,
 #endif
   }
 }
+
+NBLA_DIAG_SUPPRESS(inline_qualifier_ignored);
 template <>
 inline __global__ void
 im2col_kernel(const int col_size, const HalfCuda *img, const int height,
@@ -91,4 +93,5 @@ im2col_kernel(const int col_size, const HalfCuda *img, const int height,
                    : (HalfCuda)0;
   }
 }
+NBLA_DIAG_DEFAULT(inline_qualifier_ignored);
 } // namespace nbla

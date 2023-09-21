@@ -55,6 +55,17 @@ std::string get_mpi_error_string(int error) {
     }                                                                          \
   }
 
+#define NBLA_MPI_FORCE_ASSERT(condition)                                       \
+  {                                                                            \
+    int error = condition;                                                     \
+    if (error != MPI_SUCCESS) {                                                \
+      auto estring = get_mpi_error_string(error);                              \
+      NBLA_FORCE_ASSERT(error != MPI_SUCCESS,                                  \
+                        "`" #condition "` failed by `%s`.",                    \
+                        estring.c_str());                                      \
+    }                                                                          \
+  }
+
 /**
    MPI singleton class that manages lifetime of MPI.
 
@@ -92,8 +103,8 @@ public:
        */
       return;
     }
-    NBLA_MPI_CHECK(MPI_Group_free(&world_group_));
-    NBLA_MPI_CHECK(MPI_Finalize());
+    NBLA_MPI_FORCE_ASSERT(MPI_Group_free(&world_group_));
+    NBLA_MPI_FORCE_ASSERT(MPI_Finalize());
   }
 
   /**
@@ -345,13 +356,13 @@ MultiProcessDataParallelCommunicatorNccl<
     T>::~MultiProcessDataParallelCommunicatorNccl() {
   if (this->initialized_) {
     for (int i = 0; i < streams_.size(); ++i) {
-      NBLA_CUDA_CHECK(cudaStreamDestroy(streams_[i]));
+      NBLA_CUDA_FORCE_ASSERT(cudaStreamDestroy(streams_[i]));
     }
     for (auto e : this->comms_) {
       ncclCommDestroy(e.second);
     }
     for (auto &stream : this->nonblocking_streams_) {
-      NBLA_CUDA_CHECK(cudaStreamDestroy(stream));
+      NBLA_CUDA_FORCE_ASSERT(cudaStreamDestroy(stream));
     }
   }
 }

@@ -218,11 +218,11 @@ CudnnConvResource::CudnnConvResource(const CudnnConvDesc &desc) {
 
 CudnnConvResource::~CudnnConvResource() {
 
-  NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(x_desc));
-  NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(y_desc));
-  NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(b_desc));
-  NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(b_desc_deconv));
-  NBLA_CUDNN_CHECK(cudnnDestroyFilterDescriptor(w_desc));
+  NBLA_CUDNN_FORCE_ASSERT(cudnnDestroyTensorDescriptor(x_desc));
+  NBLA_CUDNN_FORCE_ASSERT(cudnnDestroyTensorDescriptor(y_desc));
+  NBLA_CUDNN_FORCE_ASSERT(cudnnDestroyTensorDescriptor(b_desc));
+  NBLA_CUDNN_FORCE_ASSERT(cudnnDestroyTensorDescriptor(b_desc_deconv));
+  NBLA_CUDNN_FORCE_ASSERT(cudnnDestroyFilterDescriptor(w_desc));
 }
 
 inline bool check_workspace_limit(Size_t workspace_limit, size_t used_memory) {
@@ -564,40 +564,40 @@ size_t CudnnConvResource::bwd_data_workspace_size() const {
 // Cudnn Convolution Wrapper
 ////////////////////////////////////////
 CudnnConvolutionDescriptor::CudnnConvolutionDescriptor() {
-  NBLA_CUDNN_CHECK(cudnnCreateConvolutionDescriptor(&desc));
+  NBLA_CUDNN_FORCE_ASSERT(cudnnCreateConvolutionDescriptor(&desc));
 }
 CudnnConvolutionDescriptor::~CudnnConvolutionDescriptor() {
-  NBLA_CUDNN_CHECK(cudnnDestroyConvolutionDescriptor(desc));
+  NBLA_CUDNN_FORCE_ASSERT(cudnnDestroyConvolutionDescriptor(desc));
 }
 
 ////////////////////////////////////////
 // Cudnn activation descriptor Wrapper
 ////////////////////////////////////////
 CudnnActivationDescriptor::CudnnActivationDescriptor() {
-  NBLA_CUDNN_CHECK(cudnnCreateActivationDescriptor(&desc));
+  NBLA_CUDNN_FORCE_ASSERT(cudnnCreateActivationDescriptor(&desc));
 }
 CudnnActivationDescriptor::~CudnnActivationDescriptor() {
-  NBLA_CUDNN_CHECK(cudnnDestroyActivationDescriptor(desc));
+  NBLA_CUDNN_FORCE_ASSERT(cudnnDestroyActivationDescriptor(desc));
 }
 
 ////////////////////////////////////////
 // Cudnn Tensor Descriptor Wrapper
 ////////////////////////////////////////
 CudnnTensorDescriptor::CudnnTensorDescriptor() {
-  NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&desc));
+  NBLA_CUDNN_FORCE_ASSERT(cudnnCreateTensorDescriptor(&desc));
 }
 CudnnTensorDescriptor::~CudnnTensorDescriptor() {
-  NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(desc));
+  NBLA_CUDNN_FORCE_ASSERT(cudnnDestroyTensorDescriptor(desc));
 }
 
 ////////////////////////////////////////
 // Cudnn Pooling Wrapper
 ////////////////////////////////////////
 CudnnPoolingDescriptor::CudnnPoolingDescriptor() {
-  NBLA_CUDNN_CHECK(cudnnCreatePoolingDescriptor(&desc));
+  NBLA_CUDNN_FORCE_ASSERT(cudnnCreatePoolingDescriptor(&desc));
 }
 CudnnPoolingDescriptor::~CudnnPoolingDescriptor() {
-  NBLA_CUDNN_CHECK(cudnnDestroyPoolingDescriptor(desc));
+  NBLA_CUDNN_FORCE_ASSERT(cudnnDestroyPoolingDescriptor(desc));
 }
 
 CudnnPooling::Ptr
@@ -625,13 +625,16 @@ CudnnPooling::CudnnPooling(const vector<int> &inshape,
 
 // Create pooling descriptor.
 #if CUDNN_VERSION >= 5000
-  NBLA_CUDNN_CHECK(cudnnSetPoolingNdDescriptor(
-      pooling_desc_.desc, mode, CUDNN_NOT_PROPAGATE_NAN, cfg.kernel.size(),
-      cfg.kernel.data(), cfg.pad.data(), cfg.stride.data()));
+  NBLA_CUDNN_FORCE_ASSERT(
+    cudnnSetPoolingNdDescriptor(pooling_desc_.desc, mode,
+                                CUDNN_NOT_PROPAGATE_NAN, cfg.kernel.size(),
+                                cfg.kernel.data(), cfg.pad.data(),
+                                cfg.stride.data()));
 #else
-  NBLA_CUDNN_CHECK(cudnnSetPoolingNdDescriptor(
-      pooling_desc_.desc, mode, cfg.kernel.size(), cfg.kernel.data(),
-      cfg.pad.data(), cfg.stride.data()));
+  NBLA_CUDNN_FORCE_ASSERT(
+    cudnnSetPoolingNdDescriptor(pooling_desc_.desc, mode,
+                                cfg.kernel.size(), cfg.kernel.data(),
+                                cfg.pad.data(), cfg.stride.data()));
 #endif
 
   // Create input and output descriptor.
@@ -684,12 +687,14 @@ CudnnSoftmax::CudnnSoftmax(const Shape_t &inshape, int axis,
   if (stride_c == 1) {
     mode_ = CUDNN_SOFTMAX_MODE_INSTANCE;
   }
-  NBLA_CUDNN_CHECK(cudnnSetTensor4dDescriptorEx(input_desc_.desc, dtype, N, C,
-                                                H, W, stride_n, stride_c,
-                                                stride_h, stride_w));
-  NBLA_CUDNN_CHECK(cudnnSetTensor4dDescriptorEx(output_desc_.desc, dtype, N, C,
-                                                H, W, stride_n, stride_c,
-                                                stride_h, stride_w));
+  NBLA_CUDNN_FORCE_ASSERT(
+    cudnnSetTensor4dDescriptorEx(input_desc_.desc, dtype, N, C,
+                                 H, W, stride_n, stride_c,
+                                 stride_h, stride_w));
+  NBLA_CUDNN_FORCE_ASSERT(
+    cudnnSetTensor4dDescriptorEx(output_desc_.desc, dtype, N, C,
+                                 H, W, stride_n, stride_c,
+                                 stride_h, stride_w));
 }
 CudnnSoftmax::Ptr CudnnSoftmax::create(const Shape_t &inshape, int axis,
                                        cudnnSoftmaxAlgorithm_t algo,
@@ -721,7 +726,7 @@ CudnnHandleManager::~CudnnHandleManager() {
     for (auto thread : device.second) {
       for (auto stream : thread.second) {
         cudnnHandle_t handle = *stream.second;
-        NBLA_CUDNN_CHECK(cudnnDestroy(handle));
+        NBLA_CUDNN_FORCE_ASSERT(cudnnDestroy(handle));
       }
     }
   }

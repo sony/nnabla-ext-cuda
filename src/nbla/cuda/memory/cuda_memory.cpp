@@ -45,7 +45,7 @@ CudaMemory::~CudaMemory() {
                     "byl another memory and split previously).");
   DEBUG_LOG("%s: %zu at %p\n", __func__, this->bytes(), ptr_);
   cuda_set_device(device_num_);
-  NBLA_CUDA_CHECK(cudaFree(ptr_));
+  NBLA_CUDA_FORCE_ASSERT(cudaFree(ptr_));
 }
 
 bool CudaMemory::alloc_impl() {
@@ -131,7 +131,7 @@ CudaPinnedHostMemory::~CudaPinnedHostMemory() {
                     "Trying to free memory which has a prev (allocated "
                     "by another memory and split previously).");
   DEBUG_LOG("%s: %zu at %p\n", __func__, this->bytes(), ptr_);
-  NBLA_CUDA_CHECK(cudaFreeHost(ptr_));
+  NBLA_CUDA_FORCE_ASSERT(cudaFreeHost(ptr_));
   ptr_ = nullptr; // To avoid double free
 }
 

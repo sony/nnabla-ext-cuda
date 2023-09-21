@@ -39,6 +39,27 @@
 
 namespace nbla {
 
+#define STRINGIFY(str) #str
+#if CUDA_VERSION >= 11010
+  #ifndef _MSC_VER
+    #define NBLA_DIAG_SUPPRESS(warn) _Pragma(STRINGIFY(nv_diag_suppress warn))
+    #define NBLA_DIAG_DEFAULT(warn)  _Pragma(STRINGIFY(nv_diag_default warn))
+  #else
+    #define NBLA_DIAG_SUPPRESS(warn)
+    #define NBLA_DIAG_DEFAULT(warn)
+  #endif
+  #define inline_qualifier_ignored 20050
+#else
+  #ifndef _MSC_VER
+    #define NBLA_DIAG_SUPPRESS(warn) _Pragma(STRINGIFY(diag_suppress warn))
+    #define NBLA_DIAG_DEFAULT(warn)  _Pragma(STRINGIFY(diag_default warn))
+  #else
+    #define NBLA_DIAG_SUPPRESS(warn)
+    #define NBLA_DIAG_DEFAULT(warn)
+  #endif
+  #define inline_qualifier_ignored 3095
+#endif
+
 namespace cuda {
 typedef int Index_t;
 }
@@ -63,6 +84,18 @@ cudaGetLastError is used to clear previous error happening at "condition".
     }                                                                          \
   }
 
+#define NBLA_CUDA_FORCE_ASSERT(condition)                                      \
+  {                                                                            \
+    cudaError_t error = condition;                                             \
+    if (error != cudaSuccess) {                                                \
+      cudaGetLastError();                                                      \
+      NBLA_FORCE_ASSERT(error != cudaSuccess,                                  \
+                        "(%s) failed with \"%s\" (%s).",                       \
+                        #condition, cudaGetErrorString(error),                 \
+                        cudaGetErrorName(error))                               \
+    }                                                                          \
+  }
+
 /**
 Check CUDA driver error.
 */
@@ -75,6 +108,19 @@ Check CUDA driver error.
       cuGetErrorString(status, &err_str);                                      \
       NBLA_ERROR(error_code::target_specific, "(%s) failed with \"%s\" (%s).", \
                  #condition, err_str, err_name);                               \
+    }                                                                          \
+  }
+
+#define NBLA_CUDA_DRIVER_FORCE_ASSERT(condition)                               \
+  {                                                                            \
+    CUresult status = (condition);                                             \
+    if (status != CUDA_SUCCESS) {                                              \
+      const char *err_name, *err_str;                                          \
+      cuGetErrorName(status, &err_name);                                       \
+      cuGetErrorString(status, &err_str);                                      \
+      NBLA_FORCE_ASSERT(status != CUDA_SUCCESS,                                \
+                        "(%s) failed with \"%s\" (%s).",                       \
+                        #condition, err_str, err_name);                        \
     }                                                                          \
   }
 
@@ -112,6 +158,20 @@ inline string cublas_status_to_string(cublasStatus_t status) {
     if (status != CUBLAS_STATUS_SUCCESS) {                                     \
       NBLA_ERROR(                                                              \
           error_code::target_specific,                                         \
+          string("CUBLAS_STATUS_") + cublas_status_to_string(status) +         \
+              string(                                                          \
+                  " occured in `" #condition                                   \
+                  "`. Please see CUBLAS API documentation for the cause."));   \
+    }                                                                          \
+  }
+
+#define NBLA_CUBLAS_FORCE_ASSERT(condition)                                    \
+  {                                                                            \
+    cublasStatus_t status = condition;                                         \
+    cudaGetLastError();                                                        \
+    if (status != CUBLAS_STATUS_SUCCESS) {                                     \
+      NBLA_FORCE_ASSERT(                                                       \
+          status != CUBLAS_STATUS_SUCCESS,                                     \
           string("CUBLAS_STATUS_") + cublas_status_to_string(status) +         \
               string(                                                          \
                   " occured in `" #condition                                   \
@@ -165,6 +225,19 @@ inline string cusolver_status_to_string(cusolverStatus_t status) {
     if (status != CUSOLVER_STATUS_SUCCESS) {                                   \
       NBLA_ERROR(                                                              \
           error_code::target_specific,                                         \
+          string("CUSOLVER_STATUS_") + cusolver_status_to_string(status) +     \
+              string(                                                          \
+                  " occured in `" #condition                                   \
+                  "`. Please see CUSOLVER API documentation for the cause.")); \
+    }                                                                          \
+  }
+
+#define NBLA_CUSOLVER_FORCE_ASSERT(condition)                                  \
+  {                                                                            \
+    cusolverStatus_t status = condition;                                       \
+    if (status != CUSOLVER_STATUS_SUCCESS) {                                   \
+      NBLA_FORCE_ASSERT(                                                       \
+          status != CUSOLVER_STATUS_SUCCESS,                                   \
           string("CUSOLVER_STATUS_") + cusolver_status_to_string(status) +     \
               string(                                                          \
                   " occured in `" #condition                                   \

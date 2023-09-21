@@ -47,11 +47,11 @@ Cuda::Cuda()
 Cuda::~Cuda() {
   for (auto &tid_handles : this->cublas_handles_) {
     for (auto &handle : tid_handles.second) {
-      NBLA_CUBLAS_CHECK(cublasDestroy(handle.second));
+      NBLA_CUBLAS_FORCE_ASSERT(cublasDestroy(handle.second));
     }
   }
   for (auto handle : this->cusolverdn_handles_) {
-    NBLA_CUSOLVER_CHECK(cusolverDnDestroy(handle.second));
+    NBLA_CUSOLVER_FORCE_ASSERT(cusolverDnDestroy(handle.second));
   }
   for (auto gen : this->curand_generators_) {
     curand_destroy_generator(gen.second);
@@ -59,7 +59,7 @@ Cuda::~Cuda() {
   for (auto &all_events : this->cuda_unused_events_) {
     for (auto &events : all_events.second) {
       for (auto &event : events.second) {
-        NBLA_CUDA_CHECK(cudaEventDestroy(event));
+        NBLA_CUDA_FORCE_ASSERT(cudaEventDestroy(event));
       }
     }
   }
@@ -67,17 +67,17 @@ Cuda::~Cuda() {
   for (auto &all_streams : this->streams_) {
     for (auto &tid_stream : all_streams.second) {
       for (auto &stream : tid_stream.second) {
-        NBLA_CUDA_CHECK(cudaStreamDestroy(*(stream.second)));
+        NBLA_CUDA_FORCE_ASSERT(cudaStreamDestroy(*(stream.second)));
       }
     }
   }
 
   if (stream_HtoD != 0) {
-    NBLA_CUDA_CHECK(cudaStreamDestroy(stream_HtoD));
+    NBLA_CUDA_FORCE_ASSERT(cudaStreamDestroy(stream_HtoD));
   }
 
   if (stream_DtoH != 0) {
-    NBLA_CUDA_CHECK(cudaStreamDestroy(stream_DtoH));
+    NBLA_CUDA_FORCE_ASSERT(cudaStreamDestroy(stream_DtoH));
   }
 }
 
@@ -142,10 +142,10 @@ cutensorHandle_t Cuda::cutensor_handle(int device) {
   auto it = this->cutensor_handles_.find(device);
   // Create a new one
   if (it == this->cutensor_handles_.end()) {
-    cutensorHandle_t handle;
-    NBLA_CUTENSOR_CHECK(cutensorInit(&handle));
-    this->cutensor_handles_.insert({device, handle});
-    return handle;
+    cutensorHandle_t* handle;
+    NBLA_CUTENSOR_CHECK(cutensorCreate(&handle));
+    this->cutensor_handles_.insert({device, *handle});
+    return *handle;
   }
   return it->second;
 }

@@ -40,7 +40,7 @@ DataParallelCommunicatorNccl<T>::~DataParallelCommunicatorNccl() {
   if (this->initialized_) {
     for (int i = 0; i < device_ids_.size(); ++i) {
       ncclCommDestroy(comms_[i]);
-      NBLA_CUDA_CHECK(cudaStreamDestroy(streams_[i]));
+      NBLA_CUDA_FORCE_ASSERT(cudaStreamDestroy(streams_[i]));
     }
   }
 }

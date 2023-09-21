@@ -29,12 +29,12 @@ public:
 
   explicit Add2CudaCudnn(const Context &ctx, bool inplace)
       : Add2Cuda<T>(ctx, inplace), device_(std::stoi(ctx.device_id)) {
-    NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&input_desc_));
-    NBLA_CUDNN_CHECK(cudnnCreateTensorDescriptor(&output_desc_));
+    NBLA_CUDNN_FORCE_ASSERT(cudnnCreateTensorDescriptor(&input_desc_));
+    NBLA_CUDNN_FORCE_ASSERT(cudnnCreateTensorDescriptor(&output_desc_));
   }
   virtual ~Add2CudaCudnn() {
-    NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(input_desc_));
-    NBLA_CUDNN_CHECK(cudnnDestroyTensorDescriptor(output_desc_));
+    NBLA_CUDNN_FORCE_ASSERT(cudnnDestroyTensorDescriptor(input_desc_));
+    NBLA_CUDNN_FORCE_ASSERT(cudnnDestroyTensorDescriptor(output_desc_));
   }
   virtual string name() { return "Add2CudaCudnn"; }
   virtual vector<string> allowed_array_classes() {
