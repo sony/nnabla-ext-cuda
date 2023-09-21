@@ -61,8 +61,7 @@ std::string get_mpi_error_string(int error) {
     if (error != MPI_SUCCESS) {                                                \
       auto estring = get_mpi_error_string(error);                              \
       NBLA_FORCE_ASSERT(error != MPI_SUCCESS,                                  \
-                        "`" #condition "` failed by `%s`.",                    \
-                        estring.c_str());                                      \
+                        "`" #condition "` failed by `%s`.", estring.c_str());  \
     }                                                                          \
   }
 

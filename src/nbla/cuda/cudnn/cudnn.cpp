@@ -625,16 +625,13 @@ CudnnPooling::CudnnPooling(const vector<int> &inshape,
 
 // Create pooling descriptor.
 #if CUDNN_VERSION >= 5000
-  NBLA_CUDNN_FORCE_ASSERT(
-    cudnnSetPoolingNdDescriptor(pooling_desc_.desc, mode,
-                                CUDNN_NOT_PROPAGATE_NAN, cfg.kernel.size(),
-                                cfg.kernel.data(), cfg.pad.data(),
-                                cfg.stride.data()));
+  NBLA_CUDNN_FORCE_ASSERT(cudnnSetPoolingNdDescriptor(
+      pooling_desc_.desc, mode, CUDNN_NOT_PROPAGATE_NAN, cfg.kernel.size(),
+      cfg.kernel.data(), cfg.pad.data(), cfg.stride.data()));
 #else
-  NBLA_CUDNN_FORCE_ASSERT(
-    cudnnSetPoolingNdDescriptor(pooling_desc_.desc, mode,
-                                cfg.kernel.size(), cfg.kernel.data(),
-                                cfg.pad.data(), cfg.stride.data()));
+  NBLA_CUDNN_FORCE_ASSERT(cudnnSetPoolingNdDescriptor(
+      pooling_desc_.desc, mode, cfg.kernel.size(), cfg.kernel.data(),
+      cfg.pad.data(), cfg.stride.data()));
 #endif
 
   // Create input and output descriptor.
@@ -688,13 +685,11 @@ CudnnSoftmax::CudnnSoftmax(const Shape_t &inshape, int axis,
     mode_ = CUDNN_SOFTMAX_MODE_INSTANCE;
   }
   NBLA_CUDNN_FORCE_ASSERT(
-    cudnnSetTensor4dDescriptorEx(input_desc_.desc, dtype, N, C,
-                                 H, W, stride_n, stride_c,
-                                 stride_h, stride_w));
+      cudnnSetTensor4dDescriptorEx(input_desc_.desc, dtype, N, C, H, W,
+                                   stride_n, stride_c, stride_h, stride_w));
   NBLA_CUDNN_FORCE_ASSERT(
-    cudnnSetTensor4dDescriptorEx(output_desc_.desc, dtype, N, C,
-                                 H, W, stride_n, stride_c,
-                                 stride_h, stride_w));
+      cudnnSetTensor4dDescriptorEx(output_desc_.desc, dtype, N, C, H, W,
+                                   stride_n, stride_c, stride_h, stride_w));
 }
 CudnnSoftmax::Ptr CudnnSoftmax::create(const Shape_t &inshape, int axis,
                                        cudnnSoftmaxAlgorithm_t algo,
