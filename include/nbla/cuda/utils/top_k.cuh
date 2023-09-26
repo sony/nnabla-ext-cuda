@@ -79,7 +79,7 @@ __global__ void bucket_count(const T *data, const int size,
 
   auto minmax = minmax_data[iter];
 
-  if (minmax.max - minmax.min > 0) {
+  if (minmax.max - minmax.min >= 0) {
     const int thread = blockIdx.x * blockDim.x + threadIdx.x;
     const int stride = blockDim.x * gridDim.x;
 
@@ -94,7 +94,7 @@ __global__ void bucket_count(const T *data, const int size,
     unsigned int count = 0;
 
     for (int i = thread; i < size; i += stride) {
-      count += int(greater(UseAbsVal ? abs(data[i]) : data[i], pivot));
+      count += int(greater_equal(UseAbsVal ? abs(data[i]) : data[i], pivot));
     }
 
     for (int offset = CUDA_WARP_SIZE / 2; offset > 0; offset >>= 1)
@@ -225,14 +225,14 @@ __global__ void init_val_idx_list(const T *data, const int size,
                                   Bucket<T> *bucket, ValIdx<T> *sort_data,
                                   const unsigned int sort_data_size,
                                   unsigned int *k) {
-  TopKGreater<Largest> greater;
+  TopKGreaterEqual<Largest> greater_equal;
 
   const auto thread = blockIdx.x * blockDim.x + threadIdx.x;
   const auto stride = blockDim.x * gridDim.x;
 
   for (unsigned int index = thread; index < size; index += stride) {
     T value = UseAbsVal ? abs(data[index]) : data[index];
-    if (greater(value, bucket->pivot)) {
+    if (greater_equal(value, bucket->pivot)) {
       sort_data[atomicInc(&bucket->count, sort_data_size)] = {value, index};
     }
   }
