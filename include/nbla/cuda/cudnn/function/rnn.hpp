@@ -57,19 +57,29 @@ public:
 };
 struct WCudnnTensorDesc {
   cudnnTensorDescriptor_t desc;
-  WCudnnTensorDesc() { NBLA_CUDNN_FORCE_ASSERT(cudnnCreateTensorDescriptor(&desc)); }
-  ~WCudnnTensorDesc() { NBLA_CUDNN_FORCE_ASSERT(cudnnDestroyTensorDescriptor(desc)); }
+  WCudnnTensorDesc() {
+    NBLA_CUDNN_FORCE_ASSERT(cudnnCreateTensorDescriptor(&desc));
+  }
+  ~WCudnnTensorDesc() {
+    NBLA_CUDNN_FORCE_ASSERT(cudnnDestroyTensorDescriptor(desc));
+  }
 };
 
 struct WCudnnFilterDesc {
   cudnnFilterDescriptor_t desc;
-  WCudnnFilterDesc() { NBLA_CUDNN_FORCE_ASSERT(cudnnCreateFilterDescriptor(&desc)); }
-  ~WCudnnFilterDesc() { NBLA_CUDNN_FORCE_ASSERT(cudnnDestroyFilterDescriptor(desc)); }
+  WCudnnFilterDesc() {
+    NBLA_CUDNN_FORCE_ASSERT(cudnnCreateFilterDescriptor(&desc));
+  }
+  ~WCudnnFilterDesc() {
+    NBLA_CUDNN_FORCE_ASSERT(cudnnDestroyFilterDescriptor(desc));
+  }
 };
 
 struct WCudnnDropoutDesc {
   cudnnDropoutDescriptor_t desc;
-  WCudnnDropoutDesc() { NBLA_CUDNN_FORCE_ASSERT(cudnnCreateDropoutDescriptor(&desc)); }
+  WCudnnDropoutDesc() {
+    NBLA_CUDNN_FORCE_ASSERT(cudnnCreateDropoutDescriptor(&desc));
+  }
   ~WCudnnDropoutDesc() {
     NBLA_CUDNN_FORCE_ASSERT(cudnnDestroyDropoutDescriptor(desc));
   }

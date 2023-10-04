@@ -278,15 +278,15 @@ DeviceMemoryState CudaVirtualMemory::get_device_memory_state() {
 
   DeviceMemoryState dms(DeviceMemoryState::Locked);
   switch (status) {
-    case cudaSuccess:
-      dms = DeviceMemoryState::Unlocked;
-      break;
-    case cudaErrorNotReady:
-      dms = DeviceMemoryState::Locked;
-      break;
-    default:
-      NBLA_CUDA_CHECK(status); // raise by message
-      break;
+  case cudaSuccess:
+    dms = DeviceMemoryState::Unlocked;
+    break;
+  case cudaErrorNotReady:
+    dms = DeviceMemoryState::Locked;
+    break;
+  default:
+    NBLA_CUDA_CHECK(status); // raise by message
+    break;
   }
 
   return dms;

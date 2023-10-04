@@ -142,7 +142,7 @@ cutensorHandle_t Cuda::cutensor_handle(int device) {
   auto it = this->cutensor_handles_.find(device);
   // Create a new one
   if (it == this->cutensor_handles_.end()) {
-    cutensorHandle_t* handle;
+    cutensorHandle_t *handle;
     NBLA_CUTENSOR_CHECK(cutensorCreate(&handle));
     this->cutensor_handles_.insert({device, *handle});
     return *handle;

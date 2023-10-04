@@ -41,23 +41,23 @@ namespace nbla {
 
 #define STRINGIFY(str) #str
 #if CUDA_VERSION >= 11010
-  #ifndef _MSC_VER
-    #define NBLA_DIAG_SUPPRESS(warn) _Pragma(STRINGIFY(nv_diag_suppress warn))
-    #define NBLA_DIAG_DEFAULT(warn)  _Pragma(STRINGIFY(nv_diag_default warn))
-  #else
-    #define NBLA_DIAG_SUPPRESS(warn)
-    #define NBLA_DIAG_DEFAULT(warn)
-  #endif
-  #define inline_qualifier_ignored 20050
+#ifndef _MSC_VER
+#define NBLA_DIAG_SUPPRESS(warn) _Pragma(STRINGIFY(nv_diag_suppress warn))
+#define NBLA_DIAG_DEFAULT(warn) _Pragma(STRINGIFY(nv_diag_default warn))
 #else
-  #ifndef _MSC_VER
-    #define NBLA_DIAG_SUPPRESS(warn) _Pragma(STRINGIFY(diag_suppress warn))
-    #define NBLA_DIAG_DEFAULT(warn)  _Pragma(STRINGIFY(diag_default warn))
-  #else
-    #define NBLA_DIAG_SUPPRESS(warn)
-    #define NBLA_DIAG_DEFAULT(warn)
-  #endif
-  #define inline_qualifier_ignored 3095
+#define NBLA_DIAG_SUPPRESS(warn)
+#define NBLA_DIAG_DEFAULT(warn)
+#endif
+#define inline_qualifier_ignored 20050
+#else
+#ifndef _MSC_VER
+#define NBLA_DIAG_SUPPRESS(warn) _Pragma(STRINGIFY(diag_suppress warn))
+#define NBLA_DIAG_DEFAULT(warn) _Pragma(STRINGIFY(diag_default warn))
+#else
+#define NBLA_DIAG_SUPPRESS(warn)
+#define NBLA_DIAG_DEFAULT(warn)
+#endif
+#define inline_qualifier_ignored 3095
 #endif
 
 namespace cuda {
@@ -89,8 +89,7 @@ cudaGetLastError is used to clear previous error happening at "condition".
     cudaError_t error = condition;                                             \
     if (error != cudaSuccess) {                                                \
       cudaGetLastError();                                                      \
-      NBLA_FORCE_ASSERT(error != cudaSuccess,                                  \
-                        "(%s) failed with \"%s\" (%s).",                       \
+      NBLA_FORCE_ASSERT(error != cudaSuccess, "(%s) failed with \"%s\" (%s).", \
                         #condition, cudaGetErrorString(error),                 \
                         cudaGetErrorName(error))                               \
     }                                                                          \
@@ -119,8 +118,8 @@ Check CUDA driver error.
       cuGetErrorName(status, &err_name);                                       \
       cuGetErrorString(status, &err_str);                                      \
       NBLA_FORCE_ASSERT(status != CUDA_SUCCESS,                                \
-                        "(%s) failed with \"%s\" (%s).",                       \
-                        #condition, err_str, err_name);                        \
+                        "(%s) failed with \"%s\" (%s).", #condition, err_str,  \
+                        err_name);                                             \
     }                                                                          \
   }
 
