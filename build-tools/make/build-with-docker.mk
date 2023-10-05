@@ -61,7 +61,7 @@ docker_image_build_cuda:
 		--build-arg CUDNN_VERSION=$(CUDNN_VERSION) \
 		--build-arg PYTHON_VERSION_MAJOR=$(PYTHON_VERSION_MAJOR) \
 		--build-arg PYTHON_VERSION_MINOR=$(PYTHON_VERSION_MINOR) \
-		--build-arg HPCX_URL_centos=$(HPCX_URL_centos_$(OMPI_VERSION)) \
+		--build-arg HPCX_URL_rhel=$(HPCX_URL_rhel_$(OMPI_VERSION)) \
 		-t $(DOCKER_IMAGE_BUILD_NNABLA_EXT_CUDA) \
 		-f docker/development/Dockerfile.build-mpi$(ARCH_SUFFIX) \
 		.
@@ -77,7 +77,7 @@ docker_image_build_cuda_test:
 		--build-arg PYTHON_VERSION_MAJOR=$(PYTHON_VERSION_MAJOR) \
 		--build-arg PYTHON_VERSION_MINOR=$(PYTHON_VERSION_MINOR) \
 		--build-arg BUILD_WITH_CUTENSOR=False \
-		--build-arg HPCX_URL_centos=$(HPCX_URL_centos_$(OMPI_VERSION)) \
+		--build-arg HPCX_URL_rhel=$(HPCX_URL_rhel_$(OMPI_VERSION)) \
 		-t $(DOCKER_IMAGE_TEST_NNABLA_EXT_CUDA) \
 		-f docker/development/Dockerfile.build-mpi$(ARCH_SUFFIX) \
 		.
@@ -174,9 +174,10 @@ docker_image_cuda_cudnn_lib_in_wheel:
 	cd $(NNABLA_EXT_CUDA_DIRECTORY) \
 	&& docker build $(DOCKER_BUILD_ARGS) \
 		--build-arg CUDA_VERSION_MAJOR=$(CUDA_VERSION_MAJOR) \
+		--build-arg CUDA_VERSION_MINOR=$(CUDA_VERSION_MINOR) \
 		--build-arg PYTHON_VER=3.$(PYTHON_VERSION_MINOR) \
 		--build-arg MPIVER=$(OMPI_VERSION) \
-		--build-arg HPCX_URL_centos=$(HPCX_URL_centos_$(OMPI_VERSION)) \
+		--build-arg HPCX_URL_rhel=$(HPCX_URL_rhel_$(OMPI_VERSION)) \
 		-f $(DOCKERFILE_PATH_LIB_IN_WHEEL) . -t nnabla-ext-cuda-lib-in-whl-py3$(PYTHON_VERSION_MINOR)-cuda$(CUDA_SUFFIX)-mpi$(OMPI_VERSION):$(DOCKER_IMAGE_ID_NNABLA_EXT_CUDA_LIB_IN_WHEEL)
 
 ########################################################################################################################

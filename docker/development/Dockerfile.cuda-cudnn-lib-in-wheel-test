@@ -13,44 +13,46 @@
 # limitations under the License.
 
 ############################################################ OpenMPI
-# CentOS7:  1.10.7-1 (12)
-# Ubuntu16: 1.10.2-1 (12)
-# Ubuntu18: 2.1.1-1  (20)
-# Ubuntu20: 4.0.3-1  (40)
-# CentOS7:  3.1.3-1  (40)
-# ABCI:     2.1.6-1  (20)
-FROM centos:7 as openmpi
+# CentOS7:     1.10.7-1 (12)
+# Ubuntu16:    1.10.2-1 (12)
+# Ubuntu18:    2.1.1-1  (20)
+# CentOS7:     3.1.6-1  (30)
+# RockyLinux8: 3.1.6-1  (30)
+# Ubuntu20:    4.1.5-1  (40)
+# ABCI:        4.1.5-1  (40)
+
+FROM rockylinux:8 as openmpi
 
 ARG PIP_INS_OPTS
 ARG PYTHONWARNINGS
 ARG CURL_OPTS
 ARG WGET_OPTS
-ARG YUM_OPTS
+ARG DNF_OPTS
 ARG MPIVER=3.1.6
-ARG HPCX_URL_centos
+ARG HPCX_URL_rhel
 
 ENV LC_ALL C
 ENV LANG C
 ENV LANGUAGE C
 
-RUN eval ${YUM_OPTS} \
-    && yum install -y \
+RUN eval ${DNF_OPTS} \
+    && dnf install -y \
        epel-release \
-       yum-utils \
-    && yum install -y \
-        curl \
-        rpm-build \
+       dnf-plugins-core \
+    && dnf install -y \
+       curl \
+       rpm-build \
     && if [ $(echo "${MPIVER}" | awk -F. '{ printf("%d%02d%02d\n", $1,$2,$3); }') -gt 30106 ]; then \
-        yum install -y libibverbs \
+        dnf install -y libibverbs \
         librdmacm \
         rdma-core-devel \
         numactl-libs \
         numactl-devel \
         binutils-devel \
         patch; \
-    fi \
-    && yum group install -y "Development Tools" \
-    && yum clean all
+       fi \
+    && dnf group install -y "Development Tools" \
+    && dnf clean all
 
 COPY docker/release/hpcx-init.patch /tmp/hpcx-init.patch
 COPY docker/release/hpcx-ompi-etc.patch /tmp/hpcx-ompi-etc.patch
@@ -58,7 +60,7 @@ COPY docker/release/hpcx-ompi-etc.patch /tmp/hpcx-ompi-etc.patch
 RUN if [ $(echo "${MPIVER}" | awk -F. '{ printf("%d%02d%02d\n", $1,$2,$3); }') -gt 30106 ]; then \
         mkdir /root/openmpi-hpcx \
         && cd /root/openmpi-hpcx \
-        && curl ${CURL_OPTS} -LO ${HPCX_URL_centos} \
+        && curl ${CURL_OPTS} -LO ${HPCX_URL_rhel} \
         && tar -xvf hpcx*.tbz \
         && rm -f hpcx*.tbz \
         && mv hpcx* hpcx \
@@ -81,62 +83,70 @@ RUN if [ $(echo "${MPIVER}" | awk -F. '{ printf("%d%02d%02d\n", $1,$2,$3); }') -
         && mv /root/rpmbuild/RPMS/x86_64/openmpi-${MPIVER}-1.*.rpm /root; \
     fi
 
-FROM centos:7
+FROM rockylinux:8
 
 ARG PIP_INS_OPTS
 ARG PYTHONWARNINGS
 ARG CURL_OPTS
 ARG WGET_OPTS
-ARG YUM_OPTS
+ARG DNF_OPTS
+
+ARG CUDA_VERSION_MAJOR
+ARG CUDA_VERSION_MINOR
 
 ENV LC_ALL C
 ENV LANG C
 ENV LANGUAGE C
 
-RUN eval ${YUM_OPTS} \
-    && curl ${CURL_OPTS} -L https://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64/D42D0685.pub -o D42D0685.pub \
+RUN eval ${DNF_OPTS} \
+    && curl ${CURL_OPTS} -L https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/D42D0685.pub -o D42D0685.pub \
     && rpm --import D42D0685.pub \
-    && yum install -y \
+    && dnf install -y \
        epel-release \
-       yum-utils \
-    && yum install -y \
-        ca-certificates \
-        curl \
-        freetype-devel \
-        git \
-        hdf5 \
-        hdf5-devel \
-        lapack-devel \
-        libjpeg-devel \
-        xz-devel \
-        libpng-devel \
-        redhat-lsb-core \
-        rpm-build \
-        unzip \
-        wget \
-        which \
-        zip \
-        zlib-static \
-        libmpc-devel \
-        mpfr-devel \
-        gmp-devel \
-        openssl-devel \
-        bzip2-devel \
-        libffi-devel \
-        nsight-systems-2021.1.3 \
-        libsndfile \
-        python-backports-lzma \
-        openssl11 \
-        openssl11-devel \
-        zlib-devel \
-        bzip2 \
-        readline-devel \
-        sqlite \
-        sqlite-devel \
-        tk-devel \
-        numactl-libs \
-    && yum group install -y "Development Tools" \
-    && yum clean all
+       dnf-plugins-core \
+    && dnf config-manager --set-enabled powertools \
+    && dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo \
+    && dnf install -y \
+       ca-certificates \
+       curl \
+       freetype-devel \
+       git \
+       hdf5 \
+       hdf5-devel \
+       lapack-devel \
+       libjpeg-devel \
+       xz-devel \
+       libpng-devel \
+       redhat-lsb-core \
+       rpm-build \
+       unzip \
+       wget \
+       which \
+       zip \
+       zlib-static \
+       libmpc-devel \
+       mpfr-devel \
+       gmp-devel \
+       openssl-devel \
+       bzip2-devel \
+       libffi-devel \
+       libsndfile \
+       zlib-devel \
+       bzip2 \
+       readline-devel \
+       sqlite \
+       sqlite-devel \
+       tk-devel \
+       numactl-libs \
+    && dnf install -y \
+       nsight-systems-2023.2.3 \
+       cuda-toolkit-config-common \
+       cuda-toolkit-${CUDA_VERSION_MAJOR}-config-common \
+       cuda-toolkit-${CUDA_VERSION_MAJOR}-${CUDA_VERSION_MINOR%.*}-config-common \
+       cuda-nvtx-${CUDA_VERSION_MAJOR}-${CUDA_VERSION_MINOR%.*} \
+       cuda-nvprof-${CUDA_VERSION_MAJOR}-${CUDA_VERSION_MINOR%.*} \
+    && dnf group install -y "Development Tools" \
+    && dnf clean all
 
 ################################################### gcc
 RUN mkdir /tmp/deps \
@@ -154,7 +164,7 @@ RUN mkdir /tmp/deps \
 ARG CMAKEVER=3.18.4
 RUN mkdir /tmp/deps \
     && cd /tmp/deps \
-    && yum install -y cmake3 openssl-devel \
+    && dnf install -y cmake3 openssl-devel \
     && curl ${CURL_OPTS} -L https://github.com/Kitware/CMake/releases/download/v${CMAKEVER}/cmake-${CMAKEVER}.tar.gz -o cmake-${CMAKEVER}.tar.gz \
     && tar xf cmake-${CMAKEVER}.tar.gz \
     && cd cmake-${CMAKEVER} \
@@ -163,9 +173,9 @@ RUN mkdir /tmp/deps \
     && cmake3 -DBUILD_TESTING=FALSE .. \
     && make -j8 \
     && make install \
-    && yum remove -y cmake3 \
-    && yum clean all \
-    && rm -rf /var/cache/yum/* \
+    && dnf remove -y cmake3 \
+    && dnf clean all \
+    && rm -rf /var/cache/dnf/* \
     && cd / \
     && rm -rf /tmp/*
 
@@ -179,27 +189,25 @@ ARG PYTHON_VER
 ADD python/requirements.txt /tmp/deps/
 
 ARG ARCH_SUFFIX
-ARG CUDA_VERSION_MAJOR
 
 ################################################## build python from pyenv
 RUN git clone https://github.com/pyenv/pyenv.git ~/.pyenv \
-	&& export PYENV_ROOT="$HOME/.pyenv" \
-	&& export PATH="$PYENV_ROOT/bin:$PYENV_ROOT/plugins/python-build/bin:$PATH" \
-	&& export PYTHON_BUILD_CURL_OPTS="${CURL_OPTS}" \
-	&& export PYTHON_BUILD_WGET_OPTS="${WGET_OPTS}" \
+    && export PYENV_ROOT="$HOME/.pyenv" \
+    && export PATH="$PYENV_ROOT/bin:$PYENV_ROOT/plugins/python-build/bin:$PATH" \
+    && export PYTHON_BUILD_CURL_OPTS="${CURL_OPTS}" \
+    && export PYTHON_BUILD_WGET_OPTS="${WGET_OPTS}" \
     && export PYTHON_CONFIGURE_OPTS=--disable-shared \
     && PYTHON_VERSION_MINOR=${PYTHON_VER#*.} \
-	&& if [ ${PYTHON_VERSION_MINOR} -ge 10 ]; then export CPPFLAGS=-I/usr/include/openssl11 && export LDFLAGS=-L/usr/lib64/openssl11; fi \
-	&& eval "$(pyenv init -)" \
-	&& python-build `pyenv latest -k ${PYTHON_VER}` /usr/local \
-	&& pyenv global system \
-	&& pip install ${PIP_INS_OPTS} --no-cache-dir -U pip \
-	&& pip install ${PIP_INS_OPTS} --no-cache-dir -U -r /tmp/deps/requirements.txt \
-	&& pip install ${PIP_INS_OPTS} --no-cache-dir --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda${CUDA_VERSION_MAJOR}0 \
-	&& rm -rf ~/.pyenv/.git  /tmp/*
+    && eval "$(pyenv init -)" \
+    && python-build `pyenv latest -k ${PYTHON_VER}` /usr/local \
+    && pyenv global system \
+    && pip install ${PIP_INS_OPTS} --no-cache-dir -U pip \
+    && pip install ${PIP_INS_OPTS} --no-cache-dir -U -r /tmp/deps/requirements.txt \
+    && pip install ${PIP_INS_OPTS} --no-cache-dir --extra-index-url https://developer.download.nvidia.com/compute/redist nvidia-dali-cuda${CUDA_VERSION_MAJOR}0 \
+    && rm -rf ~/.pyenv/.git  /tmp/*
 
 RUN rm -f /usr/lib64/libstdc++.so.6
-ENV PATH /tmp/.local/bin:/opt/nvidia/nsight-systems/2021.1.3/host-linux-x64/:$PATH
+ENV PATH /tmp/.local/bin:/opt/nvidia/nsight-systems/2023.2.3/host-linux-x64/:$PATH
 ENV LD_LIBRARY_PATH /usr/local/lib64:$LD_LIBRARY_PATH
 ENV CC /usr/local/bin/gcc
 ENV CXX /usr/local/bin/g++
