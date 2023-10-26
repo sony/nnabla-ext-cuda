@@ -17,12 +17,13 @@ ARG BASE
 ############################################################
 # Build OpenMPI
 ############################################################
-# CentOS7:  1.10.7 (12)
-# Ubuntu16: 1.10.2 (12)
-# Ubuntu18: 2.1.1  (20)
-# Ubuntu20: 4.0.3  (40)
-# CentOS7:  3.1.3  (40)
-# ABCI:     2.1.6  (20)
+# CentOS7:     1.10.7-1 (12)
+# Ubuntu16:    1.10.2-1 (12)
+# Ubuntu18:    2.1.1-1  (20)
+# CentOS7:     3.1.6-1  (30)
+# RockyLinux8: 3.1.6-1  (30)
+# Ubuntu20:    4.1.5-1  (40)
+# ABCI:        4.1.5-1  (40)
 
 FROM ubuntu:20.04 as openmpi
 
@@ -115,7 +116,6 @@ RUN eval ${APT_OPTS} \
     && export PYTHON_BUILD_CURL_OPTS="${CURL_OPTS}" \
     && export PYTHON_BUILD_WGET_OPTS="${WGET_OPTS}" \
     && export PYTHON_CONFIGURE_OPTS=--disable-shared \
-    && if [ ${PYTHON_VERSION_MINOR} -ge 10 ]; then export CPPFLAGS=-I/usr/include/openssl11 && export LDFLAGS=-L/usr/lib64/openssl11; fi \
     && eval "$(pyenv init -)" \
     && python-build `pyenv latest -k ${PYVERNAME}` /usr/local \
     && pyenv global system \
