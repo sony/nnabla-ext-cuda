@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 #ifndef NBLA_CUDA_FUNCTION_EINSUM_HPP
 #define NBLA_CUDA_FUNCTION_EINSUM_HPP
 
@@ -35,7 +33,8 @@ public:
   */
   typedef typename CudaType<T>::type Tcu;
 
-  explicit EinsumCuda(const Context &ctx, const string & equation) : Einsum<T>(ctx, equation), device_(std::stoi(ctx.device_id)) {}
+  explicit EinsumCuda(const Context &ctx, const string &equation)
+      : Einsum<T>(ctx, equation), device_(std::stoi(ctx.device_id)) {}
   virtual ~EinsumCuda() {}
   virtual string name() { return "EinsumCuda"; }
   virtual vector<string> allowed_array_classes() {
@@ -50,5 +49,5 @@ protected:
                              const vector<bool> &propagate_down,
                              const vector<bool> &accum);
 };
-}
+} // namespace nbla
 #endif

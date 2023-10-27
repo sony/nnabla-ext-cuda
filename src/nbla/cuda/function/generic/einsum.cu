@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include <nbla/array.hpp>
 #include <nbla/cuda/common.hpp>
 #include <nbla/cuda/function/einsum.hpp>
@@ -29,21 +28,20 @@ void EinsumCuda<T>::setup_impl(const Variables &inputs,
 
 template <typename T>
 void EinsumCuda<T>::forward_impl(const Variables &inputs,
-                               const Variables &outputs) {
+                                 const Variables &outputs) {
   cuda_set_device(this->device_);
 
-  const Tcu* x = inputs[0]->get_data_pointer<Tcu>(this->ctx_);
-  Tcu* y = outputs[0]->cast_data_and_get_pointer<Tcu>(this->ctx_, true);
-   Einsum<T>::forward_impl(inputs, outputs);
+  const Tcu *x = inputs[0]->get_data_pointer<Tcu>(this->ctx_);
+  Tcu *y = outputs[0]->cast_data_and_get_pointer<Tcu>(this->ctx_, true);
+  Einsum<T>::forward_impl(inputs, outputs);
 }
-
 
 template <typename T>
 void EinsumCuda<T>::backward_impl(const Variables &inputs,
-                                const Variables &outputs,
-                                const vector<bool> &propagate_down,
-                                const vector<bool> &accum) {
+                                  const Variables &outputs,
+                                  const vector<bool> &propagate_down,
+                                  const vector<bool> &accum) {
   cuda_set_device(this->device_);
   Einsum<T>::backward_impl(inputs, outputs, propagate_down, accum);
 }
-}
+} // namespace nbla
