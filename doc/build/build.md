@@ -1,6 +1,6 @@
 # Build CUDA Extension
 
-This document shows how to install CUDA extension on Ubuntu 20.04 LTS. We actually only tested on version: Ubuntu 20.04 LTS, cuda11.4.1, cudnn8.2.4, Python 3.8.10. This procedure should work on other Linux distributions. For a build instruction on Windows, go to:
+This document shows how to install CUDA extension on Ubuntu 20.04 LTS. We actually only tested on version: Ubuntu 20.04 LTS, cuda11.6.2, cudnn8.4.0, Python 3.8.10. This procedure should work on other Linux distributions. For a build instruction on Windows, go to:
 
 * [Build on Windows](build_windows.md)
 

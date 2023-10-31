@@ -29,7 +29,7 @@ Prepare to specify CUDA, cuDNN, and python version.
 $ export PYTHON_VERSION_MAJOR=3
 $ export PYTHON_VERSION_MINOR=8
 $ export CUDA_VERSION_MAJOR=11
-$ export CUDA_VERSION_MINOR=4.3
+$ export CUDA_VERSION_MINOR=6.2
 $ export CUDNN_VERSION=8
 ```
 
@@ -42,7 +42,7 @@ $ make all
 Or you can specify every time.
 ```
 $ cd nnabla-ext-cuda
-$ make PYTHON_VERSION_MAJOR=3 PYTHON_VERSION_MINOR=8 CUDA_VERSION_MAJOR=11 CUDA_VERSION_MINOR=4.3 CUDNN_VERSION=8 all
+$ make PYTHON_VERSION_MAJOR=3 PYTHON_VERSION_MINOR=8 CUDA_VERSION_MAJOR=11 CUDA_VERSION_MINOR=6.2 CUDNN_VERSION=8 all
 ```
 
 ## Windows
