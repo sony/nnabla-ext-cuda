@@ -15,6 +15,8 @@
 #ifndef __NBLA_CUDA_UTILS_BITONIC_SORT_CUH__
 #define __NBLA_CUDA_UTILS_BITONIC_SORT_CUH__
 
+#define MAX_THREADS (1024)
+
 namespace nbla {
 namespace bitonic_sort_details {
 // bfe(val, pos) returns the one bit of `val` located at `pos`,
@@ -114,10 +116,13 @@ __global__ void bitonic_sort(T *data, const int size) {
                     N == 1024,
                 "bitonic_sort supports only N=2^n with n=5..10");
 
-  static __shared__ T shared[1024];
+  static __shared__ T shared[MAX_THREADS];
   const unsigned int tid = threadIdx.x;
 
-  shared[tid] = tid < size & 1023 ? data[tid] : T::extrema();
+  if (size > MAX_THREADS) {
+    size = MAX_THREADS;
+  }
+  shared[tid] = tid < size ? data[tid] : T::extrema();
   warp_bitonic_sort<T>(shared, tid);
 
   if (N > 32) {
@@ -163,11 +168,15 @@ __global__ void bitonic_sort(T *data, unsigned int *p_size) {
                     N == 1024,
                 "bitonic_sort supports only N=2^n with n=5..10");
 
-  static __shared__ T shared[1024];
+  static __shared__ T shared[MAX_THREADS];
   const unsigned int tid = threadIdx.x;
   unsigned int size = *p_size;
 
-  shared[tid] = tid < size & 1023 ? data[tid] : T::extrema();
+  if (size > MAX_THREADS) {
+    size = MAX_THREADS;
+  }
+
+  shared[tid] = tid < size ? data[tid] : T::extrema();
   warp_bitonic_sort<T>(shared, tid);
 
   if (N > 32) {

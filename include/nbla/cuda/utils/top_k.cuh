@@ -224,7 +224,7 @@ template <typename T, bool UseAbsVal, bool Largest>
 __global__ void init_val_idx_list(const T *data, const int size,
                                   Bucket<T> *bucket, ValIdx<T> *sort_data,
                                   const unsigned int sort_data_size,
-                                  unsigned int *k) {
+                                  unsigned int K, unsigned int *k) {
   TopKGreaterEqual<Largest> greater_equal;
 
   const auto thread = blockIdx.x * blockDim.x + threadIdx.x;
@@ -237,18 +237,22 @@ __global__ void init_val_idx_list(const T *data, const int size,
     }
   }
   *k = bucket->count;
+  if (*k < K) {
+    *k = K;
+  }
 }
 
 const unsigned int MAX_K = 1024;
 
 template <typename T, bool UseAbsVal, bool Largest>
 __host__ void find_top_k_index(const T *data, const int size, Bucket<T> *bucket,
-                               ValIdx<T> *sort_data, unsigned int *valid_k) {
+                               ValIdx<T> *sort_data, unsigned int K,
+                               unsigned int *valid_k) {
   auto threads = NBLA_CUDA_NUM_THREADS;
   auto blocks = NBLA_CUDA_GET_BLOCKS(size);
 
   init_val_idx_list<T, UseAbsVal, Largest>
-      <<<blocks, threads>>>(data, size, bucket, sort_data, MAX_K, valid_k);
+      <<<blocks, threads>>>(data, size, bucket, sort_data, MAX_K, K, valid_k);
   NBLA_CUDA_KERNEL_CHECK();
 
   // The memory layout of ValIdxBitonic is exactly the same as ValIdx.
@@ -272,8 +276,8 @@ __host__ void top_k_body(const T *data, const unsigned int size,
   minmax<T, UseAbsVal, true>(data, size, &buffer->minmax[0]);
   find_top_k_value<T, UseAbsVal, Largest>(data, size, &buffer->minmax[0],
                                           &buffer->bucket[0], K);
-  find_top_k_index<T, UseAbsVal, Largest>(data, size, &buffer->bucket[0],
-                                          &buffer->sorted[0], &buffer->valid_k);
+  find_top_k_index<T, UseAbsVal, Largest>(
+      data, size, &buffer->bucket[0], &buffer->sorted[0], K, &buffer->valid_k);
 }
 
 template <typename T, bool UseAbsVal = false>
