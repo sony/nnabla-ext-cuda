@@ -137,7 +137,7 @@ RUN eval ${DNF_OPTS} \
        nsight-systems-2023.2.3 \
        libsndfile \
        zlib-devel \
-       bzip2 bzip2-devel \
+       bzip2 \
        readline-devel \
        sqlite \
        sqlite-devel \

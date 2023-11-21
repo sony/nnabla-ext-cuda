@@ -51,7 +51,7 @@ sudo apt-get install libopenmpi-dev
 Follow [Build CUDA extension](build.md) with a little modification in CMake's option (`-DWITH_NCCL=ON`).
 
 ```shell
-cmake -DNNABLA_DIR=../../nnabla -DCPPLIB_LIBRARY=../../nnabla/build/lib/libnnabla.so -DWITH_NCCL=ON ..
+cmake -D CUDA_SELECT_NVCC_ARCH_ARG:STRING="Common" -DNNABLA_DIR=../../nnabla -DCPPLIB_LIBRARY=../../nnabla/build/lib/libnnabla.so -DWITH_NCCL=ON ..
 ```
 
 Note: If the reported error is "`FATAL_ERROR, python [python] not found`" in `cmake`. Please establish a soft connection `python` to `python3.x`, you can refer to the following command:
