@@ -107,7 +107,7 @@ RUN eval ${DNF_OPTS} \
        sqlite-devel \
        tk-devel \
        xz-devel \
-    && if [ "${BUILD_WITH_CUTENSOR}" == "True" ]; then dnf install -y libcutensor-devel; fi \
+    && if [ "${BUILD_WITH_CUTENSOR}" == "True" ]; then dnf install -y libcutensor-devel-1.7.0.1; fi \
     && dnf group install -y "Development Tools" \
     && dnf clean all
 

@@ -34,7 +34,7 @@ IF NOT DEFINED WHLCUDA (
 
 pip install %PIP_INS_OPTS% %WHL% || GOTO :error
 pip install %PIP_INS_OPTS% --no-deps %WHLCUDA% || GOTO :error
-pip install %PIP_INS_OPTS% pytest pytest-xdist[psutil]
+pip install %PIP_INS_OPTS% pytest pytest-xdist[psutil]~=3.3.1
 
 SET PYTHONPATH=%nnabla_ext_cuda_root%\python\test;%VENV%\Lib\site-packages;%PYTHONPATH%
 python -m pytest %PYTEST_OPTS% %nnabla_root%\python\test || GOTO :error
