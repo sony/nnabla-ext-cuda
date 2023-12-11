@@ -12,6 +12,6 @@ autopep8
 ipython
 pytest
 pytest-runner
-pytest-xdist[psutil]
+pytest-xdist[psutil]~=3.3.1
 scipy
 scikit-image
