@@ -1,6 +1,6 @@
 # Build Python Package with distributed execution support powered by NCCL
 
-Distributed execution is only supported on Linux. We tested it on Ubuntu 20.04 LTS, cuda11.4.1, cudnn8.2.4.
+Distributed execution is only supported on Linux. We tested it on Ubuntu 20.04 LTS, cuda11.6.2, cudnn8.4.0.
 
 ## Prerequisites
 
@@ -19,9 +19,10 @@ Download [NCCL](https://developer.nvidia.com/nccl) according to your environment
 then install it manually in case of ubuntu20.04,
 
 ```shell
-sudo dpkg -i nccl-local-repo-ubuntu2004-2.11.4-cuda11.4_1.0-1_amd64.deb
+wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-keyring_1.0-1_all.deb
+sudo dpkg -i cuda-keyring_1.0-1_all.deb
 sudo apt-get update
-sudo apt-get install libnccl2=2.10.3-1+cuda11.4 libnccl-dev=2.10.3-1+cuda11.4
+sudo apt-get install libnccl2=2.12.12-1+cuda11.6 libnccl-dev=2.12.12-1+cuda11.6
 ```
 
 For developer, if you want to use another nccl not publicly distributed,
@@ -50,7 +51,7 @@ sudo apt-get install libopenmpi-dev
 Follow [Build CUDA extension](build.md) with a little modification in CMake's option (`-DWITH_NCCL=ON`).
 
 ```shell
-cmake -DNNABLA_DIR=../../nnabla -DCPPLIB_LIBRARY=../../nnabla/build/lib/libnnabla.so -DWITH_NCCL=ON ..
+cmake -D CUDA_SELECT_NVCC_ARCH_ARG:STRING="Common" -DNNABLA_DIR=../../nnabla -DCPPLIB_LIBRARY=../../nnabla/build/lib/libnnabla.so -DWITH_NCCL=ON ..
 ```
 
 Note: If the reported error is "`FATAL_ERROR, python [python] not found`" in `cmake`. Please establish a soft connection `python` to `python3.x`, you can refer to the following command:

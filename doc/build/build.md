@@ -1,6 +1,6 @@
 # Build CUDA Extension
 
-This document shows how to install CUDA extension on Ubuntu 20.04 LTS. We actually only tested on version: Ubuntu 20.04 LTS, cuda11.4.1, cudnn8.2.4, Python 3.8.10. This procedure should work on other Linux distributions. For a build instruction on Windows, go to:
+This document shows how to install CUDA extension on Ubuntu 20.04 LTS. We actually only tested on version: Ubuntu 20.04 LTS, cuda11.6.2, cudnn8.4.0, Python 3.8.10. This procedure should work on other Linux distributions. For a build instruction on Windows, go to:
 
 * [Build on Windows](build_windows.md)
 
@@ -14,6 +14,9 @@ Download and install CUDA and cuDNN library (both runtime library and developmen
 * [CUDA toolkit](https://developer.nvidia.com/cuda-downloads)
 * [cuDNN library](https://developer.nvidia.com/rdp/cudnn-download) (Registration required)
  
+As nnabla-ext-cuda now requires cuTENSOR as an additional library during build time, please follow the instruction in the document provided by NVIDIA to install cuTENSOR.
+
+* [cuTENSOR](https://developer.nvidia.com/cutensor-downloads)
 
 ## Build and installation
 
@@ -39,25 +42,32 @@ Then, build. You can optionally turn off the Python package build by `-DBUILD_PY
 and also turn on the C++ utils build by `-DBUILD_CPP_UTILS=ON` in `cmake`. But you must [build C++ utility libraries](https://github.com/sony/nnabla/blob/master/doc/build/build_cpp_utils.md) before you turn on the C++ utils build by `-DBUILD_CPP_UTILS=ON` in `cmake`.
 
 ```shell
-cmake -DNNABLA_DIR=../../nnabla -DCPPLIB_LIBRARY=../../nnabla/build/lib/libnnabla.so ..
+cmake -D CUDA_SELECT_NVCC_ARCH_ARG:STRING="Common" -DNNABLA_DIR=../../nnabla -DCPPLIB_LIBRARY=../../nnabla/build/lib/libnnabla.so ..
 make
 ```
 
-Note: If the reported error is "`FATAL_ERROR, python [python] not found`" in `cmake`. Please establish a soft connection `python` to `python3.x`, you can refer to the following command:
+Note:
+If the reported error is `FATAL_ERROR, python [python] not found` in `cmake`. Please establish a soft connection `python` to `python3.x`, you can refer to the following command as an example:
 
 ```shell
 sudo ln -s /usr/bin/python3.x /usr/bin/python
+```
+
+If the reported error is `fatal error: Python.h: No such file or directory` in `make`. Please install corresponding python development package, you can refer to the following command as an example:
+
+```shell
+sudo apt-get install python3-dev
 ```
 
 To install the Python package:
 
 ```shell
 cd dist
-pip uninstall -y nnabla-ext-cuda
+pip uninstall -y nnabla-ext-cuda116
 pip install nnabla_ext_cuda-{{version}}-{{arch}}.whl
 ```
 
-(Optional for C++ standalone application with [C++ utility](https://github.com/sony/nnabla/tree/master/doc/build/build_cpp_utils.md) To install C++ library on your system:
+(Optional for C++ standalone application with [C++ utility](https://github.com/sony/nnabla/tree/master/doc/build/build_cpp_utils.md)) To install C++ library on your system:
 
 ```shell
 sudo make install  # Set `CMAKE_INSTALL_PREFIX` to install in other place than your system (recommended).
