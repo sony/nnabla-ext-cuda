@@ -250,7 +250,7 @@ cdef class StreamEventHandler:
     cdef shared_ptr[void] event
     cdef public object value
     cdef public int device_id
-    cpdef bool is_stream_destroy
+    cdef bool is_stream_destroy
 
     def __cinit__(self, int device_id=-1):
         self.is_stream_destroy = True

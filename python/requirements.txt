@@ -5,7 +5,7 @@ mako
 PyYAML
 
 # Runtime
-Cython~=0.29
+Cython
 autopep8
 
 # Test

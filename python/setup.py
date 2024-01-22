@@ -433,6 +433,7 @@ if __name__ == '__main__':
                             include_path=[get_cpu_cython_path()],
                             compiler_directives={
                                 "embedsignature": True,
+                                "language_level": "2",
                                 "c_string_type": 'str',
                                 "c_string_encoding": "ascii"})
 
