@@ -407,7 +407,6 @@ def get_setup_config(root_dir):
             'License :: OSI Approved :: Apache Software License',
             'Programming Language :: C++',
             'Programming Language :: Python :: 3',
-            'Programming Language :: Python :: 3.8',
             'Programming Language :: Python :: 3.9',
             'Programming Language :: Python :: 3.10',
             'Programming Language :: Python :: Implementation :: CPython',

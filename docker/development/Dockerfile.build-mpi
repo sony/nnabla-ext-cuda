@@ -251,7 +251,7 @@ RUN if [ -e /root/openmpi-*.rpm ]; then rpm -i /root/openmpi-*.rpm; fi
 RUN if [ -d /root/hpcx ]; then mkdir /opt/mpi; mv /root/hpcx /opt/mpi/hpcx; fi
 
 ARG PYTHON_VERSION_MAJOR=3
-ARG PYTHON_VERSION_MINOR=8
+ARG PYTHON_VERSION_MINOR=9
 ENV PYVERNAME=${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}
 
 ############################################################ build python from pyenv
