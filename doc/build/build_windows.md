@@ -46,11 +46,11 @@ build-tools\msvc\build_wheel.bat PYTHON_VERSION CUDA_VERSION CUDNN_VERSION
 For examples:
 
 ```
-build-tools\msvc\build_wheel.bat 3.9 11.6 8
+build-tools\msvc\build_wheel.bat 3.10 11.6 8
 ```
 or:
 ```
-build-tools\msvc\build_wheel.bat 3.9 12.0 8
+build-tools\msvc\build_wheel.bat 3.10 12.0 8
 ```
 
 Tested version

@@ -18,7 +18,7 @@ REM
 SETLOCAL
 
 REM Environment
-CALL %~dp0tools\env.bat 3.9 %1 %2 || GOTO :error
+CALL %~dp0tools\env.bat 3.10 %1 %2 || GOTO :error
 
 IF NOT EXIST %nnabla_build_folder% (
    ECHO nnabla_build_folder ^(%nnabla_build_folder%^) does not exist.
