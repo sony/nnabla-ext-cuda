@@ -2,9 +2,9 @@
 
 ## Overview
 
-This document demonstrates how to add CUDA version of `functions` (also called as `layer functions`) to nnabla-ext-cuda.  
+This document demonstrates how to add CUDA version of `functions` (also known as `layer functions`) to nnabla-ext-cuda.  
 The following instruction demonstrates the new layer addition procedure for Ubuntu 16.04 platform.   
-However instructions for macOS and Windows platforms are also same except nnabla-ext-cuda building part.  
+However instructions for macOS and Windows platforms are also the same except nnabla-ext-cuda building part.  
 
 ## Prerequisites
 

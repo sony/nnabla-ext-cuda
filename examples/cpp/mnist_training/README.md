@@ -85,7 +85,7 @@ After getting learned.nnp, you can use it as a model file for "mnist_runtime".
   #include <nbla/cuda/init.hpp>
 ```
 
-2. Initialized cudnn.
+2. Initialize cudnn.
 ```c++
   nbla::init_cudnn();
 ```

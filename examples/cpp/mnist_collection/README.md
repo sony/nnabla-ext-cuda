@@ -69,7 +69,7 @@ You can also run other examples by using each executable.
   #include <nbla/cuda/init.hpp>
 ```
 
-2. Initialized cudnn.
+2. Initialize cudnn.
 ```c++
   nbla::init_cudnn();
 ```

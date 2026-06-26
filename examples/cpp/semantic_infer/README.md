@@ -2,17 +2,17 @@
 
 ## Introduction
 
-This example is infer with semantic segmentation trained model by c++. The default trained model "DeepLabV3-voc-os-16.nnp" download from "https://nnabla.org/pretrained-models/nnp_models/semantic_segmentation/DeepLabV3-voc-os-16.nnp". After builded, it can infer by CPU or CUDA by switch macro "WITH_CUDA". Refer to follow steps to build program and execute infer.
+This example performs inference with a semantic segmentation trained model in C++. The default trained model "DeepLabV3-voc-os-16.nnp" download from "https://nnabla.org/pretrained-models/nnp_models/semantic_segmentation/DeepLabV3-voc-os-16.nnp". Once built, it can infer by CPU or CUDA by switch macro "WITH_CUDA". Refer to follow steps to build program and execute infer.
 
-### 1.1 Install NNABLA by offical tutorial
+### 1.1 Install NNABLA by official tutorial
 
-The offical tutorial web is:
+The official tutorial web is:
 
 https://github.com/nnabla/nnabla/blob/master/doc/build/README.md
 
-Either python package or build c++ utilities are OK. But C++ utilities library will more easier be finded by cmake and make.
+Either python package or build c++ utilities are OK. But C++ utilities library will more easily be found by cmake and make.
 
-### 1.2 Install OpenCV by offical tutorial
+### 1.2 Install OpenCV by official tutorial
 
 The web is:
 
@@ -20,15 +20,15 @@ https://docs.opencv.org/4.x/d2/de6/tutorial_py_setup_in_ubuntu.html
 
 If you use cmake with following procedure, libopencv-dev package will be needed to find opencv libraries by find_package().
 
-### 1.3 Install nnabla-ext-cuda by offical tutorial(optional)
+### 1.3 Install nnabla-ext-cuda by official tutorial(optional)
 
 The web is:
 
 https://github.com/nnabla/nnabla-ext-cuda/blob/master/doc/build/README.md
 
-Note: the nnabla and nnabla-ext-cuda must in the same folder.
+Note: the nnabla and nnabla-ext-cuda must be in the same folder.
 
-If not install nnabla-ext-cuda the program only infer by CPU.
+If nnabla-ext-cuda is not installed, the program will only infer by CPU.
 
 ### 1.4 Install curl library
 ```shell

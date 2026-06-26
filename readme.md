@@ -8,7 +8,7 @@ This repository provides an official CUDA/cuDNN-accelerated extension of the
 [Neural Network Libraries](https://github.com/sony/nnabla/) deep learning framework.
 
 In order to use it, the default context needs to be changed from `'cpu'` to
-`cudnn'`:
+`'cudnn'`:
 ```python
 from nnabla.ext_utils import get_extension_context
 
@@ -16,7 +16,7 @@ ctx = get_extension_context('cudnn', device_id='0')
 nn.set_default_context(ctx)
 ```
 
-Float 16-bit precision (fp16, half) can also be used by setting `type_config` options as following.
+Float 16-bit precision (fp16, half) can also be used by setting `type_config` options as follows.
 
 ```python
 ctx = get_extension_context('cudnn', device_id='0', type_config='half')
@@ -39,11 +39,11 @@ Optionally, this library can automatically select the fastest algorithms for you
 
 However, it often consumes much memory due to a big workspace memory required by automatically found algorithms, and sometimes doesn't work on a GPU with small memory. To avoid this, you can specify the limit of the workspace size by setting an environment variable `NNABLA_CUDNN_WORKSPACE_LIMIT` (in bytes) read at runtime (not compilation time). For example, `NNABLA_CUDNN_WORKSPACE_LIMIT=134217728` limits the workspace size up to 128 MB. The default value is `-1` which means there is no limit of the workspace size.
 
-In some cases it may be desired to restrict the automatic search for CUDNN Convolution algorithms to those that give deterministic (reproducable) results. This can be achived by setting an environment variable `NNABLA_CUDNN_DETERMINISTIC` to some value other than `0`.
+In some cases it may be desired to restrict the automatic search for CUDNN Convolution algorithms to those that give deterministic (reproducible) results. This can be achieved by setting an environment variable `NNABLA_CUDNN_DETERMINISTIC` to some value other than `0`.
 
 ### TensorFloat-32 (TF32)
 
-In NNabla, the environment variable `NNABLA_CUDA_ALLOW_TF32` controls whether TF32 (about TF32, see [a blog post](https://blogs.nvidia.com/blog/2020/05/14/tensorfloat-32-precision-format/) from NVIDIA) is allowed to be used. If `NNABLA_CUDA_ALLOW_TF32` is not set (default) or 0, TF32 is disabled. Otherwise, it is enabled. `NNABLA_CUDA_ALLOW_TF32` always takes priority of `NVIDIA_TF32_OVERRIDE`. `NNABLA_CUDA_ALLOW_TF32` is only evaluated when initializing NNabla CUDA extension. If it is changed within the user program, the behavior is undefined.
+In NNabla, the environment variable `NNABLA_CUDA_ALLOW_TF32` controls whether TF32 (about TF32, see [a blog post](https://blogs.nvidia.com/blog/2020/05/14/tensorfloat-32-precision-format/) from NVIDIA) is allowed to be used. If `NNABLA_CUDA_ALLOW_TF32` is not set (default) or 0, TF32 is disabled. Otherwise, it is enabled. `NNABLA_CUDA_ALLOW_TF32` always takes priority over `NVIDIA_TF32_OVERRIDE`. `NNABLA_CUDA_ALLOW_TF32` is only evaluated when initializing NNabla CUDA extension. If it is changed within the user program, the behavior is undefined.
 
 
 ## FAQ

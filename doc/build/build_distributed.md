@@ -16,7 +16,7 @@ In order to use the distributed training, the only difference, when building, is
 the procedure described here.
 
 Download [NCCL](https://developer.nvidia.com/nccl) according to your environment,
-then install it manually in case of ubuntu20.04,
+then install it manually in case of Ubuntu 20.04,
 
 ```shell
 wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-keyring_1.0-1_all.deb
@@ -60,7 +60,7 @@ Note: If the reported error is "`FATAL_ERROR, python [python] not found`" in `cm
 sudo ln -s /usr/bin/python3.x /usr/bin/python
 ```
 
-You can confirm nccl and mpi includes and dependencies found in the output screen,
+You can confirm NCCL and MPI includes and dependencies found in the output screen,
 
 ```
 ...

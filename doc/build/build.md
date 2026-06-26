@@ -1,15 +1,15 @@
 # Build CUDA Extension
 
-This document shows how to install CUDA extension on Ubuntu 20.04 LTS. We actually only tested on version: Ubuntu 20.04 LTS, cuda11.6.2, cudnn8.4.0, Python 3.8.10. This procedure should work on other Linux distributions. For a build instruction on Windows, go to:
+This document shows how to install CUDA extension on Ubuntu 20.04 LTS. We actually only tested on version: Ubuntu 20.04 LTS, cuda11.6.2, cudnn8.4.0, Python 3.8.10. This procedure should work on other Linux distributions. For build instructions on Windows, go to:
 
 * [Build on Windows](build_windows.md)
 
 
 ## Prerequisites
 
-In addition to NNabla's requirements, CUDA extension requires CUDA setup has done on your system. If you don't have CUDA on your system, follow the procedure described below.
+In addition to NNabla's requirements, CUDA extension requires that CUDA setup has been done on your system. If you don't have CUDA on your system, follow the procedure described below.
 
-Download and install CUDA and cuDNN library (both runtime library and development library). Please follow the instruction in the document provided by NVIDIA. Do NOT see any instruction provided by any third party. They are often incorrect or based on old instructions, that could destroy your system.
+Download and install CUDA and cuDNN libraries (both runtime library and development library). Please follow the instruction in the document provided by NVIDIA. Do NOT follow any instruction provided by any third party. They are often incorrect or based on old instructions, that could destroy your system.
 
 * [CUDA toolkit](https://developer.nvidia.com/cuda-downloads)
 * [cuDNN library](https://developer.nvidia.com/rdp/cudnn-download) (Registration required)
@@ -20,7 +20,7 @@ As nnabla-ext-cuda now requires cuTENSOR as an additional library during build t
 
 ## Build and installation
 
-You needs to [build nnabla](https://github.com/sony/nnabla/blob/master/doc/build/build.md) before build nnabla-ext-cuda.
+You need to [build nnabla](https://github.com/sony/nnabla/blob/master/doc/build/build.md) before building nnabla-ext-cuda.
 And, you have to let CMake to know where the source and library of NNabla are located by the following options.
 
 - `NNABLA_DIR`: Root directory of NNabla source code.
@@ -53,7 +53,7 @@ If the reported error is `FATAL_ERROR, python [python] not found` in `cmake`. Pl
 sudo ln -s /usr/bin/python3.x /usr/bin/python
 ```
 
-If the reported error is `fatal error: Python.h: No such file or directory` in `make`. Please install corresponding python development package, you can refer to the following command as an example:
+If the reported error is `fatal error: Python.h: No such file or directory` in `make`. Please install corresponding Python development package, you can refer to the following command as an example:
 
 ```shell
 sudo apt-get install python3-dev

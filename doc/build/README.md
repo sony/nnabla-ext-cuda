@@ -12,7 +12,7 @@ and Windows.
 Build of the CUDA extension requires building
 [NNabla](https://github.com/sony/nnabla) at first. See [the
 instruction](https://github.com/sony/nnabla/tree/master/doc/build/)
-for build NNabla.
+for building NNabla.
 
 * [Linux/macOS](build.md)
 * [Windows](build_windows.md)

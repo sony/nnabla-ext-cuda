@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-At first, clone [nnabla](https://github.com/sony/nnabla) and [nnabla-ext-cuda](https://github.com/sony/nnabla-ext-cuda) into same folder.
+At first, clone [nnabla](https://github.com/sony/nnabla) and [nnabla-ext-cuda](https://github.com/sony/nnabla-ext-cuda) into the same folder.
 
 Then, install CUDA11.6/cuDNN8.4 or CUDA12.0/cuDNN8.8 from following site.
 - CUDA
@@ -24,7 +24,7 @@ Note: parameters `CUDA_VERSION` and `CUDNN_VERSION` are options of cuda/cudnn ve
 ``` cmd
 build-tools\msvc\build_cpplib.bat CUDA_VERSION CUDNN_VERSION
 ``` 
-For examples:
+For example:
 
 ```
 build-tools\msvc\build_cpplib.bat 11.6 8
@@ -43,7 +43,7 @@ Note: parameters `PYTHON_VERSION`, `CUDA_VERSION` and `CUDNN_VERSION` are option
 ```
 build-tools\msvc\build_wheel.bat PYTHON_VERSION CUDA_VERSION CUDNN_VERSION
 ```
-For examples:
+For example:
 
 ```
 build-tools\msvc\build_wheel.bat 3.10 11.6 8

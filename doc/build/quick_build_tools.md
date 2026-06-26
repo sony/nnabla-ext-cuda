@@ -4,7 +4,7 @@ Make sure that [nnabla](https://github.com/sony/nnabla) and `nnabla-ext-cuda` ar
 
 ## Linux
 
-You needs [NVIDIA Docker](https://github.com/NVIDIA/nvidia-docker) and `GNU make`
+You need [NVIDIA Docker](https://github.com/NVIDIA/nvidia-docker) and `GNU make`
 
 Note: workdir in "nnabla-ext-cuda/"
 
@@ -13,7 +13,7 @@ Note: workdir in "nnabla-ext-cuda/"
 $ cd nnabla-ext-cuda
 $ make all
 ```
-`make all` is as same as `make bwd-cpplib bwd-wheel`
+`make all` is the same as `make bwd-cpplib bwd-wheel`
 After this you can find .whl file in `../nnabla/build_wheel/dist/` and `build_wheel/dist/`
 
 ### Build cpplib only
